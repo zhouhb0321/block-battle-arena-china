@@ -1,17 +1,20 @@
-
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Share2, Pause, Play } from 'lucide-react';
 import { toast } from 'sonner';
+import GameBoard from './GameBoard';
+import GameInfo from './GameInfo';
+import PiecePreview from './PiecePreview';
 import { 
   isValidPosition, 
   placePiece, 
   clearLines, 
   rotatePiece, 
   calculateDropPosition,
-  generateSevenBag 
+  generateSevenBag,
+  checkTSpin,
+  getKickTests
 } from '@/utils/tetrisLogic';
 
 interface TetrisGameProps {
@@ -22,11 +25,12 @@ interface TetrisGameProps {
 const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) => {
   const { gameState, gameSettings, resetGame, pauseGame, resumeGame } = useGame();
   const { user } = useAuth();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameLoopRef = useRef<number>();
   const lastDropTime = useRef<number>(0);
   const keyPressedTime = useRef<{[key: string]: number}>({});
+  const lockDelayTime = useRef<number>(0);
   const [keys, setKeys] = useState<Set<string>>(new Set());
+  const [lastAction, setLastAction] = useState<'rotate' | 'move' | null>(null);
   
   const [currentPiece, setCurrentPiece] = useState(gameState.currentPiece);
   const [board, setBoard] = useState(() => Array(20).fill(null).map(() => Array(10).fill(0)));
@@ -36,14 +40,14 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
   const [level, setLevel] = useState(1);
+  const [pieces, setPieces] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [lockDelay, setLockDelay] = useState(false);
 
-  const CELL_SIZE = 30;
   const BOARD_WIDTH = 10;
   const BOARD_HEIGHT = 20;
-  const CANVAS_WIDTH = BOARD_WIDTH * CELL_SIZE;
-  const CANVAS_HEIGHT = BOARD_HEIGHT * CELL_SIZE;
+  const LOCK_DELAY_TIME = 500; // 500ms锁定延迟
 
   const spawnNewPiece = useCallback(() => {
     if (nextPieces.length === 0) return;
@@ -68,28 +72,49 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     setCurrentPiece(newPiece);
     setNextPieces(newNextPieces);
     setCanHold(true);
+    setLockDelay(false);
+    lockDelayTime.current = 0;
+    setPieces(prev => prev + 1);
   }, [board, nextPieces]);
 
   const lockPiece = useCallback(() => {
     if (!currentPiece) return;
 
+    // 检查T-Spin
+    const tSpinType = checkTSpin(board, currentPiece, lastAction || 'move');
+    
     const newBoard = placePiece(board, currentPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     
     setBoard(clearedBoard);
     setLines(prev => prev + linesCleared);
     
-    // 计算得分 (标准俄罗斯方块得分系统)
-    const lineScores = [0, 40, 100, 300, 1200];
-    const lineScore = lineScores[Math.min(linesCleared, 4)] || 0;
+    // 计算得分 (包含T-Spin奖励)
+    let lineScore = 0;
+    if (tSpinType) {
+      // T-Spin得分奖励
+      const tSpinScores = {
+        'Mini T-Spin': 100,
+        'T-Spin-Single': 800,
+        'T-Spin-Double': 1200,
+        'T-Spin-Triple': 1600
+      };
+      lineScore = tSpinScores[tSpinType] || 0;
+      toast.success(`${tSpinType}!`, { duration: 2000 });
+    } else {
+      const lineScores = [0, 40, 100, 300, 1200];
+      lineScore = lineScores[Math.min(linesCleared, 4)] || 0;
+    }
+    
     setScore(prev => prev + lineScore * level);
     
     // 每10行增加一个等级
     const newLevel = Math.floor((lines + linesCleared) / 10) + 1;
     setLevel(newLevel);
     
+    setLastAction(null);
     spawnNewPiece();
-  }, [currentPiece, board, level, lines, spawnNewPiece]);
+  }, [currentPiece, board, level, lines, spawnNewPiece, lastAction]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
     if (!currentPiece || gameOver || paused) return false;
@@ -99,35 +124,51 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
 
     if (isValidPosition(board, currentPiece, newX, newY)) {
       setCurrentPiece(prev => prev ? { ...prev, x: newX, y: newY } : null);
+      setLastAction('move');
+      
+      // 重置锁定延迟如果方块还能继续下落
+      if (dy > 0) {
+        setLockDelay(false);
+        lockDelayTime.current = 0;
+      }
+      
       return true;
     } else if (dy > 0) {
-      // 如果向下移动失败，锁定方块
-      lockPiece();
+      // 如果向下移动失败，开始锁定延迟
+      if (!lockDelay) {
+        setLockDelay(true);
+        lockDelayTime.current = Date.now();
+      }
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, paused, lockPiece]);
+  }, [currentPiece, board, gameOver, paused, lockDelay]);
 
   const rotatePieceClockwise = useCallback(() => {
     if (!currentPiece || gameOver || paused) return;
 
     const rotated = rotatePiece(currentPiece.type, true);
-    const newPiece = { ...currentPiece, type: rotated };
-
-    // 简单的墙踢系统
-    const kickTests = [
-      { x: 0, y: 0 },   // 原位置
-      { x: -1, y: 0 },  // 左移一格
-      { x: 1, y: 0 },   // 右移一格
-      { x: 0, y: -1 },  // 上移一格
-      { x: -1, y: -1 }, // 左上
-      { x: 1, y: -1 }   // 右上
-    ];
+    const newRotation = (currentPiece.rotation + 1) % 4;
+    
+    // 使用SRS墙踢系统
+    const kickTests = getKickTests(currentPiece.type.type, currentPiece.rotation, newRotation);
 
     for (const kick of kickTests) {
-      const testPiece = { ...newPiece, x: newPiece.x + kick.x, y: newPiece.y + kick.y };
+      const testPiece = { 
+        ...currentPiece, 
+        type: rotated, 
+        x: currentPiece.x + kick.x, 
+        y: currentPiece.y + kick.y,
+        rotation: newRotation
+      };
+      
       if (isValidPosition(board, testPiece)) {
         setCurrentPiece(testPiece);
+        setLastAction('rotate');
+        
+        // 重置锁定延迟
+        setLockDelay(false);
+        lockDelayTime.current = 0;
         return;
       }
     }
@@ -137,22 +178,27 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     if (!currentPiece || gameOver || paused) return;
 
     const rotated = rotatePiece(currentPiece.type, false);
-    const newPiece = { ...currentPiece, type: rotated };
-
-    // 简单的墙踢系统
-    const kickTests = [
-      { x: 0, y: 0 },   // 原位置
-      { x: -1, y: 0 },  // 左移一格
-      { x: 1, y: 0 },   // 右移一格
-      { x: 0, y: -1 },  // 上移一格
-      { x: -1, y: -1 }, // 左上
-      { x: 1, y: -1 }   // 右上
-    ];
+    const newRotation = (currentPiece.rotation + 3) % 4;
+    
+    // 使用SRS墙踢系统
+    const kickTests = getKickTests(currentPiece.type.type, currentPiece.rotation, newRotation);
 
     for (const kick of kickTests) {
-      const testPiece = { ...newPiece, x: newPiece.x + kick.x, y: newPiece.y + kick.y };
+      const testPiece = { 
+        ...currentPiece, 
+        type: rotated, 
+        x: currentPiece.x + kick.x, 
+        y: currentPiece.y + kick.y,
+        rotation: newRotation
+      };
+      
       if (isValidPosition(board, testPiece)) {
         setCurrentPiece(testPiece);
+        setLastAction('rotate');
+        
+        // 重置锁定延迟
+        setLockDelay(false);
+        lockDelayTime.current = 0;
         return;
       }
     }
@@ -186,6 +232,8 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     }
     
     setCanHold(false);
+    setLockDelay(false);
+    lockDelayTime.current = 0;
   }, [currentPiece, holdPiece, canHold, gameOver, paused, spawnNewPiece]);
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -219,7 +267,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     
     // 添加到持续按键集合
     setKeys(prev => new Set(prev).add(event.code));
-  }, [gameSettings, gameOver, paused, rotatePieceClockwise, rotatePieceCounterclockwise, hardDrop, holdCurrentPiece]);
+  }, [gameSettings, gameOver, paused, rotatePieceClockwise, rotatePieceCounterclockwise, hardDrop, holdCurrentPiece, togglePause]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     delete keyPressedTime.current[event.code];
@@ -353,8 +401,19 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
       // 自动下落
       const dropSpeed = Math.max(50, 1000 - (level - 1) * 50);
       if (timestamp - lastDropTime.current > dropSpeed) {
-        movePiece(0, 1);
+        const moved = movePiece(0, 1);
+        if (!moved && lockDelay) {
+          // 检查锁定延迟是否到期
+          if (timestamp - lockDelayTime.current > LOCK_DELAY_TIME) {
+            lockPiece();
+          }
+        }
         lastDropTime.current = timestamp;
+      } else if (lockDelay) {
+        // 如果有锁定延迟，检查是否到期
+        if (timestamp - lockDelayTime.current > LOCK_DELAY_TIME) {
+          lockPiece();
+        }
       }
     }
 
@@ -370,7 +429,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     gameLoopRef.current = requestAnimationFrame(gameLoop);
   }, [
     gameOver, paused, keys, gameSettings, level,
-    movePiece, drawBoard
+    movePiece, drawBoard, lockDelay, lockPiece
   ]);
 
   const handleShare = () => {
@@ -407,20 +466,27 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     setScore(0);
     setLines(0);
     setLevel(1);
+    setPieces(0);
     setGameOver(false);
     setPaused(false);
     setCanHold(true);
+    setLockDelay(false);
     lastDropTime.current = 0;
+    lockDelayTime.current = 0;
     keyPressedTime.current = {};
     setTimeout(() => spawnNewPiece(), 100);
     resetGame();
   };
 
+  // 计算PPS和攻击力
+  const pps = pieces > 0 ? pieces / Math.max((Date.now() - Date.now()) / 1000, 1) : 0;
+  const attack = lines > 0 ? lines / Math.max((Date.now() - Date.now()) / 60000, 1) : 0;
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
-      canvas.width = CANVAS_WIDTH;
-      canvas.height = CANVAS_HEIGHT;
+      // canvas.width = CANVAS_WIDTH;
+      // canvas.height = CANVAS_HEIGHT;
     }
 
     // 初始化游戏
@@ -444,99 +510,156 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
 
   return (
     <div className="flex gap-4 p-4 justify-center">
-      {/* 左侧广告位 */}
-      <div className="w-60 h-[600px] bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center rounded-lg">
-        <span className="text-gray-500 text-sm text-center">广告位<br/>招租中<br/>联系管理员</span>
-      </div>
-
-      <div className="flex gap-4">
-        {/* Hold区域 */}
-        <div className="bg-gray-800 p-4 rounded-lg">
-          <h3 className="text-white text-sm mb-2 text-center">HOLD</h3>
-          <div className="w-32 h-32 bg-black border border-gray-600 flex items-center justify-center rounded">
-            {holdPiece && (
-              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${holdPiece.shape[0].length}, 1fr)` }}>
-                {holdPiece.shape.map((row, y) =>
-                  row.map((cell, x) => (
-                    <div
-                      key={`${y}-${x}`}
-                      className={`w-4 h-4 ${cell ? 'opacity-100' : 'opacity-0'} border border-white border-opacity-20`}
-                      style={{ backgroundColor: cell ? holdPiece.color : 'transparent' }}
-                    />
-                  ))
-                )}
-              </div>
-            )}
+      {/* 单人模式布局 */}
+      {mode === 'single' && (
+        <>
+          {/* 左侧广告位 */}
+          <div className="w-60 h-[600px] bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center rounded-lg">
+            <span className="text-gray-500 text-sm text-center">广告位<br/>招租中<br/>联系管理员</span>
           </div>
-        </div>
 
-        {/* 游戏主区域 */}
-        <div className="bg-gray-800 p-4 rounded-lg relative">
-          <div className="mb-4 text-white text-sm flex justify-between items-center">
-            <div>
-              <div>{user?.username || 'Guest'} - 得分: {score}</div>
-              <div>行数: {lines} - 等级: {level}</div>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={togglePause}>
-                {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleShare}>
-                <Share2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-          
-          <canvas
-            ref={canvasRef}
-            className="border border-gray-600 bg-black rounded"
-            tabIndex={0}
-          />
-          
-          {paused && (
-            <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center rounded-lg">
-              <div className="text-white text-2xl">游戏暂停</div>
-            </div>
-          )}
-          
-          {gameOver && (
-            <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center rounded-lg">
-              <div className="text-white text-center">
-                <div className="text-2xl mb-4">游戏结束</div>
-                <div className="mb-4">最终得分: {score}</div>
-                <Button onClick={handleReset}>重新开始</Button>
-              </div>
-            </div>
-          )}
-        </div>
+          <div className="flex gap-4">
+            {/* Hold区域 */}
+            <PiecePreview piece={holdPiece} title="HOLD" size="medium" />
 
-        {/* Next区域 */}
-        <div className="bg-gray-800 p-4 rounded-lg">
-          <h3 className="text-white text-sm mb-2 text-center">NEXT</h3>
-          <div className="space-y-2">
-            {nextPieces.slice(0, 4).map((piece, index) => (
-              <div key={index} className="w-32 h-20 bg-black border border-gray-600 flex items-center justify-center rounded">
-                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${piece.shape[0].length}, 1fr)` }}>
-                  {piece.shape.map((row, y) =>
-                    row.map((cell, x) => (
-                      <div
-                        key={`${y}-${x}`}
-                        className={`w-4 h-4 ${cell ? 'opacity-100' : 'opacity-0'} border border-white border-opacity-20`}
-                        style={{ backgroundColor: cell ? piece.color : 'transparent' }}
-                      />
-                    ))
-                  )}
+            {/* 游戏主区域 */}
+            <div className="bg-gray-800 p-4 rounded-lg relative">
+              <GameInfo
+                username={user?.username || 'Guest'}
+                score={score}
+                lines={lines}
+                level={level}
+                paused={paused}
+                onPause={togglePause}
+                onShare={handleShare}
+                mode="single"
+              />
+              
+              <GameBoard
+                board={board}
+                currentPiece={currentPiece}
+                enableGhost={gameSettings.enableGhost}
+              />
+              
+              {paused && (
+                <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center rounded-lg">
+                  <div className="text-white text-2xl">游戏暂停</div>
                 </div>
+              )}
+              
+              {gameOver && (
+                <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center rounded-lg">
+                  <div className="text-white text-center">
+                    <div className="text-2xl mb-4">游戏结束</div>
+                    <div className="mb-4">最终得分: {score}</div>
+                    <Button onClick={handleReset}>重新开始</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Next区域 */}
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <h3 className="text-white text-sm mb-2 text-center font-bold">NEXT</h3>
+              <div className="space-y-2">
+                {nextPieces.slice(0, 4).map((piece, index) => (
+                  <PiecePreview key={index} piece={piece} title="" size="small" />
+                ))}
               </div>
-            ))}
+            </div>
+          </div>
+
+          {/* 右侧广告位 */}
+          <div className="w-60 h-[600px] bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center rounded-lg">
+            <span className="text-gray-500 text-sm text-center">广告位<br/>招租中<br/>联系管理员</span>
+          </div>
+        </>
+      )}
+
+      {/* 双人对战模式布局 */}
+      {mode === 'multi' && (
+        <div className="flex gap-8 w-full max-w-6xl">
+          {/* 玩家1 */}
+          <div className="flex gap-4">
+            <PiecePreview piece={holdPiece} title="HOLD" size="small" />
+            
+            <div className="bg-gray-800 p-4 rounded-lg relative">
+              <GameInfo
+                username={user?.username || 'Player 1'}
+                score={score}
+                lines={lines}
+                level={level}
+                pieces={pieces}
+                pps={pps}
+                attack={attack}
+                paused={paused}
+                onPause={togglePause}
+                onShare={handleShare}
+                mode="multi"
+              />
+              
+              <GameBoard
+                board={board}
+                currentPiece={currentPiece}
+                enableGhost={gameSettings.enableGhost}
+                cellSize={25}
+              />
+              
+              {paused && (
+                <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center rounded-lg">
+                  <div className="text-white text-xl">暂停</div>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              {nextPieces.slice(0, 3).map((piece, index) => (
+                <PiecePreview key={index} piece={piece} title="" size="small" />
+              ))}
+            </div>
+          </div>
+
+          {/* 中间对战信息 */}
+          <div className="flex flex-col items-center justify-center text-white">
+            <div className="text-2xl font-bold mb-4">VS</div>
+            <div className="text-sm opacity-75">1:26.867</div>
+          </div>
+
+          {/* 玩家 2 (镜像布局) */}
+          <div className="flex gap-4">
+            <div className="space-y-2">
+              {nextPieces.slice(0, 3).map((piece, index) => (
+                <PiecePreview key={index} piece={piece} title="" size="small" />
+              ))}
+            </div>
+            
+            <div className="bg-gray-800 p-4 rounded-lg relative">
+              <GameInfo
+                username="Player 2"
+                score={0}
+                lines={0}
+                level={1}
+                pieces={0}
+                pps={0}
+                attack={0}
+                paused={false}
+                onPause={() => {}}
+                onShare={() => {}}
+                mode="multi"
+              />
+              
+              <GameBoard
+                board={Array(20).fill(null).map(() => Array(10).fill(0))}
+                currentPiece={null}
+                enableGhost={false}
+                cellSize={25}
+              />
+            </div>
+            
+            <PiecePreview piece={null} title="HOLD" size="small" />
           </div>
         </div>
-      </div>
-
-      {/* 右侧广告位 */}
-      <div className="w-60 h-[600px] bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center rounded-lg">
-        <span className="text-gray-500 text-sm text-center">广告位<br/>招租中<br/>联系管理员</span>
-      </div>
+      )}
     </div>
   );
 };
