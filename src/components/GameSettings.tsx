@@ -53,8 +53,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
 
   const handleReset = () => {
     const defaultSettings = {
-      das: 10,
-      arr: 2,
+      das: 167,
+      arr: 33,
       sdf: 20,
       controls: {
         moveLeft: 'ArrowLeft',
@@ -66,7 +66,10 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
         rotate180: 'KeyA',
         hold: 'KeyC',
         pause: 'Escape'
-      }
+      },
+      enableGhost: true,
+      enableSound: true,
+      masterVolume: 50
     };
     setTempSettings(defaultSettings);
   };
