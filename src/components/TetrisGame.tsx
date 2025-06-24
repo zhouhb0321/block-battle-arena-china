@@ -24,12 +24,13 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
   const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameLoopRef = useRef<number>();
+  const lastDropTime = useRef<number>(0);
+  const keyPressedTime = useRef<{[key: string]: number}>({});
   const [keys, setKeys] = useState<Set<string>>(new Set());
-  const [lastUpdate, setLastUpdate] = useState<number>(0);
-  const [lastMove, setLastMove] = useState<number>(0);
+  
   const [currentPiece, setCurrentPiece] = useState(gameState.currentPiece);
-  const [board, setBoard] = useState(gameState.board);
-  const [nextPieces, setNextPieces] = useState(gameState.nextPieces);
+  const [board, setBoard] = useState(() => Array(20).fill(null).map(() => Array(10).fill(0)));
+  const [nextPieces, setNextPieces] = useState(() => generateSevenBag());
   const [holdPiece, setHoldPiece] = useState(gameState.holdPiece);
   const [canHold, setCanHold] = useState(true);
   const [score, setScore] = useState(0);
@@ -49,7 +50,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
 
     const newPiece = {
       type: nextPieces[0],
-      x: Math.floor(BOARD_WIDTH / 2) - 1,
+      x: Math.floor(BOARD_WIDTH / 2) - Math.floor(nextPieces[0].shape[0].length / 2),
       y: 0,
       rotation: 0
     };
@@ -77,24 +78,34 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     
     setBoard(clearedBoard);
     setLines(prev => prev + linesCleared);
-    setScore(prev => prev + linesCleared * 100 * level);
-    setLevel(Math.floor((lines + linesCleared) / 10) + 1);
+    
+    // 计算得分 (标准俄罗斯方块得分系统)
+    const lineScores = [0, 40, 100, 300, 1200];
+    const lineScore = lineScores[Math.min(linesCleared, 4)] || 0;
+    setScore(prev => prev + lineScore * level);
+    
+    // 每10行增加一个等级
+    const newLevel = Math.floor((lines + linesCleared) / 10) + 1;
+    setLevel(newLevel);
     
     spawnNewPiece();
   }, [currentPiece, board, level, lines, spawnNewPiece]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
-    if (!currentPiece || gameOver || paused) return;
+    if (!currentPiece || gameOver || paused) return false;
 
     const newX = currentPiece.x + dx;
     const newY = currentPiece.y + dy;
 
     if (isValidPosition(board, currentPiece, newX, newY)) {
       setCurrentPiece(prev => prev ? { ...prev, x: newX, y: newY } : null);
+      return true;
     } else if (dy > 0) {
       // 如果向下移动失败，锁定方块
       lockPiece();
+      return false;
     }
+    return false;
   }, [currentPiece, board, gameOver, paused, lockPiece]);
 
   const rotatePieceClockwise = useCallback(() => {
@@ -103,8 +114,22 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     const rotated = rotatePiece(currentPiece.type, true);
     const newPiece = { ...currentPiece, type: rotated };
 
-    if (isValidPosition(board, newPiece)) {
-      setCurrentPiece(newPiece);
+    // 简单的墙踢系统
+    const kickTests = [
+      { x: 0, y: 0 },   // 原位置
+      { x: -1, y: 0 },  // 左移一格
+      { x: 1, y: 0 },   // 右移一格
+      { x: 0, y: -1 },  // 上移一格
+      { x: -1, y: -1 }, // 左上
+      { x: 1, y: -1 }   // 右上
+    ];
+
+    for (const kick of kickTests) {
+      const testPiece = { ...newPiece, x: newPiece.x + kick.x, y: newPiece.y + kick.y };
+      if (isValidPosition(board, testPiece)) {
+        setCurrentPiece(testPiece);
+        return;
+      }
     }
   }, [currentPiece, board, gameOver, paused]);
 
@@ -114,8 +139,22 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     const rotated = rotatePiece(currentPiece.type, false);
     const newPiece = { ...currentPiece, type: rotated };
 
-    if (isValidPosition(board, newPiece)) {
-      setCurrentPiece(newPiece);
+    // 简单的墙踢系统
+    const kickTests = [
+      { x: 0, y: 0 },   // 原位置
+      { x: -1, y: 0 },  // 左移一格
+      { x: 1, y: 0 },   // 右移一格
+      { x: 0, y: -1 },  // 上移一格
+      { x: -1, y: -1 }, // 左上
+      { x: 1, y: -1 }   // 右上
+    ];
+
+    for (const kick of kickTests) {
+      const testPiece = { ...newPiece, x: newPiece.x + kick.x, y: newPiece.y + kick.y };
+      if (isValidPosition(board, testPiece)) {
+        setCurrentPiece(testPiece);
+        return;
+      }
     }
   }, [currentPiece, board, gameOver, paused]);
 
@@ -125,7 +164,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     const dropY = calculateDropPosition(board, currentPiece);
     setCurrentPiece(prev => prev ? { ...prev, y: dropY } : null);
     
-    // 短暂延迟后锁定方块
+    // 立即锁定方块
     setTimeout(lockPiece, 50);
   }, [currentPiece, board, gameOver, paused, lockPiece]);
 
@@ -135,7 +174,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     if (holdPiece) {
       const newPiece = {
         type: holdPiece,
-        x: Math.floor(BOARD_WIDTH / 2) - 1,
+        x: Math.floor(BOARD_WIDTH / 2) - Math.floor(holdPiece.shape[0].length / 2),
         y: 0,
         rotation: 0
       };
@@ -150,12 +189,40 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
   }, [currentPiece, holdPiece, canHold, gameOver, paused, spawnNewPiece]);
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    event.preventDefault();
+    if (gameOver || paused) return;
+    
+    const { controls } = gameSettings;
+    const now = Date.now();
+    
+    // 防止按键重复触发
+    if (!keyPressedTime.current[event.code]) {
+      keyPressedTime.current[event.code] = now;
+      
+      // 立即处理单次按键
+      if (event.code === controls.rotateClockwise) {
+        event.preventDefault();
+        rotatePieceClockwise();
+      } else if (event.code === controls.rotateCounterclockwise) {
+        event.preventDefault();
+        rotatePieceCounterclockwise();
+      } else if (event.code === controls.hardDrop) {
+        event.preventDefault();
+        hardDrop();
+      } else if (event.code === controls.hold) {
+        event.preventDefault();
+        holdCurrentPiece();
+      } else if (event.code === controls.pause) {
+        event.preventDefault();
+        togglePause();
+      }
+    }
+    
+    // 添加到持续按键集合
     setKeys(prev => new Set(prev).add(event.code));
-  }, []);
+  }, [gameSettings, gameOver, paused, rotatePieceClockwise, rotatePieceCounterclockwise, hardDrop, holdCurrentPiece]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
-    event.preventDefault();
+    delete keyPressedTime.current[event.code];
     setKeys(prev => {
       const newKeys = new Set(prev);
       newKeys.delete(event.code);
@@ -190,27 +257,17 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
         if (board[y][x] !== 0) {
           ctx.fillStyle = getColorByType(board[y][x]);
           ctx.fillRect(x * CELL_SIZE + 1, y * CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+          
+          // 添加边框效果
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x * CELL_SIZE + 1, y * CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2);
         }
       }
     }
 
-    // 绘制当前方块
-    if (currentPiece) {
-      ctx.fillStyle = currentPiece.type.color;
-      
-      currentPiece.type.shape.forEach((row, dy) => {
-        row.forEach((cell, dx) => {
-          if (cell) {
-            const drawX = (currentPiece.x + dx) * CELL_SIZE;
-            const drawY = (currentPiece.y + dy) * CELL_SIZE;
-            if (drawX >= 0 && drawX < CANVAS_WIDTH && drawY >= 0 && drawY < CANVAS_HEIGHT) {
-              ctx.fillRect(drawX + 1, drawY + 1, CELL_SIZE - 2, CELL_SIZE - 2);
-            }
-          }
-        });
-      });
-
-      // 绘制Ghost piece (预览落点)
+    // 绘制Ghost piece (预览落点)
+    if (currentPiece && gameSettings.enableGhost) {
       const ghostY = calculateDropPosition(board, currentPiece);
       if (ghostY !== currentPiece.y) {
         ctx.fillStyle = currentPiece.type.color + '40'; // 半透明
@@ -227,7 +284,29 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
         });
       }
     }
-  }, [board, currentPiece]);
+
+    // 绘制当前方块
+    if (currentPiece) {
+      ctx.fillStyle = currentPiece.type.color;
+      
+      currentPiece.type.shape.forEach((row, dy) => {
+        row.forEach((cell, dx) => {
+          if (cell) {
+            const drawX = (currentPiece.x + dx) * CELL_SIZE;
+            const drawY = (currentPiece.y + dy) * CELL_SIZE;
+            if (drawX >= 0 && drawX < CANVAS_WIDTH && drawY >= 0 && drawY < CANVAS_HEIGHT) {
+              ctx.fillRect(drawX + 1, drawY + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+              
+              // 添加边框效果
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(drawX + 1, drawY + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+            }
+          }
+        });
+      });
+    }
+  }, [board, currentPiece, gameSettings.enableGhost]);
 
   const getColorByType = (type: number): string => {
     const colors = ['#000', '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000'];
@@ -238,80 +317,60 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     if (gameOver) return;
 
     if (!paused) {
-      // 处理键盘输入
       const { controls } = gameSettings;
       
+      // 处理持续按键 (DAS/ARR)
       keys.forEach(key => {
-        if (key === controls.moveLeft && timestamp - lastMove > gameSettings.arr) {
-          movePiece(-1, 0);
-          setLastMove(timestamp);
-        } else if (key === controls.moveRight && timestamp - lastMove > gameSettings.arr) {
-          movePiece(1, 0);
-          setLastMove(timestamp);
-        } else if (key === controls.softDrop) {
-          movePiece(0, 1);
+        const pressTime = keyPressedTime.current[key] || 0;
+        const heldTime = timestamp - pressTime;
+        
+        if (heldTime > gameSettings.das) {
+          if (key === controls.moveLeft) {
+            if (heldTime % Math.max(gameSettings.arr, 16) < 16) {
+              movePiece(-1, 0);
+            }
+          } else if (key === controls.moveRight) {
+            if (heldTime % Math.max(gameSettings.arr, 16) < 16) {
+              movePiece(1, 0);
+            }
+          } else if (key === controls.softDrop) {
+            if (heldTime % Math.max(16, 1000 / gameSettings.sdf) < 16) {
+              movePiece(0, 1);
+            }
+          }
+        } else if (heldTime < 16) {
+          // 初次按键立即响应
+          if (key === controls.moveLeft) {
+            movePiece(-1, 0);
+          } else if (key === controls.moveRight) {
+            movePiece(1, 0);
+          } else if (key === controls.softDrop) {
+            movePiece(0, 1);
+          }
         }
       });
 
-      // 单次按键处理
-      if (keys.has(controls.hardDrop)) {
-        hardDrop();
-        setKeys(prev => {
-          const newKeys = new Set(prev);
-          newKeys.delete(controls.hardDrop);
-          return newKeys;
-        });
-      }
-      
-      if (keys.has(controls.rotateClockwise)) {
-        rotatePieceClockwise();
-        setKeys(prev => {
-          const newKeys = new Set(prev);
-          newKeys.delete(controls.rotateClockwise);
-          return newKeys;
-        });
-      }
-      
-      if (keys.has(controls.rotateCounterclockwise)) {
-        rotatePieceCounterclockwise();
-        setKeys(prev => {
-          const newKeys = new Set(prev);
-          newKeys.delete(controls.rotateCounterclockwise);
-          return newKeys;
-        });
-      }
-      
-      if (keys.has(controls.hold)) {
-        holdCurrentPiece();
-        setKeys(prev => {
-          const newKeys = new Set(prev);
-          newKeys.delete(controls.hold);
-          return newKeys;
-        });
-      }
-
       // 自动下落
       const dropSpeed = Math.max(50, 1000 - (level - 1) * 50);
-      if (timestamp - lastUpdate > dropSpeed) {
+      if (timestamp - lastDropTime.current > dropSpeed) {
         movePiece(0, 1);
-        setLastUpdate(timestamp);
+        lastDropTime.current = timestamp;
       }
+    }
 
-      // 绘制游戏画面
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          drawBoard(ctx);
-        }
+    // 绘制游戏画面
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        drawBoard(ctx);
       }
     }
 
     gameLoopRef.current = requestAnimationFrame(gameLoop);
   }, [
-    gameOver, paused, keys, gameSettings, lastMove, lastUpdate, level,
-    movePiece, hardDrop, rotatePieceClockwise, rotatePieceCounterclockwise,
-    holdCurrentPiece, drawBoard
+    gameOver, paused, keys, gameSettings, level,
+    movePiece, drawBoard
   ]);
 
   const handleShare = () => {
@@ -351,7 +410,9 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     setGameOver(false);
     setPaused(false);
     setCanHold(true);
-    spawnNewPiece();
+    lastDropTime.current = 0;
+    keyPressedTime.current = {};
+    setTimeout(() => spawnNewPiece(), 100);
     resetGame();
   };
 
@@ -364,7 +425,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
 
     // 初始化游戏
     if (!currentPiece && nextPieces.length > 0) {
-      spawnNewPiece();
+      setTimeout(() => spawnNewPiece(), 100);
     }
 
     window.addEventListener('keydown', handleKeyDown);
@@ -394,12 +455,12 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
           <h3 className="text-white text-sm mb-2 text-center">HOLD</h3>
           <div className="w-32 h-32 bg-black border border-gray-600 flex items-center justify-center rounded">
             {holdPiece && (
-              <div className="grid grid-cols-4 gap-1">
+              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${holdPiece.shape[0].length}, 1fr)` }}>
                 {holdPiece.shape.map((row, y) =>
                   row.map((cell, x) => (
                     <div
                       key={`${y}-${x}`}
-                      className={`w-2 h-2 ${cell ? 'opacity-100' : 'opacity-0'}`}
+                      className={`w-4 h-4 ${cell ? 'opacity-100' : 'opacity-0'} border border-white border-opacity-20`}
                       style={{ backgroundColor: cell ? holdPiece.color : 'transparent' }}
                     />
                   ))
@@ -413,7 +474,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
         <div className="bg-gray-800 p-4 rounded-lg relative">
           <div className="mb-4 text-white text-sm flex justify-between items-center">
             <div>
-              <div>{user?.username} - 得分: {score}</div>
+              <div>{user?.username || 'Guest'} - 得分: {score}</div>
               <div>行数: {lines} - 等级: {level}</div>
             </div>
             <div className="flex gap-2">
@@ -455,12 +516,12 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
           <div className="space-y-2">
             {nextPieces.slice(0, 4).map((piece, index) => (
               <div key={index} className="w-32 h-20 bg-black border border-gray-600 flex items-center justify-center rounded">
-                <div className="grid grid-cols-4 gap-1">
+                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${piece.shape[0].length}, 1fr)` }}>
                   {piece.shape.map((row, y) =>
                     row.map((cell, x) => (
                       <div
                         key={`${y}-${x}`}
-                        className={`w-2 h-2 ${cell ? 'opacity-100' : 'opacity-0'}`}
+                        className={`w-4 h-4 ${cell ? 'opacity-100' : 'opacity-0'} border border-white border-opacity-20`}
                         style={{ backgroundColor: cell ? piece.color : 'transparent' }}
                       />
                     ))

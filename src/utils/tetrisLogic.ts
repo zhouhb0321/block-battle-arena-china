@@ -5,19 +5,20 @@ const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
 
 export const rotatePiece = (piece: TetrominoType, clockwise: boolean = true): TetrominoType => {
-  const rotated = [...piece.shape.map(row => [...row])];
-  const size = rotated.length;
+  const originalShape = piece.shape;
+  const size = originalShape.length;
+  const rotated = Array(size).fill(null).map(() => Array(size).fill(0));
   
   if (clockwise) {
     for (let i = 0; i < size; i++) {
       for (let j = 0; j < size; j++) {
-        rotated[j][size - 1 - i] = piece.shape[i][j];
+        rotated[j][size - 1 - i] = originalShape[i][j];
       }
     }
   } else {
     for (let i = 0; i < size; i++) {
       for (let j = 0; j < size; j++) {
-        rotated[size - 1 - j][i] = piece.shape[i][j];
+        rotated[size - 1 - j][i] = originalShape[i][j];
       }
     }
   }
@@ -45,8 +46,8 @@ export const isValidPosition = (
           return false;
         }
         
-        // 检查是否与已有方块冲突
-        if (boardY >= 0 && board[boardY][boardX] !== 0) {
+        // 检查是否与已有方块冲突 (允许在顶部区域)
+        if (boardY >= 0 && board[boardY] && board[boardY][boardX] !== 0) {
           return false;
         }
       }
@@ -79,12 +80,15 @@ export const clearLines = (board: number[][]): { newBoard: number[][], linesClea
   const newBoard = [...board];
   let linesCleared = 0;
   
+  // 从底部开始检查完整行
   for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
     if (newBoard[y].every(cell => cell !== 0)) {
+      // 移除完整行
       newBoard.splice(y, 1);
+      // 在顶部添加新的空行
       newBoard.unshift(Array(BOARD_WIDTH).fill(0));
       linesCleared++;
-      y++; // 重新检查这一行
+      y++; // 重新检查这一行，因为上面的行下移了
     }
   }
   
@@ -94,6 +98,7 @@ export const clearLines = (board: number[][]): { newBoard: number[][], linesClea
 export const calculateDropPosition = (board: number[][], piece: GamePiece): number => {
   let dropY = piece.y;
   
+  // 找到最低可能的位置
   while (isValidPosition(board, piece, piece.x, dropY + 1)) {
     dropY++;
   }
