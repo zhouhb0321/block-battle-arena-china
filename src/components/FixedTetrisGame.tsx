@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import GameBoard from './GameBoard';
 import PiecePreview from './PiecePreview';
@@ -9,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
   TETROMINO_TYPES,
-  generateRandomTetromino,
+  generateSevenBag,
   rotatePiece,
   isValidPosition,
   placePiece,
@@ -19,18 +18,22 @@ import {
   calculateAttackLines,
   createEmptyBoard,
   BOARD_WIDTH,
-  BOARD_HEIGHT
+  BOARD_HEIGHT,
+  type TetrominoType
 } from '@/utils/tetrisLogic';
+
+interface GamePiece {
+  type: TetrominoType;
+  x: number;
+  y: number;
+  rotation: number;
+}
 
 interface GameState {
   board: number[][];
-  currentPiece: {
-    type: any;
-    x: number;
-    y: number;
-  } | null;
-  nextPiece: any;
-  holdPiece: any;
+  currentPiece: GamePiece | null;
+  nextPieces: TetrominoType[];
+  holdPiece: TetrominoType | null;
   canHold: boolean;
   score: number;
   lines: number;
@@ -50,7 +53,7 @@ const FixedTetrisGame: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
     board: createEmptyBoard(),
     currentPiece: null,
-    nextPiece: generateRandomTetromino(),
+    nextPieces: generateSevenBag(),
     holdPiece: null,
     canHold: true,
     score: 0,
@@ -67,169 +70,197 @@ const FixedTetrisGame: React.FC = () => {
 
   // 生成新方块
   const spawnNewPiece = useCallback(() => {
-    const newPiece = {
-      type: gameState.nextPiece,
-      x: Math.floor(BOARD_WIDTH / 2) - Math.floor(gameState.nextPiece.shape[0].length / 2),
-      y: 0
-    };
+    setGameState(prev => {
+      if (prev.nextPieces.length === 0) return prev;
 
-    // 检查游戏是否结束
-    if (!isValidPosition(gameState.board, newPiece.type.shape, newPiece.x, newPiece.y)) {
-      setGameState(prev => ({ ...prev, gameOver: true }));
-      toast.error('游戏结束！');
-      return;
-    }
+      const newPiece: GamePiece = {
+        type: prev.nextPieces[0],
+        x: Math.floor(BOARD_WIDTH / 2) - Math.floor(prev.nextPieces[0].shape[0].length / 2),
+        y: 0,
+        rotation: 0
+      };
 
-    setGameState(prev => ({
-      ...prev,
-      currentPiece: newPiece,
-      nextPiece: generateRandomTetromino(),
-      canHold: true,
-      pieces: prev.pieces + 1
-    }));
-  }, [gameState.nextPiece, gameState.board]);
+      // 检查游戏是否结束
+      if (!isValidPosition(prev.board, newPiece.type.shape, newPiece.x, newPiece.y)) {
+        toast.error('游戏结束！');
+        return { ...prev, gameOver: true };
+      }
+
+      let newNextPieces = prev.nextPieces.slice(1);
+      if (newNextPieces.length < 6) {
+        newNextPieces = [...newNextPieces, ...generateSevenBag()];
+      }
+
+      return {
+        ...prev,
+        currentPiece: newPiece,
+        nextPieces: newNextPieces,
+        canHold: true,
+        pieces: prev.pieces + 1
+      };
+    });
+  }, []);
 
   // 移动方块
   const movePiece = useCallback((dx: number, dy: number) => {
-    if (!gameState.currentPiece || gameState.paused || gameState.gameOver) return false;
+    setGameState(prev => {
+      if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
 
-    const newX = gameState.currentPiece.x + dx;
-    const newY = gameState.currentPiece.y + dy;
+      const newX = prev.currentPiece.x + dx;
+      const newY = prev.currentPiece.y + dy;
 
-    if (isValidPosition(gameState.board, gameState.currentPiece.type.shape, newX, newY)) {
-      setGameState(prev => ({
-        ...prev,
-        currentPiece: prev.currentPiece ? {
-          ...prev.currentPiece,
-          x: newX,
-          y: newY
-        } : null
-      }));
-      return true;
-    }
-    return false;
-  }, [gameState.currentPiece, gameState.board, gameState.paused, gameState.gameOver]);
+      if (isValidPosition(prev.board, prev.currentPiece.type.shape, newX, newY)) {
+        return {
+          ...prev,
+          currentPiece: {
+            ...prev.currentPiece,
+            x: newX,
+            y: newY
+          }
+        };
+      }
+      return prev;
+    });
+  }, []);
 
   // 旋转方块
   const rotatePieceClockwise = useCallback(() => {
-    if (!gameState.currentPiece || gameState.paused || gameState.gameOver) return;
+    setGameState(prev => {
+      if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
 
-    const rotatedShape = rotatePiece(gameState.currentPiece.type.shape);
-    
-    if (isValidPosition(gameState.board, rotatedShape, gameState.currentPiece.x, gameState.currentPiece.y)) {
-      setGameState(prev => ({
-        ...prev,
-        currentPiece: prev.currentPiece ? {
-          ...prev.currentPiece,
-          type: {
-            ...prev.currentPiece.type,
-            shape: rotatedShape
+      const rotatedShape = rotatePiece(prev.currentPiece.type.shape);
+      
+      if (isValidPosition(prev.board, rotatedShape, prev.currentPiece.x, prev.currentPiece.y)) {
+        return {
+          ...prev,
+          currentPiece: {
+            ...prev.currentPiece,
+            type: {
+              ...prev.currentPiece.type,
+              shape: rotatedShape
+            }
           }
-        } : null
-      }));
-    }
-  }, [gameState.currentPiece, gameState.board, gameState.paused, gameState.gameOver]);
+        };
+      }
+      return prev;
+    });
+  }, []);
 
   // 瞬时降落
   const hardDrop = useCallback(() => {
-    if (!gameState.currentPiece || gameState.paused || gameState.gameOver) return;
+    setGameState(prev => {
+      if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
 
-    const dropY = calculateDropPosition(gameState.board, gameState.currentPiece);
-    
-    setGameState(prev => ({
-      ...prev,
-      currentPiece: prev.currentPiece ? {
-        ...prev.currentPiece,
-        y: dropY
-      } : null
-    }));
+      const dropY = calculateDropPosition(prev.board, prev.currentPiece);
+      
+      return {
+        ...prev,
+        currentPiece: {
+          ...prev.currentPiece,
+          y: dropY
+        }
+      };
+    });
 
     // 立即放置方块
     setTimeout(() => {
       placePieceOnBoard();
     }, 50);
-  }, [gameState.currentPiece, gameState.board, gameState.paused, gameState.gameOver]);
+  }, []);
 
   // 放置方块到棋盘
   const placePieceOnBoard = useCallback(() => {
-    if (!gameState.currentPiece) return;
+    setGameState(prev => {
+      if (!prev.currentPiece) return prev;
 
-    const newBoard = placePiece(
-      gameState.board,
-      gameState.currentPiece.type.shape,
-      gameState.currentPiece.x,
-      gameState.currentPiece.y,
-      Object.keys(TETROMINO_TYPES).indexOf(gameState.currentPiece.type.name) + 1
-    );
+      const newBoard = placePiece(
+        prev.board,
+        prev.currentPiece.type.shape,
+        prev.currentPiece.x,
+        prev.currentPiece.y,
+        Object.keys(TETROMINO_TYPES).indexOf(prev.currentPiece.type.name) + 1
+      );
 
-    // 检查消行
-    const { newBoard: clearedBoard, linesCleared, clearedLineIndices } = clearLines(newBoard);
-    
-    if (linesCleared > 0) {
-      // 显示消行动画
-      setGameState(prev => ({ ...prev, clearingLines: clearedLineIndices }));
+      // 检查消行
+      const { newBoard: clearedBoard, linesCleared, clearedLineIndices } = clearLines(newBoard);
       
-      setTimeout(() => {
-        const newScore = calculateScore(linesCleared, gameState.level, false, gameState.b2b > 0, gameState.combo);
-        const newCombo = linesCleared > 0 ? gameState.combo + 1 : 0;
-        const newLevel = Math.floor((gameState.lines + linesCleared) / 10) + 1;
-        
-        setGameState(prev => ({
-          ...prev,
-          board: clearedBoard,
-          currentPiece: null,
-          score: prev.score + newScore,
-          lines: prev.lines + linesCleared,
-          level: newLevel,
-          combo: newCombo,
-          b2b: linesCleared === 4 ? prev.b2b + 1 : 0,
-          clearingLines: []
-        }));
+      if (linesCleared > 0) {
+        // 显示消行动画
+        setTimeout(() => {
+          const newScore = calculateScore(linesCleared, prev.level, false, prev.b2b > 0, prev.combo);
+          const newCombo = linesCleared > 0 ? prev.combo + 1 : 0;
+          const newLevel = Math.floor((prev.lines + linesCleared) / 10) + 1;
+          
+          setGameState(current => ({
+            ...current,
+            board: clearedBoard,
+            currentPiece: null,
+            score: current.score + newScore,
+            lines: current.lines + linesCleared,
+            level: newLevel,
+            combo: newCombo,
+            b2b: linesCleared === 4 ? current.b2b + 1 : 0,
+            clearingLines: []
+          }));
 
-        toast.success(`消除了 ${linesCleared} 行! +${newScore} 分`);
-      }, 300);
-    } else {
-      setGameState(prev => ({
-        ...prev,
-        board: newBoard,
-        currentPiece: null,
-        combo: 0
-      }));
-    }
-  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.combo, gameState.b2b, gameState.lines]);
+          toast.success(`消除了 ${linesCleared} 行! +${newScore} 分`);
+        }, 300);
+
+        return {
+          ...prev,
+          clearingLines: clearedLineIndices
+        };
+      } else {
+        return {
+          ...prev,
+          board: newBoard,
+          currentPiece: null,
+          combo: 0
+        };
+      }
+    });
+  }, []);
 
   // 暂存方块
   const holdPiece = useCallback(() => {
-    if (!gameState.currentPiece || !gameState.canHold || gameState.paused || gameState.gameOver) return;
+    setGameState(prev => {
+      if (!prev.currentPiece || !prev.canHold || prev.paused || prev.gameOver) return prev;
 
-    if (gameState.holdPiece) {
-      // 交换当前方块和暂存方块
-      const temp = gameState.holdPiece;
-      setGameState(prev => ({
-        ...prev,
-        holdPiece: prev.currentPiece?.type || null,
-        currentPiece: {
-          type: temp,
-          x: Math.floor(BOARD_WIDTH / 2) - Math.floor(temp.shape[0].length / 2),
-          y: 0
-        },
-        canHold: false
-      }));
-    } else {
-      // 将当前方块放入暂存
-      setGameState(prev => ({
-        ...prev,
-        holdPiece: prev.currentPiece?.type || null,
-        currentPiece: {
-          type: prev.nextPiece,
-          x: Math.floor(BOARD_WIDTH / 2) - Math.floor(prev.nextPiece.shape[0].length / 2),
-          y: 0
-        },
-        nextPiece: generateRandomTetromino(),
-        canHold: false
-      }));
-    }
-  }, [gameState.currentPiece, gameState.holdPiece, gameState.canHold, gameState.paused, gameState.gameOver, gameState.nextPiece]);
+      if (prev.holdPiece) {
+        // 交换当前方块和暂存方块
+        return {
+          ...prev,
+          holdPiece: prev.currentPiece.type,
+          currentPiece: {
+            type: prev.holdPiece,
+            x: Math.floor(BOARD_WIDTH / 2) - Math.floor(prev.holdPiece.shape[0].length / 2),
+            y: 0,
+            rotation: 0
+          },
+          canHold: false
+        };
+      } else {
+        // 将当前方块放入暂存
+        let newNextPieces = prev.nextPieces.slice(1);
+        if (newNextPieces.length < 6) {
+          newNextPieces = [...newNextPieces, ...generateSevenBag()];
+        }
+
+        return {
+          ...prev,
+          holdPiece: prev.currentPiece.type,
+          currentPiece: {
+            type: prev.nextPieces[0],
+            x: Math.floor(BOARD_WIDTH / 2) - Math.floor(prev.nextPieces[0].shape[0].length / 2),
+            y: 0,
+            rotation: 0
+          },
+          nextPieces: newNextPieces,
+          canHold: false
+        };
+      }
+    });
+  }, []);
 
   // 键盘控制
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
@@ -284,14 +315,26 @@ const FixedTetrisGame: React.FC = () => {
     const dropInterval = Math.max(50, 1000 - (gameState.level - 1) * 50);
     
     gameLoopRef.current = setInterval(() => {
-      if (!gameState.currentPiece) {
-        spawnNewPiece();
-        return;
-      }
+      setGameState(prev => {
+        if (!prev.currentPiece) {
+          return prev; // spawnNewPiece will be called separately
+        }
 
-      if (!movePiece(0, 1)) {
-        placePieceOnBoard();
-      }
+        // 尝试向下移动
+        if (isValidPosition(prev.board, prev.currentPiece.type.shape, prev.currentPiece.x, prev.currentPiece.y + 1)) {
+          return {
+            ...prev,
+            currentPiece: {
+              ...prev.currentPiece,
+              y: prev.currentPiece.y + 1
+            }
+          };
+        } else {
+          // 不能继续下降，触发放置
+          setTimeout(() => placePieceOnBoard(), 10);
+          return prev;
+        }
+      });
     }, dropInterval);
 
     return () => {
@@ -300,7 +343,17 @@ const FixedTetrisGame: React.FC = () => {
         gameLoopRef.current = null;
       }
     };
-  }, [gameState.level, gameState.paused, gameState.gameOver, gameState.currentPiece, movePiece, spawnNewPiece, placePieceOnBoard]);
+  }, [gameState.level, gameState.paused, gameState.gameOver, placePieceOnBoard]);
+
+  // 检查是否需要生成新方块
+  useEffect(() => {
+    if (!gameState.currentPiece && !gameState.gameOver && !gameState.paused) {
+      const timer = setTimeout(() => {
+        spawnNewPiece();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.currentPiece, gameState.gameOver, gameState.paused, spawnNewPiece]);
 
   // 键盘事件监听
   useEffect(() => {
@@ -308,18 +361,11 @@ const FixedTetrisGame: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
 
-  // 初始化游戏
-  useEffect(() => {
-    if (!gameState.currentPiece && !gameState.gameOver) {
-      spawnNewPiece();
-    }
-  }, []);
-
   const restartGame = () => {
     setGameState({
       board: createEmptyBoard(),
       currentPiece: null,
-      nextPiece: generateRandomTetromino(),
+      nextPieces: generateSevenBag(),
       holdPiece: null,
       canHold: true,
       score: 0,
@@ -403,11 +449,19 @@ const FixedTetrisGame: React.FC = () => {
 
         {/* 右侧信息栏 */}
         <div className="flex flex-col gap-4 w-48">
-          <PiecePreview 
-            piece={gameState.nextPiece} 
-            title="下一个" 
-            size="medium" 
-          />
+          <div className="bg-gray-800 p-4 rounded-lg">
+            <h3 className="text-white text-sm mb-3 text-center font-bold">接下来</h3>
+            <div className="space-y-3">
+              {gameState.nextPieces.slice(0, 4).map((piece, index) => (
+                <PiecePreview 
+                  key={index} 
+                  piece={piece} 
+                  title="" 
+                  size="medium"
+                />
+              ))}
+            </div>
+          </div>
           
           {gameState.gameOver && (
             <div className="bg-gray-800 p-4 rounded-lg text-white text-sm">

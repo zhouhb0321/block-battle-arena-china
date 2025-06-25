@@ -69,6 +69,20 @@ export const createEmptyBoard = (): number[][] => {
   return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
 };
 
+// 7-bag 随机系统
+export const generateSevenBag = (): TetrominoType[] => {
+  const pieces = Object.values(TETROMINO_TYPES);
+  const bag = [...pieces];
+  
+  // Fisher-Yates shuffle
+  for (let i = bag.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [bag[i], bag[j]] = [bag[j], bag[i]];
+  }
+  
+  return bag;
+};
+
 export const generateRandomTetromino = (): TetrominoType => {
   const types = Object.keys(TETROMINO_TYPES);
   const randomType = types[Math.floor(Math.random() * types.length)];
@@ -179,6 +193,76 @@ export const calculateDropPosition = (
   }
   
   return dropY;
+};
+
+// T-Spin检测
+export const checkTSpin = (
+  board: number[][],
+  piece: { type: TetrominoType; x: number; y: number },
+  lastAction: 'rotate' | 'move'
+): string | null => {
+  if (piece.type.name !== 'T' || lastAction !== 'rotate') {
+    return null;
+  }
+
+  const corners = [
+    [piece.x, piece.y], // 左上
+    [piece.x + 2, piece.y], // 右上
+    [piece.x, piece.y + 2], // 左下
+    [piece.x + 2, piece.y + 2] // 右下
+  ];
+
+  let filledCorners = 0;
+  corners.forEach(([x, y]) => {
+    if (x < 0 || x >= BOARD_WIDTH || y < 0 || y >= BOARD_HEIGHT || board[y][x] !== 0) {
+      filledCorners++;
+    }
+  });
+
+  if (filledCorners >= 3) {
+    return 'T-Spin';
+  }
+
+  return null;
+};
+
+// SRS 踢墙数据
+export const getKickTests = (
+  pieceType: string,
+  fromRotation: number,
+  toRotation: number
+): { x: number; y: number }[] => {
+  // I型方块特殊踢墙数据
+  if (pieceType === 'I') {
+    const iKickData: { [key: string]: { x: number; y: number }[] } = {
+      '0->1': [{ x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 2 }],
+      '1->0': [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 1 }, { x: -1, y: -2 }],
+      '1->2': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 2 }, { x: 2, y: -1 }],
+      '2->1': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -2, y: 0 }, { x: 1, y: -2 }, { x: -2, y: 1 }],
+      '2->3': [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 1 }, { x: -1, y: -2 }],
+      '3->2': [{ x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 2 }],
+      '3->0': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -2, y: 0 }, { x: 1, y: -2 }, { x: -2, y: 1 }],
+      '0->3': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 2 }, { x: 2, y: -1 }]
+    };
+    
+    const key = `${fromRotation}->${toRotation}`;
+    return iKickData[key] || [{ x: 0, y: 0 }];
+  }
+
+  // 其他方块的标准踢墙数据
+  const normalKickData: { [key: string]: { x: number; y: number }[] } = {
+    '0->1': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 }],
+    '1->0': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
+    '1->2': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
+    '2->1': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 }],
+    '2->3': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: -2 }, { x: 1, y: -2 }],
+    '3->2': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: 2 }, { x: -1, y: 2 }],
+    '3->0': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: 2 }, { x: -1, y: 2 }],
+    '0->3': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: -2 }, { x: 1, y: -2 }]
+  };
+  
+  const key = `${fromRotation}->${toRotation}`;
+  return normalKickData[key] || [{ x: 0, y: 0 }];
 };
 
 export const calculateScore = (

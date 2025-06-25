@@ -1,7 +1,13 @@
 
 import React, { useRef, useCallback, useEffect } from 'react';
-import { GamePiece } from '@/contexts/GameContext';
-import { calculateDropPosition, TETROMINO_TYPES } from '@/utils/tetrisLogic';
+import { calculateDropPosition, type TetrominoType } from '@/utils/tetrisLogic';
+
+interface GamePiece {
+  type: TetrominoType;
+  x: number;
+  y: number;
+  rotation: number;
+}
 
 interface GameBoardProps {
   board: number[][];

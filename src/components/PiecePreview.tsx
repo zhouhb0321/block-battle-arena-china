@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { TetrominoType } from '@/contexts/GameContext';
+import { type TetrominoType } from '@/utils/tetrisLogic';
 
 interface PiecePreviewProps {
   piece: TetrominoType | null;
@@ -14,9 +14,9 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
   size = 'medium' 
 }) => {
   const sizeMap = {
-    small: { container: 'w-20 h-16', cellSize: 10, text: 'text-xs' },
-    medium: { container: 'w-28 h-20', cellSize: 12, text: 'text-sm' },
-    large: { container: 'w-36 h-24', cellSize: 14, text: 'text-base' }
+    small: { container: 'w-24 h-20', cellSize: 12, text: 'text-xs' },
+    medium: { container: 'w-32 h-24', cellSize: 16, text: 'text-sm' },
+    large: { container: 'w-40 h-28', cellSize: 20, text: 'text-base' }
   };
 
   const { container, cellSize, text } = sizeMap[size];
