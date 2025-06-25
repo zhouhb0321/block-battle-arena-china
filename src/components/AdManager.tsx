@@ -17,7 +17,7 @@ interface AdConfig {
   targetUrl?: string;
   position: 'left' | 'right' | 'top' | 'bottom' | 'popup';
   isActive: boolean;
-  displayFrequency: number; // 显示频率 (%)
+  displayFrequency: number;
   startDate?: string;
   endDate?: string;
 }
@@ -93,7 +93,7 @@ const AdManager: React.FC<AdManagerProps> = ({ ads, onUpdateAd, onDeleteAd, onCr
                         <Badge variant={ad.isActive ? "default" : "secondary"}>
                           {ad.isActive ? '活跃' : '停用'}
                         </Badge>
-                      </div>
+                      </CardTitle>
                       <CardDescription>
                         显示频率: {ad.displayFrequency}%
                       </CardDescription>
@@ -148,7 +148,7 @@ const AdManager: React.FC<AdManagerProps> = ({ ads, onUpdateAd, onDeleteAd, onCr
                       <CardTitle className="flex items-center gap-2">
                         {ad.title}
                         <Badge variant="secondary">已停用</Badge>
-                      </div>
+                      </CardTitle>
                       <CardDescription>{ad.content}</CardDescription>
                     </div>
                     <Button
