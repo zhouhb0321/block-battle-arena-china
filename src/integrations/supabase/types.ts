@@ -9,7 +9,238 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      advertisements: {
+        Row: {
+          clicks: number
+          content: string
+          created_at: string
+          end_date: string | null
+          id: string
+          image_url: string | null
+          impressions: number
+          is_active: boolean
+          position: string
+          start_date: string | null
+          target_url: string | null
+          title: string
+        }
+        Insert: {
+          clicks?: number
+          content: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          impressions?: number
+          is_active?: boolean
+          position: string
+          start_date?: string | null
+          target_url?: string | null
+          title: string
+        }
+        Update: {
+          clicks?: number
+          content?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          impressions?: number
+          is_active?: boolean
+          position?: string
+          start_date?: string | null
+          target_url?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      game_matches: {
+        Row: {
+          created_at: string
+          duration: number
+          finished_at: string | null
+          game_type: string
+          id: string
+          player1_apm: number
+          player1_id: string
+          player1_lines: number
+          player1_pps: number
+          player1_score: number
+          player2_apm: number
+          player2_id: string | null
+          player2_lines: number
+          player2_pps: number
+          player2_score: number
+          status: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration?: number
+          finished_at?: string | null
+          game_type: string
+          id?: string
+          player1_apm?: number
+          player1_id: string
+          player1_lines?: number
+          player1_pps?: number
+          player1_score?: number
+          player2_apm?: number
+          player2_id?: string | null
+          player2_lines?: number
+          player2_pps?: number
+          player2_score?: number
+          status?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration?: number
+          finished_at?: string | null
+          game_type?: string
+          id?: string
+          player1_apm?: number
+          player1_id?: string
+          player1_lines?: number
+          player1_pps?: number
+          player1_score?: number
+          player2_apm?: number
+          player2_id?: string | null
+          player2_lines?: number
+          player2_pps?: number
+          player2_score?: number
+          status?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_matches_player1_id_fkey"
+            columns: ["player1_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_matches_player2_id_fkey"
+            columns: ["player2_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_matches_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_replays: {
+        Row: {
+          apm: number
+          created_at: string
+          duration: number
+          final_lines: number
+          final_score: number
+          id: string
+          match_id: string
+          pps: number
+          replay_data: Json
+          user_id: string
+        }
+        Insert: {
+          apm: number
+          created_at?: string
+          duration: number
+          final_lines: number
+          final_score: number
+          id?: string
+          match_id: string
+          pps: number
+          replay_data: Json
+          user_id: string
+        }
+        Update: {
+          apm?: number
+          created_at?: string
+          duration?: number
+          final_lines?: number
+          final_score?: number
+          id?: string
+          match_id?: string
+          pps?: number
+          replay_data?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_replays_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "game_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_replays_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          avatar_url: string | null
+          best_apm: number
+          best_pps: number
+          created_at: string
+          email: string
+          games_played: number
+          games_won: number
+          id: string
+          rank: string
+          rating: number
+          total_lines: number
+          total_score: number
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          best_apm?: number
+          best_pps?: number
+          created_at?: string
+          email: string
+          games_played?: number
+          games_won?: number
+          id: string
+          rank?: string
+          rating?: number
+          total_lines?: number
+          total_score?: number
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          best_apm?: number
+          best_pps?: number
+          created_at?: string
+          email?: string
+          games_played?: number
+          games_won?: number
+          id?: string
+          rank?: string
+          rating?: number
+          total_lines?: number
+          total_score?: number
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

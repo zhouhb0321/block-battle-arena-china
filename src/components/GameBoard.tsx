@@ -1,20 +1,22 @@
 
 import React, { useRef, useCallback, useEffect } from 'react';
 import { GamePiece } from '@/contexts/GameContext';
-import { calculateDropPosition } from '@/utils/tetrisLogic';
+import { calculateDropPosition, TETROMINO_TYPES } from '@/utils/tetrisLogic';
 
 interface GameBoardProps {
   board: number[][];
   currentPiece: GamePiece | null;
   enableGhost: boolean;
   cellSize?: number;
+  clearingLines?: number[]; // 消行动画
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({ 
   board, 
   currentPiece, 
   enableGhost, 
-  cellSize = 30 
+  cellSize = 30,
+  clearingLines = []
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -38,6 +40,54 @@ const GameBoard: React.FC<GameBoardProps> = ({
     return colors[type] || '#ffffff';
   };
 
+  const drawBlock = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    color: string,
+    isGhost: boolean = false,
+    isClearing: boolean = false
+  ) => {
+    const drawX = x * cellSize;
+    const drawY = y * cellSize;
+    
+    if (isGhost) {
+      // 幽灵方块 - 只绘制边框
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(drawX + 2, drawY + 2, cellSize - 4, cellSize - 4);
+      ctx.setLineDash([]);
+      return;
+    }
+    
+    // 消行闪烁效果
+    const alpha = isClearing ? 0.3 : 1;
+    const originalAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = alpha;
+    
+    // 主色块
+    ctx.fillStyle = color;
+    ctx.fillRect(drawX + 1, drawY + 1, cellSize - 2, cellSize - 2);
+    
+    // 3D效果高光
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillRect(drawX + 1, drawY + 1, cellSize - 2, 2); // 顶部高光
+    ctx.fillRect(drawX + 1, drawY + 1, 2, cellSize - 2); // 左侧高光
+    
+    // 3D效果阴影
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(drawX + 1, drawY + cellSize - 3, cellSize - 2, 2); // 底部阴影
+    ctx.fillRect(drawX + cellSize - 3, drawY + 1, 2, cellSize - 2); // 右侧阴影
+    
+    // 外边框
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(drawX + 1, drawY + 1, cellSize - 2, cellSize - 2);
+    
+    ctx.globalAlpha = originalAlpha;
+  };
+
   const drawBoard = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -45,7 +95,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 清空画布，使用深色背景
+    // 清空画布
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
@@ -74,49 +124,28 @@ const GameBoard: React.FC<GameBoardProps> = ({
       for (let x = 0; x < BOARD_WIDTH; x++) {
         if (board[y][x] !== 0) {
           const color = getColorByType(board[y][x]);
-          
-          // 主色块
-          ctx.fillStyle = color;
-          ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
-          
-          // 添加3D效果边框
-          ctx.fillStyle = board[y][x] === 8 ? '#999999' : '#ffffff';
-          ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, 2); // 顶部高光
-          ctx.fillRect(x * cellSize + 1, y * cellSize + 1, 2, cellSize - 2); // 左侧高光
-          
-          ctx.fillStyle = board[y][x] === 8 ? '#333333' : '#000000';
-          ctx.fillRect(x * cellSize + 1, y * cellSize + cellSize - 3, cellSize - 2, 2); // 底部阴影
-          ctx.fillRect(x * cellSize + cellSize - 3, y * cellSize + 1, 2, cellSize - 2); // 右侧阴影
+          const isClearing = clearingLines.includes(y);
+          drawBlock(ctx, x, y, color, false, isClearing);
         }
       }
     }
 
-    // 绘制幽灵方块（Ghost piece）
+    // 绘制幽灵方块
     if (currentPiece && enableGhost) {
       const ghostY = calculateDropPosition(board, currentPiece);
       if (ghostY > currentPiece.y) {
-        // 设置幽灵方块样式
-        ctx.globalAlpha = 0.3;
-        ctx.strokeStyle = currentPiece.type.color;
-        ctx.lineWidth = 2;
-        
         currentPiece.type.shape.forEach((row, dy) => {
           row.forEach((cell, dx) => {
             if (cell) {
-              const drawX = (currentPiece.x + dx) * cellSize;
-              const drawY = (ghostY + dy) * cellSize;
+              const drawX = currentPiece.x + dx;
+              const drawY = ghostY + dy;
               
-              if (drawX >= 0 && drawX < CANVAS_WIDTH && drawY >= 0 && drawY < CANVAS_HEIGHT) {
-                // 绘制虚线边框效果
-                ctx.setLineDash([4, 4]);
-                ctx.strokeRect(drawX + 2, drawY + 2, cellSize - 4, cellSize - 4);
-                ctx.setLineDash([]);
+              if (drawX >= 0 && drawX < BOARD_WIDTH && drawY >= 0 && drawY < BOARD_HEIGHT) {
+                drawBlock(ctx, drawX, drawY, currentPiece.type.color, true);
               }
             }
           });
         });
-        
-        ctx.globalAlpha = 1;
       }
     }
 
@@ -125,40 +154,23 @@ const GameBoard: React.FC<GameBoardProps> = ({
       currentPiece.type.shape.forEach((row, dy) => {
         row.forEach((cell, dx) => {
           if (cell) {
-            const drawX = (currentPiece.x + dx) * cellSize;
-            const drawY = (currentPiece.y + dy) * cellSize;
+            const drawX = currentPiece.x + dx;
+            const drawY = currentPiece.y + dy;
             
-            if (drawX >= 0 && drawX < CANVAS_WIDTH && drawY >= 0) {
-              // 主色块
-              ctx.fillStyle = currentPiece.type.color;
-              ctx.fillRect(drawX + 1, drawY + 1, cellSize - 2, cellSize - 2);
-              
-              // 添加3D效果
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(drawX + 1, drawY + 1, cellSize - 2, 2); // 顶部高光
-              ctx.fillRect(drawX + 1, drawY + 1, 2, cellSize - 2); // 左侧高光
-              
-              ctx.fillStyle = '#000000';
-              ctx.fillRect(drawX + 1, drawY + cellSize - 3, cellSize - 2, 2); // 底部阴影
-              ctx.fillRect(drawX + cellSize - 3, drawY + 1, 2, cellSize - 2); // 右侧阴影
-              
-              // 外边框
-              ctx.strokeStyle = '#ffffff';
-              ctx.lineWidth = 1;
-              ctx.strokeRect(drawX + 1, drawY + 1, cellSize - 2, cellSize - 2);
+            if (drawX >= 0 && drawX < BOARD_WIDTH && drawY >= 0 && drawY < BOARD_HEIGHT) {
+              drawBlock(ctx, drawX, drawY, currentPiece.type.color);
             }
           }
         });
       });
     }
-  }, [board, currentPiece, enableGhost, cellSize]);
+  }, [board, currentPiece, enableGhost, cellSize, clearingLines]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
       canvas.width = CANVAS_WIDTH;
       canvas.height = CANVAS_HEIGHT;
-      // 设置画布样式以获得清晰的像素渲染
       canvas.style.imageRendering = 'pixelated';
     }
     drawBoard();

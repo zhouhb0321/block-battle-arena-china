@@ -14,12 +14,26 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
   size = 'medium' 
 }) => {
   const sizeMap = {
-    small: { container: 'w-20 h-16', cell: 'w-3 h-3', text: 'text-xs' },
-    medium: { container: 'w-28 h-20', cell: 'w-4 h-4', text: 'text-sm' },
-    large: { container: 'w-36 h-24', cell: 'w-5 h-5', text: 'text-base' }
+    small: { container: 'w-20 h-16', cellSize: 10, text: 'text-xs' },
+    medium: { container: 'w-28 h-20', cellSize: 12, text: 'text-sm' },
+    large: { container: 'w-36 h-24', cellSize: 14, text: 'text-base' }
   };
 
-  const { container, cell, text } = sizeMap[size];
+  const { container, cellSize, text } = sizeMap[size];
+
+  const drawBlock = (color: string, key: string) => (
+    <div
+      key={key}
+      className="rounded-sm transition-all duration-200"
+      style={{ 
+        backgroundColor: color,
+        width: `${cellSize}px`,
+        height: `${cellSize}px`,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
+        border: '1px solid rgba(255,255,255,0.1)'
+      }}
+    />
+  );
 
   return (
     <div className="bg-gray-800 p-3 rounded-lg border border-gray-700 shadow-lg">
@@ -34,22 +48,21 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
             className="grid gap-0.5" 
             style={{ 
               gridTemplateColumns: `repeat(${piece.shape[0].length}, 1fr)`,
-              transform: 'scale(0.9)' // 稍微缩小以提供更好的边距
+              transform: 'scale(0.9)'
             }}
           >
             {piece.shape.map((row, y) =>
-              row.map((cell, x) => (
-                <div
-                  key={`${y}-${x}`}
-                  className={`${cell} ${cell ? 'opacity-100' : 'opacity-0'} rounded-sm transition-all duration-200`}
-                  style={{ 
-                    backgroundColor: cell ? piece.color : 'transparent',
-                    width: size === 'small' ? '10px' : size === 'medium' ? '12px' : '14px',
-                    height: size === 'small' ? '10px' : size === 'medium' ? '12px' : '14px',
-                    boxShadow: cell ? '0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)' : 'none'
-                  }}
-                />
-              ))
+              row.map((cell, x) => 
+                cell ? drawBlock(piece.color, `${y}-${x}`) : (
+                  <div
+                    key={`${y}-${x}`}
+                    style={{ 
+                      width: `${cellSize}px`,
+                      height: `${cellSize}px` 
+                    }}
+                  />
+                )
+              )
             )}
           </div>
         ) : (

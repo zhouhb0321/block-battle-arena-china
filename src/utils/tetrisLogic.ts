@@ -1,74 +1,133 @@
 
-import { TetrominoType, GamePiece, GameState } from '@/contexts/GameContext';
+export interface TetrominoType {
+  shape: number[][];
+  color: string;
+  name: string;
+}
 
-const BOARD_WIDTH = 10;
-const BOARD_HEIGHT = 20;
+// 标准化方块颜色 - 与经典俄罗斯方块保持一致
+export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
+  I: {
+    shape: [[1, 1, 1, 1]],
+    color: '#00f0f0', // 青色
+    name: 'I'
+  },
+  O: {
+    shape: [
+      [1, 1],
+      [1, 1]
+    ],
+    color: '#f0f000', // 黄色
+    name: 'O'
+  },
+  T: {
+    shape: [
+      [0, 1, 0],
+      [1, 1, 1]
+    ],
+    color: '#a000f0', // 紫色
+    name: 'T'
+  },
+  S: {
+    shape: [
+      [0, 1, 1],
+      [1, 1, 0]
+    ],
+    color: '#00f000', // 绿色
+    name: 'S'
+  },
+  Z: {
+    shape: [
+      [1, 1, 0],
+      [0, 1, 1]
+    ],
+    color: '#f00000', // 红色
+    name: 'Z'
+  },
+  J: {
+    shape: [
+      [1, 0, 0],
+      [1, 1, 1]
+    ],
+    color: '#0000f0', // 蓝色
+    name: 'J'
+  },
+  L: {
+    shape: [
+      [0, 0, 1],
+      [1, 1, 1]
+    ],
+    color: '#f0a000', // 橙色
+    name: 'L'
+  }
+};
 
-export const rotatePiece = (piece: TetrominoType, clockwise: boolean = true): TetrominoType => {
-  const originalShape = piece.shape;
-  const size = originalShape.length;
-  const rotated = Array(size).fill(null).map(() => Array(size).fill(0));
+export const BOARD_WIDTH = 10;
+export const BOARD_HEIGHT = 20;
+
+export const createEmptyBoard = (): number[][] => {
+  return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
+};
+
+export const generateRandomTetromino = (): TetrominoType => {
+  const types = Object.keys(TETROMINO_TYPES);
+  const randomType = types[Math.floor(Math.random() * types.length)];
+  return TETROMINO_TYPES[randomType];
+};
+
+export const rotatePiece = (piece: number[][]): number[][] => {
+  const rows = piece.length;
+  const cols = piece[0].length;
+  const rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
   
-  if (clockwise) {
-    for (let i = 0; i < size; i++) {
-      for (let j = 0; j < size; j++) {
-        rotated[j][size - 1 - i] = originalShape[i][j];
-      }
-    }
-  } else {
-    for (let i = 0; i < size; i++) {
-      for (let j = 0; j < size; j++) {
-        rotated[size - 1 - j][i] = originalShape[i][j];
-      }
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      rotated[j][rows - 1 - i] = piece[i][j];
     }
   }
   
-  return { ...piece, shape: rotated };
+  return rotated;
 };
 
 export const isValidPosition = (
   board: number[][],
-  piece: GamePiece,
-  newX?: number,
-  newY?: number
+  piece: number[][],
+  x: number,
+  y: number
 ): boolean => {
-  const x = newX ?? piece.x;
-  const y = newY ?? piece.y;
-  
-  for (let dy = 0; dy < piece.type.shape.length; dy++) {
-    for (let dx = 0; dx < piece.type.shape[dy].length; dx++) {
-      if (piece.type.shape[dy][dx]) {
-        const boardX = x + dx;
-        const boardY = y + dy;
+  for (let i = 0; i < piece.length; i++) {
+    for (let j = 0; j < piece[i].length; j++) {
+      if (piece[i][j] !== 0) {
+        const newX = x + j;
+        const newY = y + i;
         
-        // 检查边界
-        if (boardX < 0 || boardX >= BOARD_WIDTH || boardY >= BOARD_HEIGHT) {
-          return false;
-        }
-        
-        // 检查是否与已有方块冲突 (允许在顶部区域)
-        if (boardY >= 0 && board[boardY] && board[boardY][boardX] !== 0) {
+        if (
+          newX < 0 ||
+          newX >= BOARD_WIDTH ||
+          newY >= BOARD_HEIGHT ||
+          (newY >= 0 && board[newY][newX] !== 0)
+        ) {
           return false;
         }
       }
     }
   }
-  
   return true;
 };
 
-export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
+export const placePiece = (
+  board: number[][],
+  piece: number[][],
+  x: number,
+  y: number,
+  pieceType: number
+): number[][] => {
   const newBoard = board.map(row => [...row]);
   
-  for (let dy = 0; dy < piece.type.shape.length; dy++) {
-    for (let dx = 0; dx < piece.type.shape[dy].length; dx++) {
-      if (piece.type.shape[dy][dx]) {
-        const boardX = piece.x + dx;
-        const boardY = piece.y + dy;
-        
-        if (boardY >= 0 && boardY < BOARD_HEIGHT && boardX >= 0 && boardX < BOARD_WIDTH) {
-          newBoard[boardY][boardX] = getPieceTypeNumber(piece.type.type);
-        }
+  for (let i = 0; i < piece.length; i++) {
+    for (let j = 0; j < piece[i].length; j++) {
+      if (piece[i][j] !== 0 && y + i >= 0) {
+        newBoard[y + i][x + j] = pieceType;
       }
     }
   }
@@ -76,194 +135,145 @@ export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
   return newBoard;
 };
 
-// T-Spin检测逻辑
-export const checkTSpin = (board: number[][], piece: GamePiece, lastAction: 'rotate' | 'move'): 'T-Spin-Single' | 'T-Spin-Double' | 'T-Spin-Triple' | 'Mini T-Spin' | null => {
-  if (piece.type.type !== 'T' || lastAction !== 'rotate') {
-    return null;
-  }
-
-  // 检查T块的四个角落
-  const centerX = piece.x + 1; // T块的中心点
-  const centerY = piece.y + 1;
+export const clearLines = (board: number[][]): { 
+  newBoard: number[][]; 
+  linesCleared: number;
+  clearedLineIndices: number[];
+} => {
+  const clearedLineIndices: number[] = [];
   
-  const corners = [
-    { x: centerX - 1, y: centerY - 1 }, // 左上
-    { x: centerX + 1, y: centerY - 1 }, // 右上
-    { x: centerX - 1, y: centerY + 1 }, // 左下
-    { x: centerX + 1, y: centerY + 1 }  // 右下
-  ];
-  
-  let filledCorners = 0;
-  corners.forEach(corner => {
-    if (corner.x < 0 || corner.x >= BOARD_WIDTH || 
-        corner.y < 0 || corner.y >= BOARD_HEIGHT ||
-        (corner.y >= 0 && board[corner.y] && board[corner.y][corner.x] !== 0)) {
-      filledCorners++;
-    }
-  });
-  
-  // T-Spin需要至少3个角被填充
-  if (filledCorners >= 3) {
-    // 检查将要消除的行数
-    const tempBoard = placePiece(board, piece);
-    const { linesCleared } = clearLines(tempBoard);
-    
-    if (linesCleared === 1) return 'T-Spin-Single';
-    if (linesCleared === 2) return 'T-Spin-Double';
-    if (linesCleared === 3) return 'T-Spin-Triple';
-    if (filledCorners === 3) return 'Mini T-Spin';
-  }
-  
-  return null;
-};
-
-export const clearLines = (board: number[][]): { newBoard: number[][], linesCleared: number, clearedRows: number[] } => {
-  const newBoard = [...board];
-  let linesCleared = 0;
-  const clearedRows: number[] = [];
-  
-  // 从底部开始检查完整行
-  for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
-    if (newBoard[y].every(cell => cell !== 0)) {
-      clearedRows.push(y);
-      // 移除完整行
-      newBoard.splice(y, 1);
-      // 在顶部添加新的空行
-      newBoard.unshift(Array(BOARD_WIDTH).fill(0));
-      linesCleared++;
-      y++; // 重新检查这一行，因为上面的行下移了
+  // 找到需要清除的行
+  for (let i = BOARD_HEIGHT - 1; i >= 0; i--) {
+    if (board[i].every(cell => cell !== 0)) {
+      clearedLineIndices.push(i);
     }
   }
   
-  return { newBoard, linesCleared, clearedRows };
+  if (clearedLineIndices.length === 0) {
+    return { newBoard: board, linesCleared: 0, clearedLineIndices: [] };
+  }
+  
+  // 创建新的棋盘，移除满行
+  const newBoard = board.filter((_, index) => !clearedLineIndices.includes(index));
+  
+  // 在顶部添加空行
+  while (newBoard.length < BOARD_HEIGHT) {
+    newBoard.unshift(Array(BOARD_WIDTH).fill(0));
+  }
+  
+  return {
+    newBoard,
+    linesCleared: clearedLineIndices.length,
+    clearedLineIndices
+  };
 };
 
-export const calculateDropPosition = (board: number[][], piece: GamePiece): number => {
+export const calculateDropPosition = (
+  board: number[][],
+  piece: { type: TetrominoType; x: number; y: number }
+): number => {
   let dropY = piece.y;
   
-  // 找到最低可能的位置
-  while (isValidPosition(board, piece, piece.x, dropY + 1)) {
+  while (isValidPosition(board, piece.type.shape, piece.x, dropY + 1)) {
     dropY++;
   }
   
   return dropY;
 };
 
-// 超级旋转系统 (SRS) 的墙踢数据
-export const getKickTests = (pieceType: string, fromRotation: number, toRotation: number): { x: number, y: number }[] => {
-  const isIPiece = pieceType === 'I';
+export const calculateScore = (
+  linesCleared: number,
+  level: number,
+  isTSpin: boolean = false,
+  isB2B: boolean = false,
+  combo: number = 0
+): number => {
+  let baseScore = 0;
   
-  if (isIPiece) {
-    // I块的特殊墙踢
-    const kickData: { [key: string]: { x: number, y: number }[] } = {
-      '0->1': [{ x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 2 }],
-      '1->0': [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 1 }, { x: -1, y: -2 }],
-      '1->2': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 2 }, { x: 2, y: -1 }],
-      '2->1': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -2, y: 0 }, { x: 1, y: -2 }, { x: -2, y: 1 }],
-      '2->3': [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 1 }, { x: -1, y: -2 }],
-      '3->2': [{ x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 2 }],
-      '3->0': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -2, y: 0 }, { x: 1, y: -2 }, { x: -2, y: 1 }],
-      '0->3': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 2 }, { x: 2, y: -1 }]
-    };
-    return kickData[`${fromRotation}->${toRotation}`] || [{ x: 0, y: 0 }];
-  } else {
-    // 其他块的标准墙踢
-    const kickData: { [key: string]: { x: number, y: number }[] } = {
-      '0->1': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 }],
-      '1->0': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
-      '1->2': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
-      '2->1': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 }],
-      '2->3': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: -2 }, { x: 1, y: -2 }],
-      '3->2': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: 2 }, { x: -1, y: 2 }],
-      '3->0': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: 2 }, { x: -1, y: 2 }],
-      '0->3': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: -2 }, { x: 1, y: -2 }]
-    };
-    return kickData[`${fromRotation}->${toRotation}`] || [{ x: 0, y: 0 }];
-  }
-};
-
-const getPieceTypeNumber = (type: string): number => {
-  const typeMap: { [key: string]: number } = {
-    'I': 1, 'O': 2, 'T': 3, 'S': 4, 'Z': 5, 'J': 6, 'L': 7
-  };
-  return typeMap[type] || 1;
-};
-
-export const generateSevenBag = (): TetrominoType[] => {
-  const TETROMINOS: { [key: string]: TetrominoType } = {
-    I: {
-      shape: [
-        [0, 0, 0, 0],
-        [1, 1, 1, 1],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0]
-      ],
-      color: '#00f0f0',
-      type: 'I'
-    },
-    O: {
-      shape: [
-        [1, 1],
-        [1, 1]
-      ],
-      color: '#f0f000',
-      type: 'O'
-    },
-    T: {
-      shape: [
-        [0, 1, 0],
-        [1, 1, 1],
-        [0, 0, 0]
-      ],
-      color: '#a000f0',
-      type: 'T'
-    },
-    S: {
-      shape: [
-        [0, 1, 1],
-        [1, 1, 0],
-        [0, 0, 0]
-      ],
-      color: '#00f000',
-      type: 'S'
-    },
-    Z: {
-      shape: [
-        [1, 1, 0],
-        [0, 1, 1],
-        [0, 0, 0]
-      ],
-      color: '#f00000',
-      type: 'Z'
-    },
-    J: {
-      shape: [
-        [1, 0, 0],
-        [1, 1, 1],
-        [0, 0, 0]
-      ],
-      color: '#0000f0',
-      type: 'J'
-    },
-    L: {
-      shape: [
-        [0, 0, 1],
-        [1, 1, 1],
-        [0, 0, 0]
-      ],
-      color: '#f0a000',
-      type: 'L'
+  if (linesCleared === 0) return 0;
+  
+  // 基础分数
+  if (isTSpin) {
+    switch (linesCleared) {
+      case 1: baseScore = 800; break;
+      case 2: baseScore = 1200; break;
+      case 3: baseScore = 1600; break;
     }
-  };
-  
-  const pieces = Object.values(TETROMINOS);
-  const bag = [...pieces];
-  
-  // Fisher-Yates shuffle
-  for (let i = bag.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [bag[i], bag[j]] = [bag[j], bag[i]];
+  } else {
+    switch (linesCleared) {
+      case 1: baseScore = 100; break;
+      case 2: baseScore = 300; break;
+      case 3: baseScore = 500; break;
+      case 4: baseScore = 800; break; // Tetris
+    }
   }
   
-  return bag;
+  // Back-to-Back 加成
+  if (isB2B && (linesCleared === 4 || isTSpin)) {
+    baseScore = Math.floor(baseScore * 1.5);
+  }
+  
+  // 连击加成
+  if (combo > 0) {
+    baseScore += combo * 50 * level;
+  }
+  
+  return baseScore * level;
+};
+
+export const generateGarbageLines = (attackLines: number): number[][] => {
+  const garbageLines: number[][] = [];
+  
+  for (let i = 0; i < attackLines; i++) {
+    const garbageLine = Array(BOARD_WIDTH).fill(8); // 8 = 垃圾块
+    const holePosition = Math.floor(Math.random() * BOARD_WIDTH);
+    garbageLine[holePosition] = 0; // 留一个洞
+    garbageLines.push(garbageLine);
+  }
+  
+  return garbageLines;
+};
+
+export const addGarbageLines = (board: number[][], garbageLines: number[][]): number[][] => {
+  // 移除顶部的行数等于垃圾行数
+  const newBoard = board.slice(garbageLines.length);
+  
+  // 在底部添加垃圾行
+  return [...newBoard, ...garbageLines];
+};
+
+export const calculateAttackLines = (
+  linesCleared: number,
+  isTSpin: boolean = false,
+  isB2B: boolean = false,
+  combo: number = 0
+): number => {
+  let attackLines = 0;
+  
+  if (isTSpin) {
+    switch (linesCleared) {
+      case 1: attackLines = 2; break;
+      case 2: attackLines = 4; break;
+      case 3: attackLines = 6; break;
+    }
+  } else {
+    switch (linesCleared) {
+      case 1: attackLines = 0; break;
+      case 2: attackLines = 1; break;
+      case 3: attackLines = 2; break;
+      case 4: attackLines = 4; break; // Tetris
+    }
+  }
+  
+  // Back-to-Back 加成
+  if (isB2B && attackLines > 0) {
+    attackLines += 1;
+  }
+  
+  // 连击加成
+  if (combo > 0) {
+    attackLines += Math.floor(combo / 2);
+  }
+  
+  return attackLines;
 };

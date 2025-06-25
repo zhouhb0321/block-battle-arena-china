@@ -1,39 +1,23 @@
 
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Users, Trophy, Play } from 'lucide-react';
-import AuthModal from '@/components/AuthModal';
-import GameSettings from '@/components/GameSettings';
-import GameModeSelector from '@/components/GameModeSelector';
-import TetrisGame from '@/components/TetrisGame';
-import LanguageSelector from '@/components/LanguageSelector';
-import ShareDialog from '@/components/ShareDialog';
-
-type GameMode = {
-  id: string;
-  title: string;
-  description: string;
-  maxPlayers?: number;
-  icon: string;
-};
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import AuthModal from "@/components/AuthModal";
+import GameModeSelector from "@/components/GameModeSelector";
+import FixedTetrisGame from "@/components/FixedTetrisGame";
+import RankingSystem from "@/components/RankingSystem";
+import ReplaySystem from "@/components/ReplaySystem";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout } = useAuth();
   const { t } = useLanguage();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showShareDialog, setShowShareDialog] = useState(false);
-  const [currentView, setCurrentView] = useState<'menu' | 'modeSelect' | 'game'>('menu');
-  const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
+  const [currentView, setCurrentView] = useState<'menu' | 'game' | 'ranking' | 'replay'>('menu');
+  const [selectedMode, setSelectedMode] = useState<any>(null);
 
-  const handleModeSelect = (mode: GameMode) => {
-    if (!isAuthenticated && (mode.id === 'freeForAll' || mode.id === 'oneVsOne' || mode.id === 'customRoom')) {
-      setShowAuthModal(true);
-      return;
-    }
+  const handleModeSelect = (mode: any) => {
     setSelectedMode(mode);
     setCurrentView('game');
   };
@@ -43,225 +27,115 @@ const Index = () => {
     setSelectedMode(null);
   };
 
-  if (currentView === 'game' && selectedMode) {
+  // 示例回放数据
+  const mockReplays = [
+    {
+      id: '1',
+      playerName: 'TestPlayer',
+      gameMode: '40行竞速',
+      score: 15420,
+      lines: 40,
+      level: 5,
+      duration: 125,
+      date: new Date().toISOString(),
+      moves: [],
+      isPersonalBest: true
+    }
+  ];
+
+  if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800">
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-4">
-            <Button onClick={handleBackToMenu} variant="outline">
-              返回菜单
-            </Button>
-            <Button onClick={() => setShowShareDialog(true)} variant="outline">
-              分享游戏
-            </Button>
-          </div>
-          <TetrisGame 
-            mode={selectedMode.maxPlayers ? 'multi' : 'single'}
-            gameType={selectedMode.id as any}
-          />
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-6xl font-bold text-white mb-8">{t('game.title')}</h1>
+          <p className="text-xl text-gray-300 mb-8">现代化俄罗斯方块游戏</p>
+          <Button 
+            onClick={() => setShowAuthModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg"
+          >
+            开始游戏
+          </Button>
         </div>
-        
-        <ShareDialog 
-          isOpen={showShareDialog}
-          onClose={() => setShowShareDialog(false)}
-        />
+        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       </div>
     );
   }
 
-  if (currentView === 'modeSelect') {
+  if (currentView === 'game') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
+      <div className="min-h-screen bg-gray-900">
         <div className="p-4">
-          <Button onClick={handleBackToMenu} variant="outline" className="mb-4">
+          <Button 
+            onClick={handleBackToMenu}
+            className="mb-4 bg-gray-600 hover:bg-gray-700"
+          >
             返回主菜单
           </Button>
-          <GameModeSelector onModeSelect={handleModeSelect} />
         </div>
+        <FixedTetrisGame />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
-      {/* 头部导航 */}
-      <nav className="flex items-center justify-between p-6 border-b border-gray-700">
-        <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            {t('game.title')}
-          </h1>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <LanguageSelector />
-          
-          {isAuthenticated ? (
-            <div className="flex items-center gap-4">
-              <span className="text-sm">欢迎, {user?.username}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSettingsModal(true)}
-              >
-                <Settings className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={logout}>
-                退出
-              </Button>
-            </div>
-          ) : (
-            <Button onClick={() => setShowAuthModal(true)}>
-              {t('auth.login')} / {t('auth.register')}
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900">
+      <div className="container mx-auto p-6">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold text-white">{t('game.title')}</h1>
+          <div className="flex items-center gap-4">
+            <span className="text-white">欢迎, {user.username}</span>
+            <Button onClick={logout} variant="outline">
+              退出登录
             </Button>
-          )}
-        </div>
-      </nav>
-
-      {/* 主要内容区域 */}
-      <div className="flex-1 p-8">
-        <div className="max-w-6xl mx-auto">
-          {/* 欢迎区域 */}
-          <div className="text-center mb-12">
-            <h2 className="text-5xl font-bold mb-4">
-              方块竞技场
-            </h2>
-            <p className="text-xl text-gray-300 mb-8">
-              全球玩家实时对战的俄罗斯方块平台
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Button
-                size="lg"
-                className="text-lg px-8 py-4"
-                onClick={() => setCurrentView('modeSelect')}
-              >
-                <Play className="w-5 h-5 mr-2" />
-                开始游戏
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="text-lg px-8 py-4"
-                onClick={() => setShowShareDialog(true)}
-              >
-                分享平台
-              </Button>
-            </div>
-          </div>
-
-          {/* 功能卡片 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <Card className="bg-gray-800 border-gray-700 hover:bg-gray-750 transition-colors">
-              <CardHeader>
-                <Users className="w-8 h-8 text-blue-400 mb-2" />
-                <CardTitle className="text-white">多人对战</CardTitle>
-                <CardDescription className="text-gray-300">
-                  支持最多128人同时在线对战
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-400 space-y-1">
-                  <li>• 实时对战系统</li>
-                  <li>• 自定义房间</li>
-                  <li>• 好友邀请</li>
-                  <li>• 社交分享功能</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gray-800 border-gray-700 hover:bg-gray-750 transition-colors">
-              <CardHeader>
-                <Trophy className="w-8 h-8 text-yellow-400 mb-2" />
-                <CardTitle className="text-white">排行榜</CardTitle>
-                <CardDescription className="text-gray-300">
-                  全球玩家实时排名系统
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-400 space-y-1">
-                  <li>• 全球排行榜</li>
-                  <li>• 个人统计</li>
-                  <li>• 成就系统</li>
-                  <li>• 游戏回放</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gray-800 border-gray-700 hover:bg-gray-750 transition-colors">
-              <CardHeader>
-                <Settings className="w-8 h-8 text-green-400 mb-2" />
-                <CardTitle className="text-white">自定义设置</CardTitle>
-                <CardDescription className="text-gray-300">
-                  完全可定制的游戏体验
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-400 space-y-1">
-                  <li>• 键位设置</li>
-                  <li>• 游戏参数调整</li>
-                  <li>• 个性化界面</li>
-                  <li>• 多语言支持</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* 游戏特色 */}
-          <div className="bg-gray-800 rounded-lg p-8 border border-gray-700">
-            <h3 className="text-2xl font-bold mb-6 text-center">游戏特色</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <h4 className="text-lg font-semibold mb-2 text-blue-400">🎮 经典玩法</h4>
-                <ul className="text-gray-300 space-y-1">
-                  <li>• 7-bag随机序列</li>
-                  <li>• T-Spin、All-Spin支持</li>
-                  <li>• 标准SRS旋转系统</li>
-                  <li>• 完整的游戏回放系统</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-lg font-semibold mb-2 text-purple-400">🌐 社交功能</h4>
-                <ul className="text-gray-300 space-y-1">
-                  <li>• 微信、QQ等平台分享</li>
-                  <li>• 好友系统</li>
-                  <li>• 社群创建</li>
-                  <li>• 实时聊天</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-lg font-semibold mb-2 text-green-400">⚙️ 高级设置</h4>
-                <ul className="text-gray-300 space-y-1">
-                  <li>• DAS/ARR/SDF调节</li>
-                  <li>• 自定义键位</li>
-                  <li>• Ghost piece预览</li>
-                  <li>• 音效控制</li>
-                </ul>
-              </div>
-            </div>
           </div>
         </div>
+
+        <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)}>
+          <TabsList className="grid w-full grid-cols-4 mb-8">
+            <TabsTrigger value="menu">游戏模式</TabsTrigger>
+            <TabsTrigger value="ranking">排行榜</TabsTrigger>
+            <TabsTrigger value="replay">回放</TabsTrigger>
+            <TabsTrigger value="settings">设置</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="menu">
+            <GameModeSelector onModeSelect={handleModeSelect} />
+          </TabsContent>
+
+          <TabsContent value="ranking">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <RankingSystem playerPoints={user.rating} />
+              <div className="bg-white p-6 rounded-lg">
+                <h3 className="text-xl font-bold mb-4">全球排行榜</h3>
+                <div className="text-center text-gray-500">
+                  排行榜功能正在开发中...
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="replay">
+            <div className="bg-white p-6 rounded-lg">
+              <h3 className="text-xl font-bold mb-4">游戏回放</h3>
+              <ReplaySystem 
+                replays={mockReplays}
+                onPlayReplay={(replay) => {
+                  console.log('Playing replay:', replay);
+                }}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <div className="bg-white p-6 rounded-lg">
+              <h3 className="text-xl font-bold mb-4">游戏设置</h3>
+              <div className="text-center text-gray-500">
+                设置功能正在开发中...
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {/* 底部 */}
-      <footer className="border-t border-gray-700 p-6 text-center text-gray-400">
-        <p>&copy; 2024 方块竞技场 - 为中国玩家量身定制的俄罗斯方块对战平台</p>
-        <p className="text-sm mt-2">支持微信、QQ、钉钉、飞书等多平台分享</p>
-      </footer>
-
-      {/* 模态框 */}
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
-      />
-      
-      <GameSettings 
-        isOpen={showSettingsModal} 
-        onClose={() => setShowSettingsModal(false)} 
-      />
-
-      <ShareDialog 
-        isOpen={showShareDialog}
-        onClose={() => setShowShareDialog(false)}
-      />
     </div>
   );
 };
