@@ -65,7 +65,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
         rotateCounterclockwise: 'KeyZ',
         rotate180: 'KeyA',
         hold: 'KeyC',
-        pause: 'Escape'
+        pause: 'Escape',
+        backToMenu: 'KeyB'
       },
       enableGhost: true,
       enableSound: true,
@@ -83,7 +84,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
     rotateCounterclockwise: '逆时针旋转',
     rotate180: '180°旋转',
     hold: '暂存',
-    pause: '暂停'
+    pause: '暂停',
+    backToMenu: '返回菜单'
   };
 
   const formatKeyName = (keyCode: string): string => {
@@ -96,7 +98,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
       'Escape': 'Esc',
       'KeyZ': 'Z',
       'KeyA': 'A',
-      'KeyC': 'C'
+      'KeyC': 'C',
+      'KeyB': 'B'
     };
     return keyMap[keyCode] || keyCode.replace('Key', '');
   };

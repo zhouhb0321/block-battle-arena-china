@@ -80,6 +80,11 @@ export interface GameReplay {
   lines: number;
   duration: number;
   actions: ReplayAction[];
+  playerName?: string;
+  gameMode?: string;
+  gameType?: string;
+  level?: number;
+  isPersonalBest?: boolean;
 }
 
 export interface AdContent {
