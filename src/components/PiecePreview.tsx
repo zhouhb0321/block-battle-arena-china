@@ -1,13 +1,13 @@
 
 import React from 'react';
-import { PIECE_SHAPES } from '@/utils/tetrisLogic';
+import { TETROMINO_TYPES } from '@/utils/tetrisLogic';
 import type { PieceType } from '@/utils/gameTypes';
 
 interface PiecePreviewProps {
   piece: PieceType | null;
   title: string;
   size?: 'small' | 'medium' | 'large';
-  cellSize?: number; // 新增：允许自定义方块大小
+  cellSize?: number;
 }
 
 const PiecePreview: React.FC<PiecePreviewProps> = ({ 
@@ -16,7 +16,6 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
   size = 'medium',
   cellSize 
 }) => {
-  // 根据size确定方块大小，优先使用传入的cellSize
   const getCellSize = () => {
     if (cellSize) return cellSize;
     switch (size) {
@@ -42,7 +41,7 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
       );
     }
 
-    const shape = PIECE_SHAPES[piece][0];
+    const shape = TETROMINO_TYPES[piece.type]?.shape || piece.shape;
     const pieceColors = {
       I: '#00f0f0',
       O: '#f0f000',
@@ -66,7 +65,7 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
                 style={{
                   width: actualCellSize,
                   height: actualCellSize,
-                  backgroundColor: cell ? pieceColors[piece] : 'transparent'
+                  backgroundColor: cell ? pieceColors[piece.type] : 'transparent'
                 }}
               />
             ))}

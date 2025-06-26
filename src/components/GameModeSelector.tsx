@@ -14,9 +14,10 @@ interface GameMode {
 
 interface GameModeSelectorProps {
   onModeSelect: (mode: GameMode) => void;
+  onBackToMenu?: () => void;
 }
 
-const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect }) => {
+const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect, onBackToMenu }) => {
   const { t } = useLanguage();
 
   const singlePlayerModes: GameMode[] = [
@@ -118,6 +119,14 @@ const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect }) => 
           ))}
         </div>
       </div>
+      
+      {onBackToMenu && (
+        <div className="mt-8 text-center">
+          <Button variant="outline" onClick={onBackToMenu}>
+            返回主菜单
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

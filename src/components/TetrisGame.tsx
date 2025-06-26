@@ -43,25 +43,32 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     return Math.max(baseSpeed / speedMultiplier, 50); // 最快不超过50ms
   }, []);
 
-  const {
-    gameState,
-    startGame,
-    pauseGame,
-    resetGame,
-    shareGame
-  } = useGameLogic(gameMode, gameSettings, calculateDropSpeed);
+  const gameLogic = useGameLogic(gameMode, gameSettings, calculateDropSpeed);
 
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
-  useKeyboardControls(
-    gameState,
-    gameSettings.controls,
-    gameContainerRef,
-    gameStarted && !gameState.paused && !gameState.gameOver
-  );
+  const keyboardControls = useKeyboardControls({
+    gameSettings,
+    gameOver: gameLogic.gameState.gameOver,
+    paused: gameLogic.gameState.paused,
+    onMoveLeft: () => gameLogic.movePiece(-1, 0),
+    onMoveRight: () => gameLogic.movePiece(1, 0),
+    onSoftDrop: () => {
+      const moved = gameLogic.movePiece(0, 1);
+      if (moved) {
+        // Add soft drop points
+      }
+    },
+    onHardDrop: gameLogic.hardDrop,
+    onRotateClockwise: gameLogic.rotatePieceClockwise,
+    onRotateCounterclockwise: gameLogic.rotatePieceCounterclockwise,
+    onHold: gameLogic.holdCurrentPiece,
+    onPause: gameLogic.pauseGame,
+    onBackToMenu: onBackToMenu
+  });
 
-  const handleModeSelect = (mode: GameMode) => {
-    setGameMode(mode);
+  const handleModeSelect = (mode: any) => {
+    setGameMode(mode.id as GameMode);
     setShowModeSelector(false);
     setShowCountdown(true);
   };
@@ -69,18 +76,18 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
   const handleCountdownEnd = () => {
     setShowCountdown(false);
     setGameStarted(true);
-    startGame(); // 确保在倒计时结束后开始游戏
+    gameLogic.startGame();
   };
 
   const handleBackToMenu = () => {
-    resetGame();
+    gameLogic.resetGame();
     setGameStarted(false);
     setShowModeSelector(true);
     onBackToMenu();
   };
 
   const handleReset = () => {
-    resetGame();
+    gameLogic.resetGame();
     setGameStarted(false);
     setShowCountdown(true);
   };
@@ -98,25 +105,25 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     <div ref={gameContainerRef} className="w-full h-full relative" tabIndex={0}>
       {gameMode === 'versus' ? (
         <MultiPlayerGameArea
-          gameState={gameState}
+          gameState={gameLogic.gameState}
           gameSettings={gameSettings}
           username={user?.username || t('common.guest')}
-          onPause={pauseGame}
-          onShare={shareGame}
+          onPause={gameLogic.pauseGame}
+          onShare={gameLogic.shareGame}
           onReset={handleReset}
           onBackToMenu={handleBackToMenu}
-          opponentState={gameState}
+          opponentState={gameLogic.gameState}
           opponentUsername="对手"
           showCountdown={showCountdown}
           onCountdownEnd={handleCountdownEnd}
         />
       ) : (
         <SinglePlayerGameArea
-          gameState={gameState}
+          gameState={gameLogic.gameState}
           gameSettings={gameSettings}
           username={user?.username || t('common.guest')}
-          onPause={pauseGame}
-          onShare={shareGame}
+          onPause={gameLogic.pauseGame}
+          onShare={gameLogic.shareGame}
           onReset={handleReset}
           onBackToMenu={handleBackToMenu}
           showCountdown={showCountdown}

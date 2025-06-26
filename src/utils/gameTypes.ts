@@ -29,6 +29,12 @@ export interface TetrominoType {
   type: string;
 }
 
+// Add PieceType as alias for TetrominoType for backward compatibility
+export type PieceType = TetrominoType;
+
+// Add GameMode type
+export type GameMode = 'sprint' | 'ultra' | 'endless' | 'versus' | 'sprint40' | 'ultra2min' | 'freeForAll' | 'oneVsOne' | 'customRoom';
+
 // Unified game piece interface
 export interface GamePiece {
   type: TetrominoType;

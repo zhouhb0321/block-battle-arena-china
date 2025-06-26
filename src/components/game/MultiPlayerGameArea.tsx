@@ -77,7 +77,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
               paused={gameState.paused}
               onPause={onPause}
               onShare={onShare}
-              mode="versus"
+              mode="multi"
               combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}
             />
             
@@ -153,7 +153,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
               paused={opponentState.paused}
               onPause={() => {}}
               onShare={() => {}}
-              mode="versus"
+              mode="multi"
               combo={opponentState.combo && opponentState.combo >= 0 ? opponentState.combo : undefined}
             />
             

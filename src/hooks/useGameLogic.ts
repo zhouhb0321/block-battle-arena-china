@@ -1,5 +1,5 @@
 
-import React, { useCallback, useRef, useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
   isValidPosition,
@@ -13,76 +13,45 @@ import {
   createNewPiece,
   createGhostPiece,
   calculateScore,
-  calculateAttackLines
+  calculateAttackLines,
+  TETROMINO_TYPES
 } from '@/utils/tetrisLogic';
-import type { TetrominoType, GamePiece } from '@/utils/gameTypes';
+import type { GameMode, GameSettings, GameState, GamePiece, TetrominoType } from '@/utils/gameTypes';
 
-interface UseGameLogicProps {
-  currentPiece: GamePiece | null;
-  setCurrentPiece: (piece: GamePiece | null) => void;
-  ghostPiece: GamePiece | null;
-  setGhostPiece: (piece: GamePiece | null) => void;
-  board: number[][];
-  setBoard: (board: number[][]) => void;
-  nextPieces: GamePiece[];
-  setNextPieces: (pieces: GamePiece[]) => void;
-  holdPiece: GamePiece | null;
-  setHoldPiece: (piece: GamePiece | null) => void;
-  canHold: boolean;
-  setCanHold: (canHold: boolean) => void;
-  score: number;
-  setScore: (score: number | ((prev: number) => number)) => void;
-  lines: number;
-  setLines: (lines: number | ((prev: number) => number)) => void;
-  level: number;
-  setLevel: (level: number) => void;
-  pieces: number;
-  setPieces: (pieces: number | ((prev: number) => number)) => void;
-  gameOver: boolean;
-  setGameOver: (gameOver: boolean) => void;
-  lockDelay: boolean;
-  setLockDelay: (lockDelay: boolean) => void;
-  combo: number;
-  setCombo: (combo: number) => void;
-  b2b: number;
-  setB2b: (b2b: number | ((prev: number) => number)) => void;
-  totalAttack: number;
-  setTotalAttack: (attack: number | ((prev: number) => number)) => void;
-  pps: number;
-  setPps: (pps: number) => void;
-  apm: number;
-  setApm: (apm: number) => void;
-  startTime: number;
-  mode: 'single' | 'multi';
-}
+export const useGameLogic = (
+  gameMode: GameMode,
+  gameSettings: GameSettings,
+  calculateDropSpeed: (lines: number) => number
+) => {
+  // Game state
+  const [gameState, setGameState] = useState<GameState>({
+    board: Array(20).fill(null).map(() => Array(10).fill(0)),
+    currentPiece: null,
+    nextPieces: [],
+    holdPiece: null,
+    score: 0,
+    lines: 0,
+    level: 1,
+    gameOver: false,
+    paused: false,
+    canHold: true,
+    combo: -1,
+    b2b: 0,
+    pieces: 0,
+    startTime: Date.now(),
+    attack: 0,
+    pps: 0,
+    apm: 0,
+    ghostPiece: null
+  });
 
-export const useGameLogic = (props: UseGameLogicProps) => {
-  const {
-    currentPiece, setCurrentPiece,
-    ghostPiece, setGhostPiece,
-    board, setBoard,
-    nextPieces, setNextPieces,
-    holdPiece, setHoldPiece,
-    canHold, setCanHold,
-    score, setScore,
-    lines, setLines,
-    level, setLevel,
-    pieces, setPieces,
-    gameOver, setGameOver,
-    lockDelay, setLockDelay,
-    combo, setCombo,
-    b2b, setB2b,
-    totalAttack, setTotalAttack,
-    pps, setPps,
-    apm, setApm,
-    startTime,
-    mode
-  } = props;
-
+  const gameLoopRef = useRef<number>();
+  const lastDropTime = useRef<number>(0);
   const lockDelayTime = useRef<number>(0);
+  const [lockDelay, setLockDelay] = useState(false);
   const [lastAction, setLastAction] = useState<'rotate' | 'move' | null>(null);
 
-  // Helper function to convert TetrominoType to GamePiece
+  // Helper function to create GamePiece from TetrominoType
   const createGamePieceFromType = useCallback((pieceType: TetrominoType, x: number = 4, y: number = 0): GamePiece => {
     return {
       type: pieceType,
@@ -93,16 +62,15 @@ export const useGameLogic = (props: UseGameLogicProps) => {
   }, []);
 
   const spawnNewPiece = useCallback(() => {
-    if (nextPieces.length === 0) {
-      // Generate initial next pieces if empty
+    if (gameState.nextPieces.length === 0) {
       const sevenBag = generateSevenBag();
       const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
-      setNextPieces(gamePieces);
+      setGameState(prev => ({ ...prev, nextPieces: gamePieces }));
       return;
     }
 
-    const newPiece = createGamePieceFromType(nextPieces[0].type);
-    const newNextPieces = [...nextPieces.slice(1)];
+    const newPiece = createGamePieceFromType(gameState.nextPieces[0].type);
+    const newNextPieces = [...gameState.nextPieces.slice(1)];
     
     if (newNextPieces.length < 6) {
       const sevenBag = generateSevenBag();
@@ -110,37 +78,39 @@ export const useGameLogic = (props: UseGameLogicProps) => {
       newNextPieces.push(...gamePieces);
     }
 
-    if (!isValidPosition(board, newPiece)) {
-      setGameOver(true);
+    if (!isValidPosition(gameState.board, newPiece)) {
+      setGameState(prev => ({ ...prev, gameOver: true }));
       return;
     }
 
-    setCurrentPiece(newPiece);
-    setGhostPiece(createGhostPiece(board, newPiece));
-    setNextPieces(newNextPieces);
-    setCanHold(true);
+    setGameState(prev => ({
+      ...prev,
+      currentPiece: newPiece,
+      ghostPiece: createGhostPiece(gameState.board, newPiece),
+      nextPieces: newNextPieces,
+      canHold: true,
+      pieces: prev.pieces! + 1
+    }));
+    
     setLockDelay(false);
     lockDelayTime.current = 0;
-    setPieces(prev => {
-      const newPieces = prev + 1;
-      const timeElapsed = (Date.now() - startTime) / 1000;
-      setPps(newPieces / Math.max(timeElapsed, 1));
-      return newPieces;
-    });
-  }, [board, nextPieces, startTime, createGamePieceFromType, setCurrentPiece, setGhostPiece, setNextPieces, setCanHold, setLockDelay, setPieces, setPps, setGameOver]);
+  }, [gameState.board, gameState.nextPieces, createGamePieceFromType]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
-    if (!currentPiece || gameOver) return false;
+    if (!gameState.currentPiece || gameState.gameOver) return false;
 
     const newPiece = {
-      ...currentPiece,
-      x: currentPiece.x + dx,
-      y: currentPiece.y + dy
+      ...gameState.currentPiece,
+      x: gameState.currentPiece.x + dx,
+      y: gameState.currentPiece.y + dy
     };
 
-    if (isValidPosition(board, newPiece)) {
-      setCurrentPiece(newPiece);
-      setGhostPiece(createGhostPiece(board, newPiece));
+    if (isValidPosition(gameState.board, newPiece)) {
+      setGameState(prev => ({
+        ...prev,
+        currentPiece: newPiece,
+        ghostPiece: createGhostPiece(gameState.board, newPiece)
+      }));
       setLastAction('move');
       
       if (dy > 0) {
@@ -157,28 +127,31 @@ export const useGameLogic = (props: UseGameLogicProps) => {
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, lockDelay, setCurrentPiece, setGhostPiece, setLockDelay]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, lockDelay]);
 
   const rotatePieceClockwise = useCallback(() => {
-    if (!currentPiece || gameOver) return;
+    if (!gameState.currentPiece || gameState.gameOver) return;
 
-    const rotated = rotatePiece(currentPiece.type, true);
-    const newRotation = (currentPiece.rotation + 1) % 4;
+    const rotated = rotatePiece(gameState.currentPiece.type, true);
+    const newRotation = (gameState.currentPiece.rotation + 1) % 4;
     
-    const kickTests = getKickTests(currentPiece.type.type, currentPiece.rotation, newRotation);
+    const kickTests = getKickTests(gameState.currentPiece.type.type, gameState.currentPiece.rotation, newRotation);
 
     for (const kick of kickTests) {
       const testPiece: GamePiece = { 
-        ...currentPiece, 
+        ...gameState.currentPiece, 
         type: rotated, 
-        x: currentPiece.x + kick.x, 
-        y: currentPiece.y + kick.y,
+        x: gameState.currentPiece.x + kick.x, 
+        y: gameState.currentPiece.y + kick.y,
         rotation: newRotation
       };
       
-      if (isValidPosition(board, testPiece)) {
-        setCurrentPiece(testPiece);
-        setGhostPiece(createGhostPiece(board, testPiece));
+      if (isValidPosition(gameState.board, testPiece)) {
+        setGameState(prev => ({
+          ...prev,
+          currentPiece: testPiece,
+          ghostPiece: createGhostPiece(gameState.board, testPiece)
+        }));
         setLastAction('rotate');
         
         setLockDelay(false);
@@ -186,28 +159,31 @@ export const useGameLogic = (props: UseGameLogicProps) => {
         return;
       }
     }
-  }, [currentPiece, board, gameOver, setCurrentPiece, setGhostPiece, setLockDelay]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
   const rotatePieceCounterclockwise = useCallback(() => {
-    if (!currentPiece || gameOver) return;
+    if (!gameState.currentPiece || gameState.gameOver) return;
 
-    const rotated = rotatePiece(currentPiece.type, false);
-    const newRotation = (currentPiece.rotation + 3) % 4;
+    const rotated = rotatePiece(gameState.currentPiece.type, false);
+    const newRotation = (gameState.currentPiece.rotation + 3) % 4;
     
-    const kickTests = getKickTests(currentPiece.type.type, currentPiece.rotation, newRotation);
+    const kickTests = getKickTests(gameState.currentPiece.type.type, gameState.currentPiece.rotation, newRotation);
 
     for (const kick of kickTests) {
       const testPiece: GamePiece = { 
-        ...currentPiece, 
+        ...gameState.currentPiece, 
         type: rotated, 
-        x: currentPiece.x + kick.x, 
-        y: currentPiece.y + kick.y,
+        x: gameState.currentPiece.x + kick.x, 
+        y: gameState.currentPiece.y + kick.y,
         rotation: newRotation
       };
       
-      if (isValidPosition(board, testPiece)) {
-        setCurrentPiece(testPiece);
-        setGhostPiece(createGhostPiece(board, testPiece));
+      if (isValidPosition(gameState.board, testPiece)) {
+        setGameState(prev => ({
+          ...prev,
+          currentPiece: testPiece,
+          ghostPiece: createGhostPiece(gameState.board, testPiece)
+        }));
         setLastAction('rotate');
         
         setLockDelay(false);
@@ -215,101 +191,193 @@ export const useGameLogic = (props: UseGameLogicProps) => {
         return;
       }
     }
-  }, [currentPiece, board, gameOver, setCurrentPiece, setGhostPiece, setLockDelay]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
   const hardDrop = useCallback(() => {
-    if (!currentPiece || gameOver) return;
+    if (!gameState.currentPiece || gameState.gameOver) return;
 
-    const dropY = calculateDropPosition(board, currentPiece);
-    const dropDistance = dropY - currentPiece.y;
-    setScore(prev => prev + dropDistance * 2);
+    const dropY = calculateDropPosition(gameState.board, gameState.currentPiece);
+    const dropDistance = dropY - gameState.currentPiece.y;
     
-    const droppedPiece = { ...currentPiece, y: dropY };
-    setCurrentPiece(droppedPiece);
-    setGhostPiece(null);
+    const droppedPiece = { ...gameState.currentPiece, y: dropY };
+    setGameState(prev => ({
+      ...prev,
+      currentPiece: droppedPiece,
+      ghostPiece: null,
+      score: prev.score + dropDistance * 2
+    }));
     
     setTimeout(() => {
       lockPiece();
     }, 50);
-  }, [currentPiece, board, gameOver, setScore, setCurrentPiece, setGhostPiece]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
   const lockPiece = useCallback(() => {
-    if (!currentPiece) return;
+    if (!gameState.currentPiece) return;
 
-    const tSpinType = checkTSpin(board, currentPiece, lastAction || 'move');
-    const newBoard = placePiece(board, currentPiece);
+    const tSpinType = checkTSpin(gameState.board, gameState.currentPiece, lastAction || 'move');
+    const newBoard = placePiece(gameState.board, gameState.currentPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     
-    setBoard(clearedBoard);
-    setLines(prev => prev + linesCleared);
-    
-    const newCombo = linesCleared > 0 ? combo + 1 : -1;
-    setCombo(newCombo);
-    
+    const newCombo = linesCleared > 0 ? gameState.combo! + 1 : -1;
     const isSpecialClear = tSpinType !== null || linesCleared === 4;
-    if (isSpecialClear) {
-      setB2b(prev => prev + 1);
-    } else if (linesCleared > 0) {
-      setB2b(0);
-    }
+    const newB2B = isSpecialClear ? gameState.b2b! + 1 : (linesCleared > 0 ? 0 : gameState.b2b!);
     
-    const lineScore = calculateScore(linesCleared, level, !!tSpinType, b2b > 0, newCombo);
-    setScore(prev => prev + lineScore);
+    const lineScore = calculateScore(linesCleared, gameState.level, !!tSpinType, gameState.b2b! > 0, newCombo);
+    const attackValue = calculateAttackLines(linesCleared, !!tSpinType, gameState.b2b! > 0, newCombo);
     
-    const attackValue = calculateAttackLines(linesCleared, !!tSpinType, b2b > 0, newCombo);
-    if (attackValue > 0) {
-      setTotalAttack(prev => {
-        const newTotal = prev + attackValue;
-        const timeElapsed = (Date.now() - startTime) / 60000;
-        setApm(newTotal / Math.max(timeElapsed, 1/60));
-        return newTotal;
-      });
-      
-      if (mode === 'multi') {
-        console.log(`发送 ${attackValue} 行垃圾块给对手`);
-      }
-    }
+    setGameState(prev => ({
+      ...prev,
+      board: clearedBoard,
+      lines: prev.lines + linesCleared,
+      combo: newCombo,
+      b2b: newB2B,
+      score: prev.score + lineScore,
+      attack: prev.attack! + attackValue,
+      level: Math.floor((prev.lines + linesCleared) / 40) + 1,
+      currentPiece: null,
+      ghostPiece: null
+    }));
     
     if (tSpinType) {
-      toast.success(`${tSpinType}!${b2b > 1 ? ` B2B x${b2b}` : ''}`, { duration: 2000 });
+      toast.success(`${tSpinType}!${gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : ''}`, { duration: 2000 });
     } else if (linesCleared === 4) {
-      toast.success(`Tetris!${b2b > 1 ? ` B2B x${b2b}` : ''}`, { duration: 2000 });
+      toast.success(`Tetris!${gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : ''}`, { duration: 2000 });
     }
     
     if (newCombo > 0) {
       toast.success(`${newCombo + 1} 连击! +${attackValue} 攻击`, { duration: 1500 });
     }
     
-    const newLevel = Math.floor((lines + linesCleared) / 10) + 1;
-    setLevel(newLevel);
-    
     setLastAction(null);
-    setCurrentPiece(null);
-    setGhostPiece(null);
-    spawnNewPiece();
-  }, [currentPiece, board, level, lines, lastAction, combo, b2b, mode, startTime, spawnNewPiece, setBoard, setLines, setCombo, setB2b, setScore, setTotalAttack, setApm, setLevel, setCurrentPiece, setGhostPiece]);
+    setTimeout(() => spawnNewPiece(), 100);
+  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, lastAction, gameState.combo, gameState.b2b, spawnNewPiece]);
 
   const holdCurrentPiece = useCallback(() => {
-    if (!currentPiece || !canHold || gameOver) return;
+    if (!gameState.currentPiece || !gameState.canHold || gameState.gameOver) return;
 
-    if (holdPiece) {
-      const newPiece = createGamePieceFromType(holdPiece.type);
-      setHoldPiece(currentPiece);
-      setCurrentPiece(newPiece);
-      setGhostPiece(createGhostPiece(board, newPiece));
+    if (gameState.holdPiece) {
+      const newPiece = createGamePieceFromType(gameState.holdPiece.type);
+      setGameState(prev => ({
+        ...prev,
+        holdPiece: gameState.currentPiece,
+        currentPiece: newPiece,
+        ghostPiece: createGhostPiece(gameState.board, newPiece),
+        canHold: false
+      }));
     } else {
-      setHoldPiece(currentPiece);
-      setCurrentPiece(null);
-      setGhostPiece(null);
-      spawnNewPiece();
+      setGameState(prev => ({
+        ...prev,
+        holdPiece: gameState.currentPiece,
+        currentPiece: null,
+        ghostPiece: null,
+        canHold: false
+      }));
+      setTimeout(() => spawnNewPiece(), 100);
     }
     
-    setCanHold(false);
     setLockDelay(false);
     lockDelayTime.current = 0;
-  }, [currentPiece, holdPiece, canHold, gameOver, spawnNewPiece, board, createGamePieceFromType, setHoldPiece, setCurrentPiece, setGhostPiece, setCanHold, setLockDelay]);
+  }, [gameState.currentPiece, gameState.holdPiece, gameState.canHold, gameState.gameOver, gameState.board, spawnNewPiece, createGamePieceFromType]);
+
+  const startGame = useCallback(() => {
+    console.log('Starting game...');
+    setGameState(prev => ({
+      ...prev,
+      paused: false,
+      gameOver: false,
+      startTime: Date.now()
+    }));
+    
+    if (gameState.nextPieces.length === 0) {
+      const sevenBag = generateSevenBag();
+      const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
+      setGameState(prev => ({ ...prev, nextPieces: gamePieces }));
+    }
+    
+    setTimeout(() => {
+      if (!gameState.currentPiece) {
+        spawnNewPiece();
+      }
+    }, 100);
+  }, [gameState.nextPieces, gameState.currentPiece, spawnNewPiece, createGamePieceFromType]);
+
+  const pauseGame = useCallback(() => {
+    setGameState(prev => ({ ...prev, paused: true }));
+  }, []);
+
+  const resetGame = useCallback(() => {
+    setGameState({
+      board: Array(20).fill(null).map(() => Array(10).fill(0)),
+      currentPiece: null,
+      nextPieces: [],
+      holdPiece: null,
+      score: 0,
+      lines: 0,
+      level: 1,
+      gameOver: false,
+      paused: false,
+      canHold: true,
+      combo: -1,
+      b2b: 0,
+      pieces: 0,
+      startTime: Date.now(),
+      attack: 0,
+      pps: 0,
+      apm: 0,
+      ghostPiece: null
+    });
+    setLockDelay(false);
+    lockDelayTime.current = 0;
+  }, []);
+
+  const shareGame = useCallback(() => {
+    // Placeholder for share functionality
+    console.log('Sharing game...');
+  }, []);
+
+  // Game loop
+  useEffect(() => {
+    const gameLoop = (timestamp: number) => {
+      if (gameState.gameOver || gameState.paused) {
+        gameLoopRef.current = requestAnimationFrame(gameLoop);
+        return;
+      }
+
+      const dropSpeed = calculateDropSpeed(gameState.lines);
+      
+      if (timestamp - lastDropTime.current > dropSpeed) {
+        const moved = movePiece(0, 1);
+        if (!moved && lockDelay) {
+          if (timestamp - lockDelayTime.current > 500) {
+            lockPiece();
+          }
+        }
+        lastDropTime.current = timestamp;
+      } else if (lockDelay) {
+        if (timestamp - lockDelayTime.current > 500) {
+          lockPiece();
+        }
+      }
+
+      gameLoopRef.current = requestAnimationFrame(gameLoop);
+    };
+
+    gameLoopRef.current = requestAnimationFrame(gameLoop);
+
+    return () => {
+      if (gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current);
+      }
+    };
+  }, [gameState.gameOver, gameState.paused, gameState.lines, lockDelay, calculateDropSpeed, movePiece, lockPiece]);
 
   return {
+    gameState,
+    startGame,
+    pauseGame,
+    resetGame,
+    shareGame,
     spawnNewPiece,
     movePiece,
     rotatePieceClockwise,
