@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Chrome, Firefox, Safari, Download, Monitor, Info } from 'lucide-react';
+import { Chrome, Globe, Download, Monitor, Info } from 'lucide-react';
 
 const BrowserShortcut: React.FC = () => {
   const [shortcutName, setShortcutName] = useState('俄罗斯方块竞技');
@@ -331,7 +330,7 @@ IconIndex=0
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Firefox className="w-4 h-4" />
+                  <Globe className="w-4 h-4" />
                   <span className="font-medium">Firefox</span>
                 </div>
                 <ul className="text-blue-700 text-xs space-y-1">
