@@ -28,11 +28,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   onBackToMenu
 }) => {
   return (
-    <div className="flex gap-6 items-center justify-center w-full">
+    <div className="flex gap-6 items-center justify-center w-full min-h-screen">
       {/* 左侧广告位 */}
-      <AdSpace position="left" width={240} height={600} />
+      <div className="hidden xl:block">
+        <AdSpace position="left" width={240} height={600} />
+      </div>
 
-      <div className="flex gap-6">
+      <div className="flex gap-6 items-center">
         {/* 左侧信息面板 */}
         <div className="flex flex-col gap-4">
           <PiecePreview 
@@ -48,7 +50,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           />
         </div>
 
-        {/* 主游戏区域 */}
+        {/* 主游戏区域 - 居中显示 */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-2xl border border-gray-700">
           <GameInfo
             username={username}
@@ -105,7 +107,9 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       </div>
 
       {/* 右侧广告位 */}
-      <AdSpace position="right" width={240} height={600} />
+      <div className="hidden xl:block">
+        <AdSpace position="right" width={240} height={600} />
+      </div>
 
       {/* 游戏中的动态广告 */}
       <AdSpace position="left" width={200} height={100} gameContext={true} />

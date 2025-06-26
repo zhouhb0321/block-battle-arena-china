@@ -23,22 +23,22 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   const { user } = useAuth();
 
   return (
-    <nav className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 px-6 py-4">
+    <nav className="bg-gray-800/95 backdrop-blur-sm border-b border-gray-600 px-6 py-4 shadow-lg">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center shadow-md">
             <Play className="w-4 h-4 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-white">{t('game.title')}</h1>
+          <h1 className="text-xl font-bold text-white drop-shadow-sm">{t('game.title')}</h1>
         </div>
 
         {/* Navigation Links */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-4">
           <Button
             variant={currentView === 'menu' ? 'default' : 'ghost'}
             onClick={() => onViewChange('menu')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
           >
             <Home className="w-4 h-4" />
             {t('nav.home')}
@@ -47,7 +47,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           <Button
             variant={currentView === 'single' ? 'default' : 'ghost'}
             onClick={() => onViewChange('single')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
           >
             <Play className="w-4 h-4" />
             {t('nav.play')}
@@ -56,7 +56,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           <Button
             variant={currentView === 'multi' ? 'default' : 'ghost'}
             onClick={() => onViewChange('multi')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
           >
             <Users className="w-4 h-4" />
             {t('nav.multiplayer')}
@@ -65,7 +65,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           <Button
             variant={currentView === 'ranked' ? 'default' : 'ghost'}
             onClick={() => onViewChange('ranked')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
           >
             <Trophy className="w-4 h-4" />
             {t('game.ranked')}
@@ -74,7 +74,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           <Button
             variant={currentView === 'settings' ? 'default' : 'ghost'}
             onClick={() => onViewChange('settings')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
           >
             <Settings className="w-4 h-4" />
             {t('nav.settings')}
@@ -86,7 +86,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               <Button
                 variant={currentView === 'admin' ? 'default' : 'ghost'}
                 onClick={() => onViewChange('admin')}
-                className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300"
+                className="flex items-center gap-2 text-yellow-300 hover:text-yellow-200 hover:bg-yellow-400/10"
               >
                 <Shield className="w-4 h-4" />
                 {t('admin.panel')}
@@ -95,7 +95,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               <Button
                 variant={currentView === 'income' ? 'default' : 'ghost'}
                 onClick={() => onViewChange('income')}
-                className="flex items-center gap-2 text-green-400 hover:text-green-300"
+                className="flex items-center gap-2 text-green-300 hover:text-green-200 hover:bg-green-400/10"
               >
                 <DollarSign className="w-4 h-4" />
                 {t('admin.income')}
@@ -109,13 +109,17 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           <LanguageSelector />
           
           {user && !user.isGuest ? (
-            <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-gray-400" />
-              <span className="text-white">{user.username}</span>
-              {isAdmin && <span className="text-yellow-400 text-sm">[{t('admin.panel')}]</span>}
+            <div className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg">
+              <User className="w-4 h-4 text-gray-300" />
+              <span className="text-white font-medium">{user.username}</span>
+              {isAdmin && <span className="text-yellow-300 text-sm font-semibold">[管理员]</span>}
             </div>
           ) : (
-            <Button variant="outline" onClick={onAuthModalOpen}>
+            <Button 
+              variant="outline" 
+              onClick={onAuthModalOpen}
+              className="border-white/20 text-white hover:bg-white/10 hover:text-white"
+            >
               {t('auth.login')}
             </Button>
           )}

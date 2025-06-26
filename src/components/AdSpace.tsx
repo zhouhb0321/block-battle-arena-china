@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, AlertTriangle } from 'lucide-react';
@@ -21,17 +22,22 @@ interface AdContent {
   target_url: string;
   is_active: boolean;
   position: string;
+  region?: string;
+  language?: string;
   clicks?: number;
   impressions?: number;
 }
 
 const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600, gameContext = false }) => {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [adContent, setAdContent] = useState<AdContent | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [shouldShow, setShouldShow] = useState(!gameContext);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    checkAdminStatus();
     loadAdContent();
     
     if (gameContext) {
@@ -45,22 +51,86 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600, 
       
       return () => clearInterval(interval);
     }
-  }, [gameContext]);
+  }, [gameContext, user]);
+
+  const checkAdminStatus = async () => {
+    if (user && !user.isGuest) {
+      try {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .single();
+        
+        setIsAdmin(!!data);
+      } catch (error) {
+        setIsAdmin(false);
+      }
+    }
+  };
+
+  const getUserRegion = () => {
+    // 简单的地区检测，可以基于用户设置或IP
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (timezone.includes('Asia/Shanghai') || timezone.includes('Asia/Beijing')) {
+      return 'CN';
+    } else if (timezone.includes('America')) {
+      return 'US';
+    } else if (timezone.includes('Europe')) {
+      return 'EU';
+    }
+    return 'Global';
+  };
+
+  const getUserLanguage = () => {
+    return navigator.language.split('-')[0] || 'en';
+  };
 
   const loadAdContent = async () => {
     try {
-      const { data, error } = await supabase
+      const userRegion = getUserRegion();
+      const userLanguage = getUserLanguage();
+      
+      let query = supabase
         .from('advertisements')
         .select('*')
         .eq('position', position)
         .eq('is_active', true)
         .gte('end_date', new Date().toISOString())
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      // 优先显示匹配地区和语言的广告
+      const { data: regionalAds } = await query
+        .eq('region', userRegion)
+        .eq('language', userLanguage)
         .limit(1)
         .single();
 
-      if (!error && data) {
-        setAdContent(data);
+      if (regionalAds) {
+        setAdContent(regionalAds);
+        return;
+      }
+
+      // 如果没有完全匹配的，显示匹配地区的
+      const { data: regionAds } = await query
+        .eq('region', userRegion)
+        .limit(1)
+        .single();
+
+      if (regionAds) {
+        setAdContent(regionAds);
+        return;
+      }
+
+      // 最后显示全球广告
+      const { data: globalAds } = await query
+        .or('region.is.null,region.eq.Global')
+        .limit(1)
+        .single();
+
+      if (globalAds) {
+        setAdContent(globalAds);
       }
     } catch (error) {
       console.error('Error loading ad content:', error);
@@ -98,18 +168,23 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600, 
     return null;
   }
 
-  // 如果没有广告内容，显示招租信息
-  if (!adContent) {
+  // 如果没有广告内容且不是管理员，不显示任何内容
+  if (!adContent && !isAdmin) {
+    return null;
+  }
+
+  // 如果没有广告内容但是管理员，显示招租信息
+  if (!adContent && isAdmin) {
     return (
       <div 
-        className="bg-gray-200 border-2 border-dashed border-gray-400 flex flex-col items-center justify-center rounded-lg"
+        className="bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center rounded-lg opacity-50"
         style={{ width, height }}
       >
-        <span className="text-gray-500 text-sm text-center mb-2">
-          广告位招租中
+        <span className="text-gray-400 text-xs text-center mb-2">
+          广告位预留
         </span>
-        <Button variant="outline" size="sm">
-          联系管理员
+        <Button variant="outline" size="sm" className="text-xs">
+          管理广告
         </Button>
       </div>
     );

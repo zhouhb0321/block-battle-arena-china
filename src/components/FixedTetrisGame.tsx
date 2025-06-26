@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import GameBoard from './GameBoard';
@@ -24,7 +25,11 @@ import {
 } from '@/utils/tetrisLogic';
 import type { TetrominoType, GamePiece, GameState } from '@/utils/gameTypes';
 
-const FixedTetrisGame: React.FC = () => {
+interface FixedTetrisGameProps {
+  onBackToMenu?: () => void;
+}
+
+const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
   const { user } = useAuth();
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
   const [sevenBag, setSevenBag] = useState<TetrominoType[]>(() => generateSevenBag());
@@ -47,7 +52,7 @@ const FixedTetrisGame: React.FC = () => {
     paused: false,
     gameOver: false,
     clearingLines: [],
-    ghostPiece: null, // 添加幽灵方块状态
+    ghostPiece: null,
     attack: 0,
     pps: 0,
     apm: 0
@@ -71,8 +76,8 @@ const FixedTetrisGame: React.FC = () => {
   }, [sevenBag, nextBag, bagIndex]);
 
   // 获取接下来的方块预览
-  const getUpcomingPieces = useCallback((): TetrominoType[] => {
-    const upcoming: TetrominoType[] = [];
+  const getUpcomingPieces = useCallback((): GamePiece[] => {
+    const upcoming: GamePiece[] = [];
     let currentBag = sevenBag;
     let currentNextBag = nextBag;
     let currentIndex = bagIndex;
@@ -83,14 +88,14 @@ const FixedTetrisGame: React.FC = () => {
         currentNextBag = generateSevenBag();
         currentIndex = 0;
       }
-      upcoming.push(currentBag[currentIndex]);
+      upcoming.push(createNewPiece(currentBag[currentIndex]));
       currentIndex++;
     }
     
     return upcoming;
   }, [sevenBag, nextBag, bagIndex]);
 
-  // 生成新方块 - 修正幽灵方块生成
+  // 生成新方块
   const spawnNewPiece = useCallback(() => {
     const nextPieceType = getNextPiece();
     const newPiece = createNewPiece(nextPieceType);
@@ -111,11 +116,11 @@ const FixedTetrisGame: React.FC = () => {
       nextPieces: getUpcomingPieces(),
       canHold: true,
       pieces: prev.pieces + 1,
-      ghostPiece: ghostPiece // 正确设置幽灵方块
+      ghostPiece: ghostPiece
     }));
   }, [getNextPiece, getUpcomingPieces, gameState.board]);
 
-  // 移动方块 - 更新幽灵方块位置
+  // 移动方块
   const movePiece = useCallback((dx: number, dy: number) => {
     setGameState(prev => {
       if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
@@ -127,7 +132,6 @@ const FixedTetrisGame: React.FC = () => {
       };
 
       if (isValidPosition(prev.board, newPiece)) {
-        // 更新幽灵方块位置
         const newGhostPiece = createGhostPiece(prev.board, newPiece);
         
         return {
@@ -140,7 +144,7 @@ const FixedTetrisGame: React.FC = () => {
     });
   }, []);
 
-  // 旋转方块 - 更新幽灵方块位置
+  // 旋转方块
   const rotatePieceClockwise = useCallback(() => {
     setGameState(prev => {
       if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
@@ -163,7 +167,6 @@ const FixedTetrisGame: React.FC = () => {
         };
         
         if (isValidPosition(prev.board, testPiece)) {
-          // 更新幽灵方块位置
           const newGhostPiece = createGhostPiece(prev.board, testPiece);
           
           return {
@@ -177,7 +180,7 @@ const FixedTetrisGame: React.FC = () => {
     });
   }, []);
 
-  // 瞬时降落 - 修正硬降逻辑
+  // 瞬时降落
   const hardDrop = useCallback(() => {
     setGameState(prev => {
       if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
@@ -193,12 +196,11 @@ const FixedTetrisGame: React.FC = () => {
       return {
         ...prev,
         currentPiece: droppedPiece,
-        score: prev.score + dropDistance * 2, // 硬降奖励分数
-        ghostPiece: null // 清除幽灵方块，因为已经到达目标位置
+        score: prev.score + dropDistance * 2,
+        ghostPiece: null
       };
     });
 
-    // 立即放置方块
     setTimeout(() => {
       placePieceOnBoard();
     }, 50);
@@ -209,16 +211,11 @@ const FixedTetrisGame: React.FC = () => {
     setGameState(prev => {
       if (!prev.currentPiece) return prev;
 
-      // 检查是否为T-Spin
       const tSpinType = checkTSpin(prev.board, prev.currentPiece, 'move');
-      
       const newBoard = placePiece(prev.board, prev.currentPiece);
-
-      // 检查消行
       const { newBoard: clearedBoard, linesCleared, clearedLineIndices } = clearLines(newBoard);
       
       if (linesCleared > 0) {
-        // 显示消行动画
         setTimeout(() => {
           const newCombo = linesCleared > 0 ? prev.combo + 1 : -1;
           const isSpecialClear = tSpinType !== null || linesCleared === 4;
@@ -227,7 +224,6 @@ const FixedTetrisGame: React.FC = () => {
           const attackLines = calculateAttackLines(linesCleared, !!tSpinType, newB2B > 0, newCombo);
           const newLevel = Math.floor((prev.lines + linesCleared) / 10) + 1;
           
-          // 更新PPS和APM
           const timeElapsed = (Date.now() - prev.startTime) / 1000;
           const newPps = prev.pieces > 0 ? prev.pieces / Math.max(timeElapsed, 1) : 0;
           const newApm = attackLines > 0 ? (prev.attack + attackLines) / Math.max(timeElapsed / 60, 1/60) : prev.apm;
@@ -248,7 +244,6 @@ const FixedTetrisGame: React.FC = () => {
             ghostPiece: null
           }));
 
-          // 显示特殊消行提示
           if (tSpinType) {
             toast.success(`${tSpinType}! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
           } else if (linesCleared === 4) {
@@ -257,7 +252,6 @@ const FixedTetrisGame: React.FC = () => {
             toast.success(`消除了 ${linesCleared} 行! +${newScore} 分`, { duration: 1500 });
           }
           
-          // 连击提示
           if (newCombo >= 0) {
             toast.success(`${newCombo + 1} 连击! +${attackLines} 攻击`, { duration: 1500 });
           }
@@ -279,32 +273,30 @@ const FixedTetrisGame: React.FC = () => {
     });
   }, []);
 
-  // 暂存方块 - 更新幽灵方块
+  // 暂存方块
   const holdPiece = useCallback(() => {
     setGameState(prev => {
       if (!prev.currentPiece || !prev.canHold || prev.paused || prev.gameOver) return prev;
 
       if (prev.holdPiece) {
-        // 交换当前方块和暂存方块
-        const newPiece = createNewPiece(prev.holdPiece);
+        const newPiece = createNewPiece(prev.holdPiece.type);
         const newGhostPiece = createGhostPiece(prev.board, newPiece);
         
         return {
           ...prev,
-          holdPiece: prev.currentPiece.type,
+          holdPiece: prev.currentPiece,
           currentPiece: newPiece,
           canHold: false,
           ghostPiece: newGhostPiece
         };
       } else {
-        // 将当前方块放入暂存，生成新方块
         const nextPieceType = getNextPiece();
         const newPiece = createNewPiece(nextPieceType);
         const newGhostPiece = createGhostPiece(prev.board, newPiece);
 
         return {
           ...prev,
-          holdPiece: prev.currentPiece.type,
+          holdPiece: prev.currentPiece,
           currentPiece: newPiece,
           nextPieces: getUpcomingPieces(),
           canHold: false,
@@ -351,8 +343,15 @@ const FixedTetrisGame: React.FC = () => {
         event.preventDefault();
         setGameState(prev => ({ ...prev, paused: !prev.paused }));
         break;
+      case 'b':
+      case 'B':
+        event.preventDefault();
+        if (onBackToMenu) {
+          onBackToMenu();
+        }
+        break;
     }
-  }, [movePiece, hardDrop, rotatePieceClockwise, holdPiece, gameState.paused, gameState.gameOver]);
+  }, [movePiece, hardDrop, rotatePieceClockwise, holdPiece, gameState.paused, gameState.gameOver, onBackToMenu]);
 
   // 游戏循环
   useEffect(() => {
@@ -369,10 +368,9 @@ const FixedTetrisGame: React.FC = () => {
     gameLoopRef.current = setInterval(() => {
       setGameState(prev => {
         if (!prev.currentPiece) {
-          return prev; // spawnNewPiece will be called separately
+          return prev;
         }
 
-        // 尝试向下移动
         const newPiece = { ...prev.currentPiece, y: prev.currentPiece.y + 1 };
         
         if (isValidPosition(prev.board, newPiece)) {
@@ -383,7 +381,6 @@ const FixedTetrisGame: React.FC = () => {
             ghostPiece: newGhostPiece
           };
         } else {
-          // 不能继续下降，触发放置
           setTimeout(() => placePieceOnBoard(), 10);
           return prev;
         }
@@ -457,11 +454,11 @@ const FixedTetrisGame: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center p-4 bg-gray-900 min-h-screen">
-      <div className="flex gap-6 max-w-6xl w-full">
+      <div className="flex gap-6 max-w-6xl w-full justify-center">
         {/* 左侧信息栏 */}
         <div className="flex flex-col gap-4 w-48">
           <PiecePreview 
-            piece={gameState.holdPiece} 
+            piece={gameState.holdPiece?.type || null} 
             title="暂存 (C键)" 
             size="large" 
           />
@@ -488,10 +485,11 @@ const FixedTetrisGame: React.FC = () => {
             <div>Z 旋转</div>
             <div>C 暂存</div>
             <div>P 暂停</div>
+            <div>B 返回菜单</div>
           </div>
         </div>
 
-        {/* 游戏区域 */}
+        {/* 游戏区域 - 居中 */}
         <div className="flex flex-col items-center">
           {gameState.gameOver && (
             <div className="mb-4 p-4 bg-red-600 text-white rounded-lg text-center">
@@ -499,9 +497,16 @@ const FixedTetrisGame: React.FC = () => {
               <div className="mb-2">最终得分: {gameState.score.toLocaleString()}</div>
               <div className="mb-2">PPS: {gameState.pps.toFixed(2)}</div>
               <div className="mb-2">攻击力: {gameState.attack}</div>
-              <Button onClick={restartGame} className="bg-blue-600 hover:bg-blue-700">
-                重新开始
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={restartGame} className="bg-blue-600 hover:bg-blue-700">
+                  重新开始
+                </Button>
+                {onBackToMenu && (
+                  <Button onClick={onBackToMenu} variant="outline">
+                    返回菜单
+                  </Button>
+                )}
+              </div>
             </div>
           )}
           
@@ -509,6 +514,11 @@ const FixedTetrisGame: React.FC = () => {
             <div className="mb-4 p-4 bg-yellow-600 text-white rounded-lg text-center">
               <div className="text-xl font-bold">游戏暂停</div>
               <div className="text-sm">按 P 键继续</div>
+              {onBackToMenu && (
+                <Button onClick={onBackToMenu} variant="outline" className="mt-2">
+                  返回菜单
+                </Button>
+              )}
             </div>
           )}
 
@@ -530,7 +540,7 @@ const FixedTetrisGame: React.FC = () => {
               {gameState.nextPieces.slice(0, 4).map((piece, index) => (
                 <PiecePreview 
                   key={index} 
-                  piece={piece} 
+                  piece={piece.type} 
                   title="" 
                   size={index === 0 ? "large" : "medium"}
                 />

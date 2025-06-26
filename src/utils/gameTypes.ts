@@ -1,3 +1,4 @@
+
 export interface GameSettings {
   das: number;
   arr: number;
@@ -28,23 +29,12 @@ export interface TetrominoType {
   type: string;
 }
 
-// Unified game piece interface - this will be the main one used
+// Unified game piece interface
 export interface GamePiece {
   type: TetrominoType;
   x: number;
   y: number;
   rotation: number;
-}
-
-// Keep TetrisPiece for backward compatibility but make it consistent
-export interface TetrisPiece {
-  type: string;
-  x: number;
-  y: number;
-  rotation: number;
-  shape: number[][];
-  color: string;
-  name?: string; // Make this optional for compatibility
 }
 
 export interface GameState {
@@ -87,7 +77,7 @@ export interface GameReplay {
   gameType?: string;
   level?: number;
   isPersonalBest?: boolean;
-  pps?: number; // Add missing pps property
+  pps?: number;
   apm?: number;
 }
 
@@ -102,6 +92,6 @@ export interface AdContent {
   language?: string;
   startDate?: string;
   endDate?: string;
-  clicks?: number; // Add missing clicks property
-  impressions?: number; // Add missing impressions property
+  clicks?: number;
+  impressions?: number;
 }

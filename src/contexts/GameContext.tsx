@@ -1,44 +1,11 @@
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { TetrominoType, GamePiece, GameState, GameSettings, GameReplay } from '@/utils/gameTypes';
-import { generateSevenBag, createEmptyBoard } from '@/utils/tetrisLogic';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import type { GameSettings } from '@/utils/gameTypes';
 
-interface GameContextType {
-  gameState: GameState;
-  gameSettings: GameSettings;
-  gameReplays: GameReplay[];
-  updateGameSettings: (settings: Partial<GameSettings>) => void;
-  resetGame: () => void;
-  pauseGame: () => void;
-  resumeGame: () => void;
-  saveReplay: (replay: Omit<GameReplay, 'id' | 'date'>) => void;
-}
-
-const initialGameState: GameState = {
-  board: createEmptyBoard(),
-  currentPiece: null,
-  nextPieces: generateSevenBag(),
-  holdPiece: null,
-  canHold: true,
-  score: 0,
-  lines: 0,
-  level: 1,
-  combo: -1,
-  b2b: 0,
-  pieces: 0,
-  startTime: Date.now(),
-  paused: false,
-  gameOver: false,
-  clearingLines: [],
-  attack: 0,
-  pps: 0,
-  apm: 0
-};
-
-const defaultGameSettings: GameSettings = {
-  das: 167, // 10 frames at 60fps = 167ms
-  arr: 33,  // 2 frames at 60fps = 33ms
-  sdf: 20, // Soft drop factor
+const DEFAULT_SETTINGS: GameSettings = {
+  das: 167,
+  arr: 33,
+  sdf: 20,
   controls: {
     moveLeft: 'ArrowLeft',
     moveRight: 'ArrowRight',
@@ -48,70 +15,52 @@ const defaultGameSettings: GameSettings = {
     rotateCounterclockwise: 'KeyZ',
     rotate180: 'KeyA',
     hold: 'KeyC',
-    pause: 'Escape'
+    pause: 'Escape',
+    backToMenu: 'KeyB'
   },
   enableGhost: true,
   enableSound: true,
-  masterVolume: 50
+  masterVolume: 50,
+  backgroundMusic: '',
+  musicVolume: 30
 };
 
-const GameContext = createContext<GameContextType | undefined>(undefined);
+interface GameContextType {
+  gameSettings: GameSettings;
+  updateSettings: (settings: Partial<GameSettings>) => void;
+  resetGame: () => void;
+  pauseGame: () => void;
+  resumeGame: () => void;
+}
 
-export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [gameState, setGameState] = useState<GameState>(initialGameState);
-  const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
-    const saved = localStorage.getItem('gameSettings');
-    return saved ? { ...defaultGameSettings, ...JSON.parse(saved) } : defaultGameSettings;
-  });
-  const [gameReplays, setGameReplays] = useState<GameReplay[]>(() => {
-    const saved = localStorage.getItem('gameReplays');
-    return saved ? JSON.parse(saved) : [];
-  });
+const GameContext = createContext<GameContextType | null>(null);
 
-  const updateGameSettings = useCallback((settings: Partial<GameSettings>) => {
-    const newSettings = { ...gameSettings, ...settings };
-    setGameSettings(newSettings);
-    localStorage.setItem('gameSettings', JSON.stringify(newSettings));
-  }, [gameSettings]);
+export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [gameSettings, setGameSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
 
-  const resetGame = useCallback(() => {
-    setGameState({
-      ...initialGameState,
-      nextPieces: generateSevenBag(),
-      startTime: Date.now()
-    });
-  }, []);
+  const updateSettings = (settings: Partial<GameSettings>) => {
+    setGameSettings(prev => ({ ...prev, ...settings }));
+  };
 
-  const pauseGame = useCallback(() => {
-    setGameState(prev => ({ ...prev, paused: true }));
-  }, []);
+  const resetGame = () => {
+    console.log('Game reset');
+  };
 
-  const resumeGame = useCallback(() => {
-    setGameState(prev => ({ ...prev, paused: false }));
-  }, []);
+  const pauseGame = () => {
+    console.log('Game paused');
+  };
 
-  const saveReplay = useCallback((replay: Omit<GameReplay, 'id' | 'date'>) => {
-    const newReplay: GameReplay = {
-      ...replay,
-      id: Date.now().toString(),
-      date: new Date().toISOString()
-    };
-    
-    const newReplays = [newReplay, ...gameReplays].slice(0, 50); // 保留最近50个回放
-    setGameReplays(newReplays);
-    localStorage.setItem('gameReplays', JSON.stringify(newReplays));
-  }, [gameReplays]);
+  const resumeGame = () => {
+    console.log('Game resumed');
+  };
 
   return (
     <GameContext.Provider value={{
-      gameState,
       gameSettings,
-      gameReplays,
-      updateGameSettings,
+      updateSettings,
       resetGame,
       pauseGame,
-      resumeGame,
-      saveReplay
+      resumeGame
     }}>
       {children}
     </GameContext.Provider>
@@ -120,7 +69,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useGame = () => {
   const context = useContext(GameContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useGame must be used within a GameProvider');
   }
   return context;
