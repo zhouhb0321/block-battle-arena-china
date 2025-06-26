@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +6,7 @@ import { Play, Trophy, Clock, Target } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import ReplayPlayer from './ReplayPlayer';
-import type { GameReplay } from '@/utils/gameTypes';
+import type { GameReplay, ReplayAction } from '@/utils/gameTypes';
 
 const ReplaySystem: React.FC = () => {
   const { user } = useAuth();
@@ -31,7 +30,7 @@ const ReplaySystem: React.FC = () => {
         .from('game_replays_new')
         .select(`
           *,
-          user_profiles!inner(username, avatar_url)
+          user_profiles!game_replays_new_user_id_fkey(username, avatar_url)
         `)
         .or(`user_id.eq.${user.id},opponent_id.eq.${user.id}`)
         .order('created_at', { ascending: false })
@@ -43,24 +42,30 @@ const ReplaySystem: React.FC = () => {
       }
 
       if (data) {
-        const formattedReplays: GameReplay[] = data.map(replay => ({
-          id: replay.id,
-          matchId: replay.id,
-          userId: replay.user_id,
-          gameType: replay.game_mode,
-          score: replay.final_score,
-          lines: replay.final_lines,
-          pps: parseFloat(replay.pps.toString()),
-          apm: parseFloat(replay.apm.toString()),
-          duration: replay.duration,
-          actions: replay.replay_data?.actions || [],
-          finalBoard: Array(20).fill(null).map(() => Array(10).fill(0)),
-          date: replay.created_at,
-          playerName: replay.user_profiles?.username || 'Unknown Player',
-          level: replay.final_level,
-          isPersonalBest: replay.is_personal_best || false,
-          gameMode: replay.game_mode
-        }));
+        const formattedReplays: GameReplay[] = data.map(replay => {
+          const replayData = replay.replay_data as any;
+          const actions: ReplayAction[] = replayData?.actions || [];
+          const userProfile = replay.user_profiles as any;
+          
+          return {
+            id: replay.id,
+            matchId: replay.id,
+            userId: replay.user_id,
+            gameType: replay.game_mode,
+            gameMode: replay.game_mode,
+            score: replay.final_score,
+            lines: replay.final_lines,
+            level: replay.final_level,
+            pps: parseFloat(replay.pps.toString()),
+            apm: parseFloat(replay.apm.toString()),
+            duration: replay.duration,
+            actions: actions,
+            finalBoard: Array(20).fill(null).map(() => Array(10).fill(0)),
+            date: replay.created_at,
+            playerName: userProfile?.username || 'Unknown Player',
+            isPersonalBest: replay.is_personal_best || false
+          };
+        });
 
         setReplays(formattedReplays);
       }

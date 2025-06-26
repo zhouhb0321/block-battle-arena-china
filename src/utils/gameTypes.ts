@@ -1,4 +1,3 @@
-
 // 统一的游戏类型定义
 export interface TetrominoType {
   shape: number[][];
@@ -79,14 +78,18 @@ export interface GameReplay {
   matchId: string;
   userId: string;
   gameType: string;
+  gameMode: string;
   score: number;
   lines: number;
+  level: number;
   pps: number;
   apm: number;
   duration: number;
   actions: ReplayAction[];
   finalBoard: number[][];
   date: string;
+  playerName: string;
+  isPersonalBest: boolean;
 }
 
 export interface UserProfile {
