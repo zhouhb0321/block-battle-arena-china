@@ -1,25 +1,20 @@
 
 import React, { useRef, useCallback, useEffect } from 'react';
-import { calculateDropPosition, type TetrominoType } from '@/utils/tetrisLogic';
-
-interface GamePiece {
-  type: TetrominoType;
-  x: number;
-  y: number;
-  rotation: number;
-}
+import type { GamePiece } from '@/utils/gameTypes';
 
 interface GameBoardProps {
   board: number[][];
   currentPiece: GamePiece | null;
+  ghostPiece?: GamePiece | null;
   enableGhost: boolean;
   cellSize?: number;
-  clearingLines?: number[]; // 消行动画
+  clearingLines?: number[];
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({ 
   board, 
   currentPiece, 
+  ghostPiece,
   enableGhost, 
   cellSize = 30,
   clearingLines = []
@@ -137,22 +132,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
     }
 
     // 绘制幽灵方块
-    if (currentPiece && enableGhost) {
-      const ghostY = calculateDropPosition(board, currentPiece);
-      if (ghostY > currentPiece.y) {
-        currentPiece.type.shape.forEach((row, dy) => {
-          row.forEach((cell, dx) => {
-            if (cell) {
-              const drawX = currentPiece.x + dx;
-              const drawY = ghostY + dy;
-              
-              if (drawX >= 0 && drawX < BOARD_WIDTH && drawY >= 0 && drawY < BOARD_HEIGHT) {
-                drawBlock(ctx, drawX, drawY, currentPiece.type.color, true);
-              }
+    if (ghostPiece && enableGhost) {
+      ghostPiece.type.shape.forEach((row, dy) => {
+        row.forEach((cell, dx) => {
+          if (cell) {
+            const drawX = ghostPiece.x + dx;
+            const drawY = ghostPiece.y + dy;
+            
+            if (drawX >= 0 && drawX < BOARD_WIDTH && drawY >= 0 && drawY < BOARD_HEIGHT) {
+              drawBlock(ctx, drawX, drawY, ghostPiece.type.color, true);
             }
-          });
+          }
         });
-      }
+      });
     }
 
     // 绘制当前控制的方块
@@ -163,14 +155,17 @@ const GameBoard: React.FC<GameBoardProps> = ({
             const drawX = currentPiece.x + dx;
             const drawY = currentPiece.y + dy;
             
-            if (drawX >= 0 && drawX < BOARD_WIDTH && drawY >= 0 && drawY < BOARD_HEIGHT) {
-              drawBlock(ctx, drawX, drawY, currentPiece.type.color);
+            // 允许方块部分超出顶部（y < 0）
+            if (drawX >= 0 && drawX < BOARD_WIDTH && drawY < BOARD_HEIGHT) {
+              if (drawY >= 0) {
+                drawBlock(ctx, drawX, drawY, currentPiece.type.color);
+              }
             }
           }
         });
       });
     }
-  }, [board, currentPiece, enableGhost, cellSize, clearingLines]);
+  }, [board, currentPiece, ghostPiece, enableGhost, cellSize, clearingLines]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

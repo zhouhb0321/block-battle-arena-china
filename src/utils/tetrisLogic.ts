@@ -1,16 +1,13 @@
 
-export interface TetrominoType {
-  shape: number[][];
-  color: string;
-  name: string;
-}
+import type { TetrominoType, GamePiece, ReplayAction } from './gameTypes';
 
 // 标准化方块颜色 - 与经典俄罗斯方块保持一致
 export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
   I: {
     shape: [[1, 1, 1, 1]],
     color: '#00f0f0', // 青色
-    name: 'I'
+    name: 'I',
+    type: 'I'
   },
   O: {
     shape: [
@@ -18,7 +15,8 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 1]
     ],
     color: '#f0f000', // 黄色
-    name: 'O'
+    name: 'O',
+    type: 'O'
   },
   T: {
     shape: [
@@ -26,7 +24,8 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 1, 1]
     ],
     color: '#a000f0', // 紫色
-    name: 'T'
+    name: 'T',
+    type: 'T'
   },
   S: {
     shape: [
@@ -34,7 +33,8 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 1, 0]
     ],
     color: '#00f000', // 绿色
-    name: 'S'
+    name: 'S',
+    type: 'S'
   },
   Z: {
     shape: [
@@ -42,7 +42,8 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [0, 1, 1]
     ],
     color: '#f00000', // 红色
-    name: 'Z'
+    name: 'Z',
+    type: 'Z'
   },
   J: {
     shape: [
@@ -50,7 +51,8 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 1, 1]
     ],
     color: '#0000f0', // 蓝色
-    name: 'J'
+    name: 'J',
+    type: 'J'
   },
   L: {
     shape: [
@@ -58,7 +60,8 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 1, 1]
     ],
     color: '#f0a000', // 橙色
-    name: 'L'
+    name: 'L',
+    type: 'L'
   }
 };
 
@@ -69,7 +72,7 @@ export const createEmptyBoard = (): number[][] => {
   return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
 };
 
-// 7-bag 随机系统
+// 7-bag 随机系统 - 确保每7个方块包含所有类型且无重复
 export const generateSevenBag = (): TetrominoType[] => {
   const pieces = Object.values(TETROMINO_TYPES);
   const bag = [...pieces];
@@ -83,35 +86,51 @@ export const generateSevenBag = (): TetrominoType[] => {
   return bag;
 };
 
-export const generateRandomTetromino = (): TetrominoType => {
-  const types = Object.keys(TETROMINO_TYPES);
-  const randomType = types[Math.floor(Math.random() * types.length)];
-  return TETROMINO_TYPES[randomType];
-};
-
-export const rotatePiece = (piece: number[][]): number[][] => {
-  const rows = piece.length;
-  const cols = piece[0].length;
-  const rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
+export const rotatePiece = (piece: TetrominoType, clockwise: boolean = true): TetrominoType => {
+  const { shape } = piece;
+  let rotated: number[][];
   
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < cols; j++) {
-      rotated[j][rows - 1 - i] = piece[i][j];
+  if (clockwise) {
+    const rows = shape.length;
+    const cols = shape[0].length;
+    rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
+    
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        rotated[j][rows - 1 - i] = shape[i][j];
+      }
+    }
+  } else {
+    const rows = shape.length;
+    const cols = shape[0].length;
+    rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
+    
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        rotated[cols - 1 - j][i] = shape[i][j];
+      }
     }
   }
   
-  return rotated;
+  return {
+    ...piece,
+    shape: rotated
+  };
 };
 
 export const isValidPosition = (
   board: number[][],
-  piece: number[][],
-  x: number,
-  y: number
+  piece: GamePiece,
+  offsetX: number = 0,
+  offsetY: number = 0
 ): boolean => {
-  for (let i = 0; i < piece.length; i++) {
-    for (let j = 0; j < piece[i].length; j++) {
-      if (piece[i][j] !== 0) {
+  const { shape } = piece.type;
+  const x = piece.x + offsetX;
+  const y = piece.y + offsetY;
+  
+  for (let i = 0; i < shape.length; i++) {
+    for (let j = 0; j < shape[i].length; j++) {
+      if (shape[i][j] !== 0) {
         const newX = x + j;
         const newY = y + i;
         
@@ -131,17 +150,16 @@ export const isValidPosition = (
 
 export const placePiece = (
   board: number[][],
-  piece: number[][],
-  x: number,
-  y: number,
-  pieceType: number
+  piece: GamePiece
 ): number[][] => {
   const newBoard = board.map(row => [...row]);
+  const { shape } = piece.type;
+  const pieceTypeIndex = Object.keys(TETROMINO_TYPES).indexOf(piece.type.name) + 1;
   
-  for (let i = 0; i < piece.length; i++) {
-    for (let j = 0; j < piece[i].length; j++) {
-      if (piece[i][j] !== 0 && y + i >= 0) {
-        newBoard[y + i][x + j] = pieceType;
+  for (let i = 0; i < shape.length; i++) {
+    for (let j = 0; j < shape[i].length; j++) {
+      if (shape[i][j] !== 0 && piece.y + i >= 0) {
+        newBoard[piece.y + i][piece.x + j] = pieceTypeIndex;
       }
     }
   }
@@ -182,23 +200,42 @@ export const clearLines = (board: number[][]): {
   };
 };
 
+// 计算幽灵方块位置
 export const calculateDropPosition = (
   board: number[][],
-  piece: { type: TetrominoType; x: number; y: number }
+  piece: GamePiece
 ): number => {
   let dropY = piece.y;
   
-  while (isValidPosition(board, piece.type.shape, piece.x, dropY + 1)) {
+  while (isValidPosition(board, { ...piece, y: dropY + 1 })) {
     dropY++;
   }
   
   return dropY;
 };
 
+// 生成幽灵方块
+export const createGhostPiece = (
+  board: number[][],
+  piece: GamePiece
+): GamePiece | null => {
+  if (!piece) return null;
+  
+  const ghostY = calculateDropPosition(board, piece);
+  
+  // 如果幽灵位置和当前位置相同，不显示幽灵
+  if (ghostY === piece.y) return null;
+  
+  return {
+    ...piece,
+    y: ghostY
+  };
+};
+
 // T-Spin检测
 export const checkTSpin = (
   board: number[][],
-  piece: { type: TetrominoType; x: number; y: number },
+  piece: GamePiece,
   lastAction: 'rotate' | 'move'
 ): string | null => {
   if (piece.type.name !== 'T' || lastAction !== 'rotate') {
@@ -214,7 +251,7 @@ export const checkTSpin = (
 
   let filledCorners = 0;
   corners.forEach(([x, y]) => {
-    if (x < 0 || x >= BOARD_WIDTH || y < 0 || y >= BOARD_HEIGHT || board[y][x] !== 0) {
+    if (x < 0 || x >= BOARD_WIDTH || y < 0 || y >= BOARD_HEIGHT || board[y]?.[x] !== 0) {
       filledCorners++;
     }
   });
@@ -265,6 +302,7 @@ export const getKickTests = (
   return normalKickData[key] || [{ x: 0, y: 0 }];
 };
 
+// 计算得分 - 基于tetr.io系统
 export const calculateScore = (
   linesCleared: number,
   level: number,
@@ -305,27 +343,7 @@ export const calculateScore = (
   return baseScore * level;
 };
 
-export const generateGarbageLines = (attackLines: number): number[][] => {
-  const garbageLines: number[][] = [];
-  
-  for (let i = 0; i < attackLines; i++) {
-    const garbageLine = Array(BOARD_WIDTH).fill(8); // 8 = 垃圾块
-    const holePosition = Math.floor(Math.random() * BOARD_WIDTH);
-    garbageLine[holePosition] = 0; // 留一个洞
-    garbageLines.push(garbageLine);
-  }
-  
-  return garbageLines;
-};
-
-export const addGarbageLines = (board: number[][], garbageLines: number[][]): number[][] => {
-  // 移除顶部的行数等于垃圾行数
-  const newBoard = board.slice(garbageLines.length);
-  
-  // 在底部添加垃圾行
-  return [...newBoard, ...garbageLines];
-};
-
+// 计算攻击力
 export const calculateAttackLines = (
   linesCleared: number,
   isTSpin: boolean = false,
@@ -360,4 +378,49 @@ export const calculateAttackLines = (
   }
   
   return attackLines;
+};
+
+// 生成垃圾行
+export const generateGarbageLines = (attackLines: number): number[][] => {
+  const garbageLines: number[][] = [];
+  
+  for (let i = 0; i < attackLines; i++) {
+    const garbageLine = Array(BOARD_WIDTH).fill(8); // 8 = 垃圾块
+    const holePosition = Math.floor(Math.random() * BOARD_WIDTH);
+    garbageLine[holePosition] = 0; // 留一个洞
+    garbageLines.push(garbageLine);
+  }
+  
+  return garbageLines;
+};
+
+// 添加垃圾行到棋盘
+export const addGarbageLines = (board: number[][], garbageLines: number[][]): number[][] => {
+  // 移除顶部的行数等于垃圾行数
+  const newBoard = board.slice(garbageLines.length);
+  
+  // 在底部添加垃圾行
+  return [...newBoard, ...garbageLines];
+};
+
+// 创建新方块，确保出现在顶部中央
+export const createNewPiece = (type: TetrominoType): GamePiece => {
+  return {
+    type,
+    x: Math.floor(BOARD_WIDTH / 2) - Math.floor(type.shape[0].length / 2),
+    y: -1, // 从顶部上方开始，允许部分隐藏
+    rotation: 0
+  };
+};
+
+// 回放系统 - 记录动作而不是视频
+export const createReplayAction = (
+  action: 'move' | 'rotate' | 'drop' | 'hold' | 'place',
+  data: any
+): ReplayAction => {
+  return {
+    timestamp: Date.now(),
+    action,
+    data
+  };
 };
