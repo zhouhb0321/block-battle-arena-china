@@ -1,63 +1,7 @@
+
 import React, { createContext, useContext, useState, useCallback } from 'react';
-
-export interface TetrominoType {
-  shape: number[][];
-  color: string;
-  type: 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
-}
-
-export interface GamePiece {
-  type: TetrominoType;
-  x: number;
-  y: number;
-  rotation: number;
-}
-
-export interface GameState {
-  board: number[][];
-  currentPiece: GamePiece | null;
-  nextPieces: TetrominoType[];
-  holdPiece: TetrominoType | null;
-  canHold: boolean;
-  score: number;
-  lines: number;
-  level: number;
-  gameOver: boolean;
-  paused: boolean;
-  startTime: number;
-  endTime?: number;
-}
-
-export interface GameSettings {
-  das: number; // Delayed Auto Shift (ms)
-  arr: number; // Auto Repeat Rate (ms)
-  sdf: number; // Soft Drop Factor
-  controls: {
-    moveLeft: string;
-    moveRight: string;
-    softDrop: string;
-    hardDrop: string;
-    rotateClockwise: string;
-    rotateCounterclockwise: string;
-    rotate180: string;
-    hold: string;
-    pause: string;
-  };
-  enableGhost: boolean;
-  enableSound: boolean;
-  masterVolume: number;
-}
-
-export interface GameReplay {
-  id: string;
-  userId: string;
-  gameType: string;
-  score: number;
-  lines: number;
-  duration: number;
-  date: string;
-  moves: any[];
-}
+import type { TetrominoType, GamePiece, GameState, GameSettings, GameReplay } from '@/utils/gameTypes';
+import { generateSevenBag, createEmptyBoard } from '@/utils/tetrisLogic';
 
 interface GameContextType {
   gameState: GameState;
@@ -70,89 +14,6 @@ interface GameContextType {
   saveReplay: (replay: Omit<GameReplay, 'id' | 'date'>) => void;
 }
 
-const TETROMINOS: { [key: string]: TetrominoType } = {
-  I: {
-    shape: [
-      [0, 0, 0, 0],
-      [1, 1, 1, 1],
-      [0, 0, 0, 0],
-      [0, 0, 0, 0]
-    ],
-    color: '#00f0f0',
-    type: 'I'
-  },
-  O: {
-    shape: [
-      [1, 1],
-      [1, 1]
-    ],
-    color: '#f0f000',
-    type: 'O'
-  },
-  T: {
-    shape: [
-      [0, 1, 0],
-      [1, 1, 1],
-      [0, 0, 0]
-    ],
-    color: '#a000f0',
-    type: 'T'
-  },
-  S: {
-    shape: [
-      [0, 1, 1],
-      [1, 1, 0],
-      [0, 0, 0]
-    ],
-    color: '#00f000',
-    type: 'S'
-  },
-  Z: {
-    shape: [
-      [1, 1, 0],
-      [0, 1, 1],
-      [0, 0, 0]
-    ],
-    color: '#f00000',
-    type: 'Z'
-  },
-  J: {
-    shape: [
-      [1, 0, 0],
-      [1, 1, 1],
-      [0, 0, 0]
-    ],
-    color: '#0000f0',
-    type: 'J'
-  },
-  L: {
-    shape: [
-      [0, 0, 1],
-      [1, 1, 1],
-      [0, 0, 0]
-    ],
-    color: '#f0a000',
-    type: 'L'
-  }
-};
-
-const createEmptyBoard = (): number[][] => {
-  return Array(20).fill(null).map(() => Array(10).fill(0));
-};
-
-const generateSevenBag = (): TetrominoType[] => {
-  const pieces = Object.values(TETROMINOS);
-  const bag = [...pieces];
-  
-  // Fisher-Yates shuffle
-  for (let i = bag.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [bag[i], bag[j]] = [bag[j], bag[i]];
-  }
-  
-  return bag;
-};
-
 const initialGameState: GameState = {
   board: createEmptyBoard(),
   currentPiece: null,
@@ -162,9 +23,16 @@ const initialGameState: GameState = {
   score: 0,
   lines: 0,
   level: 1,
-  gameOver: false,
+  combo: -1,
+  b2b: 0,
+  pieces: 0,
+  startTime: Date.now(),
   paused: false,
-  startTime: Date.now()
+  gameOver: false,
+  clearingLines: [],
+  attack: 0,
+  pps: 0,
+  apm: 0
 };
 
 const defaultGameSettings: GameSettings = {

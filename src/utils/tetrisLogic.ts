@@ -403,12 +403,12 @@ export const addGarbageLines = (board: number[][], garbageLines: number[][]): nu
   return [...newBoard, ...garbageLines];
 };
 
-// 创建新方块，确保出现在顶部中央
+// 创建新方块，确保出现在顶部中央 - 修正位置
 export const createNewPiece = (type: TetrominoType): GamePiece => {
   return {
     type,
     x: Math.floor(BOARD_WIDTH / 2) - Math.floor(type.shape[0].length / 2),
-    y: -1, // 从顶部上方开始，允许部分隐藏
+    y: -Math.floor(type.shape.length / 2), // 修正：使方块从顶部正上方开始，允许部分隐藏
     rotation: 0
   };
 };

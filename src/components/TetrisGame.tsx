@@ -14,8 +14,13 @@ import {
   calculateDropPosition,
   generateSevenBag,
   checkTSpin,
-  getKickTests
+  getKickTests,
+  createNewPiece,
+  createGhostPiece,
+  calculateScore,
+  calculateAttackLines
 } from '@/utils/tetrisLogic';
+import type { TetrominoType, GamePiece } from '@/utils/gameTypes';
 
 interface TetrisGameProps {
   mode: 'single' | 'multi';
@@ -32,10 +37,11 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const [lastAction, setLastAction] = useState<'rotate' | 'move' | null>(null);
   
-  const [currentPiece, setCurrentPiece] = useState(gameState.currentPiece);
+  const [currentPiece, setCurrentPiece] = useState<GamePiece | null>(null);
+  const [ghostPiece, setGhostPiece] = useState<GamePiece | null>(null);
   const [board, setBoard] = useState(() => Array(20).fill(null).map(() => Array(10).fill(0)));
   const [nextPieces, setNextPieces] = useState(() => generateSevenBag());
-  const [holdPiece, setHoldPiece] = useState(gameState.holdPiece);
+  const [holdPiece, setHoldPiece] = useState<TetrominoType | null>(null);
   const [canHold, setCanHold] = useState(true);
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
@@ -62,12 +68,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
   const spawnNewPiece = useCallback(() => {
     if (nextPieces.length === 0) return;
 
-    const newPiece = {
-      type: nextPieces[0],
-      x: Math.floor(BOARD_WIDTH / 2) - Math.floor(nextPieces[0].shape[0].length / 2),
-      y: 0, // 修复：从顶部可见区域开始，而不是-1
-      rotation: 0
-    };
+    const newPiece = createNewPiece(nextPieces[0]);
 
     const newNextPieces = [...nextPieces.slice(1)];
     if (newNextPieces.length < 6) {
@@ -80,6 +81,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     }
 
     setCurrentPiece(newPiece);
+    setGhostPiece(createGhostPiece(board, newPiece));
     setNextPieces(newNextPieces);
     setCanHold(true);
     setLockDelay(false);
@@ -92,100 +94,6 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
       return newPieces;
     });
   }, [board, nextPieces, startTime]);
-
-  const calculateScore = useCallback((linesCleared: number, tSpinType: string | null, comboCount: number, level: number): number => {
-    let baseScore = 0;
-    let isSpecialClear = false;
-
-    if (tSpinType) {
-      isSpecialClear = true;
-      switch (tSpinType) {
-        case 'Mini T-Spin':
-          baseScore = linesCleared === 0 ? 100 : linesCleared === 1 ? 200 : 400;
-          break;
-        case 'T-Spin-Single':
-          baseScore = 800;
-          break;
-        case 'T-Spin-Double':
-          baseScore = 1200;
-          break;
-        case 'T-Spin-Triple':
-          baseScore = 1600;
-          break;
-      }
-    } else if (linesCleared > 0) {
-      const lineScores = [0, 100, 300, 500, 800]; // Single, Double, Triple, Tetris
-      baseScore = lineScores[Math.min(linesCleared, 4)] || 0;
-      isSpecialClear = linesCleared === 4; // Tetris
-    }
-
-    // B2B奖励
-    let b2bBonus = 1;
-    if (isSpecialClear && b2b > 0) {
-      b2bBonus = 1.5; // 50%奖励
-    }
-
-    // 连击奖励
-    let comboBonus = 0;
-    if (comboCount > 0) {
-      comboBonus = Math.min(comboCount * 50, 400);
-    }
-
-    return Math.floor((baseScore * b2bBonus + comboBonus) * level);
-  }, [b2b]);
-
-  const calculateAttack = useCallback((linesCleared: number, tSpinType: string | null, comboCount: number, b2bCount: number): number => {
-    let attackValue = 0;
-    let isSpecialClear = false;
-    
-    if (tSpinType) {
-      isSpecialClear = true;
-      const tSpinAttack = {
-        'Mini T-Spin': linesCleared === 0 ? 0 : linesCleared === 1 ? 0 : 1,
-        'T-Spin-Single': 2,
-        'T-Spin-Double': 4,
-        'T-Spin-Triple': 6
-      };
-      attackValue = tSpinAttack[tSpinType as keyof typeof tSpinAttack] || 0;
-    } else if (linesCleared > 0) {
-      const lineAttack = [0, 0, 1, 2, 4]; // Single, Double, Triple, Tetris
-      attackValue = lineAttack[Math.min(linesCleared, 4)] || 0;
-      isSpecialClear = linesCleared === 4; // Tetris
-    }
-    
-    // B2B奖励
-    if (isSpecialClear && b2bCount > 0) {
-      attackValue += 1; // B2B额外攻击力
-    }
-    
-    // 连击加成
-    if (comboCount > 0) {
-      const comboAttack = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5]; // 连击攻击力表
-      attackValue += comboAttack[Math.min(comboCount, 11)] || 5;
-    }
-    
-    return attackValue;
-  }, []);
-
-  const addGarbageLines = useCallback((count: number) => {
-    if (count <= 0) return;
-    
-    setBoard(prevBoard => {
-      const newBoard = [...prevBoard];
-      // 删除顶部行数
-      newBoard.splice(0, count);
-      
-      // 在底部添加垃圾行
-      for (let i = 0; i < count; i++) {
-        const garbageLine = Array(10).fill(8); // 8表示垃圾块
-        const holePosition = Math.floor(Math.random() * 10);
-        garbageLine[holePosition] = 0; // 随机位置留洞
-        newBoard.push(garbageLine);
-      }
-      
-      return newBoard;
-    });
-  }, []);
 
   const lockPiece = useCallback(() => {
     if (!currentPiece) return;
@@ -210,11 +118,11 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     }
     
     // 计算得分
-    const lineScore = calculateScore(linesCleared, tSpinType, newCombo, level);
+    const lineScore = calculateScore(linesCleared, level, !!tSpinType, b2b > 0, newCombo);
     setScore(prev => prev + lineScore);
     
     // 计算攻击力
-    const attackValue = calculateAttack(linesCleared, tSpinType, newCombo, b2b);
+    const attackValue = calculateAttackLines(linesCleared, !!tSpinType, b2b > 0, newCombo);
     if (attackValue > 0) {
       setTotalAttack(prev => {
         const newTotal = prev + attackValue;
@@ -247,17 +155,23 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     setLevel(newLevel);
     
     setLastAction(null);
+    setCurrentPiece(null);
+    setGhostPiece(null);
     spawnNewPiece();
-  }, [currentPiece, board, level, lines, spawnNewPiece, lastAction, combo, calculateScore, calculateAttack, b2b, mode, startTime]);
+  }, [currentPiece, board, level, lines, lastAction, combo, b2b, mode, startTime, spawnNewPiece]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
     if (!currentPiece || gameOver || paused) return false;
 
-    const newX = currentPiece.x + dx;
-    const newY = currentPiece.y + dy;
+    const newPiece = {
+      ...currentPiece,
+      x: currentPiece.x + dx,
+      y: currentPiece.y + dy
+    };
 
-    if (isValidPosition(board, currentPiece, newX, newY)) {
-      setCurrentPiece(prev => prev ? { ...prev, x: newX, y: newY } : null);
+    if (isValidPosition(board, newPiece)) {
+      setCurrentPiece(newPiece);
+      setGhostPiece(createGhostPiece(board, newPiece));
       setLastAction('move');
       
       if (dy > 0) {
@@ -285,7 +199,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     const kickTests = getKickTests(currentPiece.type.type, currentPiece.rotation, newRotation);
 
     for (const kick of kickTests) {
-      const testPiece = { 
+      const testPiece: GamePiece = { 
         ...currentPiece, 
         type: rotated, 
         x: currentPiece.x + kick.x, 
@@ -295,6 +209,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
       
       if (isValidPosition(board, testPiece)) {
         setCurrentPiece(testPiece);
+        setGhostPiece(createGhostPiece(board, testPiece));
         setLastAction('rotate');
         
         setLockDelay(false);
@@ -313,7 +228,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     const kickTests = getKickTests(currentPiece.type.type, currentPiece.rotation, newRotation);
 
     for (const kick of kickTests) {
-      const testPiece = { 
+      const testPiece: GamePiece = { 
         ...currentPiece, 
         type: rotated, 
         x: currentPiece.x + kick.x, 
@@ -323,6 +238,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
       
       if (isValidPosition(board, testPiece)) {
         setCurrentPiece(testPiece);
+        setGhostPiece(createGhostPiece(board, testPiece));
         setLastAction('rotate');
         
         setLockDelay(false);
@@ -338,7 +254,10 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     const dropY = calculateDropPosition(board, currentPiece);
     const dropDistance = dropY - currentPiece.y;
     setScore(prev => prev + dropDistance * 2); // 硬降奖励分数
-    setCurrentPiece(prev => prev ? { ...prev, y: dropY } : null);
+    
+    const droppedPiece = { ...currentPiece, y: dropY };
+    setCurrentPiece(droppedPiece);
+    setGhostPiece(null);
     
     setTimeout(lockPiece, 50);
   }, [currentPiece, board, gameOver, paused, lockPiece]);
@@ -347,23 +266,21 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     if (!currentPiece || !canHold || gameOver || paused) return;
 
     if (holdPiece) {
-      const newPiece = {
-        type: holdPiece,
-        x: Math.floor(BOARD_WIDTH / 2) - Math.floor(holdPiece.shape[0].length / 2),
-        y: 0, // 修复：从顶部开始
-        rotation: 0
-      };
+      const newPiece = createNewPiece(holdPiece);
       setHoldPiece(currentPiece.type);
       setCurrentPiece(newPiece);
+      setGhostPiece(createGhostPiece(board, newPiece));
     } else {
       setHoldPiece(currentPiece.type);
+      setCurrentPiece(null);
+      setGhostPiece(null);
       spawnNewPiece();
     }
     
     setCanHold(false);
     setLockDelay(false);
     lockDelayTime.current = 0;
-  }, [currentPiece, holdPiece, canHold, gameOver, paused, spawnNewPiece]);
+  }, [currentPiece, holdPiece, canHold, gameOver, paused, spawnNewPiece, board]);
 
   const togglePause = useCallback(() => {
     if (paused) {
@@ -493,6 +410,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     setBoard(Array(20).fill(null).map(() => Array(10).fill(0)));
     setNextPieces(generateSevenBag());
     setCurrentPiece(null);
+    setGhostPiece(null);
     setHoldPiece(null);
     setScore(0);
     setLines(0);
@@ -588,6 +506,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
                 <GameBoard
                   board={board}
                   currentPiece={currentPiece}
+                  ghostPiece={ghostPiece}
                   enableGhost={gameSettings.enableGhost}
                   cellSize={30}
                 />
@@ -622,7 +541,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
             <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
               <h3 className="text-white text-sm mb-3 text-center font-bold">NEXT</h3>
               <div className="space-y-3">
-                {nextPieces.slice(0, 5).map((piece, index) => (
+                {nextPieces.slice(0, 4).map((piece, index) => (
                   <PiecePreview 
                     key={index} 
                     piece={piece} 
@@ -678,6 +597,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
               <GameBoard
                 board={board}
                 currentPiece={currentPiece}
+                ghostPiece={ghostPiece}
                 enableGhost={gameSettings.enableGhost}
                 cellSize={25}
               />
@@ -712,7 +632,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
             </div>
           </div>
 
-          {/* 玩家2区域（对手） */}
+          {/* 玩家 2 区域（对手） */}
           <div className="flex gap-4">
             <div className="space-y-2">
               {nextPieces.slice(0, 3).map((piece, index) => (
