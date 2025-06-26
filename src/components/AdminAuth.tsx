@@ -123,11 +123,11 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         handleFailedAttempt();
         
         if (authError.message.includes('Invalid login credentials')) {
-          throw new Error('密码错误。请检查您在Supabase中设置的admin@tetris.com密码是否正确');
+          throw new Error('邮箱或密码错误。请检查您的登录信息');
         } else if (authError.message.includes('Email not confirmed')) {
-          throw new Error('邮箱未验证。从图片看，admin@tetris.com已确认邮箱，请重试');
+          throw new Error('邮箱未验证。请先验证邮箱');
         } else if (authError.message.includes('User not found')) {
-          throw new Error('管理员账户不存在。请在Supabase用户管理中确认admin@tetris.com账户已创建');
+          throw new Error('管理员账户不存在。请联系系统管理员');
         } else {
           throw new Error(`登录失败: ${authError.message}`);
         }
@@ -251,11 +251,11 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
           </Alert>
         )}
 
-        {/* 显示邮箱确认状态 */}
-        <Alert className="mb-4 border-green-200">
+        {/* 管理员账户状态提示 */}
+        <Alert className="mb-4 border-blue-200">
           <CheckCircle className="h-4 w-4" />
-          <AlertDescription className="text-green-700">
-            admin@tetris.com 邮箱已确认，可以正常登录
+          <AlertDescription className="text-blue-700">
+            请使用 admin@tetris.com 账户登录管理面板
           </AlertDescription>
         </Alert>
 
@@ -282,15 +282,12 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="请输入管理员密码"
                 required
+                disabled={loading}
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? '验证中...' : '登录'}
             </Button>
-            <div className="text-sm text-gray-600 mt-2">
-              <p>✓ admin@tetris.com 邮箱已确认</p>
-              <p>请确保您在Supabase中已为此账户设置了正确的密码</p>
-            </div>
           </form>
         )}
 
@@ -312,6 +309,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
                 placeholder="请输入6位验证码"
                 maxLength={6}
                 required
+                disabled={loading}
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading || mfaCode.length !== 6}>
@@ -322,6 +320,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
               variant="outline" 
               className="w-full" 
               onClick={() => setStep('login')}
+              disabled={loading}
             >
               返回登录
             </Button>
@@ -338,7 +337,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
             <li>• 不要在公共设备上登录</li>
             <li>• 登录失败3次将锁定30分钟</li>
             <li>• 会话将在4小时后自动过期</li>
-            <li>• admin@tetris.com邮箱已确认，可以正常登录</li>
+            <li>• 请确保 admin@tetris.com 账户已在系统中创建</li>
           </ul>
         </div>
       </CardContent>

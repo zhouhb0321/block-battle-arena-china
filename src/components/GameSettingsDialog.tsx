@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,6 +23,11 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
   const [hasChanges, setHasChanges] = useState(false);
   const [tempSettings, setTempSettings] = useState(settings);
 
+  // 当settings更新时，同步更新tempSettings
+  useEffect(() => {
+    setTempSettings(settings);
+  }, [settings]);
+
   const { recordingKey, handleKeyRecord } = useKeyRecording(
     tempSettings,
     setTempSettings,
@@ -35,15 +40,27 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
   };
 
   const handleSaveSettings = async () => {
-    await saveSettings(tempSettings);
-    setHasChanges(false);
-    toast.success('设置已保存！');
+    try {
+      await saveSettings(tempSettings);
+      setHasChanges(false);
+      toast.success('设置已保存！');
+    } catch (error) {
+      console.error('保存设置失败:', error);
+      toast.error('保存设置失败，请重试');
+    }
   };
 
-  if (loading) return null;
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      // 关闭时重置临时设置
+      setTempSettings(settings);
+      setHasChanges(false);
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm">
@@ -60,64 +77,75 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
           </DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue="controls" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="controls"><Keyboard className="w-4 h-4" /></TabsTrigger>
-            <TabsTrigger value="timing"><Gamepad2 className="w-4 h-4" /></TabsTrigger>
-            <TabsTrigger value="visual"><Eye className="w-4 h-4" /></TabsTrigger>
-            <TabsTrigger value="audio"><Volume2 className="w-4 h-4" /></TabsTrigger>
-            <TabsTrigger value="music"><Music className="w-4 h-4" /></TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="controls" className="space-y-4">
-            <ControlsTab
-              settings={tempSettings}
-              recordingKey={recordingKey}
-              onKeyRecord={handleKeyRecord}
-              onSettingChange={handleSettingChange}
-            />
-          </TabsContent>
-          
-          <TabsContent value="timing" className="space-y-4">
-            <TimingTab
-              settings={tempSettings}
-              onSettingChange={handleSettingChange}
-            />
-          </TabsContent>
-          
-          <TabsContent value="visual" className="space-y-4">
-            <VisualTab
-              settings={tempSettings}
-              onSettingChange={handleSettingChange}
-            />
-          </TabsContent>
-          
-          <TabsContent value="audio" className="space-y-4">
-            <AudioTab
-              settings={tempSettings}
-              onSettingChange={handleSettingChange}
-            />
-          </TabsContent>
+        {loading ? (
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+              <p className="text-gray-600">加载设置中...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Tabs defaultValue="controls" className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="controls"><Keyboard className="w-4 h-4" /></TabsTrigger>
+                <TabsTrigger value="timing"><Gamepad2 className="w-4 h-4" /></TabsTrigger>
+                <TabsTrigger value="visual"><Eye className="w-4 h-4" /></TabsTrigger>
+                <TabsTrigger value="audio"><Volume2 className="w-4 h-4" /></TabsTrigger>
+                <TabsTrigger value="music"><Music className="w-4 h-4" /></TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="controls" className="space-y-4">
+                <ControlsTab
+                  settings={tempSettings}
+                  recordingKey={recordingKey}
+                  onKeyRecord={handleKeyRecord}
+                  onSettingChange={handleSettingChange}
+                />
+              </TabsContent>
+              
+              <TabsContent value="timing" className="space-y-4">
+                <TimingTab
+                  settings={tempSettings}
+                  onSettingChange={handleSettingChange}
+                />
+              </TabsContent>
+              
+              <TabsContent value="visual" className="space-y-4">
+                <VisualTab
+                  settings={tempSettings}
+                  onSettingChange={handleSettingChange}
+                />
+              </TabsContent>
+              
+              <TabsContent value="audio" className="space-y-4">
+                <AudioTab
+                  settings={tempSettings}
+                  onSettingChange={handleSettingChange}
+                />
+              </TabsContent>
 
-          <TabsContent value="music" className="space-y-4">
-            <MusicTab
-              settings={tempSettings}
-              onSettingChange={handleSettingChange}
-            />
-          </TabsContent>
-        </Tabs>
-        
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          {hasChanges && (
-            <Button onClick={handleSaveSettings} className="bg-green-600 hover:bg-green-700">
-              <Save className="w-4 h-4 mr-2" />
-              保存设置
-            </Button>
-          )}
-          <Button variant="outline" onClick={() => setIsOpen(false)}>
-            关闭
-          </Button>
-        </div>
+              <TabsContent value="music" className="space-y-4">
+                <MusicTab
+                  settings={tempSettings}
+                  onSettingChange={handleSettingChange}
+                />
+              </TabsContent>
+            </Tabs>
+            
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              {hasChanges && (
+                <Button onClick={handleSaveSettings} className="bg-green-600 hover:bg-green-700">
+                  <Save className="w-4 h-4 mr-2" />
+                  保存设置
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setIsOpen(false)}>
+                关闭
+              </Button>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

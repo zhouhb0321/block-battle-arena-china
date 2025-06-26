@@ -110,21 +110,14 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
     }
   };
 
-  // 如果正在加载
+  // 如果正在加载，不显示任何内容
   if (loading) {
-    return (
-      <div 
-        className="bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center"
-        style={{ width, height }}
-      >
-        <span className="text-gray-500 text-sm">加载中...</span>
-      </div>
-    );
+    return null;
   }
 
   // 如果没有广告内容
   if (!adContent) {
-    // 管理员可以看到预留位置
+    // 只有管理员可以看到预留位置
     if (isAdmin) {
       return (
         <div 
