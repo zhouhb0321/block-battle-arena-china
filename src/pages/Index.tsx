@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +45,10 @@ const Index = () => {
     setShowSettings(false);
   };
 
+  const handleViewChange = (view: string) => {
+    setCurrentView(view as 'home' | 'game' | 'settings');
+  };
+
   if (currentView === 'game' && gameConfig) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
@@ -67,7 +72,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-      <NavigationBar />
+      <NavigationBar 
+        currentView={currentView}
+        onViewChange={handleViewChange}
+        onAuthModalOpen={handleAuthModalOpen}
+        isAdmin={user?.email === 'admin@tetris.com'}
+      />
       
       <div className="flex">
         <AdSpace position="left" width={240} height={600} />
@@ -75,31 +85,33 @@ const Index = () => {
         <main className="flex-1 container mx-auto px-6 py-8">
           {/* 英雄区域 */}
           <section className="mb-16 text-center">
-            <h1 className="text-5xl font-extrabold text-white mb-4">
+            <h1 className="text-5xl font-extrabold text-white mb-4 drop-shadow-lg">
               方块竞技场
-              <Badge variant="outline" className="ml-2 text-sm">
+              <Badge variant="outline" className="ml-2 text-sm border-white/30 text-white/90">
                 Beta
               </Badge>
             </h1>
-            <p className="text-xl text-blue-200 mb-8">
+            <p className="text-xl text-blue-200 mb-8 drop-shadow-sm">
               经典俄罗斯方块，在线畅玩，随时随地挑战你的极限！
             </p>
             <div className="space-x-4">
-              <Button size="lg" onClick={() => handleGameStart('single', 'endless')}>
+              <Button size="lg" onClick={() => handleGameStart('single', 'endless')} className="shadow-lg">
                 <Play className="w-5 h-5 mr-2" />
                 开始游戏
               </Button>
               {!isAuthenticated && (
-                <Button variant="secondary" size="lg" onClick={handleAuthModalOpen}>
+                <Button variant="secondary" size="lg" onClick={handleAuthModalOpen} className="shadow-lg">
                   <Star className="w-5 h-5 mr-2" />
                   注册/登录
                 </Button>
               )}
               {isAuthenticated && (
-                <Button variant="secondary" size="lg" onClick={handleSettingsOpen}>
-                  <Settings className="w-5 h-5 mr-2" />
-                  游戏设置
-                </Button>
+                <GameSettingsDialog trigger={
+                  <Button variant="secondary" size="lg" className="shadow-lg">
+                    <Settings className="w-5 h-5 mr-2" />
+                    游戏设置
+                  </Button>
+                } />
               )}
             </div>
           </section>
@@ -295,24 +307,24 @@ const Index = () => {
 
           {/* 社交分享 */}
           <section className="text-center py-12">
-            <h2 className="text-3xl font-bold text-white mb-4">加入我们的社区</h2>
-            <p className="text-xl text-blue-200 mb-8">
+            <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-sm">加入我们的社区</h2>
+            <p className="text-xl text-blue-200 mb-8 drop-shadow-sm">
               分享你的高分，与朋友一起玩！
             </p>
             <div className="flex justify-center space-x-6">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="text-white hover:text-blue-300 hover:bg-white/10">
                 <Github className="w-5 h-5" />
                 <span className="sr-only">GitHub</span>
               </Button>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="text-white hover:text-blue-300 hover:bg-white/10">
                 <Twitter className="w-5 h-5" />
                 <span className="sr-only">Twitter</span>
               </Button>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="text-white hover:text-blue-300 hover:bg-white/10">
                 <Mail className="w-5 h-5" />
                 <span className="sr-only">Email</span>
               </Button>
-               <Button variant="ghost" size="icon">
+               <Button variant="ghost" size="icon" className="text-white hover:text-blue-300 hover:bg-white/10">
                 <MessageCircle className="w-5 h-5" />
                 <span className="sr-only">Discord</span>
               </Button>
@@ -323,8 +335,7 @@ const Index = () => {
         <AdSpace position="right" width={240} height={600} />
       </div>
 
-      <AuthModal show={showAuthModal} onClose={handleAuthModalClose} />
-      <GameSettingsDialog show={showSettings} onClose={handleSettingsClose} />
+      <AuthModal isOpen={showAuthModal} onClose={handleAuthModalClose} />
     </div>
   );
 };
