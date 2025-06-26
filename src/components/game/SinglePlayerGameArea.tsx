@@ -33,6 +33,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   showCountdown = false,
   onCountdownEnd = () => {}
 }) => {
+  const mainCellSize = 30; // 主游戏板的方块大小
+
   return (
     <div className="flex gap-6 items-center justify-center w-full min-h-screen">
       {/* 左侧广告位 */}
@@ -46,7 +48,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           <PiecePreview 
             piece={gameState.holdPiece?.type || null} 
             title="HOLD" 
-            size="medium" 
+            cellSize={mainCellSize}
           />
           
           <GameStatusIndicators 
@@ -89,7 +91,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               currentPiece={gameState.currentPiece}
               ghostPiece={gameState.ghostPiece}
               enableGhost={gameSettings.enableGhost}
-              cellSize={30}
+              cellSize={mainCellSize}
             />
             
             <GameOverlay
@@ -109,7 +111,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           </div>
         </div>
 
-        {/* 右侧NEXT面板 - 显示4个方块 */}
+        {/* 右侧NEXT面板 - 显示4个方块，使用与主游戏板相同的方块大小 */}
         <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
           <h3 className="text-white text-sm mb-3 text-center font-bold">NEXT</h3>
           <div className="space-y-3">
@@ -118,7 +120,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                 key={index} 
                 piece={piece.type} 
                 title="" 
-                size="medium"
+                cellSize={mainCellSize}
               />
             ))}
           </div>

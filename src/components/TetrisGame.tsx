@@ -1,190 +1,127 @@
 
-import React, { useState } from 'react';
-import { useGame } from '@/contexts/GameContext';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { useGameLogic } from '@/hooks/useGameLogic';
+import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
-import GameController from './game/GameController';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import GameModeSelector from './GameModeSelector';
 import SinglePlayerGameArea from './game/SinglePlayerGameArea';
 import MultiPlayerGameArea from './game/MultiPlayerGameArea';
+import GameCountdown from './GameCountdown';
+import type { GameMode, GameSettings } from '@/utils/gameTypes';
 
 interface TetrisGameProps {
-  mode: 'single' | 'multi';
-  gameType?: 'sprint40' | 'ultra2min' | 'endless';
-  onBackToMenu?: () => void;
+  onBackToMenu: () => void;
 }
 
-const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onBackToMenu }) => {
-  const { gameSettings, resetGame, pauseGame, resumeGame } = useGame();
+const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
   const { user } = useAuth();
-  const [showCountdown, setShowCountdown] = useState(true);
+  const { t } = useLanguage();
+  const { settings } = useUserSettings();
+  const [gameMode, setGameMode] = useState<GameMode>('sprint');
+  const [showModeSelector, setShowModeSelector] = useState(true);
+  const [showCountdown, setShowCountdown] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
 
-  const handleShare = () => {
-    const url = window.location.href;
-    const text = `我在方块竞技场获得了高分！一起来挑战吧！`;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: '方块竞技场',
-        text: text,
-        url: url
-      });
-    } else {
-      navigator.clipboard.writeText(`${text} ${url}`);
-      toast.success('分享链接已复制到剪贴板');
-    }
+  const gameSettings: GameSettings = {
+    enableGhost: settings.enableGhost,
+    enableSound: settings.enableSound,
+    masterVolume: settings.masterVolume,
+    arr: settings.arr,
+    das: settings.das,
+    sdf: settings.sdf,
+    controls: settings.controls
   };
 
-  const handleBackToMenu = () => {
-    console.log('TetrisGame handleBackToMenu called');
-    if (onBackToMenu) {
-      onBackToMenu();
-    } else {
-      // 如果没有提供回调，默认返回首页
-      window.location.href = '/';
-    }
+  // 计算下落速度，基于消除行数实现5级速度系统
+  const calculateDropSpeed = useCallback((lines: number): number => {
+    const baseSpeed = 1000; // 基础速度1秒
+    const level = Math.min(Math.floor(lines / 40), 4); // 每40行提升一级，最多5级
+    const speedMultiplier = Math.pow(1.5, level); // 1.5的幂次方
+    return Math.max(baseSpeed / speedMultiplier, 50); // 最快不超过50ms
+  }, []);
+
+  const {
+    gameState,
+    startGame,
+    pauseGame,
+    resetGame,
+    shareGame
+  } = useGameLogic(gameMode, gameSettings, calculateDropSpeed);
+
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+
+  useKeyboardControls(
+    gameState,
+    gameSettings.controls,
+    gameContainerRef,
+    gameStarted && !gameState.paused && !gameState.gameOver
+  );
+
+  const handleModeSelect = (mode: GameMode) => {
+    setGameMode(mode);
+    setShowModeSelector(false);
+    setShowCountdown(true);
   };
 
   const handleCountdownEnd = () => {
     setShowCountdown(false);
     setGameStarted(true);
+    startGame(); // 确保在倒计时结束后开始游戏
   };
 
+  const handleBackToMenu = () => {
+    resetGame();
+    setGameStarted(false);
+    setShowModeSelector(true);
+    onBackToMenu();
+  };
+
+  const handleReset = () => {
+    resetGame();
+    setGameStarted(false);
+    setShowCountdown(true);
+  };
+
+  if (showModeSelector) {
+    return (
+      <GameModeSelector
+        onModeSelect={handleModeSelect}
+        onBackToMenu={handleBackToMenu}
+      />
+    );
+  }
+
   return (
-    <div className="flex gap-4 p-4 justify-center min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-      {gameStarted ? (
-        <GameController
+    <div ref={gameContainerRef} className="w-full h-full relative" tabIndex={0}>
+      {gameMode === 'versus' ? (
+        <MultiPlayerGameArea
+          gameState={gameState}
           gameSettings={gameSettings}
-          mode={mode}
+          username={user?.username || t('common.guest')}
+          onPause={pauseGame}
+          onShare={shareGame}
+          onReset={handleReset}
           onBackToMenu={handleBackToMenu}
-          resetGame={resetGame}
-          pauseGame={pauseGame}
-          resumeGame={resumeGame}
-        >
-          {({ gameState, onTogglePause, onReset }) => {
-            // Convert gameState to proper GameState format
-            const convertedGameState = {
-              board: gameState.board,
-              currentPiece: gameState.currentPiece,
-              nextPieces: gameState.nextPieces,
-              holdPiece: gameState.holdPiece,
-              score: gameState.score,
-              lines: gameState.lines,
-              level: gameState.level,
-              gameOver: gameState.gameOver,
-              paused: gameState.paused,
-              canHold: gameState.canHold,
-              combo: gameState.combo,
-              b2b: gameState.b2b,
-              pieces: gameState.pieces,
-              startTime: gameState.startTime,
-              clearingLines: [],
-              ghostPiece: gameState.ghostPiece,
-              attack: gameState.attack || gameState.totalAttack,
-              pps: gameState.pps,
-              apm: gameState.apm
-            };
-
-            return (
-              <>
-                {mode === 'single' && (
-                  <SinglePlayerGameArea
-                    gameState={convertedGameState}
-                    gameSettings={gameSettings}
-                    username={user?.username || '游客'}
-                    onPause={onTogglePause}
-                    onShare={handleShare}
-                    onReset={onReset}
-                    onBackToMenu={handleBackToMenu}
-                  />
-                )}
-
-                {mode === 'multi' && (
-                  <MultiPlayerGameArea
-                    gameState={convertedGameState}
-                    gameSettings={gameSettings}
-                    username={user?.username || '玩家1'}
-                    onPause={onTogglePause}
-                    onShare={handleShare}
-                    onReset={onReset}
-                    onBackToMenu={handleBackToMenu}
-                  />
-                )}
-              </>
-            );
-          }}
-        </GameController>
+          opponentState={gameState}
+          opponentUsername="对手"
+          showCountdown={showCountdown}
+          onCountdownEnd={handleCountdownEnd}
+        />
       ) : (
-        // 显示倒计时界面，背景显示游戏布局但不可交互
-        <div className="relative w-full">
-          {mode === 'single' && (
-            <SinglePlayerGameArea
-              gameState={{
-                board: Array(20).fill(null).map(() => Array(10).fill(0)),
-                currentPiece: null,
-                nextPieces: [],
-                holdPiece: null,
-                score: 0,
-                lines: 0,
-                level: 1,
-                gameOver: false,
-                paused: false,
-                canHold: true,
-                combo: -1,
-                b2b: 0,
-                pieces: 0,
-                startTime: Date.now(),
-                clearingLines: [],
-                ghostPiece: null,
-                attack: 0,
-                pps: 0,
-                apm: 0
-              }}
-              gameSettings={gameSettings}
-              username={user?.username || '游客'}
-              onPause={() => {}}
-              onShare={handleShare}
-              onReset={() => {}}
-              onBackToMenu={handleBackToMenu}
-              showCountdown={showCountdown}
-              onCountdownEnd={handleCountdownEnd}
-            />
-          )}
-
-          {mode === 'multi' && (
-            <MultiPlayerGameArea
-              gameState={{
-                board: Array(20).fill(null).map(() => Array(10).fill(0)),
-                currentPiece: null,
-                nextPieces: [],
-                holdPiece: null,
-                score: 0,
-                lines: 0,
-                level: 1,
-                gameOver: false,
-                paused: false,
-                canHold: true,
-                combo: -1,
-                b2b: 0,
-                pieces: 0,
-                startTime: Date.now(),
-                clearingLines: [],
-                ghostPiece: null,
-                attack: 0,
-                pps: 0,
-                apm: 0
-              }}
-              gameSettings={gameSettings}
-              username={user?.username || '玩家1'}
-              onPause={() => {}}
-              onShare={handleShare}
-              onReset={() => {}}
-              onBackToMenu={handleBackToMenu}
-              showCountdown={showCountdown}
-              onCountdownEnd={handleCountdownEnd}
-            />
-          )}
-        </div>
+        <SinglePlayerGameArea
+          gameState={gameState}
+          gameSettings={gameSettings}
+          username={user?.username || t('common.guest')}
+          onPause={pauseGame}
+          onShare={shareGame}
+          onReset={handleReset}
+          onBackToMenu={handleBackToMenu}
+          showCountdown={showCountdown}
+          onCountdownEnd={handleCountdownEnd}
+        />
       )}
     </div>
   );

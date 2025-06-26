@@ -14,6 +14,8 @@ interface MultiPlayerGameAreaProps {
   gameState: GameState;
   gameSettings: GameSettings;
   username: string;
+  opponentState: GameState;
+  opponentUsername: string;
   onPause: () => void;
   onShare: () => void;
   onReset: () => void;
@@ -26,6 +28,8 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
   gameState,
   gameSettings,
   username,
+  opponentState,
+  opponentUsername,
   onPause,
   onShare,
   onReset,
@@ -33,21 +37,24 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
   showCountdown = false,
   onCountdownEnd = () => {}
 }) => {
-  return (
-    <div className="flex gap-6 items-center justify-center w-full">
-      {/* 左侧广告位 */}
-      <AdSpace position="left" width={240} height={600} />
+  const mainCellSize = 30; // 主游戏板的方块大小
 
-      {/* 主游戏区域 */}
-      <div className="flex gap-6">
-        {/* 玩家1区域 */}
+  return (
+    <div className="flex gap-6 items-center justify-center w-full min-h-screen">
+      {/* 左侧广告位 */}
+      <div className="hidden xl:block">
+        <AdSpace position="left" width={240} height={600} />
+      </div>
+
+      <div className="flex gap-8 items-start">
+        {/* 玩家1游戏区域 */}
         <div className="flex gap-4 items-start">
-          {/* 左侧信息面板 */}
+          {/* 玩家1左侧信息面板 */}
           <div className="flex flex-col gap-4">
             <PiecePreview 
               piece={gameState.holdPiece?.type || null} 
               title="HOLD" 
-              size="small" 
+              cellSize={mainCellSize}
             />
             
             <GameStatusIndicators 
@@ -55,20 +62,10 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
               b2b={gameState.b2b || 0}
               totalAttack={gameState.attack || 0}
             />
-
-            {/* 返回菜单按钮 */}
-            <Button 
-              onClick={onBackToMenu}
-              variant="outline"
-              size="sm"
-              className="w-full bg-red-50 hover:bg-red-100 border-red-200 text-red-700"
-            >
-              返回菜单
-            </Button>
           </div>
 
-          {/* 游戏板 */}
-          <div className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 relative">
+          {/* 玩家1主游戏区域 */}
+          <div className="bg-gray-800 p-6 rounded-lg shadow-2xl border border-gray-700 relative">
             <GameInfo
               username={username}
               score={gameState.score}
@@ -80,7 +77,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
               paused={gameState.paused}
               onPause={onPause}
               onShare={onShare}
-              mode="multi"
+              mode="versus"
               combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}
             />
             
@@ -90,7 +87,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
                 currentPiece={gameState.currentPiece}
                 ghostPiece={gameState.ghostPiece}
                 enableGhost={gameSettings.enableGhost}
-                cellSize={25}
+                cellSize={mainCellSize}
               />
               
               <GameOverlay
@@ -110,44 +107,78 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
             </div>
           </div>
 
-          {/* 右侧NEXT面板 - 显示4个方块 */}
-          <div className="bg-gray-800 p-3 rounded-lg shadow-lg">
-            <h3 className="text-white text-xs mb-2 text-center font-bold">NEXT</h3>
-            <div className="space-y-2">
+          {/* 玩家1右侧NEXT面板 */}
+          <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
+            <h3 className="text-white text-sm mb-3 text-center font-bold">NEXT</h3>
+            <div className="space-y-3">
               {gameState.nextPieces.slice(0, 4).map((piece, index) => (
                 <PiecePreview 
                   key={index} 
                   piece={piece.type} 
                   title="" 
-                  size="small" 
+                  cellSize={mainCellSize}
                 />
               ))}
             </div>
           </div>
         </div>
 
-        {/* 对手区域 (占位符) */}
-        <div className="flex gap-4 opacity-50 items-start">
+        {/* 玩家2游戏区域 */}
+        <div className="flex gap-4 items-start">
+          {/* 玩家2左侧信息面板 */}
           <div className="flex flex-col gap-4">
             <PiecePreview 
-              piece={null} 
+              piece={opponentState.holdPiece?.type || null} 
               title="HOLD" 
-              size="small" 
+              cellSize={mainCellSize}
+            />
+            
+            <GameStatusIndicators 
+              combo={opponentState.combo || -1}
+              b2b={opponentState.b2b || 0}
+              totalAttack={opponentState.attack || 0}
             />
           </div>
 
-          <div className="bg-gray-700 p-4 rounded-lg shadow-lg border border-gray-600 relative">
-            <div className="text-white text-center mb-2 text-sm">对手</div>
-            <div className="w-64 h-80 bg-gray-600 rounded border-2 border-gray-500 flex items-center justify-center">
-              <span className="text-gray-400 text-sm">等待对手...</span>
+          {/* 玩家2主游戏区域 */}
+          <div className="bg-gray-800 p-6 rounded-lg shadow-2xl border border-gray-700 relative">
+            <GameInfo
+              username={opponentUsername}
+              score={opponentState.score}
+              lines={opponentState.lines}
+              level={opponentState.level}
+              pieces={opponentState.pieces || 0}
+              pps={opponentState.pps || 0}
+              attack={opponentState.apm || 0}
+              paused={opponentState.paused}
+              onPause={() => {}}
+              onShare={() => {}}
+              mode="versus"
+              combo={opponentState.combo && opponentState.combo >= 0 ? opponentState.combo : undefined}
+            />
+            
+            <div className="relative">
+              <GameBoard
+                board={opponentState.board}
+                currentPiece={opponentState.currentPiece}
+                ghostPiece={opponentState.ghostPiece}
+                enableGhost={gameSettings.enableGhost}
+                cellSize={mainCellSize}
+              />
             </div>
           </div>
 
-          <div className="bg-gray-700 p-3 rounded-lg shadow-lg">
-            <h3 className="text-gray-400 text-xs mb-2 text-center font-bold">NEXT</h3>
-            <div className="space-y-2">
-              {[1, 2, 3, 4].map((index) => (
-                <div key={index} className="w-12 h-8 bg-gray-600 rounded"></div>
+          {/* 玩家2右侧NEXT面板 */}
+          <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
+            <h3 className="text-white text-sm mb-3 text-center font-bold">NEXT</h3>
+            <div className="space-y-3">
+              {opponentState.nextPieces.slice(0, 4).map((piece, index) => (
+                <PiecePreview 
+                  key={index} 
+                  piece={piece.type} 
+                  title="" 
+                  cellSize={mainCellSize}
+                />
               ))}
             </div>
           </div>
@@ -155,7 +186,16 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
       </div>
 
       {/* 右侧广告位 */}
-      <AdSpace position="right" width={240} height={600} />
+      <div className="hidden xl:block">
+        <AdSpace position="right" width={240} height={600} />
+      </div>
+
+      {/* 控制按钮 */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        <Button onClick={onBackToMenu} variant="outline" size="sm">
+          返回菜单
+        </Button>
+      </div>
     </div>
   );
 };

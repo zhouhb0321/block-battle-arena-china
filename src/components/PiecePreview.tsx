@@ -1,75 +1,90 @@
 
 import React from 'react';
-import type { TetrominoType } from '@/utils/gameTypes';
+import { PIECE_SHAPES } from '@/utils/tetrisLogic';
+import type { PieceType } from '@/utils/gameTypes';
 
 interface PiecePreviewProps {
-  piece: TetrominoType | null;
+  piece: PieceType | null;
   title: string;
   size?: 'small' | 'medium' | 'large';
+  cellSize?: number; // 新增：允许自定义方块大小
 }
 
 const PiecePreview: React.FC<PiecePreviewProps> = ({ 
   piece, 
   title, 
-  size = 'medium' 
+  size = 'medium',
+  cellSize 
 }) => {
-  const sizeMap = {
-    small: { container: 'w-20 h-16', cellSize: 10, text: 'text-xs' },
-    medium: { container: 'w-28 h-20', cellSize: 14, text: 'text-sm' },
-    large: { container: 'w-32 h-24', cellSize: 16, text: 'text-base' }
+  // 根据size确定方块大小，优先使用传入的cellSize
+  const getCellSize = () => {
+    if (cellSize) return cellSize;
+    switch (size) {
+      case 'small': return 15;
+      case 'medium': return 20;
+      case 'large': return 25;
+      default: return 20;
+    }
   };
 
-  const { container, cellSize, text } = sizeMap[size];
+  const actualCellSize = getCellSize();
 
-  const drawBlock = (color: string, key: string) => (
-    <div
-      key={key}
-      className="rounded-sm transition-all duration-200"
-      style={{ 
-        backgroundColor: color,
-        width: `${cellSize}px`,
-        height: `${cellSize}px`,
-        boxShadow: '0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
-        border: '1px solid rgba(255,255,255,0.1)'
-      }}
-    />
-  );
+  const renderPiece = () => {
+    if (!piece) {
+      return (
+        <div 
+          className="bg-gray-700 border border-gray-600 rounded"
+          style={{ 
+            width: actualCellSize * 4, 
+            height: actualCellSize * 2 
+          }}
+        />
+      );
+    }
+
+    const shape = PIECE_SHAPES[piece][0];
+    const pieceColors = {
+      I: '#00f0f0',
+      O: '#f0f000',
+      T: '#a000f0',
+      S: '#00f000',
+      Z: '#f00000',
+      J: '#0000f0',
+      L: '#f0a000'
+    };
+
+    return (
+      <div className="relative">
+        {shape.map((row, y) => (
+          <div key={y} className="flex">
+            {row.map((cell, x) => (
+              <div
+                key={x}
+                className={`border border-gray-800 ${
+                  cell ? 'opacity-100' : 'opacity-0'
+                }`}
+                style={{
+                  width: actualCellSize,
+                  height: actualCellSize,
+                  backgroundColor: cell ? pieceColors[piece] : 'transparent'
+                }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="bg-gray-800 p-3 rounded-lg border border-gray-700 shadow-lg">
+    <div className="bg-gray-800 p-3 rounded-lg">
       {title && (
-        <h3 className={`text-white ${text} mb-2 text-center font-bold tracking-wide`}>
+        <h3 className="text-white text-xs mb-2 text-center font-bold">
           {title}
         </h3>
       )}
-      <div className={`${container} bg-gray-900 border border-gray-600 flex items-center justify-center rounded shadow-inner relative`}>
-        {piece ? (
-          <div 
-            className="grid gap-0.5" 
-            style={{ 
-              gridTemplateColumns: `repeat(${piece.shape[0].length}, 1fr)`,
-              transform: 'scale(0.9)'
-            }}
-          >
-            {piece.shape.map((row, y) =>
-              row.map((cell, x) => 
-                cell ? drawBlock(piece.color, `${y}-${x}`) : (
-                  <div
-                    key={`${y}-${x}`}
-                    style={{ 
-                      width: `${cellSize}px`,
-                      height: `${cellSize}px` 
-                    }}
-                  />
-                )
-              )
-            )}
-          </div>
-        ) : (
-          <div className="text-gray-600 text-xs text-center">
-            空
-          </div>
-        )}
+      <div className="flex justify-center items-center min-h-[40px]">
+        {renderPiece()}
       </div>
     </div>
   );
