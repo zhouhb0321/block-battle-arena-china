@@ -256,7 +256,10 @@ export type Database = {
           total_lines: number
           total_score: number
           updated_at: string
+          user_type: string | null
           username: string
+          username_changes_count: number | null
+          username_last_changed_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -272,7 +275,10 @@ export type Database = {
           total_lines?: number
           total_score?: number
           updated_at?: string
+          user_type?: string | null
           username: string
+          username_changes_count?: number | null
+          username_last_changed_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -288,7 +294,10 @@ export type Database = {
           total_lines?: number
           total_score?: number
           updated_at?: string
+          user_type?: string | null
           username?: string
+          username_changes_count?: number | null
+          username_last_changed_at?: string | null
         }
         Relationships: []
       }
