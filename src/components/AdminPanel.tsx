@@ -9,13 +9,16 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, Globe, DollarSign, Settings, AlertTriangle } from 'lucide-react';
+import { Shield, Globe, DollarSign, Settings, AlertTriangle, Users, Trophy, Target } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const AdminPanel: React.FC = () => {
+  const { t } = useLanguage();
+  
   const [ads, setAds] = useState([
     {
       id: '1',
-      title: '示例广告 - 中国区',
+      title: t('ad.placeholder') + ' - 中国区',
       content: '这是一个面向中国用户的广告内容',
       position: 'left' as const,
       region: 'CN',
@@ -26,7 +29,7 @@ const AdminPanel: React.FC = () => {
     },
     {
       id: '2', 
-      title: 'Sample Ad - US',
+      title: t('ad.placeholder') + ' - US',
       content: 'This is an ad targeted for US users',
       position: 'right' as const,
       region: 'US',
@@ -45,12 +48,28 @@ const AdminPanel: React.FC = () => {
     withdrawThreshold: 100
   });
 
+  const [rankSettings, setRankSettings] = useState({
+    basePoints: 1000,
+    winPoints: 25,
+    losePoints: 15,
+    promotionThreshold: 100,
+    demotionThreshold: 50
+  });
+
+  const [userStats, setUserStats] = useState({
+    totalUsers: 12543,
+    activeUsers: 3241,
+    premiumUsers: 156,
+    totalMatches: 45123
+  });
+
   const regions = [
     { code: 'CN', name: '中国', flag: '🇨🇳' },
     { code: 'US', name: '美国', flag: '🇺🇸' },
     { code: 'JP', name: '日本', flag: '🇯🇵' },
     { code: 'KR', name: '韩国', flag: '🇰🇷' },
     { code: 'TW', name: '台湾', flag: '🇹🇼' },
+    { code: 'ES', name: '西班牙', flag: '🇪🇸' },
     { code: 'GLOBAL', name: '全球', flag: '🌍' }
   ];
 
@@ -59,7 +78,8 @@ const AdminPanel: React.FC = () => {
     { code: 'zh-TW', name: '繁體中文' },
     { code: 'en', name: 'English' },
     { code: 'ja', name: '日本語' },
-    { code: 'ko', name: '한국어' }
+    { code: 'ko', name: '한국어' },
+    { code: 'es', name: 'Español' }
   ];
 
   const handleAdUpdate = (adId: string, updates: any) => {
@@ -72,22 +92,103 @@ const AdminPanel: React.FC = () => {
     setPaymentSettings(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleRankUpdate = (field: string, value: any) => {
+    setRankSettings(prev => ({ ...prev, [field]: value }));
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-6">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <Shield className="w-8 h-8 text-yellow-500" />
-          <h1 className="text-3xl font-bold">管理员控制面板</h1>
+          <h1 className="text-3xl font-bold">{t('admin.panel')}</h1>
         </div>
         <p className="text-gray-600">系统管理和配置中心</p>
       </div>
 
-      <Tabs defaultValue="ads" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">概览</TabsTrigger>
           <TabsTrigger value="ads">广告管理</TabsTrigger>
           <TabsTrigger value="payments">支付设置</TabsTrigger>
+          <TabsTrigger value="ranking">排位设置</TabsTrigger>
           <TabsTrigger value="system">系统设置</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">总用户数</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{userStats.totalUsers.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">+12% 较上月</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">活跃用户</CardTitle>
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{userStats.activeUsers.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">今日在线</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">付费用户</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{userStats.premiumUsers}</div>
+                <p className="text-xs text-muted-foreground">+5% 较上月</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">总对局数</CardTitle>
+                <Trophy className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{userStats.totalMatches.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">+24% 较上月</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>管理员功能快速访问</CardTitle>
+              <CardDescription>常用管理功能的快捷入口</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Button variant="outline" className="h-20 flex-col">
+                  <Globe className="w-6 h-6 mb-2" />
+                  <span>广告管理</span>
+                </Button>
+                <Button variant="outline" className="h-20 flex-col">
+                  <DollarSign className="w-6 h-6 mb-2" />
+                  <span>收入统计</span>
+                </Button>
+                <Button variant="outline" className="h-20 flex-col">
+                  <Trophy className="w-6 h-6 mb-2" />
+                  <span>排位设置</span>
+                </Button>
+                <Button variant="outline" className="h-20 flex-col">
+                  <Users className="w-6 h-6 mb-2" />
+                  <span>用户管理</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="ads" className="space-y-6">
           <Card>
@@ -326,6 +427,100 @@ const AdminPanel: React.FC = () => {
               
               <Button className="w-full">
                 保存支付设置
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ranking" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="w-5 h-5" />
+                排位系统设置
+              </CardTitle>
+              <CardDescription>
+                配置排位赛的积分规则和晋级要求
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">基础设置</h3>
+                  <div>
+                    <Label htmlFor="basePoints">初始积分</Label>
+                    <Input
+                      id="basePoints"
+                      type="number"
+                      value={rankSettings.basePoints}
+                      onChange={(e) => handleRankUpdate('basePoints', parseInt(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="winPoints">胜利积分</Label>
+                    <Input
+                      id="winPoints"
+                      type="number"
+                      value={rankSettings.winPoints}
+                      onChange={(e) => handleRankUpdate('winPoints', parseInt(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="losePoints">失败扣分</Label>
+                    <Input
+                      id="losePoints"
+                      type="number"
+                      value={rankSettings.losePoints}
+                      onChange={(e) => handleRankUpdate('losePoints', parseInt(e.target.value))}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">晋级设置</h3>
+                  <div>
+                    <Label htmlFor="promotionThreshold">晋级门槛</Label>
+                    <Input
+                      id="promotionThreshold"
+                      type="number"
+                      value={rankSettings.promotionThreshold}
+                      onChange={(e) => handleRankUpdate('promotionThreshold', parseInt(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="demotionThreshold">降级门槛</Label>
+                    <Input
+                      id="demotionThreshold"
+                      type="number"
+                      value={rankSettings.demotionThreshold}
+                      onChange={(e) => handleRankUpdate('demotionThreshold', parseInt(e.target.value))}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">排位等级说明</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                  <div>C-: 0-499</div>
+                  <div>C: 500-699</div>
+                  <div>C+: 700-899</div>
+                  <div>B-: 900-1099</div>
+                  <div>B: 1100-1299</div>
+                  <div>B+: 1300-1499</div>
+                  <div>A-: 1500-1699</div>
+                  <div>A: 1700-1899</div>
+                  <div>A+: 1900-2099</div>
+                  <div>S-: 2100-2299</div>
+                  <div>S: 2300-2499</div>
+                  <div>S+: 2500-2699</div>
+                  <div>SS: 2700-2999</div>
+                  <div>X: 3000+</div>
+                </div>
+              </div>
+              
+              <Button className="w-full">
+                保存排位设置
               </Button>
             </CardContent>
           </Card>

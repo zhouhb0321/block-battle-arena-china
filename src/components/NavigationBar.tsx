@@ -89,7 +89,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
                 className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300"
               >
                 <Shield className="w-4 h-4" />
-                管理后台
+                {t('admin.panel')}
               </Button>
               
               <Button
@@ -98,7 +98,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
                 className="flex items-center gap-2 text-green-400 hover:text-green-300"
               >
                 <DollarSign className="w-4 h-4" />
-                收入系统
+                {t('admin.income')}
               </Button>
             </>
           )}
@@ -112,7 +112,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-gray-400" />
               <span className="text-white">{user.username}</span>
-              {isAdmin && <span className="text-yellow-400 text-sm">[管理员]</span>}
+              {isAdmin && <span className="text-yellow-400 text-sm">[{t('admin.panel')}]</span>}
             </div>
           ) : (
             <Button variant="outline" onClick={onAuthModalOpen}>

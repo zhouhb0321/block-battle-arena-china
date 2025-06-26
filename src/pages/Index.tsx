@@ -123,9 +123,9 @@ const Index = () => {
             
             <Tabs defaultValue="keyboard" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="keyboard">键盘设置</TabsTrigger>
-                <TabsTrigger value="game">游戏设置</TabsTrigger>
-                <TabsTrigger value="shortcuts">快捷方式</TabsTrigger>
+                <TabsTrigger value="keyboard">{t('settings.keyboard')}</TabsTrigger>
+                <TabsTrigger value="game">{t('settings.game')}</TabsTrigger>
+                <TabsTrigger value="shortcuts">{t('settings.shortcuts')}</TabsTrigger>
               </TabsList>
               
               <TabsContent value="keyboard" className="mt-6">
@@ -138,7 +138,7 @@ const Index = () => {
                     <GameSettingsDialog trigger={
                       <Button className="w-full">
                         <Settings className="w-4 h-4 mr-2" />
-                        打开游戏设置
+                        {t('common.openSettings')}
                       </Button>
                     } />
                   </CardContent>
@@ -170,7 +170,7 @@ const Index = () => {
               <Button onClick={handleBackToMenu} variant="outline">
                 ← {t('nav.home')}
               </Button>
-              <h1 className="text-3xl font-bold text-white">游戏回放</h1>
+              <h1 className="text-3xl font-bold text-white">{t('replay.title')}</h1>
             </div>
             <ReplaySystem />
           </div>
@@ -234,19 +234,19 @@ const Index = () => {
               <h1 className="text-6xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                 {t('game.title')}
               </h1>
-              <p className="text-xl text-gray-300">体验最纯粹的俄罗斯方块竞技</p>
+              <p className="text-xl text-gray-300">{t('game.description')}</p>
             </div>
 
             {/* 用户信息 */}
             <div className="text-center mb-8">
               {user && !user.isGuest ? (
                 <p className="text-white">
-                  欢迎回来，<span className="font-semibold text-blue-400">{user.username}</span>！
-                  {isAdmin && <span className="ml-2 text-yellow-400">[管理员]</span>}
+                  {t('common.welcome')}，<span className="font-semibold text-blue-400">{user.username}</span>！
+                  {isAdmin && <span className="ml-2 text-yellow-400">[{t('admin.panel')}]</span>}
                 </p>
               ) : (
                 <p className="text-gray-300">
-                  游客模式 | 
+                  {t('common.guestMode')} | 
                   <Button 
                     variant="link" 
                     className="text-blue-400 p-0 ml-2"
@@ -267,7 +267,7 @@ const Index = () => {
                     <Play className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-2">{t('game.singlePlayer')}</h3>
-                  <p className="text-gray-300 mb-4">挑战自己的极限，刷新个人记录</p>
+                  <p className="text-gray-300 mb-4">{t('game.singlePlayerDesc')}</p>
                   <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                     {t('game.play')}
                   </Button>
@@ -281,9 +281,9 @@ const Index = () => {
                     <Users className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-2">{t('game.multiPlayer')}</h3>
-                  <p className="text-gray-300 mb-4">与全球玩家实时对战</p>
+                  <p className="text-gray-300 mb-4">{t('game.multiPlayerDesc')}</p>
                   <Button className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
-                    {user && !user.isGuest ? '开始匹配' : '需要登录'}
+                    {user && !user.isGuest ? t('common.startMatch') : t('common.needLogin')}
                   </Button>
                 </CardContent>
               </Card>
@@ -295,9 +295,9 @@ const Index = () => {
                     <Trophy className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-2">{t('game.ranked')}</h3>
-                  <p className="text-gray-300 mb-4">争夺最高段位排名</p>
+                  <p className="text-gray-300 mb-4">{t('game.rankedDesc')}</p>
                   <Button className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700">
-                    {user && !user.isGuest ? '开始排位' : '需要登录'}
+                    {user && !user.isGuest ? t('common.startRank') : t('common.needLogin')}
                   </Button>
                 </CardContent>
               </Card>
@@ -310,7 +310,7 @@ const Index = () => {
                 <CardContent className="p-6 text-center" onClick={() => setCurrentView('settings')}>
                   <Settings className="w-8 h-8 mx-auto mb-3 text-gray-400" />
                   <h4 className="font-semibold text-white mb-2">{t('nav.settings')}</h4>
-                  <p className="text-sm text-gray-400">自定义按键和游戏参数</p>
+                  <p className="text-sm text-gray-400">{t('settings.controlsDesc')}</p>
                 </CardContent>
               </Card>
 
@@ -318,8 +318,8 @@ const Index = () => {
               <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer">
                 <CardContent className="p-6 text-center" onClick={() => setCurrentView('replays')}>
                   <Gamepad2 className="w-8 h-8 mx-auto mb-3 text-gray-400" />
-                  <h4 className="font-semibold text-white mb-2">回放系统</h4>
-                  <p className="text-sm text-gray-400">观看和分析游戏录像</p>
+                  <h4 className="font-semibold text-white mb-2">{t('replay.title')}</h4>
+                  <p className="text-sm text-gray-400">{t('replay.description')}</p>
                 </CardContent>
               </Card>
 
@@ -328,8 +328,8 @@ const Index = () => {
                 <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer">
                   <CardContent className="p-6 text-center" onClick={() => setCurrentView('admin')}>
                     <Trophy className="w-8 h-8 mx-auto mb-3 text-gray-400" />
-                    <h4 className="font-semibold text-white mb-2">后台管理</h4>
-                    <p className="text-sm text-gray-400">广告和收入管理</p>
+                    <h4 className="font-semibold text-white mb-2">{t('admin.title')}</h4>
+                    <p className="text-sm text-gray-400">{t('admin.description')}</p>
                   </CardContent>
                 </Card>
               )}
@@ -338,15 +338,15 @@ const Index = () => {
               <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer">
                 <CardContent className="p-6 text-center">
                   <Book className="w-8 h-8 mx-auto mb-3 text-gray-400" />
-                  <h4 className="font-semibold text-white mb-2">游戏教程</h4>
-                  <p className="text-sm text-gray-400">学习高级技巧和策略</p>
+                  <h4 className="font-semibold text-white mb-2">{t('tutorial.title')}</h4>
+                  <p className="text-sm text-gray-400">{t('tutorial.description')}</p>
                 </CardContent>
               </Card>
             </div>
 
             {/* 版权信息 */}
             <div className="text-center mt-12 text-gray-500 text-sm">
-              <p>© 2024 {t('game.title')} | 基于现代俄罗斯方块规则</p>
+              <p>© 2024 {t('game.title')} | {t('common.copyright')}</p>
             </div>
           </div>
         </div>
