@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import GameBoard from './GameBoard';
@@ -48,6 +47,7 @@ const FixedTetrisGame: React.FC = () => {
     paused: false,
     gameOver: false,
     clearingLines: [],
+    ghostPiece: null, // 添加幽灵方块状态
     attack: 0,
     pps: 0,
     apm: 0
@@ -90,7 +90,7 @@ const FixedTetrisGame: React.FC = () => {
     return upcoming;
   }, [sevenBag, nextBag, bagIndex]);
 
-  // 生成新方块
+  // 生成新方块 - 修正幽灵方块生成
   const spawnNewPiece = useCallback(() => {
     const nextPieceType = getNextPiece();
     const newPiece = createNewPiece(nextPieceType);
@@ -102,17 +102,20 @@ const FixedTetrisGame: React.FC = () => {
       return;
     }
 
+    // 生成幽灵方块
+    const ghostPiece = createGhostPiece(gameState.board, newPiece);
+
     setGameState(prev => ({
       ...prev,
       currentPiece: newPiece,
       nextPieces: getUpcomingPieces(),
       canHold: true,
       pieces: prev.pieces + 1,
-      ghostPiece: createGhostPiece(prev.board, newPiece)
+      ghostPiece: ghostPiece // 正确设置幽灵方块
     }));
   }, [getNextPiece, getUpcomingPieces, gameState.board]);
 
-  // 移动方块
+  // 移动方块 - 更新幽灵方块位置
   const movePiece = useCallback((dx: number, dy: number) => {
     setGameState(prev => {
       if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
@@ -124,17 +127,20 @@ const FixedTetrisGame: React.FC = () => {
       };
 
       if (isValidPosition(prev.board, newPiece)) {
+        // 更新幽灵方块位置
+        const newGhostPiece = createGhostPiece(prev.board, newPiece);
+        
         return {
           ...prev,
           currentPiece: newPiece,
-          ghostPiece: createGhostPiece(prev.board, newPiece)
+          ghostPiece: newGhostPiece
         };
       }
       return prev;
     });
   }, []);
 
-  // 旋转方块
+  // 旋转方块 - 更新幽灵方块位置
   const rotatePieceClockwise = useCallback(() => {
     setGameState(prev => {
       if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
@@ -157,10 +163,13 @@ const FixedTetrisGame: React.FC = () => {
         };
         
         if (isValidPosition(prev.board, testPiece)) {
+          // 更新幽灵方块位置
+          const newGhostPiece = createGhostPiece(prev.board, testPiece);
+          
           return {
             ...prev,
             currentPiece: testPiece,
-            ghostPiece: createGhostPiece(prev.board, testPiece)
+            ghostPiece: newGhostPiece
           };
         }
       }
@@ -168,7 +177,7 @@ const FixedTetrisGame: React.FC = () => {
     });
   }, []);
 
-  // 瞬时降落
+  // 瞬时降落 - 修正硬降逻辑
   const hardDrop = useCallback(() => {
     setGameState(prev => {
       if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
@@ -185,7 +194,7 @@ const FixedTetrisGame: React.FC = () => {
         ...prev,
         currentPiece: droppedPiece,
         score: prev.score + dropDistance * 2, // 硬降奖励分数
-        ghostPiece: null // 清除幽灵方块
+        ghostPiece: null // 清除幽灵方块，因为已经到达目标位置
       };
     });
 
@@ -270,7 +279,7 @@ const FixedTetrisGame: React.FC = () => {
     });
   }, []);
 
-  // 暂存方块
+  // 暂存方块 - 更新幽灵方块
   const holdPiece = useCallback(() => {
     setGameState(prev => {
       if (!prev.currentPiece || !prev.canHold || prev.paused || prev.gameOver) return prev;
@@ -278,18 +287,20 @@ const FixedTetrisGame: React.FC = () => {
       if (prev.holdPiece) {
         // 交换当前方块和暂存方块
         const newPiece = createNewPiece(prev.holdPiece);
+        const newGhostPiece = createGhostPiece(prev.board, newPiece);
         
         return {
           ...prev,
           holdPiece: prev.currentPiece.type,
           currentPiece: newPiece,
           canHold: false,
-          ghostPiece: createGhostPiece(prev.board, newPiece)
+          ghostPiece: newGhostPiece
         };
       } else {
         // 将当前方块放入暂存，生成新方块
         const nextPieceType = getNextPiece();
         const newPiece = createNewPiece(nextPieceType);
+        const newGhostPiece = createGhostPiece(prev.board, newPiece);
 
         return {
           ...prev,
@@ -297,11 +308,11 @@ const FixedTetrisGame: React.FC = () => {
           currentPiece: newPiece,
           nextPieces: getUpcomingPieces(),
           canHold: false,
-          ghostPiece: createGhostPiece(prev.board, newPiece)
+          ghostPiece: newGhostPiece
         };
       }
     });
-  }, [getNextPiece, getUpcomingPieces]);
+  }, [getNextPiece, getUpcomingPieces, gameState.board]);
 
   // 键盘控制
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
@@ -365,10 +376,11 @@ const FixedTetrisGame: React.FC = () => {
         const newPiece = { ...prev.currentPiece, y: prev.currentPiece.y + 1 };
         
         if (isValidPosition(prev.board, newPiece)) {
+          const newGhostPiece = createGhostPiece(prev.board, newPiece);
           return {
             ...prev,
             currentPiece: newPiece,
-            ghostPiece: createGhostPiece(prev.board, newPiece)
+            ghostPiece: newGhostPiece
           };
         } else {
           // 不能继续下降，触发放置
@@ -433,6 +445,7 @@ const FixedTetrisGame: React.FC = () => {
       paused: false,
       gameOver: false,
       clearingLines: [],
+      ghostPiece: null,
       attack: 0,
       pps: 0,
       apm: 0
@@ -514,7 +527,7 @@ const FixedTetrisGame: React.FC = () => {
           <div className="bg-gray-800 p-4 rounded-lg">
             <h3 className="text-white text-sm mb-3 text-center font-bold">接下来</h3>
             <div className="space-y-3">
-              {gameState.nextPieces.slice(0, 6).map((piece, index) => (
+              {gameState.nextPieces.slice(0, 4).map((piece, index) => (
                 <PiecePreview 
                   key={index} 
                   piece={piece} 

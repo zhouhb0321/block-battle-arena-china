@@ -1,4 +1,3 @@
-
 import type { TetrominoType, GamePiece, ReplayAction } from './gameTypes';
 
 // 标准化方块颜色 - 与经典俄罗斯方块保持一致
@@ -200,13 +199,14 @@ export const clearLines = (board: number[][]): {
   };
 };
 
-// 计算幽灵方块位置
+// 计算幽灵方块位置 - 修正逻辑
 export const calculateDropPosition = (
   board: number[][],
   piece: GamePiece
 ): number => {
   let dropY = piece.y;
   
+  // 从当前位置开始向下寻找可放置的位置
   while (isValidPosition(board, { ...piece, y: dropY + 1 })) {
     dropY++;
   }
@@ -214,7 +214,7 @@ export const calculateDropPosition = (
   return dropY;
 };
 
-// 生成幽灵方块
+// 生成幽灵方块 - 修正显示逻辑
 export const createGhostPiece = (
   board: number[][],
   piece: GamePiece
@@ -403,12 +403,31 @@ export const addGarbageLines = (board: number[][], garbageLines: number[][]): nu
   return [...newBoard, ...garbageLines];
 };
 
-// 创建新方块，确保出现在顶部中央 - 修正位置
+// 创建新方块，确保出现在顶部中央 - 修正位置计算
 export const createNewPiece = (type: TetrominoType): GamePiece => {
+  // 计算方块的实际宽度（去除空白列）
+  let minX = type.shape[0].length;
+  let maxX = -1;
+  
+  for (let y = 0; y < type.shape.length; y++) {
+    for (let x = 0; x < type.shape[y].length; x++) {
+      if (type.shape[y][x] !== 0) {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+      }
+    }
+  }
+  
+  const pieceWidth = maxX - minX + 1;
+  const startX = Math.floor((BOARD_WIDTH - pieceWidth) / 2) - minX;
+  
+  // 从游戏框正上方开始，部分隐藏在顶部
+  const startY = -Math.floor(type.shape.length / 2);
+  
   return {
     type,
-    x: Math.floor(BOARD_WIDTH / 2) - Math.floor(type.shape[0].length / 2),
-    y: -Math.floor(type.shape.length / 2), // 修正：使方块从顶部正上方开始，允许部分隐藏
+    x: startX,
+    y: startY,
     rotation: 0
   };
 };

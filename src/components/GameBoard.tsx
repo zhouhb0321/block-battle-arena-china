@@ -53,11 +53,17 @@ const GameBoard: React.FC<GameBoardProps> = ({
     const drawY = y * cellSize;
     
     if (isGhost) {
-      // 幽灵方块 - 只绘制边框
+      // 幽灵方块 - 虚线边框，更明显的显示
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 4]);
       ctx.strokeRect(drawX + 2, drawY + 2, cellSize - 4, cellSize - 4);
+      
+      // 添加半透明填充，使幽灵方块更明显
+      ctx.fillStyle = color.replace(')', ', 0.2)').replace('rgb', 'rgba');
+      ctx.fill();
+      ctx.fillRect(drawX + 2, drawY + 2, cellSize - 4, cellSize - 4);
+      
       ctx.setLineDash([]);
       return;
     }
@@ -131,16 +137,20 @@ const GameBoard: React.FC<GameBoardProps> = ({
       }
     }
 
-    // 绘制幽灵方块
-    if (ghostPiece && enableGhost) {
+    // 绘制幽灵方块 - 确保在当前方块之前绘制
+    if (ghostPiece && enableGhost && ghostPiece.type) {
       ghostPiece.type.shape.forEach((row, dy) => {
         row.forEach((cell, dx) => {
           if (cell) {
             const drawX = ghostPiece.x + dx;
             const drawY = ghostPiece.y + dy;
             
+            // 只在可见区域内绘制幽灵方块
             if (drawX >= 0 && drawX < BOARD_WIDTH && drawY >= 0 && drawY < BOARD_HEIGHT) {
-              drawBlock(ctx, drawX, drawY, ghostPiece.type.color, true);
+              // 确保不与已放置的方块重叠
+              if (board[drawY][drawX] === 0) {
+                drawBlock(ctx, drawX, drawY, ghostPiece.type.color, true);
+              }
             }
           }
         });
@@ -155,7 +165,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
             const drawX = currentPiece.x + dx;
             const drawY = currentPiece.y + dy;
             
-            // 允许方块部分超出顶部（y < 0）
+            // 允许方块部分超出顶部（y < 0），但只绘制可见部分
             if (drawX >= 0 && drawX < BOARD_WIDTH && drawY < BOARD_HEIGHT) {
               if (drawY >= 0) {
                 drawBlock(ctx, drawX, drawY, currentPiece.type.color);
