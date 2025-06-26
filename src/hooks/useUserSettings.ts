@@ -22,7 +22,9 @@ const DEFAULT_SETTINGS: GameSettings = {
   },
   enableGhost: true,
   enableSound: true,
-  masterVolume: 50
+  masterVolume: 50,
+  backgroundMusic: '',
+  musicVolume: 30
 };
 
 export const useUserSettings = () => {
@@ -77,7 +79,9 @@ export const useUserSettings = () => {
           controls: data.controls as any,
           enableGhost: data.enable_ghost,
           enableSound: data.enable_sound,
-          masterVolume: data.master_volume
+          masterVolume: data.master_volume,
+          backgroundMusic: data.background_music || '',
+          musicVolume: data.music_volume || 30
         };
         setSettings(loadedSettings);
       } else {
@@ -112,7 +116,9 @@ export const useUserSettings = () => {
           controls: updatedSettings.controls,
           enable_ghost: updatedSettings.enableGhost,
           enable_sound: updatedSettings.enableSound,
-          master_volume: updatedSettings.masterVolume
+          master_volume: updatedSettings.masterVolume,
+          background_music: updatedSettings.backgroundMusic || '',
+          music_volume: updatedSettings.musicVolume || 30
         });
 
       if (error) {
@@ -126,6 +132,7 @@ export const useUserSettings = () => {
   return {
     settings,
     saveSettings,
-    loading
+    loading,
+    reloadSettings: loadSettings
   };
 };

@@ -2,15 +2,16 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Keyboard, Volume2, Eye, Gamepad2 } from 'lucide-react';
+import { Settings, Keyboard, Volume2, Eye, Gamepad2, Music, Save } from 'lucide-react';
 import { useUserSettings } from '@/hooks/useUserSettings';
-import type { GameSettings } from '@/utils/gameTypes';
+import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
+import { toast } from 'sonner';
 
 interface GameSettingsDialogProps {
   trigger?: React.ReactNode;
@@ -18,8 +19,28 @@ interface GameSettingsDialogProps {
 
 const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
   const { settings, saveSettings, loading } = useUserSettings();
+  const { musicTracks, playTrack, pauseMusic, setMusicVolume } = useBackgroundMusic();
   const [isOpen, setIsOpen] = useState(false);
   const [recordingKey, setRecordingKey] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [tempSettings, setTempSettings] = useState(settings);
+
+  const handleSettingChange = (key: string, value: any) => {
+    setTempSettings(prev => ({ ...prev, [key]: value }));
+    setHasChanges(true);
+  };
+
+  const handleControlChange = (controlName: string, keyCode: string) => {
+    const newControls = { ...tempSettings.controls, [controlName]: keyCode };
+    setTempSettings(prev => ({ ...prev, controls: newControls }));
+    setHasChanges(true);
+  };
+
+  const handleSaveSettings = async () => {
+    await saveSettings(tempSettings);
+    setHasChanges(false);
+    toast.success('设置已保存！');
+  };
 
   const handleKeyRecord = (controlName: string) => {
     setRecordingKey(controlName);
@@ -28,12 +49,7 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
       e.preventDefault();
       e.stopPropagation();
       
-      const newControls = {
-        ...settings.controls,
-        [controlName]: e.code
-      };
-      
-      saveSettings({ controls: newControls });
+      handleControlChange(controlName, e.code);
       setRecordingKey(null);
       
       document.removeEventListener('keydown', handleKeyPress);
@@ -41,7 +57,6 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
     
     document.addEventListener('keydown', handleKeyPress, { once: true });
     
-    // 5秒后超时
     setTimeout(() => {
       setRecordingKey(null);
       document.removeEventListener('keydown', handleKeyPress);
@@ -50,27 +65,14 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
 
   const getKeyDisplayName = (keyCode: string) => {
     const keyMap: { [key: string]: string } = {
-      'ArrowLeft': '←',
-      'ArrowRight': '→',
-      'ArrowUp': '↑',
-      'ArrowDown': '↓',
-      'Space': '空格',
-      'KeyZ': 'Z',
-      'KeyX': 'X',
-      'KeyC': 'C',
-      'KeyA': 'A',
-      'Escape': 'Esc',
-      'ShiftLeft': 'L-Shift',
-      'ShiftRight': 'R-Shift',
-      'ControlLeft': 'L-Ctrl',
-      'ControlRight': 'R-Ctrl'
+      'ArrowLeft': '←', 'ArrowRight': '→', 'ArrowUp': '↑', 'ArrowDown': '↓',
+      'Space': '空格', 'KeyZ': 'Z', 'KeyX': 'X', 'KeyC': 'C', 'KeyA': 'A',
+      'KeyB': 'B', 'Escape': 'Esc'
     };
     return keyMap[keyCode] || keyCode.replace('Key', '');
   };
 
-  if (loading) {
-    return null;
-  }
+  if (loading) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -82,7 +84,7 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
@@ -91,23 +93,12 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
         </DialogHeader>
         
         <Tabs defaultValue="controls" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="controls" className="flex items-center gap-1">
-              <Keyboard className="w-4 h-4" />
-              按键
-            </TabsTrigger>
-            <TabsTrigger value="timing" className="flex items-center gap-1">
-              <Gamepad2 className="w-4 h-4" />
-              操控
-            </TabsTrigger>
-            <TabsTrigger value="visual" className="flex items-center gap-1">
-              <Eye className="w-4 h-4" />
-              视觉
-            </TabsTrigger>
-            <TabsTrigger value="audio" className="flex items-center gap-1">
-              <Volume2 className="w-4 h-4" />
-              音频
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="controls"><Keyboard className="w-4 h-4" /></TabsTrigger>
+            <TabsTrigger value="timing"><Gamepad2 className="w-4 h-4" /></TabsTrigger>
+            <TabsTrigger value="visual"><Eye className="w-4 h-4" /></TabsTrigger>
+            <TabsTrigger value="audio"><Volume2 className="w-4 h-4" /></TabsTrigger>
+            <TabsTrigger value="music"><Music className="w-4 h-4" /></TabsTrigger>
           </TabsList>
           
           <TabsContent value="controls" className="space-y-4">
@@ -118,15 +109,9 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
               </CardHeader>
               <CardContent className="space-y-3">
                 {Object.entries({
-                  moveLeft: '左移',
-                  moveRight: '右移',
-                  softDrop: '软降',
-                  hardDrop: '硬降',
-                  rotateClockwise: '顺时针旋转',
-                  rotateCounterclockwise: '逆时针旋转',
-                  rotate180: '180°旋转',
-                  hold: '暂存',
-                  pause: '暂停'
+                  moveLeft: '左移', moveRight: '右移', softDrop: '软降', hardDrop: '硬降',
+                  rotateClockwise: '顺时针旋转', rotateCounterclockwise: '逆时针旋转',
+                  rotate180: '180°旋转', hold: '暂存', pause: '暂停', backToMenu: '返回菜单'
                 }).map(([key, label]) => (
                   <div key={key} className="flex items-center justify-between">
                     <Label className="w-32">{label}</Label>
@@ -136,10 +121,8 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
                       onClick={() => handleKeyRecord(key)}
                       className="min-w-24"
                     >
-                      {recordingKey === key 
-                        ? '按下按键...' 
-                        : getKeyDisplayName(settings.controls[key as keyof typeof settings.controls])
-                      }
+                      {recordingKey === key ? '按下按键...' : 
+                        getKeyDisplayName(tempSettings.controls[key as keyof typeof tempSettings.controls])}
                     </Button>
                   </div>
                 ))}
@@ -151,52 +134,31 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">操控设置</CardTitle>
-                <CardDescription>调整按键延迟和重复速率</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label>DAS - 延迟自动移位 ({settings.das}ms)</Label>
+                  <Label>DAS - 延迟自动移位 ({tempSettings.das}ms)</Label>
                   <Slider
-                    value={[settings.das]}
-                    onValueChange={([value]) => saveSettings({ das: value })}
-                    max={300}
-                    min={0}
-                    step={1}
-                    className="w-full"
+                    value={[tempSettings.das]}
+                    onValueChange={([value]) => handleSettingChange('das', value)}
+                    max={300} min={0} step={1}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    按住方向键后开始重复移动的延迟时间
-                  </p>
                 </div>
-                
                 <div className="space-y-2">
-                  <Label>ARR - 自动重复速率 ({settings.arr}ms)</Label>
+                  <Label>ARR - 自动重复速率 ({tempSettings.arr}ms)</Label>
                   <Slider
-                    value={[settings.arr]}
-                    onValueChange={([value]) => saveSettings({ arr: value })}
-                    max={100}
-                    min={0}
-                    step={1}
-                    className="w-full"
+                    value={[tempSettings.arr]}
+                    onValueChange={([value]) => handleSettingChange('arr', value)}
+                    max={100} min={0} step={1}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    重复移动的间隔时间，0表示瞬间移动
-                  </p>
                 </div>
-                
                 <div className="space-y-2">
-                  <Label>SDF - 软降速度 ({settings.sdf}倍)</Label>
+                  <Label>SDF - 软降速度 ({tempSettings.sdf}倍)</Label>
                   <Slider
-                    value={[settings.sdf]}
-                    onValueChange={([value]) => saveSettings({ sdf: value })}
-                    max={40}
-                    min={1}
-                    step={1}
-                    className="w-full"
+                    value={[tempSettings.sdf]}
+                    onValueChange={([value]) => handleSettingChange('sdf', value)}
+                    max={40} min={1} step={1}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    软降时方块下降速度的倍数
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -206,19 +168,13 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">视觉设置</CardTitle>
-                <CardDescription>调整游戏视觉效果</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>幽灵方块</Label>
-                    <p className="text-xs text-muted-foreground">
-                      显示方块落地位置的预览
-                    </p>
-                  </div>
+                  <Label>幽灵方块</Label>
                   <Switch
-                    checked={settings.enableGhost}
-                    onCheckedChange={(checked) => saveSettings({ enableGhost: checked })}
+                    checked={tempSettings.enableGhost}
+                    onCheckedChange={(checked) => handleSettingChange('enableGhost', checked)}
                   />
                 </div>
               </CardContent>
@@ -229,32 +185,61 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">音频设置</CardTitle>
-                <CardDescription>调整游戏音效</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>启用音效</Label>
-                    <p className="text-xs text-muted-foreground">
-                      开启或关闭游戏音效
-                    </p>
-                  </div>
+                  <Label>启用音效</Label>
                   <Switch
-                    checked={settings.enableSound}
-                    onCheckedChange={(checked) => saveSettings({ enableSound: checked })}
+                    checked={tempSettings.enableSound}
+                    onCheckedChange={(checked) => handleSettingChange('enableSound', checked)}
                   />
                 </div>
-                
-                {settings.enableSound && (
+                {tempSettings.enableSound && (
                   <div className="space-y-2">
-                    <Label>主音量 ({settings.masterVolume}%)</Label>
+                    <Label>主音量 ({tempSettings.masterVolume}%)</Label>
                     <Slider
-                      value={[settings.masterVolume]}
-                      onValueChange={([value]) => saveSettings({ masterVolume: value })}
-                      max={100}
-                      min={0}
-                      step={1}
-                      className="w-full"
+                      value={[tempSettings.masterVolume]}
+                      onValueChange={([value]) => handleSettingChange('masterVolume', value)}
+                      max={100} min={0} step={1}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="music" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">背景音乐</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label>选择背景音乐</Label>
+                  <Select
+                    value={tempSettings.backgroundMusic}
+                    onValueChange={(value) => handleSettingChange('backgroundMusic', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择音乐" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">无音乐</SelectItem>
+                      {musicTracks.map(track => (
+                        <SelectItem key={track.id} value={track.id}>
+                          {track.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {tempSettings.backgroundMusic && (
+                  <div className="space-y-2">
+                    <Label>音乐音量 ({tempSettings.musicVolume || 30}%)</Label>
+                    <Slider
+                      value={[tempSettings.musicVolume || 30]}
+                      onValueChange={([value]) => handleSettingChange('musicVolume', value)}
+                      max={100} min={0} step={1}
                     />
                   </div>
                 )}
@@ -263,9 +248,15 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
           </TabsContent>
         </Tabs>
         
-        <div className="flex justify-end pt-4">
-          <Button onClick={() => setIsOpen(false)}>
-            完成
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          {hasChanges && (
+            <Button onClick={handleSaveSettings} className="bg-green-600 hover:bg-green-700">
+              <Save className="w-4 h-4 mr-2" />
+              保存设置
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => setIsOpen(false)}>
+            关闭
           </Button>
         </div>
       </DialogContent>

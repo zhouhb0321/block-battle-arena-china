@@ -8,6 +8,7 @@ import GameInfo from './GameInfo';
 import PiecePreview from './PiecePreview';
 import GameOverlay from './GameOverlay';
 import GameStatusIndicators from './GameStatusIndicators';
+import AdSpace from './AdSpace';
 import { useGameState } from '@/hooks/useGameState';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useGameLogic } from '@/hooks/useGameLogic';
@@ -15,9 +16,10 @@ import { useGameLogic } from '@/hooks/useGameLogic';
 interface TetrisGameProps {
   mode: 'single' | 'multi';
   gameType?: 'sprint40' | 'ultra2min' | 'endless';
+  onBackToMenu?: () => void;
 }
 
-const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) => {
+const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onBackToMenu }) => {
   const { gameSettings, resetGame, pauseGame, resumeGame } = useGame();
   const { user } = useAuth();
   const gameLoopRef = useRef<number>();
@@ -65,6 +67,12 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     resetGame();
   };
 
+  const handleBackToMenu = useCallback(() => {
+    if (onBackToMenu) {
+      onBackToMenu();
+    }
+  }, [onBackToMenu]);
+
   const keyboardControls = useKeyboardControls({
     gameSettings,
     gameOver: gameState.gameOver,
@@ -79,7 +87,8 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
     onRotateClockwise: gameLogic.rotatePieceClockwise,
     onRotateCounterclockwise: gameLogic.rotatePieceCounterclockwise,
     onHold: gameLogic.holdCurrentPiece,
-    onPause: togglePause
+    onPause: togglePause,
+    onBackToMenu: handleBackToMenu
   });
 
   const gameLoop = useCallback((timestamp: number) => {
@@ -127,11 +136,9 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
   return (
     <div className="flex gap-4 p-4 justify-center min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
       {mode === 'single' && (
-        <div className="flex gap-6 items-center">
+        <div className="flex gap-6 items-center justify-center w-full">
           {/* 左侧广告位 */}
-          <div className="w-64 h-[600px] bg-gray-800 border-2 border-gray-600 flex items-center justify-center rounded-lg shadow-lg">
-            <span className="text-gray-400 text-sm text-center">广告位<br/>招租中<br/>联系管理员</span>
-          </div>
+          <AdSpace position="left" width={240} height={600} />
 
           <div className="flex gap-6">
             {/* 左侧信息面板 */}
@@ -180,6 +187,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
                   pps={gameState.pps}
                   apm={gameState.apm}
                   onReset={handleReset}
+                  onBackToMenu={handleBackToMenu}
                 />
               </div>
             </div>
@@ -201,9 +209,10 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless' }) =
           </div>
 
           {/* 右侧广告位 */}
-          <div className="w-64 h-[600px] bg-gray-800 border-2 border-gray-600 flex items-center justify-center rounded-lg shadow-lg">
-            <span className="text-gray-400 text-sm text-center">广告位<br/>招租中<br/>联系管理员</span>
-          </div>
+          <AdSpace position="right" width={240} height={600} />
+
+          {/* 游戏中的动态广告 */}
+          <AdSpace position="left" width={200} height={100} gameContext={true} />
         </div>
       )}
 

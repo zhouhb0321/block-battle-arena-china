@@ -4,16 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Keyboard, RotateCw, RotateCcw, Pause, ArrowUp, ArrowDown, ArrowLeft } from 'lucide-react';
+import { Keyboard, Save, Check } from 'lucide-react';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { toast } from 'sonner';
 
 const KeyboardSettings: React.FC = () => {
-  const { settings, saveSettings } = useUserSettings();
+  const { settings, saveSettings, reloadSettings } = useUserSettings();
   const [recordingKey, setRecordingKey] = useState<string | null>(null);
   const [keyBindings, setKeyBindings] = useState(settings.controls);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     setKeyBindings(settings.controls);
+    setHasChanges(false);
   }, [settings.controls]);
 
   const keyLabels = {
@@ -36,13 +39,11 @@ const KeyboardSettings: React.FC = () => {
       e.preventDefault();
       e.stopPropagation();
       
-      // 检查是否与其他按键冲突，但排除当前正在设置的按键
       const conflictKey = Object.entries(keyBindings).find(
         ([key, value]) => key !== controlName && value === e.code
       );
       
       if (conflictKey) {
-        // 如果有冲突，交换按键设置而不是报错
         const conflictKeyName = conflictKey[0] as keyof typeof keyBindings;
         const oldValue = keyBindings[controlName as keyof typeof keyBindings];
         
@@ -53,21 +54,19 @@ const KeyboardSettings: React.FC = () => {
         };
         
         setKeyBindings(newBindings);
-        saveSettings({ controls: newBindings });
+        setHasChanges(true);
         
-        // 显示交换提示
         const conflictLabel = keyLabels[conflictKeyName as keyof typeof keyLabels]?.label || conflictKeyName;
         const currentLabel = keyLabels[controlName as keyof typeof keyLabels]?.label || controlName;
-        alert(`已交换按键设置：${currentLabel} 和 ${conflictLabel} 的按键已互换`);
+        toast.success(`已交换按键设置：${currentLabel} 和 ${conflictLabel} 的按键已互换`);
       } else {
-        // 没有冲突，直接设置
         const newBindings = {
           ...keyBindings,
           [controlName]: e.code
         };
         
         setKeyBindings(newBindings);
-        saveSettings({ controls: newBindings });
+        setHasChanges(true);
       }
       
       setRecordingKey(null);
@@ -75,10 +74,15 @@ const KeyboardSettings: React.FC = () => {
     
     document.addEventListener('keydown', handleKeyPress, { once: true });
     
-    // 5秒后超时
     setTimeout(() => {
       setRecordingKey(null);
     }, 5000);
+  };
+
+  const handleSaveSettings = async () => {
+    await saveSettings({ controls: keyBindings });
+    setHasChanges(false);
+    toast.success('键位设置已保存并生效！');
   };
 
   const getKeyDisplayName = (keyCode: string) => {
@@ -97,6 +101,7 @@ const KeyboardSettings: React.FC = () => {
       'KeyQ': 'Q',
       'KeyW': 'W',
       'KeyE': 'E',
+      'KeyB': 'B',
       'Escape': 'Esc',
       'Enter': '回车',
       'ShiftLeft': '左Shift',
@@ -127,7 +132,7 @@ const KeyboardSettings: React.FC = () => {
     };
     
     setKeyBindings(defaultControls);
-    saveSettings({ controls: defaultControls });
+    setHasChanges(true);
   };
 
   const presetLayouts = {
@@ -182,7 +187,7 @@ const KeyboardSettings: React.FC = () => {
     const preset = presetLayouts[presetKey as keyof typeof presetLayouts];
     if (preset) {
       setKeyBindings(preset.controls);
-      saveSettings({ controls: preset.controls });
+      setHasChanges(true);
     }
   };
 
@@ -234,13 +239,23 @@ const KeyboardSettings: React.FC = () => {
                   >
                     {recordingKey === key 
                       ? '按下按键...' 
-                      : getKeyDisplayName(keyBindings[key as keyof typeof keyBindings] || 'KeyB')
+                      : getKeyDisplayName(keyBindings[key as keyof typeof keyBindings])
                     }
                   </Button>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* 保存按钮 */}
+          {hasChanges && (
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button onClick={handleSaveSettings} className="bg-green-600 hover:bg-green-700">
+                <Save className="w-4 h-4 mr-2" />
+                保存设置
+              </Button>
+            </div>
+          )}
 
           {/* 按键提示 */}
           <div className="bg-blue-50 p-4 rounded-lg">

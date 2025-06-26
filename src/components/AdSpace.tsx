@@ -4,56 +4,99 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, AlertTriangle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AdSpaceProps {
   position: 'left' | 'right';
   width?: number;
   height?: number;
+  gameContext?: boolean;
 }
 
 interface AdContent {
   id: string;
   title: string;
-  imageUrl: string;
-  linkUrl: string;
-  expiryDate: string;
-  isActive: boolean;
+  content: string;
+  image_url: string;
+  target_url: string;
+  is_active: boolean;
+  position: string;
 }
 
-const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600 }) => {
+const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600, gameContext = false }) => {
   const { t } = useLanguage();
   const [adContent, setAdContent] = useState<AdContent | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [shouldShow, setShouldShow] = useState(!gameContext);
 
   useEffect(() => {
-    // 模拟从后台获取广告内容
-    const mockAd: AdContent = {
-      id: '1',
-      title: '示例广告',
-      imageUrl: '/placeholder.svg',
-      linkUrl: 'https://example.com',
-      expiryDate: '2024-12-31',
-      isActive: true
-    };
+    loadAdContent();
     
-    // 检查广告是否过期
-    const isExpired = new Date(mockAd.expiryDate) < new Date();
-    if (!isExpired && mockAd.isActive) {
-      setAdContent(mockAd);
+    if (gameContext) {
+      // 游戏中随机显示广告，30%概率每10秒显示一次
+      const interval = setInterval(() => {
+        if (Math.random() < 0.3) {
+          setShouldShow(true);
+          setTimeout(() => setShouldShow(false), 5000); // 显示5秒后隐藏
+        }
+      }, 10000);
+      
+      return () => clearInterval(interval);
     }
-  }, []);
+  }, [gameContext]);
 
-  const handleAdClick = () => {
+  const loadAdContent = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('advertisements')
+        .select('*')
+        .eq('position', position)
+        .eq('is_active', true)
+        .gte('end_date', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!error && data) {
+        setAdContent(data);
+      }
+    } catch (error) {
+      console.error('Error loading ad content:', error);
+    }
+  };
+
+  const handleAdClick = async () => {
+    if (!adContent) return;
+
+    // 记录点击数据
+    try {
+      await supabase
+        .from('advertisements')
+        .update({ 
+          clicks: adContent.clicks + 1,
+          impressions: adContent.impressions + 1 
+        })
+        .eq('id', adContent.id);
+    } catch (error) {
+      console.error('Error updating ad stats:', error);
+    }
+
     setShowDisclaimer(true);
     
     setTimeout(() => {
-      if (adContent?.linkUrl) {
-        window.open(adContent.linkUrl, '_blank', 'noopener,noreferrer');
+      if (adContent.target_url) {
+        window.open(adContent.target_url, '_blank', 'noopener,noreferrer');
       }
       setShowDisclaimer(false);
     }, 2000);
   };
 
+  // 如果在游戏中且不应该显示，返回null
+  if (gameContext && !shouldShow) {
+    return null;
+  }
+
+  // 如果没有广告内容，显示招租信息
   if (!adContent) {
     return (
       <div 
@@ -61,40 +104,46 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600 }
         style={{ width, height }}
       >
         <span className="text-gray-500 text-sm text-center mb-2">
-          {t('ad.placeholder')}
+          广告位招租中
         </span>
         <Button variant="outline" size="sm">
-          {t('ad.contact')}
+          联系管理员
         </Button>
       </div>
     );
   }
 
   return (
-    <Card 
-      className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
-      style={{ width, height }}
-      onClick={handleAdClick}
-    >
-      <CardContent className="p-0 h-full flex flex-col">
-        <div className="flex-1 relative">
-          <img 
-            src={adContent.imageUrl} 
-            alt={adContent.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-            <p className="text-white text-xs">{adContent.title}</p>
+    <>
+      <Card 
+        className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+        style={{ width, height }}
+        onClick={handleAdClick}
+      >
+        <CardContent className="p-0 h-full flex flex-col">
+          <div className="flex-1 relative">
+            <img 
+              src={adContent.image_url} 
+              alt={adContent.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = '/placeholder.svg';
+              }}
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+              <p className="text-white text-xs">{adContent.title}</p>
+            </div>
           </div>
-        </div>
-        
-        <div className="p-2 bg-gray-100 text-center">
-          <div className="flex items-center justify-center gap-1 text-xs text-gray-600">
-            <ExternalLink className="w-3 h-3" />
-            <span>点击访问</span>
+          
+          <div className="p-2 bg-gray-100 text-center">
+            <div className="flex items-center justify-center gap-1 text-xs text-gray-600">
+              <ExternalLink className="w-3 h-3" />
+              <span>点击访问</span>
+            </div>
           </div>
-        </div>
-      </CardContent>
+        </CardContent>
+      </Card>
 
       {showDisclaimer && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -117,7 +166,7 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600 }
           </Card>
         </div>
       )}
-    </Card>
+    </>
   );
 };
 

@@ -11,6 +11,7 @@ interface GameOverlayProps {
   pps: number;
   apm: number;
   onReset: () => void;
+  onBackToMenu?: () => void;
 }
 
 const GameOverlay: React.FC<GameOverlayProps> = ({
@@ -21,12 +22,20 @@ const GameOverlay: React.FC<GameOverlayProps> = ({
   totalAttack,
   pps,
   apm,
-  onReset
+  onReset,
+  onBackToMenu
 }) => {
   if (paused) {
     return (
       <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center rounded-lg">
-        <div className="text-white text-2xl font-bold">游戏暂停</div>
+        <div className="text-white text-center">
+          <div className="text-2xl font-bold mb-4">游戏暂停</div>
+          {onBackToMenu && (
+            <Button onClick={onBackToMenu} variant="outline" className="mb-2">
+              返回菜单
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
@@ -43,9 +52,16 @@ const GameOverlay: React.FC<GameOverlayProps> = ({
             <div>PPS: <span className="font-bold">{pps.toFixed(2)}</span></div>
             <div>APM: <span className="font-bold">{apm.toFixed(1)}</span></div>
           </div>
-          <Button onClick={onReset} className="bg-blue-600 hover:bg-blue-700">
-            重新开始
-          </Button>
+          <div className="flex gap-2 justify-center">
+            <Button onClick={onReset} className="bg-blue-600 hover:bg-blue-700">
+              重新开始
+            </Button>
+            {onBackToMenu && (
+              <Button onClick={onBackToMenu} variant="outline">
+                返回菜单
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );
