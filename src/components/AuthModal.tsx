@@ -27,6 +27,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('登录表单提交:', { email: loginForm.email, hasPassword: !!loginForm.password });
+    
     if (!loginForm.email || !loginForm.password) {
       toast.error('请输入邮箱和密码');
       return;
@@ -34,7 +36,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
     setLoading(true);
     try {
+      console.log('开始登录...');
       await login(loginForm.email, loginForm.password);
+      console.log('登录成功');
       toast.success('登录成功！');
       onClose();
     } catch (error) {

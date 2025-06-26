@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import GameController from './game/GameController';
 import SinglePlayerGameArea from './game/SinglePlayerGameArea';
 import MultiPlayerGameArea from './game/MultiPlayerGameArea';
+import GameCountdown from './GameCountdown';
 
 interface TetrisGameProps {
   mode: 'single' | 'multi';
@@ -16,6 +17,8 @@ interface TetrisGameProps {
 const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onBackToMenu }) => {
   const { gameSettings, resetGame, pauseGame, resumeGame } = useGame();
   const { user } = useAuth();
+  const [showCountdown, setShowCountdown] = useState(true);
+  const [gameStarted, setGameStarted] = useState(false);
 
   const handleShare = () => {
     const url = window.location.href;
@@ -43,69 +46,78 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onB
     }
   };
 
+  const handleCountdownEnd = () => {
+    setShowCountdown(false);
+    setGameStarted(true);
+  };
+
   return (
     <div className="flex gap-4 p-4 justify-center min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-      <GameController
-        gameSettings={gameSettings}
-        mode={mode}
-        onBackToMenu={handleBackToMenu}
-        resetGame={resetGame}
-        pauseGame={pauseGame}
-        resumeGame={resumeGame}
-      >
-        {({ gameState, onTogglePause, onReset }) => {
-          // Convert gameState to proper GameState format
-          const convertedGameState = {
-            board: gameState.board,
-            currentPiece: gameState.currentPiece,
-            nextPieces: gameState.nextPieces,
-            holdPiece: gameState.holdPiece,
-            score: gameState.score,
-            lines: gameState.lines,
-            level: gameState.level,
-            gameOver: gameState.gameOver,
-            paused: gameState.paused,
-            canHold: gameState.canHold,
-            combo: gameState.combo,
-            b2b: gameState.b2b,
-            pieces: gameState.pieces,
-            startTime: gameState.startTime,
-            clearingLines: [],
-            ghostPiece: gameState.ghostPiece,
-            attack: gameState.attack || gameState.totalAttack,
-            pps: gameState.pps,
-            apm: gameState.apm
-          };
+      <GameCountdown show={showCountdown} onCountdownEnd={handleCountdownEnd} />
+      
+      {gameStarted && (
+        <GameController
+          gameSettings={gameSettings}
+          mode={mode}
+          onBackToMenu={handleBackToMenu}
+          resetGame={resetGame}
+          pauseGame={pauseGame}
+          resumeGame={resumeGame}
+        >
+          {({ gameState, onTogglePause, onReset }) => {
+            // Convert gameState to proper GameState format
+            const convertedGameState = {
+              board: gameState.board,
+              currentPiece: gameState.currentPiece,
+              nextPieces: gameState.nextPieces,
+              holdPiece: gameState.holdPiece,
+              score: gameState.score,
+              lines: gameState.lines,
+              level: gameState.level,
+              gameOver: gameState.gameOver,
+              paused: gameState.paused,
+              canHold: gameState.canHold,
+              combo: gameState.combo,
+              b2b: gameState.b2b,
+              pieces: gameState.pieces,
+              startTime: gameState.startTime,
+              clearingLines: [],
+              ghostPiece: gameState.ghostPiece,
+              attack: gameState.attack || gameState.totalAttack,
+              pps: gameState.pps,
+              apm: gameState.apm
+            };
 
-          return (
-            <>
-              {mode === 'single' && (
-                <SinglePlayerGameArea
-                  gameState={convertedGameState}
-                  gameSettings={gameSettings}
-                  username={user?.username || '游客'}
-                  onPause={onTogglePause}
-                  onShare={handleShare}
-                  onReset={onReset}
-                  onBackToMenu={handleBackToMenu}
-                />
-              )}
+            return (
+              <>
+                {mode === 'single' && (
+                  <SinglePlayerGameArea
+                    gameState={convertedGameState}
+                    gameSettings={gameSettings}
+                    username={user?.username || '游客'}
+                    onPause={onTogglePause}
+                    onShare={handleShare}
+                    onReset={onReset}
+                    onBackToMenu={handleBackToMenu}
+                  />
+                )}
 
-              {mode === 'multi' && (
-                <MultiPlayerGameArea
-                  gameState={convertedGameState}
-                  gameSettings={gameSettings}
-                  username={user?.username || '玩家1'}
-                  onPause={onTogglePause}
-                  onShare={handleShare}
-                  onReset={onReset}
-                  onBackToMenu={handleBackToMenu}
-                />
-              )}
-            </>
-          );
-        }}
-      </GameController>
+                {mode === 'multi' && (
+                  <MultiPlayerGameArea
+                    gameState={convertedGameState}
+                    gameSettings={gameSettings}
+                    username={user?.username || '玩家1'}
+                    onPause={onTogglePause}
+                    onShare={handleShare}
+                    onReset={onReset}
+                    onBackToMenu={handleBackToMenu}
+                  />
+                )}
+              </>
+            );
+          }}
+        </GameController>
+      )}
     </div>
   );
 };
