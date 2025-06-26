@@ -33,12 +33,21 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onB
     }
   };
 
+  const handleBackToMenu = () => {
+    if (onBackToMenu) {
+      onBackToMenu();
+    } else {
+      // 如果没有提供回调，默认返回首页
+      window.location.href = '/';
+    }
+  };
+
   return (
     <div className="flex gap-4 p-4 justify-center min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
       <GameController
         gameSettings={gameSettings}
         mode={mode}
-        onBackToMenu={onBackToMenu}
+        onBackToMenu={handleBackToMenu}
         resetGame={resetGame}
         pauseGame={pauseGame}
         resumeGame={resumeGame}
@@ -77,7 +86,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onB
                   onPause={onTogglePause}
                   onShare={handleShare}
                   onReset={onReset}
-                  onBackToMenu={onBackToMenu || (() => {})}
+                  onBackToMenu={handleBackToMenu}
                 />
               )}
 
@@ -89,6 +98,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onB
                   onPause={onTogglePause}
                   onShare={handleShare}
                   onReset={onReset}
+                  onBackToMenu={handleBackToMenu}
                 />
               )}
             </>

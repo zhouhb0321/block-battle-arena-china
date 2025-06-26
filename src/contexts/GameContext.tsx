@@ -28,6 +28,7 @@ const DEFAULT_SETTINGS: GameSettings = {
 interface GameContextType {
   gameSettings: GameSettings;
   updateSettings: (settings: Partial<GameSettings>) => void;
+  updateGameSettings: (settings: Partial<GameSettings>) => void;
   resetGame: () => void;
   pauseGame: () => void;
   resumeGame: () => void;
@@ -39,6 +40,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [gameSettings, setGameSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
 
   const updateSettings = (settings: Partial<GameSettings>) => {
+    setGameSettings(prev => ({ ...prev, ...settings }));
+  };
+
+  const updateGameSettings = (settings: Partial<GameSettings>) => {
     setGameSettings(prev => ({ ...prev, ...settings }));
   };
 
@@ -58,6 +63,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <GameContext.Provider value={{
       gameSettings,
       updateSettings,
+      updateGameSettings,
       resetGame,
       pauseGame,
       resumeGame

@@ -16,7 +16,7 @@ interface AdminAuthProps {
 const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
   const { user } = useAuth();
   const [step, setStep] = useState<'login' | 'mfa' | 'verified'>('login');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('admin@tetris.com');
   const [password, setPassword] = useState('');
   const [mfaCode, setMfaCode] = useState('');
   const [error, setError] = useState('');
@@ -24,15 +24,26 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
 
+  // 检查现有用户登录状态
+  useEffect(() => {
+    if (user?.email === 'admin@tetris.com') {
+      onAuthenticated();
+    }
+  }, [user, onAuthenticated]);
+
   // 检查是否被锁定
   useEffect(() => {
     const lockoutKey = 'admin_lockout';
     const savedLockout = localStorage.getItem(lockoutKey);
     if (savedLockout) {
-      const lockoutData = JSON.parse(savedLockout);
-      if (Date.now() < lockoutData.until) {
-        setLockoutTime(lockoutData.until);
-      } else {
+      try {
+        const lockoutData = JSON.parse(savedLockout);
+        if (Date.now() < lockoutData.until) {
+          setLockoutTime(lockoutData.until);
+        } else {
+          localStorage.removeItem(lockoutKey);
+        }
+      } catch {
         localStorage.removeItem(lockoutKey);
       }
     }
@@ -92,6 +103,8 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
     setError('');
 
     try {
+      console.log('尝试管理员登录:', { email, password: password ? '***' : '' });
+      
       // 验证是否为管理员邮箱
       if (email !== 'admin@tetris.com') {
         throw new Error('无效的管理员账户');
@@ -103,17 +116,34 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         password
       });
 
+      console.log('Supabase登录结果:', { data: data?.user?.email, error: authError?.message });
+
       if (authError) {
+        console.error('认证错误:', authError);
         handleFailedAttempt();
-        throw new Error('用户名或密码错误');
+        
+        if (authError.message.includes('Invalid login credentials')) {
+          throw new Error('用户名或密码错误，请检查密码是否正确');
+        } else if (authError.message.includes('Email not confirmed')) {
+          throw new Error('邮箱未验证，请先验证邮箱');
+        } else {
+          throw new Error(authError.message);
+        }
       }
 
-      // 发送MFA验证码
-      await sendMFACode(email);
-      setStep('mfa');
+      if (data?.user) {
+        console.log('登录成功，准备发送MFA验证码');
+        // 发送MFA验证码
+        await sendMFACode(email);
+        setStep('mfa');
+      } else {
+        throw new Error('登录失败，请重试');
+      }
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : '登录失败');
+      const errorMessage = err instanceof Error ? err.message : '登录失败';
+      console.error('登录错误:', errorMessage);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -159,7 +189,9 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
       onAuthenticated();
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'MFA验证失败');
+      const errorMessage = err instanceof Error ? err.message : 'MFA验证失败';
+      console.error('MFA验证错误:', errorMessage);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -228,6 +260,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@tetris.com"
                 required
+                disabled
               />
             </div>
             <div>
@@ -237,12 +270,16 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="请输入管理员密码"
                 required
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? '验证中...' : '登录'}
             </Button>
+            <div className="text-sm text-gray-600 mt-2">
+              <p>提示：请确保您已在 Supabase 中设置了 admin@tetris.com 账户的密码</p>
+            </div>
           </form>
         )}
 
@@ -251,7 +288,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
             <div className="text-center mb-4">
               <Smartphone className="w-12 h-12 mx-auto mb-2 text-blue-500" />
               <p className="text-sm text-gray-600">
-                验证码已发送到您的邮箱，请查收并输入6位数字验证码
+                验证码已生成（开发环境下会在控制台显示），请查看并输入6位数字验证码
               </p>
             </div>
             <div>
@@ -290,6 +327,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
             <li>• 不要在公共设备上登录</li>
             <li>• 登录失败3次将锁定30分钟</li>
             <li>• 会话将在4小时后自动过期</li>
+            <li>• 确保已在Supabase中设置管理员密码</li>
           </ul>
         </div>
       </CardContent>

@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Button } from '@/components/ui/button';
 import GameBoard from '../GameBoard';
 import GameInfo from '../GameInfo';
 import PiecePreview from '../PiecePreview';
@@ -15,6 +16,7 @@ interface MultiPlayerGameAreaProps {
   onPause: () => void;
   onShare: () => void;
   onReset: () => void;
+  onBackToMenu: () => void;
 }
 
 const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
@@ -23,7 +25,8 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
   username,
   onPause,
   onShare,
-  onReset
+  onReset,
+  onBackToMenu
 }) => {
   return (
     <div className="flex gap-6 items-center justify-center w-full">
@@ -47,6 +50,16 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
               b2b={gameState.b2b || 0}
               totalAttack={gameState.attack || 0}
             />
+
+            {/* 返回菜单按钮 */}
+            <Button 
+              onClick={onBackToMenu}
+              variant="outline"
+              size="sm"
+              className="w-full bg-red-50 hover:bg-red-100 border-red-200 text-red-700"
+            >
+              返回菜单
+            </Button>
           </div>
 
           {/* 游戏板 */}
@@ -84,6 +97,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
                 pps={gameState.pps || 0}
                 apm={gameState.apm || 0}
                 onReset={onReset}
+                onBackToMenu={onBackToMenu}
               />
             </div>
           </div>

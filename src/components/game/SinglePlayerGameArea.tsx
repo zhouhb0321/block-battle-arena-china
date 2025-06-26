@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Button } from '@/components/ui/button';
 import GameBoard from '../GameBoard';
 import GameInfo from '../GameInfo';
 import PiecePreview from '../PiecePreview';
@@ -48,6 +49,16 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             b2b={gameState.b2b || 0}
             totalAttack={gameState.attack || 0}
           />
+
+          {/* 返回菜单按钮 */}
+          <Button 
+            onClick={onBackToMenu}
+            variant="outline"
+            size="sm"
+            className="w-full bg-red-50 hover:bg-red-100 border-red-200 text-red-700"
+          >
+            返回菜单
+          </Button>
         </div>
 
         {/* 主游戏区域 - 居中显示 */}
@@ -112,7 +123,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       </div>
 
       {/* 游戏中的动态广告 */}
-      <AdSpace position="left" width={200} height={100} gameContext={true} />
+      <AdSpace position="bottom" width={200} height={100} gameContext={true} />
     </div>
   );
 };
