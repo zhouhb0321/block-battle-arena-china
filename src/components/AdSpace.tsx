@@ -21,6 +21,8 @@ interface AdContent {
   target_url: string;
   is_active: boolean;
   position: string;
+  clicks?: number;
+  impressions?: number;
 }
 
 const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600, gameContext = false }) => {
@@ -73,8 +75,8 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600, 
       await supabase
         .from('advertisements')
         .update({ 
-          clicks: adContent.clicks + 1,
-          impressions: adContent.impressions + 1 
+          clicks: (adContent.clicks || 0) + 1,
+          impressions: (adContent.impressions || 0) + 1 
         })
         .eq('id', adContent.id);
     } catch (error) {

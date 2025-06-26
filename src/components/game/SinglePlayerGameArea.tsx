@@ -35,7 +35,11 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       <div className="flex gap-6">
         {/* 左侧信息面板 */}
         <div className="flex flex-col gap-4">
-          <PiecePreview piece={gameState.holdPiece} title="HOLD" size="medium" />
+          <PiecePreview 
+            piece={gameState.holdPiece?.type || null} 
+            title="HOLD" 
+            size="medium" 
+          />
           
           <GameStatusIndicators 
             combo={gameState.combo || -1}
@@ -91,7 +95,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             {gameState.nextPieces.slice(0, 4).map((piece, index) => (
               <PiecePreview 
                 key={index} 
-                piece={piece} 
+                piece={piece.type} 
                 title="" 
                 size={index === 0 ? "medium" : "small"} 
               />

@@ -28,7 +28,11 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
       {/* 玩家1区域 */}
       <div className="flex gap-4">
         <div className="flex flex-col gap-2">
-          <PiecePreview piece={gameState.holdPiece} title="HOLD" size="small" />
+          <PiecePreview 
+            piece={gameState.holdPiece?.type || null} 
+            title="HOLD" 
+            size="small" 
+          />
           {gameState.combo && gameState.combo >= 0 && (
             <div className="bg-yellow-600 p-1 rounded text-white text-center text-xs font-bold">
               {gameState.combo + 1}x
@@ -79,7 +83,12 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
         
         <div className="space-y-2">
           {gameState.nextPieces.slice(0, 3).map((piece, index) => (
-            <PiecePreview key={index} piece={piece} title="" size="small" />
+            <PiecePreview 
+              key={index} 
+              piece={piece.type} 
+              title="" 
+              size="small" 
+            />
           ))}
         </div>
       </div>
@@ -103,8 +112,8 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
       {/* 玩家 2 区域（对手） */}
       <div className="flex gap-4">
         <div className="space-y-2">
-          {gameState.nextPieces.slice(0, 3).map((piece, index) => (
-            <PiecePreview key={index} piece={piece} title="" size="small" />
+          {Array(3).fill(null).map((_, index) => (
+            <PiecePreview key={index} piece={null} title="" size="small" />
           ))}
         </div>
         

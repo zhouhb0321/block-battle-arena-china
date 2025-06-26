@@ -1,5 +1,5 @@
 
-import { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   isValidPosition,
@@ -24,10 +24,10 @@ interface UseGameLogicProps {
   setGhostPiece: (piece: GamePiece | null) => void;
   board: number[][];
   setBoard: (board: number[][]) => void;
-  nextPieces: TetrominoType[];
-  setNextPieces: (pieces: TetrominoType[]) => void;
-  holdPiece: TetrominoType | null;
-  setHoldPiece: (piece: TetrominoType | null) => void;
+  nextPieces: GamePiece[];
+  setNextPieces: (pieces: GamePiece[]) => void;
+  holdPiece: GamePiece | null;
+  setHoldPiece: (piece: GamePiece | null) => void;
   canHold: boolean;
   setCanHold: (canHold: boolean) => void;
   score: number;
@@ -82,14 +82,32 @@ export const useGameLogic = (props: UseGameLogicProps) => {
   const lockDelayTime = useRef<number>(0);
   const [lastAction, setLastAction] = useState<'rotate' | 'move' | null>(null);
 
+  // Helper function to convert TetrominoType to GamePiece
+  const createGamePieceFromType = useCallback((pieceType: TetrominoType, x: number = 4, y: number = 0): GamePiece => {
+    return {
+      type: pieceType,
+      x,
+      y,
+      rotation: 0
+    };
+  }, []);
+
   const spawnNewPiece = useCallback(() => {
-    if (nextPieces.length === 0) return;
+    if (nextPieces.length === 0) {
+      // Generate initial next pieces if empty
+      const sevenBag = generateSevenBag();
+      const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
+      setNextPieces(gamePieces);
+      return;
+    }
 
-    const newPiece = createNewPiece(nextPieces[0]);
-
+    const newPiece = createGamePieceFromType(nextPieces[0].type);
     const newNextPieces = [...nextPieces.slice(1)];
+    
     if (newNextPieces.length < 6) {
-      newNextPieces.push(...generateSevenBag());
+      const sevenBag = generateSevenBag();
+      const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
+      newNextPieces.push(...gamePieces);
     }
 
     if (!isValidPosition(board, newPiece)) {
@@ -109,7 +127,7 @@ export const useGameLogic = (props: UseGameLogicProps) => {
       setPps(newPieces / Math.max(timeElapsed, 1));
       return newPieces;
     });
-  }, [board, nextPieces, startTime, setCurrentPiece, setGhostPiece, setNextPieces, setCanHold, setLockDelay, setPieces, setPps, setGameOver]);
+  }, [board, nextPieces, startTime, createGamePieceFromType, setCurrentPiece, setGhostPiece, setNextPieces, setCanHold, setLockDelay, setPieces, setPps, setGameOver]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
     if (!currentPiece || gameOver) return false;
@@ -275,12 +293,12 @@ export const useGameLogic = (props: UseGameLogicProps) => {
     if (!currentPiece || !canHold || gameOver) return;
 
     if (holdPiece) {
-      const newPiece = createNewPiece(holdPiece);
-      setHoldPiece(currentPiece.type);
+      const newPiece = createGamePieceFromType(holdPiece.type);
+      setHoldPiece(currentPiece);
       setCurrentPiece(newPiece);
       setGhostPiece(createGhostPiece(board, newPiece));
     } else {
-      setHoldPiece(currentPiece.type);
+      setHoldPiece(currentPiece);
       setCurrentPiece(null);
       setGhostPiece(null);
       spawnNewPiece();
@@ -289,7 +307,7 @@ export const useGameLogic = (props: UseGameLogicProps) => {
     setCanHold(false);
     setLockDelay(false);
     lockDelayTime.current = 0;
-  }, [currentPiece, holdPiece, canHold, gameOver, spawnNewPiece, board, setHoldPiece, setCurrentPiece, setGhostPiece, setCanHold, setLockDelay]);
+  }, [currentPiece, holdPiece, canHold, gameOver, spawnNewPiece, board, createGamePieceFromType, setHoldPiece, setCurrentPiece, setGhostPiece, setCanHold, setLockDelay]);
 
   return {
     spawnNewPiece,
@@ -302,6 +320,3 @@ export const useGameLogic = (props: UseGameLogicProps) => {
     lockDelayTime: lockDelayTime.current
   };
 };
-
-const useState = React.useState;
-import React from 'react';

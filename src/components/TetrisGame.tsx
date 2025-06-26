@@ -43,32 +43,57 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onB
         pauseGame={pauseGame}
         resumeGame={resumeGame}
       >
-        {({ gameState, onTogglePause, onReset }) => (
-          <>
-            {mode === 'single' && (
-              <SinglePlayerGameArea
-                gameState={gameState}
-                gameSettings={gameSettings}
-                username={user?.username || '游客'}
-                onPause={onTogglePause}
-                onShare={handleShare}
-                onReset={onReset}
-                onBackToMenu={onBackToMenu || (() => {})}
-              />
-            )}
+        {({ gameState, onTogglePause, onReset }) => {
+          // Convert gameState to proper GameState format
+          const convertedGameState = {
+            board: gameState.board,
+            currentPiece: gameState.currentPiece,
+            nextPieces: gameState.nextPieces,
+            holdPiece: gameState.holdPiece,
+            score: gameState.score,
+            lines: gameState.lines,
+            level: gameState.level,
+            gameOver: gameState.gameOver,
+            paused: gameState.paused,
+            canHold: gameState.canHold,
+            combo: gameState.combo,
+            b2b: gameState.b2b,
+            pieces: gameState.pieces,
+            startTime: gameState.startTime,
+            clearingLines: [],
+            ghostPiece: gameState.ghostPiece,
+            attack: gameState.attack || gameState.totalAttack,
+            pps: gameState.pps,
+            apm: gameState.apm
+          };
 
-            {mode === 'multi' && (
-              <MultiPlayerGameArea
-                gameState={gameState}
-                gameSettings={gameSettings}
-                username={user?.username || 'Player 1'}
-                onPause={onTogglePause}
-                onShare={handleShare}
-                onReset={onReset}
-              />
-            )}
-          </>
-        )}
+          return (
+            <>
+              {mode === 'single' && (
+                <SinglePlayerGameArea
+                  gameState={convertedGameState}
+                  gameSettings={gameSettings}
+                  username={user?.username || '游客'}
+                  onPause={onTogglePause}
+                  onShare={handleShare}
+                  onReset={onReset}
+                  onBackToMenu={onBackToMenu || (() => {})}
+                />
+              )}
+
+              {mode === 'multi' && (
+                <MultiPlayerGameArea
+                  gameState={convertedGameState}
+                  gameSettings={gameSettings}
+                  username={user?.username || 'Player 1'}
+                  onPause={onTogglePause}
+                  onShare={handleShare}
+                  onReset={onReset}
+                />
+              )}
+            </>
+          );
+        }}
       </GameController>
     </div>
   );

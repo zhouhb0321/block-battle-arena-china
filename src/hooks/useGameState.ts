@@ -7,8 +7,8 @@ export const useGameState = () => {
   const [currentPiece, setCurrentPiece] = useState<GamePiece | null>(null);
   const [ghostPiece, setGhostPiece] = useState<GamePiece | null>(null);
   const [board, setBoard] = useState(() => Array(20).fill(null).map(() => Array(10).fill(0)));
-  const [nextPieces, setNextPieces] = useState(() => generateSevenBag());
-  const [holdPiece, setHoldPiece] = useState<TetrominoType | null>(null);
+  const [nextPieces, setNextPieces] = useState<GamePiece[]>([]);
+  const [holdPiece, setHoldPiece] = useState<GamePiece | null>(null);
   const [canHold, setCanHold] = useState(true);
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
@@ -28,7 +28,7 @@ export const useGameState = () => {
 
   const resetGameState = useCallback(() => {
     setBoard(Array(20).fill(null).map(() => Array(10).fill(0)));
-    setNextPieces(generateSevenBag());
+    setNextPieces([]);
     setCurrentPiece(null);
     setGhostPiece(null);
     setHoldPiece(null);
