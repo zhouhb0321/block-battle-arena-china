@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, AlertTriangle } from 'lucide-react';
@@ -20,6 +21,7 @@ interface AdContent {
 }
 
 const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600 }) => {
+  const { t } = useLanguage();
   const [adContent, setAdContent] = useState<AdContent | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
@@ -59,10 +61,10 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width = 240, height = 600 }
         style={{ width, height }}
       >
         <span className="text-gray-500 text-sm text-center mb-2">
-          广告位招租中
+          {t('ad.placeholder')}
         </span>
         <Button variant="outline" size="sm">
-          联系管理员
+          {t('ad.contact')}
         </Button>
       </div>
     );

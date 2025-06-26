@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -24,7 +25,8 @@ const rankTiers = [
   { tier: 'S-', minPoints: 2700, maxPoints: 3499, color: 'bg-purple-600' },
   { tier: 'S', minPoints: 3500, maxPoints: 4499, color: 'bg-purple-500' },
   { tier: 'S+', minPoints: 4500, maxPoints: 5999, color: 'bg-purple-400' },
-  { tier: 'SS-', minPoints: 6000, maxPoints: Infinity, color: 'bg-yellow-500' }
+  { tier: 'SS', minPoints: 6000, maxPoints: 7999, color: 'bg-yellow-500' },
+  { tier: 'X', minPoints: 8000, maxPoints: Infinity, color: 'bg-gradient-to-r from-yellow-400 to-orange-500' }
 ];
 
 export const getRankByPoints = (points: number): PlayerRank => {
@@ -44,6 +46,7 @@ interface RankingSystemProps {
 }
 
 const RankingSystem: React.FC<RankingSystemProps> = ({ playerPoints, className }) => {
+  const { t } = useLanguage();
   const currentRank = getRankByPoints(playerPoints);
   const nextRank = rankTiers.find(tier => tier.minPoints > playerPoints);
   
@@ -58,17 +61,17 @@ const RankingSystem: React.FC<RankingSystemProps> = ({ playerPoints, className }
           <Badge className={`${currentRank.color} text-white`}>
             {currentRank.tier}
           </Badge>
-          排位系统
+          {t('rank.system')}
         </CardTitle>
         <CardDescription>
-          当前积分: {playerPoints}
+          {t('rank.points')}: {playerPoints}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
-            <span>当前段位: {currentRank.tier}</span>
-            {nextRank && <span>下一段位: {nextRank.tier}</span>}
+            <span>{t('rank.current')}: {currentRank.tier}</span>
+            {nextRank && <span>{t('rank.nextRank')}: {nextRank.tier}</span>}
           </div>
           
           {nextRank && (
@@ -80,7 +83,7 @@ const RankingSystem: React.FC<RankingSystemProps> = ({ playerPoints, className }
                 />
               </div>
               <div className="text-xs text-center text-muted-foreground">
-                还需 {nextRank.minPoints - playerPoints} 积分晋级
+                {t('rank.promotion')} {nextRank.minPoints - playerPoints}
               </div>
             </>
           )}

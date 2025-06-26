@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface GameStatusIndicatorsProps {
   combo: number;
@@ -12,6 +13,8 @@ const GameStatusIndicators: React.FC<GameStatusIndicatorsProps> = ({
   b2b,
   totalAttack
 }) => {
+  const { t } = useLanguage();
+
   return (
     <div className="bg-gray-800 rounded-lg p-3 text-white text-sm space-y-2">
       {combo >= 0 && (

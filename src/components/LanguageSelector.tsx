@@ -7,7 +7,8 @@ const LanguageSelector: React.FC = () => {
   const { language, setLanguage } = useLanguage();
 
   const languages = [
-    { code: 'zh' as Language, name: '中文', flag: '🇨🇳' },
+    { code: 'zh' as Language, name: '简体中文', flag: '🇨🇳' },
+    { code: 'zh-TW' as Language, name: '繁體中文', flag: '🇹🇼' },
     { code: 'en' as Language, name: 'English', flag: '🇺🇸' },
     { code: 'ja' as Language, name: '日本語', flag: '🇯🇵' },
     { code: 'ko' as Language, name: '한국어', flag: '🇰🇷' },
@@ -15,7 +16,7 @@ const LanguageSelector: React.FC = () => {
 
   return (
     <Select value={language} onValueChange={setLanguage}>
-      <SelectTrigger className="w-32">
+      <SelectTrigger className="w-36">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
