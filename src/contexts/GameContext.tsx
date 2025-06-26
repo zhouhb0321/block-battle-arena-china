@@ -63,7 +63,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <GameContext.Provider value={{
       gameSettings,
       updateSettings,
-      updateGameSettings,
+      updateGameSettings,  
       resetGame,
       pauseGame,
       resumeGame

@@ -1,366 +1,330 @@
-
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Users, Settings, Trophy, Gamepad2, Book } from 'lucide-react';
-import TetrisGame from '@/components/TetrisGame';
-import FixedTetrisGame from '@/components/FixedTetrisGame';
-import GameSettingsDialog from '@/components/GameSettingsDialog';
-import KeyboardSettings from '@/components/KeyboardSettings';
-import ReplaySystem from '@/components/ReplaySystem';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Play, Users, Settings, Trophy, Gamepad2, Zap, Target, Clock, Star, ChevronRight, Github, Twitter, Mail, MessageCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from '@/components/AuthModal';
-import NavigationBar from '@/components/NavigationBar';
-import RankedMatchmaking from '@/components/RankedMatchmaking';
+import GameModeSelector from '@/components/GameModeSelector';
+import GameSettingsDialog from '@/components/GameSettingsDialog';
+import TetrisGame from '@/components/TetrisGame';
 import AdSpace from '@/components/AdSpace';
-import IncomeSystem from '@/components/IncomeSystem';
-import AdminPanel from '@/components/AdminPanel';
-import BrowserShortcut from '@/components/BrowserShortcut';
-import { ViewType } from '@/types/navigation';
+import NavigationBar from '@/components/NavigationBar';
+import { toast } from 'sonner';
 
 const Index = () => {
-  const { user } = useAuth();
-  const { t } = useLanguage();
-  const [currentView, setCurrentView] = useState<ViewType>('menu');
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const { user, isAuthenticated } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [currentView, setCurrentView] = useState<'home' | 'game' | 'settings'>('home');
+  const [gameConfig, setGameConfig] = useState<{mode: 'single' | 'multi', gameType?: string} | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
-  // Admin user check - replace this email with your admin email
-  const isAdmin = user?.email === 'admin@tetris.com';
+  useEffect(() => {
+    // 可以在这里添加一些初始化逻辑，例如检查用户是否已登录等
+  }, []);
 
-  const handleViewChange = (view: string) => {
-    setCurrentView(view as ViewType);
+  const handleAuthModalOpen = () => {
+    setShowAuthModal(true);
   };
 
-  const handleStartSingle = () => {
-    setCurrentView('single');
+  const handleAuthModalClose = () => {
+    setShowAuthModal(false);
   };
 
-  const handleStartMulti = () => {
-    if (!user || user.isGuest) {
-      setAuthModalOpen(true);
-      return;
-    }
-    setCurrentView('multi');
+  const handleGameStart = (mode: 'single' | 'multi', gameType?: string) => {
+    setGameConfig({ mode, gameType });
+    setCurrentView('game');
   };
 
-  const handleStartRanked = () => {
-    if (!user || user.isGuest) {
-      setAuthModalOpen(true);
-      return;
-    }
-    setCurrentView('ranked');
+  const handleSettingsOpen = () => {
+    setShowSettings(true);
   };
 
-  const handleBackToMenu = () => {
-    setCurrentView('menu');
+  const handleSettingsClose = () => {
+    setShowSettings(false);
   };
 
-  if (currentView === 'single') {
+  if (currentView === 'game' && gameConfig) {
     return (
-      <div className="min-h-screen bg-gray-100 flex">
-        <div className="w-60 flex-shrink-0 p-4">
-          <AdSpace position="left" />
-        </div>
-        <div className="flex-1">
-          <FixedTetrisGame />
-        </div>
-        <div className="w-60 flex-shrink-0 p-4">
-          <AdSpace position="right" />
-        </div>
-      </div>
-    );
-  }
-
-  if (currentView === 'multi') {
-    return (
-      <div className="min-h-screen bg-gray-100 flex">
-        <div className="w-60 flex-shrink-0 p-4">
-          <AdSpace position="left" />
-        </div>
-        <div className="flex-1">
-          <TetrisGame mode="multi" />
-        </div>
-        <div className="w-60 flex-shrink-0 p-4">
-          <AdSpace position="right" />
-        </div>
-      </div>
-    );
-  }
-
-  if (currentView === 'ranked') {
-    return (
-      <div>
-        <NavigationBar 
-          currentView={currentView} 
-          onViewChange={handleViewChange}
-          onAuthModalOpen={() => setAuthModalOpen(true)}
-          isAdmin={isAdmin}
-        />
-        <RankedMatchmaking onStartMatch={() => setCurrentView('multi')} />
-      </div>
-    );
-  }
-
-  if (currentView === 'settings') {
-    return (
-      <div>
-        <NavigationBar 
-          currentView={currentView} 
-          onViewChange={handleViewChange}
-          onAuthModalOpen={() => setAuthModalOpen(true)}
-          isAdmin={isAdmin}
-        />
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center gap-4 mb-6">
-              <Button onClick={handleBackToMenu} variant="outline">
-                ← {t('nav.home')}
-              </Button>
-              <h1 className="text-3xl font-bold text-white">{t('nav.settings')}</h1>
-            </div>
-            
-            <Tabs defaultValue="keyboard" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="keyboard">{t('settings.keyboard')}</TabsTrigger>
-                <TabsTrigger value="game">{t('settings.game')}</TabsTrigger>
-                <TabsTrigger value="shortcuts">{t('settings.shortcuts')}</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="keyboard" className="mt-6">
-                <KeyboardSettings />
-              </TabsContent>
-              
-              <TabsContent value="game" className="mt-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <GameSettingsDialog trigger={
-                      <Button className="w-full">
-                        <Settings className="w-4 h-4 mr-2" />
-                        {t('common.openSettings')}
-                      </Button>
-                    } />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="shortcuts" className="mt-6">
-                <BrowserShortcut />
-              </TabsContent>
-            </Tabs>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+        <div className="flex">
+          <AdSpace position="left" width={240} height={600} />
+          <div className="flex-1">
+            <TetrisGame 
+              mode={gameConfig.mode}
+              gameType={gameConfig.gameType as any}
+              onBackToMenu={() => {
+                setCurrentView('home');
+                setGameConfig(null);
+              }}
+            />
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (currentView === 'replays') {
-    return (
-      <div>
-        <NavigationBar 
-          currentView={currentView} 
-          onViewChange={handleViewChange}
-          onAuthModalOpen={() => setAuthModalOpen(true)}
-          isAdmin={isAdmin}
-        />
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center gap-4 mb-6">
-              <Button onClick={handleBackToMenu} variant="outline">
-                ← {t('nav.home')}
-              </Button>
-              <h1 className="text-3xl font-bold text-white">{t('replay.title')}</h1>
-            </div>
-            <ReplaySystem />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (currentView === 'income' && isAdmin) {
-    return (
-      <div>
-        <NavigationBar 
-          currentView={currentView} 
-          onViewChange={handleViewChange}
-          onAuthModalOpen={() => setAuthModalOpen(true)}
-          isAdmin={isAdmin}
-        />
-        <div className="min-h-screen bg-gray-100 p-4">
-          <IncomeSystem />
-        </div>
-      </div>
-    );
-  }
-
-  if (currentView === 'admin' && isAdmin) {
-    return (
-      <div>
-        <NavigationBar 
-          currentView={currentView} 
-          onViewChange={handleViewChange}
-          onAuthModalOpen={() => setAuthModalOpen(true)}
-          isAdmin={isAdmin}
-        />
-        <div className="min-h-screen bg-gray-100 p-4">
-          <AdminPanel />
+          <AdSpace position="right" width={240} height={600} />
         </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <NavigationBar 
-        currentView={currentView} 
-        onViewChange={handleViewChange}
-        onAuthModalOpen={() => setAuthModalOpen(true)}
-        isAdmin={isAdmin}
-      />
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+      <NavigationBar />
       
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex">
-        {/* Left Ad Space */}
-        <div className="w-60 flex-shrink-0 p-4 hidden lg:block">
-          <AdSpace position="left" />
-        </div>
+      <div className="flex">
+        <AdSpace position="left" width={240} height={600} />
+        
+        <main className="flex-1 container mx-auto px-6 py-8">
+          {/* 英雄区域 */}
+          <section className="mb-16 text-center">
+            <h1 className="text-5xl font-extrabold text-white mb-4">
+              方块竞技场
+              <Badge variant="outline" className="ml-2 text-sm">
+                Beta
+              </Badge>
+            </h1>
+            <p className="text-xl text-blue-200 mb-8">
+              经典俄罗斯方块，在线畅玩，随时随地挑战你的极限！
+            </p>
+            <div className="space-x-4">
+              <Button size="lg" onClick={() => handleGameStart('single', 'endless')}>
+                <Play className="w-5 h-5 mr-2" />
+                开始游戏
+              </Button>
+              {!isAuthenticated && (
+                <Button variant="secondary" size="lg" onClick={handleAuthModalOpen}>
+                  <Star className="w-5 h-5 mr-2" />
+                  注册/登录
+                </Button>
+              )}
+              {isAuthenticated && (
+                <Button variant="secondary" size="lg" onClick={handleSettingsOpen}>
+                  <Settings className="w-5 h-5 mr-2" />
+                  游戏设置
+                </Button>
+              )}
+            </div>
+          </section>
 
-        {/* Main Content */}
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="max-w-4xl w-full">
-            {/* 标题 */}
+          {/* 游戏模式选择 */}
+          <section className="mb-20">
             <div className="text-center mb-12">
-              <h1 className="text-6xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                {t('game.title')}
-              </h1>
-              <p className="text-xl text-gray-300">{t('game.description')}</p>
+              <h2 className="text-4xl font-bold text-white mb-4">选择游戏模式</h2>
+              <p className="text-xl text-blue-200">挑战自己或与朋友对战</p>
             </div>
 
-            {/* 用户信息 */}
-            <div className="text-center mb-8">
-              {user && !user.isGuest ? (
-                <p className="text-white">
-                  {t('common.welcome')}，<span className="font-semibold text-blue-400">{user.username}</span>！
-                  {isAdmin && <span className="ml-2 text-yellow-400">[{t('admin.panel')}]</span>}
-                </p>
-              ) : (
-                <p className="text-gray-300">
-                  {t('common.guestMode')} | 
-                  <Button 
-                    variant="link" 
-                    className="text-blue-400 p-0 ml-2"
-                    onClick={() => setAuthModalOpen(true)}
-                  >
-                    {t('auth.login')}/{t('auth.register')}
-                  </Button>
-                </p>
-              )}
-            </div>
-
-            {/* 主菜单 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               {/* 单人模式 */}
-              <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 group cursor-pointer">
-                <CardContent className="p-8 text-center" onClick={handleStartSingle}>
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Play className="w-8 h-8 text-white" />
+              <Card className="bg-gradient-to-br from-blue-800/20 to-purple-800/20 border-blue-500/30 hover:border-blue-400/50 transition-all duration-300 hover:scale-105">
+                <CardHeader className="text-center">
+                  <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Play className="w-8 h-8 text-blue-400" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">{t('game.singlePlayer')}</h3>
-                  <p className="text-gray-300 mb-4">{t('game.singlePlayerDesc')}</p>
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    {t('game.play')}
-                  </Button>
+                  <CardTitle className="text-2xl text-white">单人游戏</CardTitle>
+                  <p className="text-blue-200">挑战自己的极限</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3">
+                    <Button 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => handleGameStart('single', 'endless')}
+                    >
+                      <Target className="w-4 h-4 mr-2" />
+                      无尽模式
+                    </Button>
+                    <Button 
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => handleGameStart('single', 'sprint40')}
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      40行冲刺
+                    </Button>
+                    <Button 
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={() => handleGameStart('single', 'ultra2min')}
+                    >
+                      <Clock className="w-4 h-4 mr-2" />
+                      2分钟极限
+                    </Button>
+                  </div>
+                  
+                  <div className="pt-4 border-t border-blue-500/20">
+                    <div className="flex items-center justify-between text-sm text-blue-200 mb-2">
+                      <span>个人最佳</span>
+                      <Badge variant="secondary" className="bg-blue-500/20 text-blue-300">
+                        {user?.gamesPlayed || 0} 局游戏
+                      </Badge>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* 多人对战 */}
-              <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 group cursor-pointer">
-                <CardContent className="p-8 text-center" onClick={handleStartMulti}>
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-red-500 to-orange-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Users className="w-8 h-8 text-white" />
+              {/* 多人模式 */}
+              <Card className="bg-gradient-to-br from-purple-800/20 to-pink-800/20 border-purple-500/30 hover:border-purple-400/50 transition-all duration-300 hover:scale-105">
+                <CardHeader className="text-center">
+                  <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-8 h-8 text-purple-400" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">{t('game.multiPlayer')}</h3>
-                  <p className="text-gray-300 mb-4">{t('game.multiPlayerDesc')}</p>
-                  <Button className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
-                    {user && !user.isGuest ? t('common.startMatch') : t('common.needLogin')}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* 排位赛 */}
-              <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 group cursor-pointer">
-                <CardContent className="p-8 text-center" onClick={handleStartRanked}>
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Trophy className="w-8 h-8 text-white" />
+                  <CardTitle className="text-2xl text-white">多人对战</CardTitle>
+                  <p className="text-purple-200">与朋友或陌生人对战</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3">
+                    <Button 
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={() => handleGameStart('multi', 'vs')}
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      即时对战
+                    </Button>
+                    <Button 
+                      className="w-full bg-pink-600 hover:bg-pink-700 text-white"
+                      onClick={() => handleGameStart('multi', 'ranked')}
+                    >
+                      <Trophy className="w-4 h-4 mr-2" />
+                      排位赛
+                    </Button>
+                    <Button 
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                      onClick={() => handleGameStart('multi', 'room')}
+                    >
+                      <Gamepad2 className="w-4 h-4 mr-2" />
+                      私人房间
+                    </Button>
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">{t('game.ranked')}</h3>
-                  <p className="text-gray-300 mb-4">{t('game.rankedDesc')}</p>
-                  <Button className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700">
-                    {user && !user.isGuest ? t('common.startRank') : t('common.needLogin')}
-                  </Button>
+                  
+                  <div className="pt-4 border-t border-purple-500/20">
+                    <div className="flex items-center justify-between text-sm text-purple-200 mb-2">
+                      <span>当前等级</span>
+                      <Badge variant="secondary" className="bg-purple-500/20 text-purple-300">
+                        {user?.rating || 1000} 分
+                      </Badge>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
+          </section>
 
-            {/* 次要功能 */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* 游戏设置 */}
-              <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer">
-                <CardContent className="p-6 text-center" onClick={() => setCurrentView('settings')}>
-                  <Settings className="w-8 h-8 mx-auto mb-3 text-gray-400" />
-                  <h4 className="font-semibold text-white mb-2">{t('nav.settings')}</h4>
-                  <p className="text-sm text-gray-400">{t('settings.controlsDesc')}</p>
+          {/* 主要特性 */}
+          <section className="mb-20">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl font-bold text-white mb-4">主要特性</h2>
+              <p className="text-xl text-blue-200">更多精彩功能等你来探索</p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              {/* 特性 1 */}
+              <Card className="bg-gradient-to-br from-gray-800/20 to-gray-900/20 border-gray-600/30 hover:border-gray-400/50 transition-all duration-300 hover:scale-105">
+                <CardHeader className="text-center">
+                  <div className="w-12 h-12 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <CardTitle className="text-xl text-white">多人在线对战</CardTitle>
+                </CardHeader>
+                <CardContent className="text-gray-300">
+                  与全球玩家实时对战，体验竞技乐趣。
                 </CardContent>
               </Card>
 
-              {/* 回放系统 */}
-              <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer">
-                <CardContent className="p-6 text-center" onClick={() => setCurrentView('replays')}>
-                  <Gamepad2 className="w-8 h-8 mx-auto mb-3 text-gray-400" />
-                  <h4 className="font-semibold text-white mb-2">{t('replay.title')}</h4>
-                  <p className="text-sm text-gray-400">{t('replay.description')}</p>
+              {/* 特性 2 */}
+              <Card className="bg-gradient-to-br from-gray-800/20 to-gray-900/20 border-gray-600/30 hover:border-gray-400/50 transition-all duration-300 hover:scale-105">
+                <CardHeader className="text-center">
+                  <div className="w-12 h-12 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Settings className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <CardTitle className="text-xl text-white">自定义游戏设置</CardTitle>
+                </CardHeader>
+                <CardContent className="text-gray-300">
+                  调整游戏速度、控制方式等，打造个性化体验。
                 </CardContent>
               </Card>
 
-              {/* 管理员功能 */}
-              {isAdmin && (
-                <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer">
-                  <CardContent className="p-6 text-center" onClick={() => setCurrentView('admin')}>
-                    <Trophy className="w-8 h-8 mx-auto mb-3 text-gray-400" />
-                    <h4 className="font-semibold text-white mb-2">{t('admin.title')}</h4>
-                    <p className="text-sm text-gray-400">{t('admin.description')}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* 教程 */}
-              <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer">
-                <CardContent className="p-6 text-center">
-                  <Book className="w-8 h-8 mx-auto mb-3 text-gray-400" />
-                  <h4 className="font-semibold text-white mb-2">{t('tutorial.title')}</h4>
-                  <p className="text-sm text-gray-400">{t('tutorial.description')}</p>
+              {/* 特性 3 */}
+              <Card className="bg-gradient-to-br from-gray-800/20 to-gray-900/20 border-gray-600/30 hover:border-gray-400/50 transition-all duration-300 hover:scale-105">
+                <CardHeader className="text-center">
+                  <div className="w-12 h-12 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Trophy className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <CardTitle className="text-xl text-white">排行榜与成就</CardTitle>
+                </CardHeader>
+                <CardContent className="text-gray-300">
+                  挑战自我，赢取成就，登上全球排行榜。
                 </CardContent>
               </Card>
             </div>
+          </section>
 
-            {/* 版权信息 */}
-            <div className="text-center mt-12 text-gray-500 text-sm">
-              <p>© 2024 {t('game.title')} | {t('common.copyright')}</p>
+          {/* 统计数据 */}
+          <section className="mb-20">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl font-bold text-white mb-4">统计数据</h2>
+              <p className="text-xl text-blue-200">了解我们的社区</p>
             </div>
-          </div>
-        </div>
 
-        {/* Right Ad Space */}
-        <div className="w-60 flex-shrink-0 p-4 hidden lg:block">
-          <AdSpace position="right" />
-        </div>
+            <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              {/* 统计 1 */}
+              <Card className="bg-gradient-to-br from-gray-800/20 to-gray-900/20 border-gray-600/30">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold text-white">
+                    12,345+
+                  </CardTitle>
+                  <p className="text-gray-300">注册用户</p>
+                </CardHeader>
+              </Card>
+
+              {/* 统计 2 */}
+              <Card className="bg-gradient-to-br from-gray-800/20 to-gray-900/20 border-gray-600/30">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold text-white">
+                    5,678,901+
+                  </CardTitle>
+                  <p className="text-gray-300">已完成游戏</p>
+                </CardHeader>
+              </Card>
+
+              {/* 统计 3 */}
+              <Card className="bg-gradient-to-br from-gray-800/20 to-gray-900/20 border-gray-600/30">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold text-white">
+                    42
+                  </CardTitle>
+                  <p className="text-gray-300">平均游戏时间 (分钟)</p>
+                </CardHeader>
+              </Card>
+            </div>
+          </section>
+
+          {/* 社交分享 */}
+          <section className="text-center py-12">
+            <h2 className="text-3xl font-bold text-white mb-4">加入我们的社区</h2>
+            <p className="text-xl text-blue-200 mb-8">
+              分享你的高分，与朋友一起玩！
+            </p>
+            <div className="flex justify-center space-x-6">
+              <Button variant="ghost" size="icon">
+                <Github className="w-5 h-5" />
+                <span className="sr-only">GitHub</span>
+              </Button>
+              <Button variant="ghost" size="icon">
+                <Twitter className="w-5 h-5" />
+                <span className="sr-only">Twitter</span>
+              </Button>
+              <Button variant="ghost" size="icon">
+                <Mail className="w-5 h-5" />
+                <span className="sr-only">Email</span>
+              </Button>
+               <Button variant="ghost" size="icon">
+                <MessageCircle className="w-5 h-5" />
+                <span className="sr-only">Discord</span>
+              </Button>
+            </div>
+          </section>
+        </main>
+        
+        <AdSpace position="right" width={240} height={600} />
       </div>
 
-      <AuthModal 
-        isOpen={authModalOpen} 
-        onClose={() => setAuthModalOpen(false)} 
-      />
+      <AuthModal show={showAuthModal} onClose={handleAuthModalClose} />
+      <GameSettingsDialog show={showSettings} onClose={handleSettingsClose} />
     </div>
   );
 };

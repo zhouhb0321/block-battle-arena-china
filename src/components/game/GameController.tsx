@@ -58,6 +58,7 @@ const GameController: React.FC<GameControllerProps> = ({
   };
 
   const handleBackToMenu = useCallback(() => {
+    console.log('GameController handleBackToMenu called');
     if (onBackToMenu) {
       onBackToMenu();
     }

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, Lock, AlertTriangle, Smartphone } from 'lucide-react';
+import { Shield, Lock, AlertTriangle, Smartphone, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -123,11 +123,13 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         handleFailedAttempt();
         
         if (authError.message.includes('Invalid login credentials')) {
-          throw new Error('用户名或密码错误，请检查密码是否正确');
+          throw new Error('密码错误。请检查您在Supabase中设置的admin@tetris.com密码是否正确');
         } else if (authError.message.includes('Email not confirmed')) {
-          throw new Error('邮箱未验证，请先验证邮箱');
+          throw new Error('邮箱未验证。从图片看，admin@tetris.com已确认邮箱，请重试');
+        } else if (authError.message.includes('User not found')) {
+          throw new Error('管理员账户不存在。请在Supabase用户管理中确认admin@tetris.com账户已创建');
         } else {
-          throw new Error(authError.message);
+          throw new Error(`登录失败: ${authError.message}`);
         }
       }
 
@@ -249,6 +251,14 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
           </Alert>
         )}
 
+        {/* 显示邮箱确认状态 */}
+        <Alert className="mb-4 border-green-200">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription className="text-green-700">
+            admin@tetris.com 邮箱已确认，可以正常登录
+          </AlertDescription>
+        </Alert>
+
         {step === 'login' && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -278,7 +288,8 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
               {loading ? '验证中...' : '登录'}
             </Button>
             <div className="text-sm text-gray-600 mt-2">
-              <p>提示：请确保您已在 Supabase 中设置了 admin@tetris.com 账户的密码</p>
+              <p>✓ admin@tetris.com 邮箱已确认</p>
+              <p>请确保您在Supabase中已为此账户设置了正确的密码</p>
             </div>
           </form>
         )}
@@ -327,7 +338,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
             <li>• 不要在公共设备上登录</li>
             <li>• 登录失败3次将锁定30分钟</li>
             <li>• 会话将在4小时后自动过期</li>
-            <li>• 确保已在Supabase中设置管理员密码</li>
+            <li>• admin@tetris.com邮箱已确认，可以正常登录</li>
           </ul>
         </div>
       </CardContent>

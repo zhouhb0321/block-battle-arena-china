@@ -34,6 +34,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onB
   };
 
   const handleBackToMenu = () => {
+    console.log('TetrisGame handleBackToMenu called');
     if (onBackToMenu) {
       onBackToMenu();
     } else {
@@ -94,7 +95,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onB
                 <MultiPlayerGameArea
                   gameState={convertedGameState}
                   gameSettings={gameSettings}
-                  username={user?.username || 'Player 1'}
+                  username={user?.username || '玩家1'}
                   onPause={onTogglePause}
                   onShare={handleShare}
                   onReset={onReset}
