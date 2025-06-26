@@ -36,8 +36,8 @@ const GameCountdown: React.FC<GameCountdownProps> = ({ onCountdownEnd, show }) =
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div className="text-white text-9xl font-bold animate-pulse">
+    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50 rounded-lg">
+      <div className="text-white text-8xl font-bold animate-pulse drop-shadow-2xl">
         {count > 0 ? count : 'GO!'}
       </div>
     </div>

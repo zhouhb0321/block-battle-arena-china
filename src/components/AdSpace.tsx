@@ -136,7 +136,7 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
     return null;
   }
 
-  // 渲染广告内容
+  // 所有用户都能看到有内容的广告
   return (
     <div 
       className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
@@ -157,9 +157,11 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
         <p className="text-xs text-gray-600 flex-1 line-clamp-3">
           {adContent.description}
         </p>
-        <div className="mt-2 text-xs text-gray-400">
-          点击: {adContent.clicks || 0} | 展示: {adContent.impressions || 0}
-        </div>
+        {isAdmin && (
+          <div className="mt-2 text-xs text-gray-400">
+            点击: {adContent.clicks || 0} | 展示: {adContent.impressions || 0}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import GameController from './game/GameController';
 import SinglePlayerGameArea from './game/SinglePlayerGameArea';
 import MultiPlayerGameArea from './game/MultiPlayerGameArea';
-import GameCountdown from './GameCountdown';
 
 interface TetrisGameProps {
   mode: 'single' | 'multi';
@@ -53,9 +52,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onB
 
   return (
     <div className="flex gap-4 p-4 justify-center min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-      <GameCountdown show={showCountdown} onCountdownEnd={handleCountdownEnd} />
-      
-      {gameStarted && (
+      {gameStarted ? (
         <GameController
           gameSettings={gameSettings}
           mode={mode}
@@ -117,6 +114,77 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ mode, gameType = 'endless', onB
             );
           }}
         </GameController>
+      ) : (
+        // 显示倒计时界面，背景显示游戏布局但不可交互
+        <div className="relative w-full">
+          {mode === 'single' && (
+            <SinglePlayerGameArea
+              gameState={{
+                board: Array(20).fill(null).map(() => Array(10).fill(0)),
+                currentPiece: null,
+                nextPieces: [],
+                holdPiece: null,
+                score: 0,
+                lines: 0,
+                level: 1,
+                gameOver: false,
+                paused: false,
+                canHold: true,
+                combo: -1,
+                b2b: 0,
+                pieces: 0,
+                startTime: Date.now(),
+                clearingLines: [],
+                ghostPiece: null,
+                attack: 0,
+                pps: 0,
+                apm: 0
+              }}
+              gameSettings={gameSettings}
+              username={user?.username || '游客'}
+              onPause={() => {}}
+              onShare={handleShare}
+              onReset={() => {}}
+              onBackToMenu={handleBackToMenu}
+              showCountdown={showCountdown}
+              onCountdownEnd={handleCountdownEnd}
+            />
+          )}
+
+          {mode === 'multi' && (
+            <MultiPlayerGameArea
+              gameState={{
+                board: Array(20).fill(null).map(() => Array(10).fill(0)),
+                currentPiece: null,
+                nextPieces: [],
+                holdPiece: null,
+                score: 0,
+                lines: 0,
+                level: 1,
+                gameOver: false,
+                paused: false,
+                canHold: true,
+                combo: -1,
+                b2b: 0,
+                pieces: 0,
+                startTime: Date.now(),
+                clearingLines: [],
+                ghostPiece: null,
+                attack: 0,
+                pps: 0,
+                apm: 0
+              }}
+              gameSettings={gameSettings}
+              username={user?.username || '玩家1'}
+              onPause={() => {}}
+              onShare={handleShare}
+              onReset={() => {}}
+              onBackToMenu={handleBackToMenu}
+              showCountdown={showCountdown}
+              onCountdownEnd={handleCountdownEnd}
+            />
+          )}
+        </div>
       )}
     </div>
   );

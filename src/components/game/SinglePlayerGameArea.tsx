@@ -6,6 +6,7 @@ import GameInfo from '../GameInfo';
 import PiecePreview from '../PiecePreview';
 import GameOverlay from '../GameOverlay';
 import GameStatusIndicators from '../GameStatusIndicators';
+import GameCountdown from '../GameCountdown';
 import AdSpace from '../AdSpace';
 import type { GameState, GameSettings } from '@/utils/gameTypes';
 
@@ -17,6 +18,8 @@ interface SinglePlayerGameAreaProps {
   onShare: () => void;
   onReset: () => void;
   onBackToMenu: () => void;
+  showCountdown?: boolean;
+  onCountdownEnd?: () => void;
 }
 
 const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
@@ -26,7 +29,9 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   onPause,
   onShare,
   onReset,
-  onBackToMenu
+  onBackToMenu,
+  showCountdown = false,
+  onCountdownEnd = () => {}
 }) => {
   return (
     <div className="flex gap-6 items-center justify-center w-full min-h-screen">
@@ -35,7 +40,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         <AdSpace position="left" width={240} height={600} />
       </div>
 
-      <div className="flex gap-6 items-center">
+      <div className="flex gap-6 items-start">
         {/* 左侧信息面板 */}
         <div className="flex flex-col gap-4">
           <PiecePreview 
@@ -62,7 +67,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         </div>
 
         {/* 主游戏区域 - 居中显示 */}
-        <div className="bg-gray-800 p-6 rounded-lg shadow-2xl border border-gray-700">
+        <div className="bg-gray-800 p-6 rounded-lg shadow-2xl border border-gray-700 relative">
           <GameInfo
             username={username}
             score={gameState.score}
@@ -98,10 +103,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               onReset={onReset}
               onBackToMenu={onBackToMenu}
             />
+
+            {/* 倒计时覆盖层 */}
+            <GameCountdown show={showCountdown} onCountdownEnd={onCountdownEnd} />
           </div>
         </div>
 
-        {/* 右侧NEXT面板 */}
+        {/* 右侧NEXT面板 - 显示4个方块 */}
         <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
           <h3 className="text-white text-sm mb-3 text-center font-bold">NEXT</h3>
           <div className="space-y-3">
@@ -110,7 +118,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                 key={index} 
                 piece={piece.type} 
                 title="" 
-                size={index === 0 ? "medium" : "small"} 
+                size="medium"
               />
             ))}
           </div>
