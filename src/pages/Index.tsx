@@ -16,12 +16,22 @@ import NavigationBar from '@/components/NavigationBar';
 import RankedMatchmaking from '@/components/RankedMatchmaking';
 import AdSpace from '@/components/AdSpace';
 import IncomeSystem from '@/components/IncomeSystem';
+import AdminPanel from '@/components/AdminPanel';
+import BrowserShortcut from '@/components/BrowserShortcut';
+import { ViewType } from '@/types/navigation';
 
 const Index = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const [currentView, setCurrentView] = useState<'menu' | 'single' | 'multi' | 'ranked' | 'settings' | 'replays' | 'income'>('menu');
+  const [currentView, setCurrentView] = useState<ViewType>('menu');
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  // Admin user check - replace this email with your admin email
+  const isAdmin = user?.email === 'admin@tetris.com';
+
+  const handleViewChange = (view: string) => {
+    setCurrentView(view as ViewType);
+  };
 
   const handleStartSingle = () => {
     setCurrentView('single');
@@ -84,8 +94,9 @@ const Index = () => {
       <div>
         <NavigationBar 
           currentView={currentView} 
-          onViewChange={setCurrentView}
+          onViewChange={handleViewChange}
           onAuthModalOpen={() => setAuthModalOpen(true)}
+          isAdmin={isAdmin}
         />
         <RankedMatchmaking onStartMatch={() => setCurrentView('multi')} />
       </div>
@@ -97,8 +108,9 @@ const Index = () => {
       <div>
         <NavigationBar 
           currentView={currentView} 
-          onViewChange={setCurrentView}
+          onViewChange={handleViewChange}
           onAuthModalOpen={() => setAuthModalOpen(true)}
+          isAdmin={isAdmin}
         />
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
           <div className="max-w-4xl mx-auto">
@@ -110,9 +122,10 @@ const Index = () => {
             </div>
             
             <Tabs defaultValue="keyboard" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="keyboard">键盘设置</TabsTrigger>
                 <TabsTrigger value="game">游戏设置</TabsTrigger>
+                <TabsTrigger value="shortcuts">快捷方式</TabsTrigger>
               </TabsList>
               
               <TabsContent value="keyboard" className="mt-6">
@@ -131,6 +144,10 @@ const Index = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              <TabsContent value="shortcuts" className="mt-6">
+                <BrowserShortcut />
+              </TabsContent>
             </Tabs>
           </div>
         </div>
@@ -143,8 +160,9 @@ const Index = () => {
       <div>
         <NavigationBar 
           currentView={currentView} 
-          onViewChange={setCurrentView}
+          onViewChange={handleViewChange}
           onAuthModalOpen={() => setAuthModalOpen(true)}
+          isAdmin={isAdmin}
         />
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
           <div className="max-w-6xl mx-auto">
@@ -161,16 +179,33 @@ const Index = () => {
     );
   }
 
-  if (currentView === 'income') {
+  if (currentView === 'income' && isAdmin) {
     return (
       <div>
         <NavigationBar 
           currentView={currentView} 
-          onViewChange={setCurrentView}
+          onViewChange={handleViewChange}
           onAuthModalOpen={() => setAuthModalOpen(true)}
+          isAdmin={isAdmin}
         />
         <div className="min-h-screen bg-gray-100 p-4">
           <IncomeSystem />
+        </div>
+      </div>
+    );
+  }
+
+  if (currentView === 'admin' && isAdmin) {
+    return (
+      <div>
+        <NavigationBar 
+          currentView={currentView} 
+          onViewChange={handleViewChange}
+          onAuthModalOpen={() => setAuthModalOpen(true)}
+          isAdmin={isAdmin}
+        />
+        <div className="min-h-screen bg-gray-100 p-4">
+          <AdminPanel />
         </div>
       </div>
     );
@@ -180,8 +215,9 @@ const Index = () => {
     <div>
       <NavigationBar 
         currentView={currentView} 
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
         onAuthModalOpen={() => setAuthModalOpen(true)}
+        isAdmin={isAdmin}
       />
       
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex">
@@ -206,6 +242,7 @@ const Index = () => {
               {user && !user.isGuest ? (
                 <p className="text-white">
                   欢迎回来，<span className="font-semibold text-blue-400">{user.username}</span>！
+                  {isAdmin && <span className="ml-2 text-yellow-400">[管理员]</span>}
                 </p>
               ) : (
                 <p className="text-gray-300">
@@ -286,14 +323,16 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              {/* 收入系统 */}
-              <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer">
-                <CardContent className="p-6 text-center" onClick={() => setCurrentView('income')}>
-                  <Trophy className="w-8 h-8 mx-auto mb-3 text-gray-400" />
-                  <h4 className="font-semibold text-white mb-2">收入系统</h4>
-                  <p className="text-sm text-gray-400">管理广告和捐赠收入</p>
-                </CardContent>
-              </Card>
+              {/* 管理员功能 */}
+              {isAdmin && (
+                <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer">
+                  <CardContent className="p-6 text-center" onClick={() => setCurrentView('admin')}>
+                    <Trophy className="w-8 h-8 mx-auto mb-3 text-gray-400" />
+                    <h4 className="font-semibold text-white mb-2">后台管理</h4>
+                    <p className="text-sm text-gray-400">广告和收入管理</p>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* 教程 */}
               <Card className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer">

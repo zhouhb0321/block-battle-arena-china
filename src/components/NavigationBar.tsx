@@ -4,18 +4,20 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import LanguageSelector from '@/components/LanguageSelector';
-import { Home, Play, Users, User, Trophy, Settings } from 'lucide-react';
+import { Home, Play, Users, User, Trophy, Settings, Shield, DollarSign } from 'lucide-react';
 
 interface NavigationBarProps {
   currentView: string;
   onViewChange: (view: string) => void;
   onAuthModalOpen: () => void;
+  isAdmin?: boolean;
 }
 
 const NavigationBar: React.FC<NavigationBarProps> = ({ 
   currentView, 
   onViewChange, 
-  onAuthModalOpen 
+  onAuthModalOpen,
+  isAdmin = false
 }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -77,6 +79,29 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             <Settings className="w-4 h-4" />
             {t('nav.settings')}
           </Button>
+
+          {/* Admin Only Navigation */}
+          {isAdmin && (
+            <>
+              <Button
+                variant={currentView === 'admin' ? 'default' : 'ghost'}
+                onClick={() => onViewChange('admin')}
+                className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300"
+              >
+                <Shield className="w-4 h-4" />
+                管理后台
+              </Button>
+              
+              <Button
+                variant={currentView === 'income' ? 'default' : 'ghost'}
+                onClick={() => onViewChange('income')}
+                className="flex items-center gap-2 text-green-400 hover:text-green-300"
+              >
+                <DollarSign className="w-4 h-4" />
+                收入系统
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Right Side */}
@@ -87,6 +112,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-gray-400" />
               <span className="text-white">{user.username}</span>
+              {isAdmin && <span className="text-yellow-400 text-sm">[管理员]</span>}
             </div>
           ) : (
             <Button variant="outline" onClick={onAuthModalOpen}>
