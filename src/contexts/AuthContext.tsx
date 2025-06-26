@@ -1,5 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
@@ -22,6 +24,7 @@ interface AuthContextType {
   loginAsGuest: () => void;
   logout: () => void;
   isAuthenticated: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,50 +36,119 @@ const generateGuestName = (): string => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    // 获取当前用户会话
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        await loadUserProfile(session.user);
+      } else {
+        // 检查是否有游客用户
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          try {
+            const parsedUser = JSON.parse(savedUser);
+            if (parsedUser.isGuest) {
+              setUser(parsedUser);
+            }
+          } catch (error) {
+            console.error('Error parsing saved user:', error);
+            localStorage.removeItem('user');
+          }
+        }
+      }
+      
+      setLoading(false);
+    };
+
+    getInitialSession();
+
+    // 监听认证状态变化
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          await loadUserProfile(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          localStorage.removeItem('user');
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  const loadUserProfile = async (supabaseUser: SupabaseUser) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading user profile:', error);
+        return;
+      }
+
+      const userData: User = {
+        id: supabaseUser.id,
+        username: profile?.username || supabaseUser.user_metadata?.username || 'Player',
+        email: supabaseUser.email || '',
+        isGuest: false,
+        rating: profile?.rating || 1000,
+        gamesPlayed: profile?.games_played || 0,
+        friendsCount: 0,
+        maxFriends: 50,
+        isPremium: false,
+        isVip: false,
+        avatar: profile?.avatar_url
+      };
+
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
+
   const login = async (email: string, password: string): Promise<void> => {
-    // 模拟登录API调用
-    const mockUser: User = {
-      id: '1',
-      username: 'TestUser',
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      isGuest: false,
-      rating: 1500,
-      gamesPlayed: 0,
-      friendsCount: 0,
-      maxFriends: 50,
-      isPremium: false,
-      isVip: false
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('user', JSON.stringify(mockUser));
+      password
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // 用户资料将通过 onAuthStateChange 自动加载
   };
 
   const register = async (username: string, email: string, password: string): Promise<void> => {
-    // 模拟注册API调用
-    const newUser: User = {
-      id: Date.now().toString(),
-      username,
+    const { data, error } = await supabase.auth.signUp({
       email,
-      isGuest: false,
-      rating: 1000,
-      gamesPlayed: 0,
-      friendsCount: 0,
-      maxFriends: 50,
-      isPremium: false,
-      isVip: false
-    };
-    
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
+      password,
+      options: {
+        data: {
+          username
+        }
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // 注册成功后，用户需要确认邮箱
+    if (data.user && !data.user.email_confirmed_at) {
+      throw new Error('请检查您的邮箱并点击确认链接来激活账户');
+    }
   };
 
   const loginAsGuest = (): void => {
@@ -97,9 +169,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('user', JSON.stringify(guestUser));
   };
 
-  const logout = (): void => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async (): Promise<void> => {
+    if (user && !user.isGuest) {
+      await supabase.auth.signOut();
+    } else {
+      setUser(null);
+      localStorage.removeItem('user');
+    }
   };
 
   return (
@@ -109,7 +185,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       register,
       loginAsGuest,
       logout,
-      isAuthenticated: !!user
+      isAuthenticated: !!user,
+      loading
     }}>
       {children}
     </AuthContext.Provider>

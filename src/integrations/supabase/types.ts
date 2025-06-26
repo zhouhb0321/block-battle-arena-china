@@ -190,6 +190,57 @@ export type Database = {
           },
         ]
       }
+      game_replays_new: {
+        Row: {
+          apm: number
+          created_at: string
+          duration: number
+          final_level: number
+          final_lines: number
+          final_score: number
+          game_mode: string
+          id: string
+          is_personal_best: boolean | null
+          is_world_record: boolean | null
+          opponent_id: string | null
+          pps: number
+          replay_data: Json
+          user_id: string
+        }
+        Insert: {
+          apm?: number
+          created_at?: string
+          duration?: number
+          final_level?: number
+          final_lines?: number
+          final_score?: number
+          game_mode?: string
+          id?: string
+          is_personal_best?: boolean | null
+          is_world_record?: boolean | null
+          opponent_id?: string | null
+          pps?: number
+          replay_data: Json
+          user_id: string
+        }
+        Update: {
+          apm?: number
+          created_at?: string
+          duration?: number
+          final_level?: number
+          final_lines?: number
+          final_score?: number
+          game_mode?: string
+          id?: string
+          is_personal_best?: boolean | null
+          is_world_record?: boolean | null
+          opponent_id?: string | null
+          pps?: number
+          replay_data?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           avatar_url: string | null
@@ -238,6 +289,48 @@ export type Database = {
           total_score?: number
           updated_at?: string
           username?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          arr: number
+          controls: Json
+          created_at: string
+          das: number
+          enable_ghost: boolean
+          enable_sound: boolean
+          id: string
+          master_volume: number
+          sdf: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          arr?: number
+          controls?: Json
+          created_at?: string
+          das?: number
+          enable_ghost?: boolean
+          enable_sound?: boolean
+          id?: string
+          master_volume?: number
+          sdf?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          arr?: number
+          controls?: Json
+          created_at?: string
+          das?: number
+          enable_ghost?: boolean
+          enable_sound?: boolean
+          id?: string
+          master_volume?: number
+          sdf?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
