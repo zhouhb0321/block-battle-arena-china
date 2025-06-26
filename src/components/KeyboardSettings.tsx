@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Keyboard, RotateCw, RotateCcw, Pause, ArrowUp, ArrowDown } from 'lucide-react';
+import { Keyboard, RotateCw, RotateCcw, Pause, ArrowUp, ArrowDown, ArrowLeft } from 'lucide-react';
 import { useUserSettings } from '@/hooks/useUserSettings';
 
 const KeyboardSettings: React.FC = () => {
@@ -25,7 +25,8 @@ const KeyboardSettings: React.FC = () => {
     rotateCounterclockwise: { label: '逆时针旋转', icon: '↺' },
     rotate180: { label: '180°旋转', icon: '⟲' },
     hold: { label: '暂存', icon: 'H' },
-    pause: { label: '暂停', icon: '⏸' }
+    pause: { label: '暂停', icon: '⏸' },
+    backToMenu: { label: '返回上一级菜单', icon: '←' }
   };
 
   const handleKeyRecord = (controlName: string) => {
@@ -35,24 +36,40 @@ const KeyboardSettings: React.FC = () => {
       e.preventDefault();
       e.stopPropagation();
       
-      // 检查是否与其他按键冲突
+      // 检查是否与其他按键冲突，但排除当前正在设置的按键
       const conflictKey = Object.entries(keyBindings).find(
         ([key, value]) => key !== controlName && value === e.code
       );
       
       if (conflictKey) {
-        alert(`按键 ${getKeyDisplayName(e.code)} 已被 ${keyLabels[conflictKey[0] as keyof typeof keyLabels].label} 占用`);
-        setRecordingKey(null);
-        return;
+        // 如果有冲突，交换按键设置而不是报错
+        const conflictKeyName = conflictKey[0] as keyof typeof keyBindings;
+        const oldValue = keyBindings[controlName as keyof typeof keyBindings];
+        
+        const newBindings = {
+          ...keyBindings,
+          [controlName]: e.code,
+          [conflictKeyName]: oldValue
+        };
+        
+        setKeyBindings(newBindings);
+        saveSettings({ controls: newBindings });
+        
+        // 显示交换提示
+        const conflictLabel = keyLabels[conflictKeyName as keyof typeof keyLabels]?.label || conflictKeyName;
+        const currentLabel = keyLabels[controlName as keyof typeof keyLabels]?.label || controlName;
+        alert(`已交换按键设置：${currentLabel} 和 ${conflictLabel} 的按键已互换`);
+      } else {
+        // 没有冲突，直接设置
+        const newBindings = {
+          ...keyBindings,
+          [controlName]: e.code
+        };
+        
+        setKeyBindings(newBindings);
+        saveSettings({ controls: newBindings });
       }
       
-      const newBindings = {
-        ...keyBindings,
-        [controlName]: e.code
-      };
-      
-      setKeyBindings(newBindings);
-      saveSettings({ controls: newBindings });
       setRecordingKey(null);
     };
     
@@ -105,7 +122,8 @@ const KeyboardSettings: React.FC = () => {
       rotateCounterclockwise: 'KeyZ',
       rotate180: 'KeyA',
       hold: 'KeyC',
-      pause: 'Escape'
+      pause: 'Escape',
+      backToMenu: 'KeyB'
     };
     
     setKeyBindings(defaultControls);
@@ -124,7 +142,8 @@ const KeyboardSettings: React.FC = () => {
         rotateCounterclockwise: 'KeyX',
         rotate180: 'KeyA',
         hold: 'KeyC',
-        pause: 'Escape'
+        pause: 'Escape',
+        backToMenu: 'KeyB'
       }
     },
     wasd: {
@@ -138,7 +157,8 @@ const KeyboardSettings: React.FC = () => {
         rotateCounterclockwise: 'KeyK',
         rotate180: 'KeyL',
         hold: 'Space',
-        pause: 'Escape'
+        pause: 'Escape',
+        backToMenu: 'KeyB'
       }
     },
     guideline: {
@@ -152,7 +172,8 @@ const KeyboardSettings: React.FC = () => {
         rotateCounterclockwise: 'KeyZ',
         rotate180: 'KeyA',
         hold: 'KeyC',
-        pause: 'Escape'
+        pause: 'Escape',
+        backToMenu: 'KeyB'
       }
     }
   };
@@ -213,7 +234,7 @@ const KeyboardSettings: React.FC = () => {
                   >
                     {recordingKey === key 
                       ? '按下按键...' 
-                      : getKeyDisplayName(keyBindings[key as keyof typeof keyBindings])
+                      : getKeyDisplayName(keyBindings[key as keyof typeof keyBindings] || 'KeyB')
                     }
                   </Button>
                 </div>
@@ -233,6 +254,7 @@ const KeyboardSettings: React.FC = () => {
               <div>• <strong>180°旋转</strong>：方块旋转180°</div>
               <div>• <strong>暂存</strong>：保存当前方块供以后使用</div>
               <div>• <strong>暂停</strong>：暂停/继续游戏</div>
+              <div>• <strong>返回上一级菜单</strong>：返回到上一个界面</div>
             </div>
           </div>
 
@@ -246,7 +268,7 @@ const KeyboardSettings: React.FC = () => {
                 <span>正在为 <strong>{keyLabels[recordingKey as keyof typeof keyLabels].label}</strong> 录制按键...</span>
               </div>
               <p className="text-sm text-gray-600 mt-2">
-                请按下您想要设置的按键，或等待5秒自动取消
+                请按下您想要设置的按键，或等待5秒自动取消。如与其他按键冲突将自动交换。
               </p>
             </div>
           )}

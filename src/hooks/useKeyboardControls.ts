@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState, useRef } from 'react';
 import type { GameSettings } from '@/utils/gameTypes';
 
@@ -14,6 +13,7 @@ interface UseKeyboardControlsProps {
   onRotateCounterclockwise: () => void;
   onHold: () => void;
   onPause: () => void;
+  onBackToMenu?: () => void;
 }
 
 export const useKeyboardControls = ({
@@ -27,7 +27,8 @@ export const useKeyboardControls = ({
   onRotateClockwise,
   onRotateCounterclockwise,
   onHold,
-  onPause
+  onPause,
+  onBackToMenu
 }: UseKeyboardControlsProps) => {
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const keyPressedTime = useRef<{[key: string]: number}>({});
@@ -56,11 +57,14 @@ export const useKeyboardControls = ({
       } else if (event.code === controls.pause) {
         event.preventDefault();
         onPause();
+      } else if (event.code === controls.backToMenu && onBackToMenu) {
+        event.preventDefault();
+        onBackToMenu();
       }
     }
     
     setKeys(prev => new Set(prev).add(event.code));
-  }, [gameSettings, gameOver, paused, onRotateClockwise, onRotateCounterclockwise, onHardDrop, onHold, onPause]);
+  }, [gameSettings, gameOver, paused, onRotateClockwise, onRotateCounterclockwise, onHardDrop, onHold, onPause, onBackToMenu]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     delete keyPressedTime.current[event.code];

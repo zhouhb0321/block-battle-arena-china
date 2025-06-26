@@ -17,7 +17,8 @@ const DEFAULT_SETTINGS: GameSettings = {
     rotateCounterclockwise: 'KeyZ',
     rotate180: 'KeyA',
     hold: 'KeyC',
-    pause: 'Escape'
+    pause: 'Escape',
+    backToMenu: 'KeyB'
   },
   enableGhost: true,
   enableSound: true,
