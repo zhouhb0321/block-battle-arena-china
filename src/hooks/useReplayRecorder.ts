@@ -94,7 +94,7 @@ export const useReplayRecorder = () => {
           pps: gameStats.pps,
           apm: gameStats.apm,
           duration: gameStats.duration,
-          replay_data: finalReplayData
+          replay_data: finalReplayData as any
         })
         .select()
         .single();

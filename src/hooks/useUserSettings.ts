@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { GameSettings } from '@/utils/gameTypes';
 
-const defaultSettings: GameSettings = {
+const DEFAULT_SETTINGS: GameSettings = {
   das: 167,
   arr: 33,
   sdf: 20,
@@ -25,22 +25,30 @@ const defaultSettings: GameSettings = {
 };
 
 export const useUserSettings = () => {
-  const [settings, setSettings] = useState<GameSettings>(defaultSettings);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const [loading, setLoading] = useState(true);
 
-  // 加载用户设置
+  useEffect(() => {
+    loadSettings();
+  }, [user]);
+
   const loadSettings = async () => {
+    setLoading(true);
+    
     if (!user || user.isGuest) {
-      // 游客用户使用localStorage
+      // 游客用户从 localStorage 加载设置
       const savedSettings = localStorage.getItem('tetris_settings');
       if (savedSettings) {
         try {
           const parsed = JSON.parse(savedSettings);
-          setSettings({ ...defaultSettings, ...parsed });
+          setSettings({ ...DEFAULT_SETTINGS, ...parsed });
         } catch (error) {
-          console.error('Failed to parse saved settings:', error);
+          console.error('Error parsing saved settings:', error);
+          setSettings(DEFAULT_SETTINGS);
         }
+      } else {
+        setSettings(DEFAULT_SETTINGS);
       }
       setLoading(false);
       return;
@@ -55,35 +63,39 @@ export const useUserSettings = () => {
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading settings:', error);
+        setSettings(DEFAULT_SETTINGS);
         setLoading(false);
         return;
       }
 
       if (data) {
-        setSettings({
+        const loadedSettings: GameSettings = {
           das: data.das,
           arr: data.arr,
           sdf: data.sdf,
-          controls: data.controls,
+          controls: data.controls as any,
           enableGhost: data.enable_ghost,
           enableSound: data.enable_sound,
           masterVolume: data.master_volume
-        });
+        };
+        setSettings(loadedSettings);
+      } else {
+        setSettings(DEFAULT_SETTINGS);
       }
     } catch (error) {
       console.error('Error loading settings:', error);
+      setSettings(DEFAULT_SETTINGS);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
-  // 保存用户设置
   const saveSettings = async (newSettings: Partial<GameSettings>) => {
     const updatedSettings = { ...settings, ...newSettings };
     setSettings(updatedSettings);
 
     if (!user || user.isGuest) {
-      // 游客用户保存到localStorage
+      // 游客用户保存到 localStorage
       localStorage.setItem('tetris_settings', JSON.stringify(updatedSettings));
       return;
     }
@@ -109,10 +121,6 @@ export const useUserSettings = () => {
       console.error('Error saving settings:', error);
     }
   };
-
-  useEffect(() => {
-    loadSettings();
-  }, [user]);
 
   return {
     settings,
