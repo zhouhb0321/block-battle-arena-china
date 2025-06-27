@@ -8,6 +8,8 @@ import GameOverlay from '../GameOverlay';
 import GameStatusIndicators from '../GameStatusIndicators';
 import GameCountdown from '../GameCountdown';
 import AdSpace from '../AdSpace';
+import MobileControls from '../MobileControls';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { GameState, GameSettings } from '@/utils/gameTypes';
 
 interface SinglePlayerGameAreaProps {
@@ -20,6 +22,14 @@ interface SinglePlayerGameAreaProps {
   onBackToMenu: () => void;
   showCountdown?: boolean;
   onCountdownEnd?: () => void;
+  onMoveLeft?: () => void;
+  onMoveRight?: () => void;
+  onSoftDrop?: () => void;
+  onHardDrop?: () => void;
+  onRotateClockwise?: () => void;
+  onRotateCounterclockwise?: () => void;
+  onRotate180?: () => void;
+  onHold?: () => void;
 }
 
 const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
@@ -31,9 +41,107 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   onReset,
   onBackToMenu,
   showCountdown = false,
-  onCountdownEnd = () => {}
+  onCountdownEnd = () => {},
+  onMoveLeft = () => {},
+  onMoveRight = () => {},
+  onSoftDrop = () => {},
+  onHardDrop = () => {},
+  onRotateClockwise = () => {},
+  onRotateCounterclockwise = () => {},
+  onRotate180 = () => {},
+  onHold = () => {}
 }) => {
-  const mainCellSize = 30; // 主游戏板的方块大小
+  const mainCellSize = 30;
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-900">
+        {/* 移动端游戏区域 */}
+        <div className="flex-1 flex items-center justify-center p-2">
+          <div className="flex gap-2 items-start max-w-full">
+            {/* HOLD 区域 */}
+            <div className="bg-gray-800 p-2 rounded">
+              <PiecePreview 
+                piece={gameState.holdPiece?.type || null} 
+                title="HOLD" 
+                cellSize={20}
+              />
+            </div>
+
+            {/* 主游戏区域 */}
+            <div className="bg-gray-800 p-3 rounded-lg shadow-2xl border border-gray-700 relative">
+              <GameInfo
+                username={username}
+                score={gameState.score}
+                lines={gameState.lines}
+                level={gameState.level}
+                pieces={gameState.pieces || 0}
+                pps={gameState.pps || 0}
+                attack={gameState.apm || 0}
+                paused={gameState.paused}
+                onPause={onPause}
+                onShare={onShare}
+                mode="single"
+                combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}
+              />
+              
+              <div className="relative">
+                <GameBoard
+                  board={gameState.board}
+                  currentPiece={gameState.currentPiece}
+                  ghostPiece={gameState.ghostPiece}
+                  enableGhost={gameSettings.enableGhost}
+                  cellSize={25}
+                />
+                
+                <GameOverlay
+                  paused={gameState.paused}
+                  gameOver={gameState.gameOver}
+                  score={gameState.score}
+                  lines={gameState.lines}
+                  totalAttack={gameState.attack || 0}
+                  pps={gameState.pps || 0}
+                  apm={gameState.apm || 0}
+                  onReset={onReset}
+                  onBackToMenu={onBackToMenu}
+                />
+                <GameCountdown show={showCountdown} onCountdownEnd={onCountdownEnd} />
+              </div>
+            </div>
+
+            {/* NEXT 区域 */}
+            <div className="bg-gray-800 p-2 rounded">
+              <h3 className="text-white text-xs mb-2 text-center font-bold">NEXT</h3>
+              <div className="space-y-1">
+                {gameState.nextPieces.slice(0, 3).map((piece, index) => (
+                  <PiecePreview 
+                    key={index} 
+                    piece={piece.type} 
+                    title="" 
+                    cellSize={20}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 移动端控制按钮 */}
+        <MobileControls
+          onMoveLeft={onMoveLeft}
+          onMoveRight={onMoveRight}
+          onSoftDrop={onSoftDrop}
+          onHardDrop={onHardDrop}
+          onRotateClockwise={onRotateClockwise}
+          onRotateCounterclockwise={onRotateCounterclockwise}
+          onRotate180={onRotate180}
+          onHold={onHold}
+          onPause={onPause}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-6 items-center justify-center w-full min-h-screen">
@@ -57,7 +165,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             totalAttack={gameState.attack || 0}
           />
 
-          {/* 返回菜单按钮 */}
           <Button 
             onClick={onBackToMenu}
             variant="outline"
@@ -106,12 +213,11 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               onBackToMenu={onBackToMenu}
             />
 
-            {/* 倒计时覆盖层 */}
             <GameCountdown show={showCountdown} onCountdownEnd={onCountdownEnd} />
           </div>
         </div>
 
-        {/* 右侧NEXT面板 - 显示4个方块，使用与主游戏板相同的方块大小 */}
+        {/* 右侧NEXT面板 */}
         <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
           <h3 className="text-white text-sm mb-3 text-center font-bold">NEXT</h3>
           <div className="space-y-3">
@@ -127,12 +233,10 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         </div>
       </div>
 
-      {/* 右侧广告位 */}
       <div className="hidden xl:block">
         <AdSpace position="right" width={240} height={600} />
       </div>
 
-      {/* 游戏中的动态广告 */}
       <AdSpace position="bottom" width={200} height={100} gameContext={true} />
     </div>
   );

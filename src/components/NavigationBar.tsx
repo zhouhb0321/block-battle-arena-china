@@ -45,21 +45,12 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           </Button>
           
           <Button
-            variant={currentView === 'single' ? 'default' : 'ghost'}
-            onClick={() => onViewChange('single')}
+            variant={currentView === 'game' ? 'default' : 'ghost'}
+            onClick={() => onViewChange('game')}
             className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
           >
             <Play className="w-4 h-4" />
-            {t('nav.play')}
-          </Button>
-          
-          <Button
-            variant={currentView === 'multi' ? 'default' : 'ghost'}
-            onClick={() => onViewChange('multi')}
-            className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
-          >
-            <Users className="w-4 h-4" />
-            {t('nav.multiplayer')}
+            开始游戏
           </Button>
           
           <Button
@@ -68,7 +59,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
           >
             <Trophy className="w-4 h-4" />
-            {t('game.ranked')}
+            排行榜
           </Button>
           
           <Button
@@ -77,7 +68,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
           >
             <Settings className="w-4 h-4" />
-            {t('nav.settings')}
+            设置
           </Button>
 
           {/* Admin Only Navigation */}
@@ -104,8 +95,8 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           )}
         </div>
 
-        {/* Right Side */}
-        <div className="flex items-center gap-4">
+        {/* Right Side - 改善登录按钮可见性 */}
+        <div className="flex items-center gap-3">
           <LanguageSelector />
           
           {user && !user.isGuest ? (
@@ -116,9 +107,9 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             </div>
           ) : (
             <Button 
-              variant="outline" 
+              variant="default"
               onClick={onAuthModalOpen}
-              className="border-white/20 text-white hover:bg-white/10 hover:text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 shadow-md"
             >
               {t('auth.login')}
             </Button>

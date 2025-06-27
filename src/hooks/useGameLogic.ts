@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
@@ -218,6 +217,8 @@ export const useGameLogic = (
     const dropDistance = dropY - gameState.currentPiece.y;
     
     const droppedPiece = { ...gameState.currentPiece, y: dropY };
+    
+    // 立即更新状态并锁定方块
     setGameState(prev => ({
       ...prev,
       currentPiece: droppedPiece,
@@ -225,9 +226,10 @@ export const useGameLogic = (
       score: prev.score + dropDistance * 2
     }));
     
+    // 立即锁定方块，不需要延迟
     setTimeout(() => {
       lockPiece();
-    }, 50);
+    }, 10);
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
   const lockPiece = useCallback(() => {

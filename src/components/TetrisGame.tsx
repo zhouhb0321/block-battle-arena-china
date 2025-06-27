@@ -35,17 +35,23 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     controls: settings.controls
   };
 
-  // 计算下落速度，基于消除行数实现5级速度系统
   const calculateDropSpeed = useCallback((lines: number): number => {
-    const baseSpeed = 1000; // 基础速度1秒
-    const level = Math.min(Math.floor(lines / 40), 4); // 每40行提升一级，最多5级
-    const speedMultiplier = Math.pow(1.5, level); // 1.5的幂次方
-    return Math.max(baseSpeed / speedMultiplier, 50); // 最快不超过50ms
+    const baseSpeed = 1000;
+    const level = Math.min(Math.floor(lines / 40), 4);
+    const speedMultiplier = Math.pow(1.5, level);
+    return Math.max(baseSpeed / speedMultiplier, 50);
   }, []);
 
   const gameLogic = useGameLogic(gameMode, gameSettings, calculateDropSpeed);
-
   const gameContainerRef = useRef<HTMLDivElement>(null);
+
+  // 180度旋转功能
+  const rotate180 = useCallback(() => {
+    if (gameLogic.rotatePieceClockwise) {
+      gameLogic.rotatePieceClockwise();
+      setTimeout(() => gameLogic.rotatePieceClockwise(), 50);
+    }
+  }, [gameLogic]);
 
   const keyboardControls = useKeyboardControls({
     gameSettings,
@@ -78,8 +84,6 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     console.log('Countdown ended, starting game...');
     setShowCountdown(false);
     setGameStarted(true);
-    
-    // Start the game logic
     gameLogic.startGame();
   };
 
@@ -99,7 +103,6 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     setShowCountdown(true);
   };
 
-  // Make sure to focus the container for keyboard events
   useEffect(() => {
     if (gameContainerRef.current && gameStarted) {
       gameContainerRef.current.focus();
@@ -154,6 +157,14 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
           onBackToMenu={handleBackToMenu}
           showCountdown={showCountdown}
           onCountdownEnd={handleCountdownEnd}
+          onMoveLeft={() => gameLogic.movePiece(-1, 0)}
+          onMoveRight={() => gameLogic.movePiece(1, 0)}
+          onSoftDrop={() => gameLogic.movePiece(0, 1)}
+          onHardDrop={gameLogic.hardDrop}
+          onRotateClockwise={gameLogic.rotatePieceClockwise}
+          onRotateCounterclockwise={gameLogic.rotatePieceCounterclockwise}
+          onRotate180={rotate180}
+          onHold={gameLogic.holdCurrentPiece}
         />
       )}
     </div>
