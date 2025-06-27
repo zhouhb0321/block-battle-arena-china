@@ -6,9 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Play, Users, Settings, Trophy, Gamepad2, Zap, Target, Clock, Star, ChevronRight, Github, Twitter, Mail, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from '@/components/AuthModal';
-import GameModeSelector from '@/components/GameModeSelector';
 import GameSettingsDialog from '@/components/GameSettingsDialog';
 import TetrisGame from '@/components/TetrisGame';
+import MainMenu from '@/components/MainMenu';
 import AdSpace from '@/components/AdSpace';
 import NavigationBar from '@/components/NavigationBar';
 import { toast } from 'sonner';
@@ -17,7 +17,7 @@ const Index = () => {
   const { user, isAuthenticated } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentView, setCurrentView] = useState<'home' | 'game' | 'settings'>('home');
-  const [gameConfig, setGameConfig] = useState<{mode: 'single' | 'multi', gameType?: string} | null>(null);
+  const [showMainMenu, setShowMainMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
@@ -32,8 +32,7 @@ const Index = () => {
     setShowAuthModal(false);
   };
 
-  const handleGameStart = (mode: 'single' | 'multi', gameType?: string) => {
-    setGameConfig({ mode, gameType });
+  const handleGameStart = (gameType: string, gameMode: any) => {
     setCurrentView('game');
   };
 
@@ -49,20 +48,38 @@ const Index = () => {
     setCurrentView(view as 'home' | 'game' | 'settings');
   };
 
-  if (currentView === 'game' && gameConfig) {
+  const handleShowMainMenu = () => {
+    setShowMainMenu(true);
+  };
+
+  const handleBackToHome = () => {
+    setShowMainMenu(false);
+    setCurrentView('home');
+  };
+
+  if (currentView === 'game') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
         <div className="flex">
           <AdSpace position="left" width={240} height={600} />
           <div className="flex-1">
             <TetrisGame 
-              mode={gameConfig.mode}
-              gameType={gameConfig.gameType as any}
-              onBackToMenu={() => {
-                setCurrentView('home');
-                setGameConfig(null);
-              }}
+              onBackToMenu={handleBackToHome}
             />
+          </div>
+          <AdSpace position="right" width={240} height={600} />
+        </div>
+      </div>
+    );
+  }
+
+  if (showMainMenu) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+        <div className="flex">
+          <AdSpace position="left" width={240} height={600} />
+          <div className="flex-1">
+            <MainMenu onGameStart={handleGameStart} />
           </div>
           <AdSpace position="right" width={240} height={600} />
         </div>
@@ -95,7 +112,7 @@ const Index = () => {
               经典俄罗斯方块，在线畅玩，随时随地挑战你的极限！
             </p>
             <div className="space-x-4">
-              <Button size="lg" onClick={() => handleGameStart('single', 'endless')} className="shadow-lg">
+              <Button size="lg" onClick={handleShowMainMenu} className="shadow-lg">
                 <Play className="w-5 h-5 mr-2" />
                 开始游戏
               </Button>
@@ -137,21 +154,21 @@ const Index = () => {
                   <div className="grid gap-3">
                     <Button 
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      onClick={() => handleGameStart('single', 'endless')}
+                      onClick={handleShowMainMenu}
                     >
                       <Target className="w-4 h-4 mr-2" />
                       无尽模式
                     </Button>
                     <Button 
                       className="w-full bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => handleGameStart('single', 'sprint40')}
+                      onClick={handleShowMainMenu}
                     >
                       <Zap className="w-4 h-4 mr-2" />
                       40行冲刺
                     </Button>
                     <Button 
                       className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                      onClick={() => handleGameStart('single', 'ultra2min')}
+                      onClick={handleShowMainMenu}
                     >
                       <Clock className="w-4 h-4 mr-2" />
                       2分钟极限
@@ -182,21 +199,21 @@ const Index = () => {
                   <div className="grid gap-3">
                     <Button 
                       className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                      onClick={() => handleGameStart('multi', 'vs')}
+                      onClick={handleShowMainMenu}
                     >
                       <Users className="w-4 h-4 mr-2" />
                       即时对战
                     </Button>
                     <Button 
                       className="w-full bg-pink-600 hover:bg-pink-700 text-white"
-                      onClick={() => handleGameStart('multi', 'ranked')}
+                      onClick={handleShowMainMenu}
                     >
                       <Trophy className="w-4 h-4 mr-2" />
                       排位赛
                     </Button>
                     <Button 
                       className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                      onClick={() => handleGameStart('multi', 'room')}
+                      onClick={handleShowMainMenu}
                     >
                       <Gamepad2 className="w-4 h-4 mr-2" />
                       私人房间
