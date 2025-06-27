@@ -62,39 +62,57 @@ export const useGameLogic = (
   }, []);
 
   const spawnNewPiece = useCallback(() => {
-    if (gameState.nextPieces.length === 0) {
-      const sevenBag = generateSevenBag();
-      const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
-      setGameState(prev => ({ ...prev, nextPieces: gamePieces }));
-      return;
-    }
-
-    const newPiece = createGamePieceFromType(gameState.nextPieces[0].type);
-    const newNextPieces = [...gameState.nextPieces.slice(1)];
+    console.log('Spawning new piece, nextPieces length:', gameState.nextPieces.length);
     
-    if (newNextPieces.length < 6) {
-      const sevenBag = generateSevenBag();
-      const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
-      newNextPieces.push(...gamePieces);
-    }
+    setGameState(prev => {
+      if (prev.nextPieces.length === 0) {
+        const sevenBag = generateSevenBag();
+        const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
+        console.log('Generated new seven bag:', gamePieces.map(p => p.type.name));
+        
+        const newPiece = createGamePieceFromType(gamePieces[0].type);
+        const newNextPieces = gamePieces.slice(1);
+        
+        if (!isValidPosition(prev.board, newPiece)) {
+          return { ...prev, gameOver: true };
+        }
 
-    if (!isValidPosition(gameState.board, newPiece)) {
-      setGameState(prev => ({ ...prev, gameOver: true }));
-      return;
-    }
+        return {
+          ...prev,
+          currentPiece: newPiece,
+          ghostPiece: createGhostPiece(prev.board, newPiece),
+          nextPieces: newNextPieces,
+          canHold: true,
+          pieces: prev.pieces! + 1
+        };
+      } else {
+        const newPiece = createGamePieceFromType(prev.nextPieces[0].type);
+        let newNextPieces = [...prev.nextPieces.slice(1)];
+        
+        if (newNextPieces.length < 6) {
+          const sevenBag = generateSevenBag();
+          const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
+          newNextPieces.push(...gamePieces);
+        }
 
-    setGameState(prev => ({
-      ...prev,
-      currentPiece: newPiece,
-      ghostPiece: createGhostPiece(gameState.board, newPiece),
-      nextPieces: newNextPieces,
-      canHold: true,
-      pieces: prev.pieces! + 1
-    }));
+        if (!isValidPosition(prev.board, newPiece)) {
+          return { ...prev, gameOver: true };
+        }
+
+        return {
+          ...prev,
+          currentPiece: newPiece,
+          ghostPiece: createGhostPiece(prev.board, newPiece),
+          nextPieces: newNextPieces,
+          canHold: true,
+          pieces: prev.pieces! + 1
+        };
+      }
+    });
     
     setLockDelay(false);
     lockDelayTime.current = 0;
-  }, [gameState.board, gameState.nextPieces, createGamePieceFromType]);
+  }, [createGamePieceFromType]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
     if (!gameState.currentPiece || gameState.gameOver) return false;
@@ -215,6 +233,7 @@ export const useGameLogic = (
   const lockPiece = useCallback(() => {
     if (!gameState.currentPiece) return;
 
+    console.log('Locking piece');
     const tSpinType = checkTSpin(gameState.board, gameState.currentPiece, lastAction || 'move');
     const newBoard = placePiece(gameState.board, gameState.currentPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
@@ -289,24 +308,29 @@ export const useGameLogic = (
       startTime: Date.now()
     }));
     
-    if (gameState.nextPieces.length === 0) {
-      const sevenBag = generateSevenBag();
-      const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
-      setGameState(prev => ({ ...prev, nextPieces: gamePieces }));
-    }
-    
+    // Initialize the first seven bag if needed
     setTimeout(() => {
-      if (!gameState.currentPiece) {
-        spawnNewPiece();
-      }
+      setGameState(prev => {
+        if (prev.nextPieces.length === 0) {
+          const sevenBag = generateSevenBag();
+          const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
+          console.log('Initializing seven bag for game start:', gamePieces.map(p => p.type.name));
+          return { ...prev, nextPieces: gamePieces };
+        }
+        return prev;
+      });
+      
+      // Spawn the first piece
+      setTimeout(() => spawnNewPiece(), 100);
     }, 100);
-  }, [gameState.nextPieces, gameState.currentPiece, spawnNewPiece, createGamePieceFromType]);
+  }, [spawnNewPiece, createGamePieceFromType]);
 
   const pauseGame = useCallback(() => {
     setGameState(prev => ({ ...prev, paused: true }));
   }, []);
 
   const resetGame = useCallback(() => {
+    console.log('Resetting game...');
     setGameState({
       board: Array(20).fill(null).map(() => Array(10).fill(0)),
       currentPiece: null,
@@ -332,8 +356,8 @@ export const useGameLogic = (
   }, []);
 
   const shareGame = useCallback(() => {
-    // Placeholder for share functionality
     console.log('Sharing game...');
+    toast.success('游戏分享功能即将推出！');
   }, []);
 
   // Game loop

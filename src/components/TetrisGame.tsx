@@ -68,29 +68,43 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
   });
 
   const handleModeSelect = (mode: any) => {
+    console.log('Mode selected:', mode);
     setGameMode(mode.id as GameMode);
     setShowModeSelector(false);
     setShowCountdown(true);
   };
 
   const handleCountdownEnd = () => {
+    console.log('Countdown ended, starting game...');
     setShowCountdown(false);
     setGameStarted(true);
+    
+    // Start the game logic
     gameLogic.startGame();
   };
 
   const handleBackToMenu = () => {
+    console.log('Back to menu called');
     gameLogic.resetGame();
     setGameStarted(false);
+    setShowCountdown(false);
     setShowModeSelector(true);
     onBackToMenu();
   };
 
   const handleReset = () => {
+    console.log('Reset called');
     gameLogic.resetGame();
     setGameStarted(false);
     setShowCountdown(true);
   };
+
+  // Make sure to focus the container for keyboard events
+  useEffect(() => {
+    if (gameContainerRef.current && gameStarted) {
+      gameContainerRef.current.focus();
+    }
+  }, [gameStarted]);
 
   if (showModeSelector) {
     return (
@@ -102,7 +116,19 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
   }
 
   return (
-    <div ref={gameContainerRef} className="w-full h-full relative" tabIndex={0}>
+    <div 
+      ref={gameContainerRef} 
+      className="w-full h-full relative" 
+      tabIndex={0}
+      style={{ outline: 'none' }}
+    >
+      {showCountdown && (
+        <GameCountdown
+          show={showCountdown}
+          onCountdownEnd={handleCountdownEnd}
+        />
+      )}
+      
       {gameMode === 'versus' ? (
         <MultiPlayerGameArea
           gameState={gameLogic.gameState}

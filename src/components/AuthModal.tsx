@@ -40,17 +40,29 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       await login(loginForm.email, loginForm.password);
       console.log('登录成功');
       toast.success('登录成功！');
+      
+      // Clear form and close modal
+      setLoginForm({ email: '', password: '' });
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('登录错误:', error);
-      const errorMessage = error instanceof Error ? error.message : '登录失败';
-      if (errorMessage.includes('Invalid login credentials')) {
-        toast.error('邮箱或密码错误，请检查输入');
-      } else if (errorMessage.includes('Email not confirmed')) {
-        toast.error('请先验证您的邮箱后再登录');
-      } else {
-        toast.error('登录失败：' + errorMessage);
+      let errorMessage = '登录失败';
+      
+      if (error?.message) {
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = '邮箱或密码错误，请检查输入';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = '请先验证您的邮箱后再登录';
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = '登录尝试过于频繁，请稍后重试';
+        } else if (error.message.includes('Invalid email')) {
+          errorMessage = '邮箱格式不正确';
+        } else {
+          errorMessage = error.message;
+        }
       }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -58,10 +70,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!registerForm.username || !registerForm.email || !registerForm.password) {
+      toast.error('请填写所有必填字段');
+      return;
+    }
+    
     if (registerForm.password !== registerForm.confirmPassword) {
       toast.error('密码不匹配');
       return;
     }
+    
     if (registerForm.password.length < 6) {
       toast.error('密码至少需要6位字符');
       return;
@@ -71,10 +90,26 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       await register(registerForm.username, registerForm.email, registerForm.password);
       toast.success('注册成功！请查收邮箱验证邮件');
+      
+      // Clear form and close modal
+      setRegisterForm({ username: '', email: '', password: '', confirmPassword: '' });
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('注册错误:', error);
-      const errorMessage = error instanceof Error ? error.message : '注册失败';
+      let errorMessage = '注册失败';
+      
+      if (error?.message) {
+        if (error.message.includes('User already registered')) {
+          errorMessage = '该邮箱已被注册，请使用其他邮箱或尝试登录';
+        } else if (error.message.includes('Invalid email')) {
+          errorMessage = '邮箱格式不正确';
+        } else if (error.message.includes('Password should be at least')) {
+          errorMessage = '密码至少需要6位字符';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -101,9 +136,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       toast.success('密码重置邮件已发送，请查收邮箱');
       setShowForgotPassword(false);
       setForgotPasswordEmail('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('密码重置错误:', error);
-      const errorMessage = error instanceof Error ? error.message : '发送重置邮件失败';
+      const errorMessage = error?.message || '发送重置邮件失败';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -115,10 +150,26 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       toast.error('请输入游客名称');
       return;
     }
-    loginAsGuest();
-    toast.success(`以 ${guestName} 身份进入游戏`);
-    onClose();
+    
+    try {
+      loginAsGuest();
+      toast.success(`以 ${guestName} 身份进入游戏`);
+      onClose();
+    } catch (error: any) {
+      console.error('游客登录错误:', error);
+      toast.error('游客登录失败，请重试');
+    }
   };
+
+  // Close modal on successful authentication
+  React.useEffect(() => {
+    if (isOpen) {
+      // Reset forms when modal opens
+      setLoginForm({ email: '', password: '' });
+      setRegisterForm({ username: '', email: '', password: '', confirmPassword: '' });
+      setShowForgotPassword(false);
+    }
+  }, [isOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -180,10 +231,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     onChange={(e) => setGuestName(e.target.value)}
                     className="text-center"
                     disabled={loading}
+                    placeholder="输入游客名称"
                   />
                 </div>
-                <Button onClick={handleGuestLogin} className="w-full" disabled={loading}>
-                  开始游戏
+                <Button onClick={handleGuestLogin} className="w-full" disabled={loading || !guestName.trim()}>
+                  {loading ? '登录中...' : '开始游戏'}
                 </Button>
                 <p className="text-xs text-muted-foreground">
                   注册用户可以参与排名和保存游戏记录
@@ -203,6 +255,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     required
                     disabled={loading}
                     placeholder="请输入邮箱"
+                    autoComplete="email"
                   />
                 </div>
                 <div>
@@ -215,9 +268,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     required
                     disabled={loading}
                     placeholder="请输入密码"
+                    autoComplete="current-password"
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={loading || !loginForm.email || !loginForm.password}
+                >
                   {loading ? '登录中...' : t('auth.login')}
                 </Button>
                 <div className="text-center">
@@ -245,6 +303,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     required
                     disabled={loading}
                     placeholder="请输入用户名"
+                    autoComplete="username"
                   />
                 </div>
                 <div>
@@ -257,6 +316,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     required
                     disabled={loading}
                     placeholder="请输入邮箱"
+                    autoComplete="email"
                   />
                 </div>
                 <div>
@@ -269,6 +329,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     required
                     disabled={loading}
                     placeholder="至少6位字符"
+                    autoComplete="new-password"
                   />
                 </div>
                 <div>
@@ -281,9 +342,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     required
                     disabled={loading}
                     placeholder="再次输入密码"
+                    autoComplete="new-password"
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={loading || !registerForm.username || !registerForm.email || !registerForm.password || !registerForm.confirmPassword}
+                >
                   {loading ? '注册中...' : t('auth.register')}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
