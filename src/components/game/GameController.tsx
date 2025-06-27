@@ -3,11 +3,12 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { useGameState } from '@/hooks/useGameState';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import type { GameSettings } from '@/utils/gameTypes';
+import type { GameSettings, GameMode } from '@/utils/gameTypes';
 
 interface GameControllerProps {
   gameSettings: GameSettings;
   mode: 'single' | 'multi';
+  gameMode: GameMode;
   children: (props: {
     gameState: ReturnType<typeof useGameState>;
     gameLogic: ReturnType<typeof useGameLogic>;
@@ -23,6 +24,7 @@ interface GameControllerProps {
 const GameController: React.FC<GameControllerProps> = ({
   gameSettings,
   mode,
+  gameMode,
   children,
   onBackToMenu,
   resetGame,
@@ -35,9 +37,11 @@ const GameController: React.FC<GameControllerProps> = ({
   
   const gameState = useGameState();
   
-  const gameLogic = useGameLogic({
-    ...gameState,
-    mode
+  const gameLogic = useGameLogic(gameMode, gameSettings, (lines: number) => {
+    const baseSpeed = 1000;
+    const level = Math.min(Math.floor(lines / 40), 4);
+    const speedMultiplier = Math.pow(1.5, level);
+    return Math.max(baseSpeed / speedMultiplier, 50);
   });
 
   const togglePause = useCallback(() => {
@@ -66,8 +70,8 @@ const GameController: React.FC<GameControllerProps> = ({
 
   const keyboardControls = useKeyboardControls({
     gameSettings,
-    gameOver: gameState.gameOver,
-    paused: gameState.paused,
+    gameOver: gameLogic.gameState.gameOver,
+    paused: gameLogic.gameState.paused,
     onMoveLeft: () => gameLogic.movePiece(-1, 0),
     onMoveRight: () => gameLogic.movePiece(1, 0),
     onSoftDrop: () => {
@@ -83,12 +87,12 @@ const GameController: React.FC<GameControllerProps> = ({
   });
 
   const gameLoop = useCallback((timestamp: number) => {
-    if (gameState.gameOver) return;
+    if (gameLogic.gameState.gameOver) return;
 
-    if (!gameState.paused) {
+    if (!gameLogic.gameState.paused) {
       keyboardControls.processHeldKeys(timestamp);
 
-      const dropSpeed = Math.max(50, 1000 - (gameState.level - 1) * 50);
+      const dropSpeed = Math.max(50, 1000 - (gameLogic.gameState.level - 1) * 50);
       if (timestamp - lastDropTime.current > dropSpeed) {
         const moved = gameLogic.movePiece(0, 1);
         if (!moved && gameState.lockDelay) {
@@ -106,12 +110,12 @@ const GameController: React.FC<GameControllerProps> = ({
 
     gameLoopRef.current = requestAnimationFrame(gameLoop);
   }, [
-    gameState.gameOver, gameState.paused, gameState.level, gameState.lockDelay,
+    gameLogic.gameState.gameOver, gameLogic.gameState.paused, gameLogic.gameState.level, gameState.lockDelay,
     keyboardControls.processHeldKeys, gameLogic.movePiece, gameLogic.lockPiece, gameLogic.lockDelayTime
   ]);
 
   useEffect(() => {
-    if (!gameState.currentPiece && gameState.nextPieces.length > 0) {
+    if (!gameLogic.gameState.currentPiece && gameLogic.gameState.nextPieces.length > 0) {
       setTimeout(() => gameLogic.spawnNewPiece(), 100);
     }
 
@@ -122,7 +126,7 @@ const GameController: React.FC<GameControllerProps> = ({
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [gameLoop, gameState.currentPiece, gameState.nextPieces, gameLogic.spawnNewPiece]);
+  }, [gameLoop, gameLogic.gameState.currentPiece, gameLogic.gameState.nextPieces, gameLogic.spawnNewPiece]);
 
   return (
     <>
