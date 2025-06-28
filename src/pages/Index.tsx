@@ -10,11 +10,13 @@ import NavigationBar from '@/components/NavigationBar';
 import { Toaster } from '@/components/ui/sonner';
 
 type AppState = 'menu' | 'game' | 'settings' | 'leaderboard';
+type NavigationView = 'home' | 'game' | 'settings' | 'profile';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const [appState, setAppState] = useState<AppState>('menu');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [currentView, setCurrentView] = useState<NavigationView>('home');
 
   console.log('Index rendered, user:', user, 'loading:', loading);
 
@@ -30,19 +32,46 @@ const Index = () => {
   const handleGameStart = () => {
     console.log('Game start triggered');
     setAppState('game');
+    setCurrentView('game');
   };
 
   const handleBackToMenu = () => {
     console.log('Back to menu triggered');
     setAppState('menu');
+    setCurrentView('home');
   };
 
   const handleSettings = () => {
     setAppState('settings');
+    setCurrentView('settings');
   };
 
   const handleLeaderboard = () => {
     setAppState('leaderboard');
+  };
+
+  const handleViewChange = (view: NavigationView) => {
+    setCurrentView(view);
+    switch(view) {
+      case 'home':
+        setAppState('menu');
+        break;
+      case 'game':
+        setAppState('game');
+        break;
+      case 'settings':
+        setAppState('settings');
+        break;
+      case 'profile':
+        // 处理个人资料视图
+        break;
+      default:
+        setAppState('menu');
+    }
+  };
+
+  const handleAuthModalOpen = () => {
+    setShowAuthModal(true);
   };
 
   // 如果正在加载，显示加载界面
@@ -56,7 +85,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      <NavigationBar />
+      <NavigationBar 
+        currentView={currentView}
+        onViewChange={handleViewChange}
+        onAuthModalOpen={handleAuthModalOpen}
+      />
       
       <div className="container mx-auto px-4 py-8">
         {appState === 'menu' && (

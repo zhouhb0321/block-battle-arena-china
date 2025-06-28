@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -178,7 +179,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
     
     try {
-      loginAsGuest();
+      loginAsGuest(); // 修复：移除多余的参数
       toast.success(t('auth.guest_login_success', { name: guestName }) || `以 ${guestName} 身份进入游戏`);
       onClose();
     } catch (error: any) {
