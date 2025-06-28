@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import LanguageSelector from '@/components/LanguageSelector';
 import { Home, Play, Users, User, Trophy, Settings, Shield, DollarSign } from 'lucide-react';
 
+type ViewType = 'home' | 'game' | 'settings' | 'profile' | 'ranked' | 'admin' | 'income';
+
 interface NavigationBarProps {
-  currentView: string;
-  onViewChange: (view: string) => void;
+  currentView: ViewType;
+  onViewChange: (view: ViewType) => void;
   onAuthModalOpen: () => void;
 }
 
@@ -28,18 +30,18 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center shadow-md">
             <Play className="w-4 h-4 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-white drop-shadow-sm">{t('game.title')}</h1>
+          <h1 className="text-xl font-bold text-white drop-shadow-sm">{t('game.title') || '俄罗斯方块'}</h1>
         </div>
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center gap-4">
           <Button
-            variant={currentView === 'menu' ? 'default' : 'ghost'}
-            onClick={() => onViewChange('menu')}
+            variant={currentView === 'home' ? 'default' : 'ghost'}
+            onClick={() => onViewChange('home')}
             className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
           >
             <Home className="w-4 h-4" />
-            {t('nav.home')}
+            {t('nav.home') || '主页'}
           </Button>
           
           <Button
@@ -113,7 +115,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               onClick={onAuthModalOpen}
               className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 shadow-lg border border-blue-500"
             >
-              {t('auth.login')}
+              {t('auth.login') || '登录'}
             </Button>
           )}
         </div>
@@ -123,4 +125,3 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 };
 
 export default NavigationBar;
-

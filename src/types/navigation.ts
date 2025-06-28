@@ -1,2 +1,2 @@
 
-export type ViewType = 'menu' | 'single' | 'multi' | 'ranked' | 'settings' | 'replays' | 'income' | 'admin';
+export type ViewType = 'home' | 'game' | 'settings' | 'profile' | 'ranked' | 'admin' | 'income';

@@ -43,17 +43,17 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSetti
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-2">俄罗斯方块</h1>
-        <p className="text-muted-foreground">选择功能开始体验</p>
+        <h1 className="text-4xl font-bold mb-2 text-white">俄罗斯方块</h1>
+        <p className="text-gray-300">选择功能开始体验</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {menuItems.map((item) => (
-          <Card key={item.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+          <Card key={item.id} className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-800/50 border-gray-600">
             <CardHeader className="text-center">
               <div className="text-6xl mb-4">{item.icon}</div>
-              <CardTitle className="text-xl">{item.title}</CardTitle>
-              <CardDescription>{item.description}</CardDescription>
+              <CardTitle className="text-xl text-white">{item.title}</CardTitle>
+              <CardDescription className="text-gray-300">{item.description}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button 
@@ -71,4 +71,3 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSetti
 };
 
 export default MainMenu;
-

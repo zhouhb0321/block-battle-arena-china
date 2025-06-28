@@ -9,65 +9,37 @@ import SettingsMenu from '@/components/menus/SettingsMenu';
 import NavigationBar from '@/components/NavigationBar';
 import { Toaster } from '@/components/ui/sonner';
 
-type AppState = 'menu' | 'game' | 'settings' | 'leaderboard';
-type NavigationView = 'home' | 'game' | 'settings' | 'profile';
+type ViewType = 'home' | 'game' | 'settings' | 'profile' | 'ranked' | 'admin' | 'income';
 
 const Index = () => {
   const { user, loading } = useAuth();
-  const [appState, setAppState] = useState<AppState>('menu');
+  const [currentView, setCurrentView] = useState<ViewType>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [currentView, setCurrentView] = useState<NavigationView>('home');
 
   console.log('Index rendered, user:', user, 'loading:', loading);
 
-  // 如果未登录且不在加载中，显示认证模态框
-  React.useEffect(() => {
-    if (!loading && !user) {
-      setShowAuthModal(true);
-    } else {
-      setShowAuthModal(false);
-    }
-  }, [user, loading]);
-
+  // 简化认证模态框逻辑 - 不自动弹出，让用户主动点击登录
   const handleGameStart = () => {
     console.log('Game start triggered');
-    setAppState('game');
     setCurrentView('game');
   };
 
   const handleBackToMenu = () => {
     console.log('Back to menu triggered');
-    setAppState('menu');
     setCurrentView('home');
   };
 
   const handleSettings = () => {
-    setAppState('settings');
     setCurrentView('settings');
   };
 
   const handleLeaderboard = () => {
-    setAppState('leaderboard');
+    setCurrentView('ranked');
   };
 
-  const handleViewChange = (view: NavigationView) => {
+  const handleViewChange = (view: ViewType) => {
+    console.log('View change to:', view);
     setCurrentView(view);
-    switch(view) {
-      case 'home':
-        setAppState('menu');
-        break;
-      case 'game':
-        setAppState('game');
-        break;
-      case 'settings':
-        setAppState('settings');
-        break;
-      case 'profile':
-        // 处理个人资料视图
-        break;
-      default:
-        setAppState('menu');
-    }
   };
 
   const handleAuthModalOpen = () => {
@@ -92,7 +64,7 @@ const Index = () => {
       />
       
       <div className="container mx-auto px-4 py-8">
-        {appState === 'menu' && (
+        {currentView === 'home' && (
           <MainMenu
             onGameStart={handleGameStart}
             onLeaderboard={handleLeaderboard}
@@ -100,18 +72,46 @@ const Index = () => {
           />
         )}
         
-        {appState === 'game' && (
+        {currentView === 'game' && (
           <FixedTetrisGame onBackToMenu={handleBackToMenu} />
         )}
         
-        {appState === 'settings' && (
+        {currentView === 'settings' && (
           <SettingsMenu onBackToMenu={handleBackToMenu} />
         )}
         
-        {appState === 'leaderboard' && (
+        {currentView === 'ranked' && (
           <div className="text-center text-white">
             <h2 className="text-2xl mb-4">排行榜</h2>
             <p className="mb-4">排行榜功能开发中...</p>
+            <button 
+              onClick={handleBackToMenu}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+            >
+              返回菜单
+            </button>
+          </div>
+        )}
+
+        {/* 管理员界面 */}
+        {currentView === 'admin' && user?.isAdmin && (
+          <div className="text-center text-white">
+            <h2 className="text-2xl mb-4">管理员面板</h2>
+            <p className="mb-4">管理员功能开发中...</p>
+            <button 
+              onClick={handleBackToMenu}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+            >
+              返回菜单
+            </button>
+          </div>
+        )}
+
+        {/* 收入管理界面 */}
+        {currentView === 'income' && user?.isAdmin && (
+          <div className="text-center text-white">
+            <h2 className="text-2xl mb-4">收入管理</h2>
+            <p className="mb-4">收入管理功能开发中...</p>
             <button 
               onClick={handleBackToMenu}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
