@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
@@ -210,15 +211,26 @@ export const useGameLogic = (
     }
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
+  // 修复硬降落功能 - 确保方块能正确降到底部
   const hardDrop = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver) return;
 
+    console.log('硬降落开始，当前方块位置:', gameState.currentPiece.y);
+    
     const dropY = calculateDropPosition(gameState.board, gameState.currentPiece);
     const dropDistance = dropY - gameState.currentPiece.y;
     
+    console.log('硬降落目标位置:', dropY, '降落距离:', dropDistance);
+    
+    if (dropDistance <= 0) {
+      // 如果已经到底部，直接锁定
+      lockPiece();
+      return;
+    }
+    
     const droppedPiece = { ...gameState.currentPiece, y: dropY };
     
-    // 立即更新状态并锁定方块
+    // 立即更新方块位置并锁定
     setGameState(prev => ({
       ...prev,
       currentPiece: droppedPiece,
@@ -226,16 +238,17 @@ export const useGameLogic = (
       score: prev.score + dropDistance * 2
     }));
     
-    // 立即锁定方块，不需要延迟
+    // 使用更短的延迟确保锁定
     setTimeout(() => {
+      console.log('硬降落锁定方块');
       lockPiece();
-    }, 10);
+    }, 5);
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
   const lockPiece = useCallback(() => {
     if (!gameState.currentPiece) return;
 
-    console.log('Locking piece');
+    console.log('锁定方块，位置:', gameState.currentPiece.x, gameState.currentPiece.y);
     const tSpinType = checkTSpin(gameState.board, gameState.currentPiece, lastAction || 'move');
     const newBoard = placePiece(gameState.board, gameState.currentPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
@@ -414,3 +427,4 @@ export const useGameLogic = (
     lockDelayTime: lockDelayTime.current
   };
 };
+

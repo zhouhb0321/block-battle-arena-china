@@ -37,15 +37,31 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setLoading(true);
     try {
       console.log('开始登录...');
-      await login(loginForm.email, loginForm.password);
-      console.log('登录成功');
-      toast.success('登录成功！');
       
-      // Clear form and close modal
-      setLoginForm({ email: '', password: '' });
-      onClose();
+      // 直接使用 Supabase 登录，避免认证循环
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginForm.email,
+        password: loginForm.password
+      });
+
+      if (error) {
+        console.error('登录错误:', error);
+        throw error;
+      }
+
+      if (data?.user) {
+        console.log('登录成功，用户:', data.user.email);
+        toast.success('登录成功！');
+        
+        // Clear form and close modal
+        setLoginForm({ email: '', password: '' });
+        onClose();
+      } else {
+        throw new Error('登录失败，未返回用户信息');
+      }
+      
     } catch (error: any) {
-      console.error('登录错误:', error);
+      console.error('登录错误详情:', error);
       let errorMessage = '登录失败';
       
       if (error?.message) {
@@ -64,6 +80,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       
       toast.error(errorMessage);
     } finally {
+      // 确保无论成功失败都重置loading状态
       setLoading(false);
     }
   };
@@ -88,7 +105,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
     setLoading(true);
     try {
-      await register(registerForm.username, registerForm.email, registerForm.password);
+      const { data, error } = await supabase.auth.signUp({
+        email: registerForm.email,
+        password: registerForm.password,
+        options: {
+          data: {
+            username: registerForm.username
+          },
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
       toast.success('注册成功！请查收邮箱验证邮件');
       
       // Clear form and close modal
@@ -168,6 +199,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       setLoginForm({ email: '', password: '' });
       setRegisterForm({ username: '', email: '', password: '', confirmPassword: '' });
       setShowForgotPassword(false);
+      setLoading(false); // 确保打开时重置loading状态
     }
   }, [isOpen]);
 
@@ -365,3 +397,4 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 };
 
 export default AuthModal;
+

@@ -10,14 +10,12 @@ interface NavigationBarProps {
   currentView: string;
   onViewChange: (view: string) => void;
   onAuthModalOpen: () => void;
-  isAdmin?: boolean;
 }
 
 const NavigationBar: React.FC<NavigationBarProps> = ({ 
   currentView, 
   onViewChange, 
-  onAuthModalOpen,
-  isAdmin = false
+  onAuthModalOpen
 }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -71,45 +69,49 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             设置
           </Button>
 
-          {/* Admin Only Navigation */}
-          {isAdmin && (
+          {/* 管理员导航 - 只有管理员才能看到 */}
+          {user?.isAdmin && (
             <>
               <Button
                 variant={currentView === 'admin' ? 'default' : 'ghost'}
                 onClick={() => onViewChange('admin')}
-                className="flex items-center gap-2 text-yellow-300 hover:text-yellow-200 hover:bg-yellow-400/10"
+                className="flex items-center gap-2 text-yellow-300 hover:text-yellow-200 hover:bg-yellow-400/10 border border-yellow-400/30"
               >
                 <Shield className="w-4 h-4" />
-                {t('admin.panel')}
+                管理面板
               </Button>
               
               <Button
                 variant={currentView === 'income' ? 'default' : 'ghost'}
                 onClick={() => onViewChange('income')}
-                className="flex items-center gap-2 text-green-300 hover:text-green-200 hover:bg-green-400/10"
+                className="flex items-center gap-2 text-green-300 hover:text-green-200 hover:bg-green-400/10 border border-green-400/30"
               >
                 <DollarSign className="w-4 h-4" />
-                {t('admin.income')}
+                收入管理
               </Button>
             </>
           )}
         </div>
 
-        {/* Right Side - 改善登录按钮可见性 */}
-        <div className="flex items-center gap-3">
+        {/* Right Side - 更明显的登录按钮 */}
+        <div className="flex items-center gap-4">
           <LanguageSelector />
           
           {user && !user.isGuest ? (
-            <div className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg">
+            <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg border border-white/20">
               <User className="w-4 h-4 text-gray-300" />
               <span className="text-white font-medium">{user.username}</span>
-              {isAdmin && <span className="text-yellow-300 text-sm font-semibold">[管理员]</span>}
+              {user.isAdmin && (
+                <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-bold">
+                  管理员
+                </span>
+              )}
             </div>
           ) : (
             <Button 
               variant="default"
               onClick={onAuthModalOpen}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 shadow-md"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 shadow-lg border border-blue-500"
             >
               {t('auth.login')}
             </Button>
@@ -121,3 +123,4 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 };
 
 export default NavigationBar;
+

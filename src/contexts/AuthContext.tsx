@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -13,6 +14,7 @@ export interface User {
   maxFriends: number;
   isPremium: boolean;
   isVip: boolean;
+  isAdmin: boolean; // 添加管理员标识
   avatar?: string;
 }
 
@@ -96,6 +98,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      // 检查是否为管理员邮箱
+      const isAdmin = supabaseUser.email === 'admin@tetris.com';
+      console.log('用户权限检查:', { email: supabaseUser.email, isAdmin });
+
       const userData: User = {
         id: supabaseUser.id,
         username: profile?.username || supabaseUser.user_metadata?.username || 'Player',
@@ -107,9 +113,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         maxFriends: 50,
         isPremium: profile?.user_type === 'premium' || profile?.user_type === 'vip',
         isVip: profile?.user_type === 'vip',
+        isAdmin: isAdmin, // 设置管理员权限
         avatar: profile?.avatar_url
       };
 
+      console.log('用户数据更新:', userData);
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
@@ -171,7 +179,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       friendsCount: 0,
       maxFriends: 0,
       isPremium: false,
-      isVip: false
+      isVip: false,
+      isAdmin: false,
     };
     
     setUser(guestUser);
@@ -210,3 +219,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

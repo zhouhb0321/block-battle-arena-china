@@ -1,71 +1,50 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
-import SinglePlayerMenu from './menus/SinglePlayerMenu';
-import LeagueMenu from './menus/LeagueMenu';
-import SettingsMenu from './menus/SettingsMenu';
-
-type MenuView = 'main' | 'singleplayer' | 'league' | 'settings';
 
 interface MainMenuProps {
-  onGameStart: (gameType: string, gameMode: any) => void;
+  onGameStart: () => void;
+  onLeaderboard: () => void;
+  onSettings: () => void;
 }
 
-const MainMenu: React.FC<MainMenuProps> = ({ onGameStart }) => {
+const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSettings }) => {
   const { t } = useLanguage();
-  const [currentView, setCurrentView] = useState<MenuView>('main');
 
   const menuItems = [
     {
-      id: 'singleplayer',
+      id: 'game',
       title: '开始游戏',
-      description: '单人练习和挑战模式',
+      description: '立即开始俄罗斯方块游戏',
       icon: '🎯',
-      color: 'bg-green-500 hover:bg-green-600'
+      color: 'bg-green-500 hover:bg-green-600',
+      action: onGameStart
     },
     {
-      id: 'league',
+      id: 'leaderboard',
       title: '排行榜',
-      description: '查看记录和成就',
+      description: '查看全球玩家排名',
       icon: '🏆',
-      color: 'bg-yellow-500 hover:bg-yellow-600'
+      color: 'bg-yellow-500 hover:bg-yellow-600',
+      action: onLeaderboard
     },
     {
       id: 'settings',
       title: '设置',
       description: '游戏设置和个人资料',
       icon: '⚙️',
-      color: 'bg-gray-500 hover:bg-gray-600'
+      color: 'bg-gray-500 hover:bg-gray-600',
+      action: onSettings
     }
   ];
-
-  const handleMenuSelect = (menuId: string) => {
-    setCurrentView(menuId as MenuView);
-  };
-
-  const handleBackToMain = () => {
-    setCurrentView('main');
-  };
-
-  if (currentView === 'singleplayer') {
-    return <SinglePlayerMenu onGameStart={onGameStart} onBack={handleBackToMain} />;
-  }
-
-  if (currentView === 'league') {
-    return <LeagueMenu onBack={handleBackToMain} />;
-  }
-
-  if (currentView === 'settings') {
-    return <SettingsMenu onBack={handleBackToMain} />;
-  }
 
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold mb-2">俄罗斯方块</h1>
-        <p className="text-muted-foreground">选择游戏模式开始游戏</p>
+        <p className="text-muted-foreground">选择功能开始体验</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -79,7 +58,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameStart }) => {
             <CardContent>
               <Button 
                 className={`w-full text-white ${item.color}`}
-                onClick={() => handleMenuSelect(item.id)}
+                onClick={item.action}
               >
                 进入
               </Button>
@@ -92,3 +71,4 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameStart }) => {
 };
 
 export default MainMenu;
+
