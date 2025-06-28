@@ -12,7 +12,7 @@ interface AuthModalProps {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { login, signup, loginAsGuest } = useAuth();
+  const { login, register, loginAsGuest } = useAuth();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,7 +37,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           toast.error(t('auth.missing_username') || '用户名不能为空');
           return;
         }
-        await signup(email, password, username);
+        await register(username, email, password);
         toast.success(t('auth.signup_success') || '注册成功');
       }
       onClose();
@@ -54,7 +54,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
     
     try {
-      await loginAsGuest(guestName); // 修复：提供正确的参数
+      loginAsGuest();
       toast.success(t('auth.guest_login_success', { name: guestName }) || `以 ${guestName} 身份进入游戏`);
       onClose();
     } catch (error: any) {
