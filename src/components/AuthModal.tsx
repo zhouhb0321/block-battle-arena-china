@@ -37,7 +37,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       console.log('开始登录...');
       
-      // 直接使用 Supabase 登录
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginForm.email,
         password: loginForm.password
@@ -52,7 +51,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         console.log('登录成功，用户:', data.user.email);
         toast.success(t('auth.login_success') || '登录成功！');
         
-        // Clear form and close modal
         setLoginForm({ email: '', password: '' });
         onClose();
       } else {
@@ -120,7 +118,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
       toast.success(t('auth.register_success') || '注册成功！请查收邮箱验证邮件');
       
-      // Clear form and close modal
       setRegisterForm({ username: '', email: '', password: '', confirmPassword: '' });
       onClose();
     } catch (error: any) {
@@ -190,7 +187,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // Close modal on successful authentication
   React.useEffect(() => {
     if (isOpen) {
       // Reset forms when modal opens

@@ -210,13 +210,13 @@ export const useGameLogic = (
     }
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
-  // 修复硬降落功能 - 确保方块正确降到最底部
+  // 修复硬降落功能 - 确保方块正确降到最底部并立即锁定
   const hardDrop = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver) return;
 
     console.log('硬降落开始，当前方块位置:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
     
-    // 使用修复后的计算函数
+    // 使用修复后的计算函数获取最终位置
     const targetY = calculateDropPosition(gameState.board, gameState.currentPiece);
     const dropDistance = targetY - gameState.currentPiece.y;
     
@@ -229,7 +229,7 @@ export const useGameLogic = (
       return;
     }
     
-    // 立即移动到目标位置
+    // 立即移动到目标位置并添加硬降落得分
     const droppedPiece = { ...gameState.currentPiece, y: targetY };
     
     // 验证目标位置是否有效
@@ -238,7 +238,7 @@ export const useGameLogic = (
       return;
     }
     
-    // 更新方块位置并添加硬降落得分
+    // 更新方块位置，清除幽灵，添加得分
     setGameState(prev => ({
       ...prev,
       currentPiece: droppedPiece,
@@ -246,7 +246,7 @@ export const useGameLogic = (
       score: prev.score + dropDistance * 2
     }));
     
-    // 立即锁定方块（不需要延迟）
+    // 立即锁定方块（无延迟）
     setTimeout(() => {
       console.log('硬降落后锁定方块');
       lockPiece();

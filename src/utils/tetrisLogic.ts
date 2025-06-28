@@ -136,6 +136,7 @@ export const isValidPosition = (
         if (
           newX < 0 ||
           newX >= BOARD_WIDTH ||
+          newY < 0 ||
           newY >= BOARD_HEIGHT ||
           (newY >= 0 && board[newY][newX] !== 0)
         ) {
@@ -199,26 +200,43 @@ export const clearLines = (board: number[][]): {
   };
 };
 
-// 修复硬降落位置计算 - 确保方块真正降到底部
+// 修复硬降落位置计算 - 确保方块真正降到底部，逐行检测碰撞
 export const calculateDropPosition = (
   board: number[][],
   piece: GamePiece
 ): number => {
+  const { shape } = piece.type;
   let dropY = piece.y;
   
-  console.log('计算硬降落位置，起始Y:', dropY);
+  console.log('硬降落计算开始，当前Y:', dropY);
   
-  // 逐行向下检查，找到最后一个有效位置
+  // 从当前位置开始，逐行向下检查
   while (dropY < BOARD_HEIGHT) {
-    const testPiece = { ...piece, y: dropY + 1 };
-    if (isValidPosition(board, testPiece)) {
+    let canMoveDown = true;
+    
+    // 检查方块的每个实体部分是否会发生碰撞
+    for (let i = 0; i < shape.length && canMoveDown; i++) {
+      for (let j = 0; j < shape[i].length && canMoveDown; j++) {
+        if (shape[i][j] !== 0) {
+          const newX = piece.x + j;
+          const newY = dropY + i + 1; // 尝试向下移动一行
+          
+          // 检查边界和碰撞
+          if (newY >= BOARD_HEIGHT || (newY >= 0 && board[newY][newX] !== 0)) {
+            canMoveDown = false;
+          }
+        }
+      }
+    }
+    
+    if (canMoveDown) {
       dropY++;
     } else {
       break;
     }
   }
   
-  console.log('硬降落最终位置Y:', dropY);
+  console.log('硬降落计算结束，最终Y:', dropY);
   return dropY;
 };
 
