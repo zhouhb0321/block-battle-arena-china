@@ -199,18 +199,26 @@ export const clearLines = (board: number[][]): {
   };
 };
 
-// 计算幽灵方块位置 - 修正逻辑
+// 修复硬降落位置计算 - 确保方块真正降到底部
 export const calculateDropPosition = (
   board: number[][],
   piece: GamePiece
 ): number => {
   let dropY = piece.y;
   
-  // 从当前位置开始向下寻找可放置的位置
-  while (isValidPosition(board, { ...piece, y: dropY + 1 })) {
-    dropY++;
+  console.log('计算硬降落位置，起始Y:', dropY);
+  
+  // 逐行向下检查，找到最后一个有效位置
+  while (dropY < BOARD_HEIGHT) {
+    const testPiece = { ...piece, y: dropY + 1 };
+    if (isValidPosition(board, testPiece)) {
+      dropY++;
+    } else {
+      break;
+    }
   }
   
+  console.log('硬降落最终位置Y:', dropY);
   return dropY;
 };
 

@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
@@ -211,26 +210,35 @@ export const useGameLogic = (
     }
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
-  // 修复硬降落功能 - 确保方块能正确降到底部
+  // 修复硬降落功能 - 确保方块正确降到最底部
   const hardDrop = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver) return;
 
-    console.log('硬降落开始，当前方块位置:', gameState.currentPiece.y);
+    console.log('硬降落开始，当前方块位置:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
     
-    const dropY = calculateDropPosition(gameState.board, gameState.currentPiece);
-    const dropDistance = dropY - gameState.currentPiece.y;
+    // 使用修复后的计算函数
+    const targetY = calculateDropPosition(gameState.board, gameState.currentPiece);
+    const dropDistance = targetY - gameState.currentPiece.y;
     
-    console.log('硬降落目标位置:', dropY, '降落距离:', dropDistance);
+    console.log('硬降落目标位置:', targetY, '降落距离:', dropDistance);
     
     if (dropDistance <= 0) {
       // 如果已经到底部，直接锁定
+      console.log('方块已在底部，直接锁定');
       lockPiece();
       return;
     }
     
-    const droppedPiece = { ...gameState.currentPiece, y: dropY };
+    // 立即移动到目标位置
+    const droppedPiece = { ...gameState.currentPiece, y: targetY };
     
-    // 立即更新方块位置并锁定
+    // 验证目标位置是否有效
+    if (!isValidPosition(gameState.board, droppedPiece)) {
+      console.error('硬降落目标位置无效!');
+      return;
+    }
+    
+    // 更新方块位置并添加硬降落得分
     setGameState(prev => ({
       ...prev,
       currentPiece: droppedPiece,
@@ -238,11 +246,11 @@ export const useGameLogic = (
       score: prev.score + dropDistance * 2
     }));
     
-    // 使用更短的延迟确保锁定
+    // 立即锁定方块（不需要延迟）
     setTimeout(() => {
-      console.log('硬降落锁定方块');
+      console.log('硬降落后锁定方块');
       lockPiece();
-    }, 5);
+    }, 10);
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
   const lockPiece = useCallback(() => {
@@ -427,4 +435,3 @@ export const useGameLogic = (
     lockDelayTime: lockDelayTime.current
   };
 };
-
