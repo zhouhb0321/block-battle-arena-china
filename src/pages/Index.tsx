@@ -35,6 +35,15 @@ const Index = () => {
     setCurrentView('game');
   };
 
+  const handleLeaderboard = () => {
+    // Handle leaderboard navigation
+    toast.success('排行榜功能即将推出！');
+  };
+
+  const handleSettings = () => {
+    setCurrentView('settings');
+  };
+
   const handleSettingsOpen = () => {
     setShowSettings(true);
   };
@@ -78,7 +87,11 @@ const Index = () => {
         <div className="flex">
           <AdSpace position="left" width={240} height={600} />
           <div className="flex-1">
-            <MainMenu onGameStart={handleGameStart} />
+            <MainMenu 
+              onGameStart={handleGameStart} 
+              onLeaderboard={handleLeaderboard}
+              onSettings={handleSettings}
+            />
           </div>
           <AdSpace position="right" width={240} height={600} />
         </div>
