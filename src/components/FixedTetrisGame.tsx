@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import GameBoard from './GameBoard';
@@ -180,7 +179,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     });
   }, []);
 
-  // 瞬时降落
+  // 修复硬降落 - 立即锁定方块
   const hardDrop = useCallback(() => {
     setGameState(prev => {
       if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
@@ -188,22 +187,62 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       const dropY = calculateDropPosition(prev.board, prev.currentPiece);
       const dropDistance = dropY - prev.currentPiece.y;
       
+      console.log('硬降落: 当前Y =', prev.currentPiece.y, '目标Y =', dropY, '距离 =', dropDistance);
+      
       const droppedPiece = {
         ...prev.currentPiece,
         y: dropY
       };
 
+      // 立即放置方块并处理消行
+      const tSpinType = checkTSpin(prev.board, droppedPiece, 'move');
+      const newBoard = placePiece(prev.board, droppedPiece);
+      const { newBoard: clearedBoard, linesCleared, clearedLineIndices } = clearLines(newBoard);
+      
+      const newCombo = linesCleared > 0 ? prev.combo + 1 : -1;
+      const isSpecialClear = tSpinType !== null || linesCleared === 4;
+      const newB2B = isSpecialClear ? prev.b2b + 1 : (linesCleared > 0 ? 0 : prev.b2b);
+      const newScore = calculateScore(linesCleared, prev.level, !!tSpinType, newB2B > 0, newCombo);
+      const attackLines = calculateAttackLines(linesCleared, !!tSpinType, newB2B > 0, newCombo);
+      const newLevel = Math.floor((prev.lines + linesCleared) / 10) + 1;
+      
+      const timeElapsed = (Date.now() - prev.startTime) / 1000;
+      const newPps = prev.pieces > 0 ? prev.pieces / Math.max(timeElapsed, 1) : 0;
+      const newApm = attackLines > 0 ? (prev.attack + attackLines) / Math.max(timeElapsed / 60, 1/60) : prev.apm;
+
+      // 显示消行提示
+      if (linesCleared > 0) {
+        setTimeout(() => {
+          if (tSpinType) {
+            toast.success(`${tSpinType}! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
+          } else if (linesCleared === 4) {
+            toast.success(`Tetris! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
+          } else {
+            toast.success(`消除了 ${linesCleared} 行! +${newScore} 分`, { duration: 1500 });
+          }
+          
+          if (newCombo >= 0) {
+            toast.success(`${newCombo + 1} 连击! +${attackLines} 攻击`, { duration: 1500 });
+          }
+        }, 100);
+      }
+
       return {
         ...prev,
-        currentPiece: droppedPiece,
-        score: prev.score + dropDistance * 2,
+        board: clearedBoard,
+        currentPiece: null,
+        score: prev.score + newScore + dropDistance * 2,
+        lines: prev.lines + linesCleared,
+        level: newLevel,
+        combo: newCombo,
+        b2b: newB2B,
+        attack: prev.attack + attackLines,
+        pps: newPps,
+        apm: newApm,
+        clearingLines: [],
         ghostPiece: null
       };
     });
-
-    setTimeout(() => {
-      placePieceOnBoard();
-    }, 50);
   }, []);
 
   // 放置方块到棋盘
@@ -521,6 +560,31 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
               )}
             </div>
           )}
+
+          {/* 修复按钮可见性 - 使用高对比度颜色 */}
+          <div className="flex gap-3 mb-4">
+            <Button
+              onClick={() => setGameState(prev => ({ ...prev, paused: !prev.paused }))}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-blue-400"
+              disabled={gameState.gameOver}
+            >
+              {gameState.paused ? '继续' : '暂停'}
+            </Button>
+            <Button
+              onClick={restartGame}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-green-400"
+            >
+              重新开始
+            </Button>
+            {onBackToMenu && (
+              <Button
+                onClick={onBackToMenu}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-red-400"
+              >
+                返回菜单
+              </Button>
+            )}
+          </div>
 
           <GameBoard
             board={gameState.board}
