@@ -55,7 +55,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     
     try {
       loginAsGuest();
-      toast.success(t('auth.guest_login_success', { name: guestName }) || `以 ${guestName} 身份进入游戏`);
+      toast.success(t('auth.guest_login_success'));
       onClose();
     } catch (error: any) {
       console.error('Guest login failed:', error);
