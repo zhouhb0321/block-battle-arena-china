@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, User, Gamepad, Palette } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { useKeyRecording } from '@/components/settings/useKeyRecording';
 import UserProfileSettings from '../UserProfileSettings';
 import ControlsTab from '../settings/ControlsTab';
 import VisualTab from '../settings/VisualTab';
@@ -15,6 +17,34 @@ interface SettingsMenuProps {
 
 const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBack }) => {
   const { theme, setTheme } = useTheme();
+  const { settings, saveSettings, loading } = useUserSettings();
+  const [hasChanges, setHasChanges] = useState(false);
+  const [tempSettings, setTempSettings] = useState(settings);
+
+  // Update tempSettings when settings change
+  React.useEffect(() => {
+    setTempSettings(settings);
+  }, [settings]);
+
+  const { recordingKey, handleKeyRecord } = useKeyRecording(
+    tempSettings,
+    setTempSettings,
+    setHasChanges
+  );
+
+  const handleSettingChange = (key: string, value: any) => {
+    setTempSettings(prev => ({ ...prev, [key]: value }));
+    setHasChanges(true);
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      await saveSettings(tempSettings);
+      setHasChanges(false);
+    } catch (error) {
+      console.error('保存设置失败:', error);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -30,6 +60,17 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBack }) => {
         </Button>
         <h2 className="text-3xl font-bold">设置</h2>
       </div>
+
+      {hasChanges && (
+        <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-yellow-800 dark:text-yellow-200">您有未保存的设置更改</span>
+            <Button onClick={handleSaveSettings} size="sm" className="bg-green-600 hover:bg-green-700">
+              保存设置
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6">
@@ -56,11 +97,33 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBack }) => {
         </TabsContent>
 
         <TabsContent value="controls">
-          <ControlsTab />
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+              <p className="text-gray-600">加载设置中...</p>
+            </div>
+          ) : (
+            <ControlsTab
+              settings={tempSettings}
+              recordingKey={recordingKey}
+              onKeyRecord={handleKeyRecord}
+              onSettingChange={handleSettingChange}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="visual">
-          <VisualTab />
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+              <p className="text-gray-600">加载设置中...</p>
+            </div>
+          ) : (
+            <VisualTab
+              settings={tempSettings}
+              onSettingChange={handleSettingChange}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="theme">
