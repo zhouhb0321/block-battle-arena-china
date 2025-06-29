@@ -44,10 +44,11 @@ const Index = () => {
     setShowAuthModal(true);
   };
 
-  if (loading) {
+  // 修复加载状态 - 只在真正需要时显示加载
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
-        <div className="text-white text-xl">加载中...</div>
+        <div className="text-white text-xl">正在加载...</div>
       </div>
     );
   }
