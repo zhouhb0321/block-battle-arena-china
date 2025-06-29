@@ -14,7 +14,7 @@ export interface User {
   maxFriends: number;
   isPremium: boolean;
   isVip: boolean;
-  isAdmin: boolean; // 添加管理员标识
+  isAdmin: boolean;
   avatar?: string;
 }
 
@@ -41,37 +41,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 获取当前用户会话
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        await loadUserProfile(session.user);
-      } else {
-        // 检查是否有游客用户
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        console.log('开始初始化认证...');
+        
+        // 首先检查是否有游客用户
         const savedUser = localStorage.getItem('user');
         if (savedUser) {
           try {
             const parsedUser = JSON.parse(savedUser);
-            if (parsedUser.isGuest) {
+            if (parsedUser.isGuest && mounted) {
+              console.log('找到游客用户:', parsedUser);
               setUser(parsedUser);
+              setLoading(false);
+              return;
             }
           } catch (error) {
-            console.error('Error parsing saved user:', error);
+            console.error('解析保存的用户数据失败:', error);
             localStorage.removeItem('user');
           }
         }
+
+        // 检查 Supabase 会话
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('获取会话失败:', error);
+        }
+        
+        if (session?.user && mounted) {
+          console.log('找到 Supabase 用户会话');
+          await loadUserProfile(session.user);
+        }
+        
+        if (mounted) {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('初始化认证失败:', error);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      
-      setLoading(false);
     };
 
-    getInitialSession();
+    initializeAuth();
 
     // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session);
+        console.log('认证状态变化:', event, !!session);
+        
+        if (!mounted) return;
         
         if (event === 'SIGNED_IN' && session?.user) {
           await loadUserProfile(session.user);
@@ -82,7 +105,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadUserProfile = async (supabaseUser: SupabaseUser) => {
@@ -94,13 +120,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error loading user profile:', error);
-        return;
+        console.error('加载用户资料失败:', error);
       }
 
-      // 检查是否为管理员邮箱
       const isAdmin = supabaseUser.email === 'admin@tetris.com';
-      console.log('用户权限检查:', { email: supabaseUser.email, isAdmin });
 
       const userData: User = {
         id: supabaseUser.id,
@@ -113,15 +136,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         maxFriends: 50,
         isPremium: profile?.user_type === 'premium' || profile?.user_type === 'vip',
         isVip: profile?.user_type === 'vip',
-        isAdmin: isAdmin, // 设置管理员权限
+        isAdmin: isAdmin,
         avatar: profile?.avatar_url
       };
 
-      console.log('用户数据更新:', userData);
+      console.log('用户数据加载完成:', userData);
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.error('加载用户资料时出错:', error);
     }
   };
 
@@ -143,8 +166,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) {
       throw new Error(error.message);
     }
-
-    // 用户资料将通过 onAuthStateChange 自动加载
   };
 
   const register = async (username: string, email: string, password: string): Promise<void> => {
@@ -162,7 +183,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(error.message);
     }
 
-    // 注册成功后，用户需要确认邮箱
     if (data.user && !data.user.email_confirmed_at) {
       throw new Error('请检查您的邮箱并点击确认链接来激活账户');
     }
@@ -183,6 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAdmin: false,
     };
     
+    console.log('创建游客用户:', guestUser);
     setUser(guestUser);
     localStorage.setItem('user', JSON.stringify(guestUser));
   };
@@ -219,4 +240,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
