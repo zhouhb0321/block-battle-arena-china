@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from '@/components/AuthModal';
 import MainMenu from '@/components/MainMenu';
-import TetrisGame from '@/components/TetrisGame';
-import FixedTetrisGame from '@/components/FixedTetrisGame';
+import SimpleTetrisGame from '@/components/SimpleTetrisGame';
 import SettingsMenu from '@/components/menus/SettingsMenu';
 import NavigationBar from '@/components/NavigationBar';
 import { Toaster } from '@/components/ui/sonner';
@@ -18,7 +17,6 @@ const Index = () => {
 
   console.log('Index rendered, user:', user, 'loading:', loading);
 
-  // 简化认证模态框逻辑 - 不自动弹出，让用户主动点击登录
   const handleGameStart = () => {
     console.log('Game start triggered');
     setCurrentView('game');
@@ -46,7 +44,6 @@ const Index = () => {
     setShowAuthModal(true);
   };
 
-  // 如果正在加载，显示加载界面
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
@@ -73,7 +70,7 @@ const Index = () => {
         )}
         
         {currentView === 'game' && (
-          <FixedTetrisGame onBackToMenu={handleBackToMenu} />
+          <SimpleTetrisGame onBackToMenu={handleBackToMenu} />
         )}
         
         {currentView === 'settings' && (
@@ -93,7 +90,6 @@ const Index = () => {
           </div>
         )}
 
-        {/* 管理员界面 */}
         {currentView === 'admin' && user?.isAdmin && (
           <div className="text-center text-white">
             <h2 className="text-2xl mb-4">管理员面板</h2>
@@ -107,7 +103,6 @@ const Index = () => {
           </div>
         )}
 
-        {/* 收入管理界面 */}
         {currentView === 'income' && user?.isAdmin && (
           <div className="text-center text-white">
             <h2 className="text-2xl mb-4">收入管理</h2>
