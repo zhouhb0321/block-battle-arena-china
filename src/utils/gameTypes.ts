@@ -1,4 +1,3 @@
-
 export interface GameSettings {
   das: number;
   arr: number;
@@ -18,86 +17,105 @@ export interface GameSettings {
   enableGhost: boolean;
   enableSound: boolean;
   masterVolume: number;
-  backgroundMusic?: string;
-  musicVolume?: number;
+  backgroundMusic: string;
+  musicVolume: number;
 }
 
-export interface TetrominoType {
-  shape: number[][];
-  color: string;
+export interface GameMode {
+  id: string;
   name: string;
-  type: string;
-}
-
-// Add PieceType as alias for TetrominoType for backward compatibility
-export type PieceType = TetrominoType;
-
-// Add GameMode type
-export type GameMode = 'sprint' | 'ultra' | 'endless' | 'versus' | 'sprint40' | 'ultra2min' | 'freeForAll' | 'oneVsOne' | 'customRoom';
-
-// Unified game piece interface
-export interface GamePiece {
-  type: TetrominoType;
-  x: number;
-  y: number;
-  rotation: number;
-}
-
-export interface GameState {
-  board: number[][];
-  currentPiece: GamePiece | null;
-  nextPieces: GamePiece[];
-  holdPiece: GamePiece | null;
-  score: number;
-  lines: number;
-  level: number;
-  gameOver: boolean;
-  paused: boolean;
-  canHold?: boolean;
-  combo?: number;
-  b2b?: number;
-  pieces?: number;
-  startTime?: number;
-  clearingLines?: number[];
-  ghostPiece?: GamePiece | null;
-  attack?: number;
-  pps?: number;
-  apm?: number;
+  displayName: string;
+  description: string;
+  targetLines?: number;
+  timeLimit?: number; // 秒数
+  isTimeAttack: boolean;
 }
 
 export interface ReplayAction {
   timestamp: number;
-  action: 'move' | 'rotate' | 'drop' | 'hold' | 'place';
+  action: 'move' | 'rotate' | 'drop' | 'hold' | 'place' | 'line_clear';
   data: any;
 }
 
 export interface GameReplay {
   id: string;
-  date: string;
+  matchId: string;
+  userId: string;
+  gameType: string;
+  gameMode: string;
   score: number;
   lines: number;
+  level: number;
+  pps: number;
+  apm: number;
   duration: number;
   actions: ReplayAction[];
-  playerName?: string;
-  gameMode?: string;
-  gameType?: string;
-  level?: number;
-  isPersonalBest?: boolean;
-  pps?: number;
-  apm?: number;
+  finalBoard: number[][];
+  date: string;
+  playerName: string;
+  isPersonalBest: boolean;
 }
 
-export interface AdContent {
+export interface UserBestRecord {
   id: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  targetUrl: string;
-  isActive: boolean;
-  region?: string;
-  language?: string;
-  startDate?: string;
-  endDate?: string;
-  clicks?: number;
-  impressions?: number;
+  userId: string;
+  gameMode: string;
+  bestScore: number;
+  bestLines: number;
+  bestTime: number;
+  bestPps: number;
+  bestApm: number;
+  replayId?: string;
+  achievedAt: string;
 }
+
+// 游戏模式配置
+export const GAME_MODES: GameMode[] = [
+  {
+    id: 'sprint_40',
+    name: 'sprint_40',
+    displayName: '40行冲刺',
+    description: '尽快清除40行',
+    targetLines: 40,
+    isTimeAttack: false
+  },
+  {
+    id: 'sprint_80',
+    name: 'sprint_80', 
+    displayName: '80行冲刺',
+    description: '尽快清除80行',
+    targetLines: 80,
+    isTimeAttack: false
+  },
+  {
+    id: 'sprint_100',
+    name: 'sprint_100',
+    displayName: '100行冲刺', 
+    description: '尽快清除100行',
+    targetLines: 100,
+    isTimeAttack: false
+  },
+  {
+    id: 'ultra_2min',
+    name: 'ultra_2min',
+    displayName: '2分钟挑战',
+    description: '2分钟内获得最高分数',
+    timeLimit: 120,
+    isTimeAttack: true
+  },
+  {
+    id: 'ultra_5min', 
+    name: 'ultra_5min',
+    displayName: '5分钟挑战',
+    description: '5分钟内获得最高分数',
+    timeLimit: 300,
+    isTimeAttack: true
+  },
+  {
+    id: 'endless',
+    name: 'endless',
+    displayName: '无尽模式',
+    description: '无限制游戏模式',
+    isTimeAttack: false
+  }
+];

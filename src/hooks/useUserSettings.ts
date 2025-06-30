@@ -80,8 +80,8 @@ export const useUserSettings = () => {
           enableGhost: data.enable_ghost,
           enableSound: data.enable_sound,
           masterVolume: data.master_volume,
-          backgroundMusic: '',
-          musicVolume: 30
+          backgroundMusic: data.background_music || '',
+          musicVolume: data.music_volume || 30
         };
         setSettings(loadedSettings);
       } else {
@@ -116,7 +116,9 @@ export const useUserSettings = () => {
           controls: updatedSettings.controls,
           enable_ghost: updatedSettings.enableGhost,
           enable_sound: updatedSettings.enableSound,
-          master_volume: updatedSettings.masterVolume
+          master_volume: updatedSettings.masterVolume,
+          background_music: updatedSettings.backgroundMusic,
+          music_volume: updatedSettings.musicVolume
         });
 
       if (error) {

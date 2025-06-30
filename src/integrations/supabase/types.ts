@@ -136,6 +136,33 @@ export type Database = {
           },
         ]
       }
+      game_modes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          target_lines: number | null
+          time_limit: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          target_lines?: number | null
+          time_limit?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          target_lines?: number | null
+          time_limit?: number | null
+        }
+        Relationships: []
+      }
       game_replays: {
         Row: {
           apm: number
@@ -198,10 +225,13 @@ export type Database = {
           final_level: number
           final_lines: number
           final_score: number
+          game_events: Json | null
           game_mode: string
+          game_settings: Json | null
           id: string
           is_personal_best: boolean | null
           is_world_record: boolean | null
+          key_inputs: Json | null
           opponent_id: string | null
           pps: number
           replay_data: Json
@@ -214,10 +244,13 @@ export type Database = {
           final_level?: number
           final_lines?: number
           final_score?: number
+          game_events?: Json | null
           game_mode?: string
+          game_settings?: Json | null
           id?: string
           is_personal_best?: boolean | null
           is_world_record?: boolean | null
+          key_inputs?: Json | null
           opponent_id?: string | null
           pps?: number
           replay_data: Json
@@ -230,16 +263,69 @@ export type Database = {
           final_level?: number
           final_lines?: number
           final_score?: number
+          game_events?: Json | null
           game_mode?: string
+          game_settings?: Json | null
           id?: string
           is_personal_best?: boolean | null
           is_world_record?: boolean | null
+          key_inputs?: Json | null
           opponent_id?: string | null
           pps?: number
           replay_data?: Json
           user_id?: string
         }
         Relationships: []
+      }
+      user_best_records: {
+        Row: {
+          achieved_at: string | null
+          best_apm: number | null
+          best_lines: number | null
+          best_pps: number | null
+          best_score: number | null
+          best_time: number | null
+          game_mode: string
+          id: string
+          replay_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string | null
+          best_apm?: number | null
+          best_lines?: number | null
+          best_pps?: number | null
+          best_score?: number | null
+          best_time?: number | null
+          game_mode: string
+          id?: string
+          replay_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string | null
+          best_apm?: number | null
+          best_lines?: number | null
+          best_pps?: number | null
+          best_score?: number | null
+          best_time?: number | null
+          game_mode?: string
+          id?: string
+          replay_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_best_records_replay_id_fkey"
+            columns: ["replay_id"]
+            isOneToOne: false
+            referencedRelation: "game_replays_new"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_profiles: {
         Row: {
@@ -304,6 +390,8 @@ export type Database = {
       user_settings: {
         Row: {
           arr: number
+          back_to_menu: string | null
+          background_music: string | null
           controls: Json
           created_at: string
           das: number
@@ -311,12 +399,15 @@ export type Database = {
           enable_sound: boolean
           id: string
           master_volume: number
+          music_volume: number | null
           sdf: number
           updated_at: string
           user_id: string
         }
         Insert: {
           arr?: number
+          back_to_menu?: string | null
+          background_music?: string | null
           controls?: Json
           created_at?: string
           das?: number
@@ -324,12 +415,15 @@ export type Database = {
           enable_sound?: boolean
           id?: string
           master_volume?: number
+          music_volume?: number | null
           sdf?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           arr?: number
+          back_to_menu?: string | null
+          background_music?: string | null
           controls?: Json
           created_at?: string
           das?: number
@@ -337,6 +431,7 @@ export type Database = {
           enable_sound?: boolean
           id?: string
           master_volume?: number
+          music_volume?: number | null
           sdf?: number
           updated_at?: string
           user_id?: string

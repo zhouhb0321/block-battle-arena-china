@@ -5,26 +5,43 @@ import AuthModal from '@/components/AuthModal';
 import MainMenu from '@/components/MainMenu';
 import SimpleTetrisGame from '@/components/SimpleTetrisGame';
 import SettingsMenu from '@/components/menus/SettingsMenu';
+import GameModeSelector from '@/components/GameModeSelector';
+import ReplaySystem from '@/components/ReplaySystem';
 import NavigationBar from '@/components/NavigationBar';
 import { Toaster } from '@/components/ui/sonner';
+import type { GameMode } from '@/utils/gameTypes';
 
-type ViewType = 'home' | 'game' | 'settings' | 'profile' | 'ranked' | 'admin' | 'income';
+type ViewType = 'home' | 'gameMode' | 'game' | 'settings' | 'profile' | 'ranked' | 'admin' | 'income' | 'replays';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedGameMode, setSelectedGameMode] = useState<GameMode | null>(null);
 
   console.log('Index rendered, user:', user, 'loading:', loading);
 
   const handleGameStart = () => {
-    console.log('Game start triggered');
+    console.log('Game start triggered - showing mode selector');
+    setCurrentView('gameMode');
+  };
+
+  const handleModeSelect = (mode: GameMode) => {
+    console.log('Game mode selected:', mode);
+    setSelectedGameMode(mode);
     setCurrentView('game');
   };
 
   const handleBackToMenu = () => {
     console.log('Back to menu triggered');
     setCurrentView('home');
+    setSelectedGameMode(null);
+  };
+
+  const handleBackToModeSelector = () => {
+    console.log('Back to mode selector');
+    setCurrentView('gameMode');
+    setSelectedGameMode(null);
   };
 
   const handleSettings = () => {
@@ -69,13 +86,38 @@ const Index = () => {
             onSettings={handleSettings}
           />
         )}
+
+        {currentView === 'gameMode' && (
+          <GameModeSelector
+            onModeSelect={handleModeSelect}
+            onBack={handleBackToMenu}
+          />
+        )}
         
-        {currentView === 'game' && (
-          <SimpleTetrisGame onBackToMenu={handleBackToMenu} />
+        {currentView === 'game' && selectedGameMode && (
+          <SimpleTetrisGame 
+            onBackToMenu={handleBackToModeSelector}
+            gameMode={selectedGameMode}
+          />
         )}
         
         {currentView === 'settings' && (
           <SettingsMenu onBackToMenu={handleBackToMenu} />
+        )}
+
+        {currentView === 'replays' && (
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center mb-6">
+              <button 
+                onClick={handleBackToMenu}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded mr-4"
+              >
+                返回主菜单
+              </button>
+              <h2 className="text-2xl font-bold text-white">游戏回放</h2>
+            </div>
+            <ReplaySystem />
+          </div>
         )}
         
         {currentView === 'ranked' && (

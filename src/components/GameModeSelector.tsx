@@ -1,129 +1,130 @@
 
-import React from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
-interface GameMode {
-  id: string;
-  title: string;
-  description: string;
-  maxPlayers?: number;
-  icon: string;
-}
+import { Badge } from '@/components/ui/badge';
+import { Clock, Target, Infinity } from 'lucide-react';
+import { GAME_MODES, type GameMode } from '@/utils/gameTypes';
 
 interface GameModeSelectorProps {
   onModeSelect: (mode: GameMode) => void;
-  onBackToMenu?: () => void;
+  onBack: () => void;
 }
 
-const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect, onBackToMenu }) => {
-  const { t } = useLanguage();
+const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect, onBack }) => {
+  const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
 
-  const singlePlayerModes: GameMode[] = [
-    {
-      id: 'sprint40',
-      title: t('game.sprint40'),
-      description: '尽快消除40行',
-      icon: '🏃',
-    },
-    {
-      id: 'ultra2min',
-      title: t('game.ultra2min'),
-      description: '2分钟内获得最高分',
-      icon: '⚡',
-    },
-    {
-      id: 'endless',
-      title: t('game.endless'),
-      description: '无尽模式，挑战极限',
-      icon: '♾️',
-    },
-  ];
+  const handleModeClick = (mode: GameMode) => {
+    setSelectedMode(mode);
+  };
 
-  const multiPlayerModes: GameMode[] = [
-    {
-      id: 'freeForAll',
-      title: t('game.freeForAll'),
-      description: '最多128人混战',
-      maxPlayers: 128,
-      icon: '⚔️',
-    },
-    {
-      id: 'oneVsOne',
-      title: t('game.oneVsOne'),
-      description: '1对1对战',
-      maxPlayers: 2,
-      icon: '🥊',
-    },
-    {
-      id: 'customRoom',
-      title: t('game.customRoom'),
-      description: '创建自定义房间',
-      maxPlayers: 64,
-      icon: '🏠',
-    },
-  ];
+  const handleStartGame = () => {
+    if (selectedMode) {
+      onModeSelect(selectedMode);
+    }
+  };
+
+  const formatTimeLimit = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const getModeIcon = (mode: GameMode) => {
+    if (mode.isTimeAttack) return <Clock className="w-5 h-5" />;
+    if (mode.targetLines) return <Target className="w-5 h-5" />;
+    return <Infinity className="w-5 h-5" />;
+  };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-center mb-2">{t('game.singlePlayer')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {singlePlayerModes.map((mode) => (
-            <Card key={mode.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="text-center">
-                <div className="text-4xl mb-2">{mode.icon}</div>
-                <CardTitle>{mode.title}</CardTitle>
-                <CardDescription>{mode.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  className="w-full" 
-                  onClick={() => onModeSelect(mode)}
-                >
-                  {t('game.play')}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <Button variant="outline" onClick={onBack} className="mb-4">
+          返回主菜单
+        </Button>
+        <h2 className="text-2xl font-bold text-white">选择游戏模式</h2>
+        <div className="w-20" /> {/* 占位符保持居中 */}
       </div>
 
-      <div>
-        <h2 className="text-3xl font-bold text-center mb-2">{t('game.multiPlayer')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {multiPlayerModes.map((mode) => (
-            <Card key={mode.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="text-center">
-                <div className="text-4xl mb-2">{mode.icon}</div>
-                <CardTitle>{mode.title}</CardTitle>
-                <CardDescription>
-                  {mode.description}
-                  {mode.maxPlayers && (
-                    <div className="text-sm text-muted-foreground mt-1">
-                      最大 {mode.maxPlayers} 人
-                    </div>
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  className="w-full" 
-                  onClick={() => onModeSelect(mode)}
-                >
-                  {t('game.play')}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {GAME_MODES.map((mode) => (
+          <Card
+            key={mode.id}
+            className={`cursor-pointer transition-all hover:shadow-lg ${
+              selectedMode?.id === mode.id
+                ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+            }`}
+            onClick={() => handleModeClick(mode)}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  {getModeIcon(mode)}
+                  {mode.displayName}
+                </CardTitle>
+                {mode.isTimeAttack && (
+                  <Badge variant="secondary">限时</Badge>
+                )}
+                {mode.targetLines && (
+                  <Badge variant="outline">冲刺</Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <CardDescription className="mb-3">
+                {mode.description}
+              </CardDescription>
+              
+              <div className="space-y-1 text-sm">
+                {mode.targetLines && (
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-green-500" />
+                    <span>目标: {mode.targetLines} 行</span>
+                  </div>
+                )}
+                {mode.timeLimit && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-blue-500" />
+                    <span>时限: {formatTimeLimit(mode.timeLimit)}</span>
+                  </div>
+                )}
+                {!mode.targetLines && !mode.timeLimit && (
+                  <div className="flex items-center gap-2">
+                    <Infinity className="w-4 h-4 text-purple-500" />
+                    <span>无限制游戏</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
-      
-      {onBackToMenu && (
-        <div className="mt-8 text-center">
-          <Button variant="outline" onClick={onBackToMenu}>
-            返回主菜单
+
+      {selectedMode && (
+        <div className="text-center">
+          <Card className="max-w-md mx-auto mb-4">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-center gap-2">
+                {getModeIcon(selectedMode)}
+                {selectedMode.displayName}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                {selectedMode.description}
+              </p>
+              {selectedMode.targetLines && (
+                <p className="text-sm">目标: 清除 {selectedMode.targetLines} 行</p>
+              )}
+              {selectedMode.timeLimit && (
+                <p className="text-sm">时限: {formatTimeLimit(selectedMode.timeLimit)}</p>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Button onClick={handleStartGame} size="lg" className="px-8">
+            开始游戏
           </Button>
         </div>
       )}
