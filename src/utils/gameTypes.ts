@@ -1,3 +1,47 @@
+
+// 基础游戏类型定义
+export interface TetrominoType {
+  shape: number[][];
+  color: string;
+  name: string;
+  type: string;
+}
+
+export interface GamePiece {
+  type: TetrominoType;
+  x: number;
+  y: number;
+  rotation: number;
+}
+
+export interface PieceType {
+  type: string;
+  shape: number[][];
+  color: string;
+}
+
+export interface GameState {
+  board: number[][];
+  currentPiece: GamePiece | null;
+  nextPieces: GamePiece[];
+  holdPiece: GamePiece | null;
+  canHold: boolean;
+  score: number;
+  lines: number;
+  level: number;
+  combo: number;
+  b2b: number;
+  pieces: number;
+  startTime: number;
+  paused: boolean;
+  gameOver: boolean;
+  clearingLines: number[];
+  ghostPiece: GamePiece | null;
+  attack: number;
+  pps: number;
+  apm: number;
+}
+
 export interface GameSettings {
   das: number;
   arr: number;
@@ -67,6 +111,21 @@ export interface UserBestRecord {
   bestApm: number;
   replayId?: string;
   achievedAt: string;
+}
+
+export interface AdContent {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  targetUrl: string;
+  isActive: boolean;
+  region: string;
+  language: string;
+  startDate: string;
+  endDate: string;
+  clicks: number;
+  impressions: number;
 }
 
 // 游戏模式配置

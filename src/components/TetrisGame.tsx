@@ -20,7 +20,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { settings } = useUserSettings();
-  const [gameMode, setGameMode] = useState<GameMode>('sprint');
+  const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [showModeSelector, setShowModeSelector] = useState(true);
   const [showCountdown, setShowCountdown] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
@@ -32,7 +32,9 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     arr: settings.arr,
     das: settings.das,
     sdf: settings.sdf,
-    controls: settings.controls
+    controls: settings.controls,
+    backgroundMusic: settings.backgroundMusic || '',
+    musicVolume: settings.musicVolume || 30
   };
 
   const calculateDropSpeed = useCallback((lines: number): number => {
@@ -42,7 +44,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     return Math.max(baseSpeed / speedMultiplier, 50);
   }, []);
 
-  const gameLogic = useGameLogic(gameMode, gameSettings, calculateDropSpeed);
+  const gameLogic = useGameLogic(gameMode?.id || 'endless', gameSettings, calculateDropSpeed);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
   // 180度旋转功能
@@ -73,9 +75,9 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     onBackToMenu: onBackToMenu
   });
 
-  const handleModeSelect = (mode: any) => {
+  const handleModeSelect = (mode: GameMode) => {
     console.log('Mode selected:', mode);
-    setGameMode(mode.id as GameMode);
+    setGameMode(mode);
     setShowModeSelector(false);
     setShowCountdown(true);
   };
@@ -113,7 +115,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     return (
       <GameModeSelector
         onModeSelect={handleModeSelect}
-        onBackToMenu={handleBackToMenu}
+        onBack={handleBackToMenu}
       />
     );
   }
@@ -132,7 +134,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
         />
       )}
       
-      {gameMode === 'versus' ? (
+      {gameMode?.id === 'versus' ? (
         <MultiPlayerGameArea
           gameState={gameLogic.gameState}
           gameSettings={gameSettings}

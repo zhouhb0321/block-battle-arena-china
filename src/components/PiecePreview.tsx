@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { TETROMINO_TYPES } from '@/utils/tetrisLogic';
-import type { PieceType } from '@/utils/gameTypes';
+import type { TetrominoType } from '@/utils/gameTypes';
 
 interface PiecePreviewProps {
-  piece: PieceType | null;
+  piece: TetrominoType | null;
   title: string;
   size?: 'small' | 'medium' | 'large';
   cellSize?: number;
@@ -65,7 +65,7 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
                 style={{
                   width: actualCellSize,
                   height: actualCellSize,
-                  backgroundColor: cell ? pieceColors[piece.type] : 'transparent'
+                  backgroundColor: cell ? pieceColors[piece.type as keyof typeof pieceColors] : 'transparent'
                 }}
               />
             ))}

@@ -10,8 +10,7 @@ import ReplaySystem from '@/components/ReplaySystem';
 import NavigationBar from '@/components/NavigationBar';
 import { Toaster } from '@/components/ui/sonner';
 import type { GameMode } from '@/utils/gameTypes';
-
-type ViewType = 'home' | 'gameMode' | 'game' | 'settings' | 'profile' | 'ranked' | 'admin' | 'income' | 'replays';
+import type { ViewType } from '@/types/navigation';
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -97,7 +96,6 @@ const Index = () => {
         {currentView === 'game' && selectedGameMode && (
           <SimpleTetrisGame 
             onBackToMenu={handleBackToModeSelector}
-            gameMode={selectedGameMode}
           />
         )}
         

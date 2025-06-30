@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import type { GameSettings } from '@/utils/gameTypes';
 
 interface GameSettingsProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ interface GameSettingsProps {
 const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
   const { gameSettings, updateGameSettings } = useGame();
   const { t } = useLanguage();
-  const [tempSettings, setTempSettings] = useState(gameSettings);
+  const [tempSettings, setTempSettings] = useState<GameSettings>(gameSettings);
   const [recordingKey, setRecordingKey] = useState<string | null>(null);
 
   const handleKeyRecord = (controlKey: string) => {
@@ -52,7 +53,7 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
   };
 
   const handleReset = () => {
-    const defaultSettings = {
+    const defaultSettings: GameSettings = {
       das: 167,
       arr: 33,
       sdf: 20,
@@ -70,7 +71,9 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
       },
       enableGhost: true,
       enableSound: true,
-      masterVolume: 50
+      masterVolume: 50,
+      backgroundMusic: '',
+      musicVolume: 30
     };
     setTempSettings(defaultSettings);
   };
