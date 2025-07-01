@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,11 +60,39 @@ const ReplaySystem: React.FC = () => {
             pps: parseFloat(replay.pps.toString()),
             apm: parseFloat(replay.apm.toString()),
             duration: replay.duration,
+            startTime: new Date(replay.created_at).getTime(),
+            endTime: new Date(replay.created_at).getTime() + replay.duration,
             actions: actions,
             finalBoard: Array(20).fill(null).map(() => Array(10).fill(0)),
             date: replay.created_at,
             playerName: userProfile?.username || 'Unknown Player',
-            isPersonalBest: replay.is_personal_best || false
+            isPersonalBest: replay.is_personal_best || false,
+            metadata: {
+              version: '1.0',
+              settings: {
+                das: 167,
+                arr: 33,
+                sdf: 20,
+                controls: {
+                  moveLeft: 'ArrowLeft',
+                  moveRight: 'ArrowRight',
+                  softDrop: 'ArrowDown',
+                  hardDrop: 'Space',
+                  rotateClockwise: 'ArrowUp',
+                  rotateCounterclockwise: 'KeyZ',
+                  rotate180: 'KeyA',
+                  hold: 'KeyC',
+                  pause: 'Escape',
+                  backToMenu: 'KeyB'
+                },
+                enableGhost: true,
+                enableSound: true,
+                masterVolume: 50,
+                backgroundMusic: '',
+                musicVolume: 30,
+                ghostOpacity: 50
+              }
+            }
           };
         });
 

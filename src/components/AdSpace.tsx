@@ -65,6 +65,7 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
             title: ad.title,
             description: ad.content,
             imageUrl: ad.image_url || '',
+            clickUrl: ad.target_url || '',
             targetUrl: ad.target_url || '',
             isActive: ad.is_active,
             region: region,

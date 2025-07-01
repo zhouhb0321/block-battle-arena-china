@@ -22,7 +22,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   enableSound: true,
   masterVolume: 50,
   backgroundMusic: '',
-  musicVolume: 30
+  musicVolume: 30,
+  ghostOpacity: 50
 };
 
 interface GameContextType {
