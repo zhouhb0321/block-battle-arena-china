@@ -38,7 +38,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initializeAuth = async () => {
       try {
         console.log('初始化认证状态...');
-        // 首先快速检查本地session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (mounted) {
@@ -60,7 +59,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -129,7 +127,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
       } else {
         console.log('用户档案不存在，使用认证信息');
-        // 如果没有档案，使用认证用户信息
         const { data: authUser } = await supabase.auth.getUser();
         if (authUser.user) {
           const tempProfile = {
@@ -216,6 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             username: username.trim(),
           },
+          emailRedirectTo: `${window.location.origin}/`
         },
       });
   
@@ -240,7 +238,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       console.log('尝试游客登录...');
       
-      // 生成随机游客ID和用户名
       const guestId = 'guest_' + Math.random().toString(36).substring(2, 15);
       const guestUsername = 'Guest-' + Math.random().toString(36).substring(2, 8).toUpperCase();
       

@@ -57,16 +57,14 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
     backToMenu: '返回菜单'
   };
 
-  const handleKeyBinding = (controlName: string, newKey: string) => {
+  const handleKeyBinding = async (controlName: string, newKey: string) => {
     console.log('更新键位绑定:', controlName, newKey);
     
-    // 检查是否与其他键位冲突
     const conflictKey = Object.entries(settings.controls).find(
       ([key, value]) => key !== controlName && value === newKey
     );
     
     if (conflictKey) {
-      // 交换键位
       const conflictKeyName = conflictKey[0] as keyof typeof settings.controls;
       const oldValue = settings.controls[controlName as keyof typeof settings.controls];
       
@@ -76,23 +74,24 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
         [conflictKeyName]: oldValue
       };
       
-      onSettingChange('controls', newControls);
+      // 立即应用设置更改
+      await onSettingChange('controls', newControls);
       
       const conflictLabel = controlLabels[conflictKeyName as keyof typeof controlLabels];
       const currentLabel = controlLabels[controlName as keyof typeof controlLabels];
       console.log(`键位已交换: ${currentLabel} 和 ${conflictLabel}`);
     } else {
-      // 直接更新
       const newControls = {
         ...settings.controls,
         [controlName]: newKey
       };
-      onSettingChange('controls', newControls);
+      
+      // 立即应用设置更改
+      await onSettingChange('controls', newControls);
       console.log('键位已更新:', controlName, newKey);
     }
   };
 
-  // 键盘事件处理
   React.useEffect(() => {
     if (!recordingKey) return;
 
@@ -102,12 +101,11 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
       
       console.log('录制到按键:', event.code);
       handleKeyBinding(recordingKey, event.code);
-      onKeyRecord(''); // 停止录制
+      onKeyRecord('');
     };
 
     document.addEventListener('keydown', handleKeyDown);
     
-    // 5秒后自动停止录制
     const timeout = setTimeout(() => {
       onKeyRecord('');
     }, 5000);
@@ -123,25 +121,25 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
       <CardHeader>
         <CardTitle className="text-lg text-white">按键设置</CardTitle>
         <CardDescription className="text-gray-400">
-          点击按钮自定义按键绑定。如果按键冲突，将自动交换位置。
+          点击按钮自定义按键绑定。设置会立即保存并生效。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(controlLabels).map(([key, label]) => (
-            <div key={key} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+            <div key={key} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
               <div className="flex items-center gap-3">
-                <span className="text-xl">{controlIcons[key as keyof typeof controlIcons]}</span>
+                <span className="text-xl w-8 text-center">{controlIcons[key as keyof typeof controlIcons]}</span>
                 <Label className="text-white font-medium">{label}</Label>
               </div>
               <Button
                 variant={recordingKey === key ? "destructive" : "outline"}
                 size="sm"
                 onClick={() => onKeyRecord(key)}
-                className={`min-w-20 ${
+                className={`min-w-20 font-mono ${
                   recordingKey === key 
-                    ? 'bg-red-600 hover:bg-red-700 text-white' 
-                    : 'bg-gray-600 hover:bg-gray-500 text-white border-gray-500'
+                    ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse' 
+                    : 'bg-gray-600 hover:bg-gray-500 text-white border-gray-500 hover:border-gray-400'
                 }`}
               >
                 {recordingKey === key ? '按下按键...' : 
@@ -152,9 +150,9 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
         </div>
 
         {recordingKey && (
-          <div className="bg-blue-900/50 border border-blue-500/50 p-4 rounded-lg">
+          <div className="bg-blue-900/50 border border-blue-500/50 p-4 rounded-lg animate-pulse">
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="bg-blue-600 text-white border-blue-400">
+              <Badge variant="outline" className="bg-blue-600 text-white border-blue-400 animate-bounce">
                 正在录制
               </Badge>
               <span className="text-blue-200">

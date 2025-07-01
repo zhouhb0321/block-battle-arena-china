@@ -152,15 +152,25 @@ export const useGameLogic = (
     return false;
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, lockDelay]);
 
+  // 完全重写旋转逻辑，实现标准SRS系统
   const rotatePieceClockwise = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || isHardDropping.current) return;
 
     const rotated = rotatePiece(gameState.currentPiece.type, true);
     const newRotation = (gameState.currentPiece.rotation + 1) % 4;
     
-    const kickTests = getKickTests(gameState.currentPiece.type.type, gameState.currentPiece.rotation, newRotation);
+    // 获取SRS踢墙测试序列
+    const kickTests = getKickTests(
+      gameState.currentPiece.type.type, 
+      gameState.currentPiece.rotation, 
+      newRotation
+    );
 
-    for (const kick of kickTests) {
+    console.log(`SRS旋转测试 - 方块: ${gameState.currentPiece.type.type}, 从状态${gameState.currentPiece.rotation}到${newRotation}`);
+
+    // 按照SRS规则测试每个踢墙位置
+    for (let i = 0; i < kickTests.length; i++) {
+      const kick = kickTests[i];
       const testPiece: GamePiece = { 
         ...gameState.currentPiece, 
         type: rotated, 
@@ -169,7 +179,10 @@ export const useGameLogic = (
         rotation: newRotation
       };
       
+      console.log(`测试踢墙位置 ${i+1}: (${kick.x}, ${kick.y})`);
+      
       if (isValidPosition(gameState.board, testPiece)) {
+        console.log(`踢墙成功！位置: (${testPiece.x}, ${testPiece.y})`);
         setGameState(prev => ({
           ...prev,
           currentPiece: testPiece,
@@ -182,6 +195,7 @@ export const useGameLogic = (
         return;
       }
     }
+    console.log('旋转失败 - 所有踢墙位置都无效');
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
   const rotatePieceCounterclockwise = useCallback(() => {
@@ -190,7 +204,11 @@ export const useGameLogic = (
     const rotated = rotatePiece(gameState.currentPiece.type, false);
     const newRotation = (gameState.currentPiece.rotation + 3) % 4;
     
-    const kickTests = getKickTests(gameState.currentPiece.type.type, gameState.currentPiece.rotation, newRotation);
+    const kickTests = getKickTests(
+      gameState.currentPiece.type.type, 
+      gameState.currentPiece.rotation, 
+      newRotation
+    );
 
     for (const kick of kickTests) {
       const testPiece: GamePiece = { 
@@ -216,34 +234,35 @@ export const useGameLogic = (
     }
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
-  // 完全重写硬降功能 - 确保立即执行
+  // 完全重写硬降功能 - 立即执行，无延迟
   const hardDrop = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
     console.log('硬降开始 - 当前方块位置:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
     
-    // 设置硬降状态，防止其他操作干扰
+    // 立即设置硬降状态
     isHardDropping.current = true;
     
-    // 计算最终位置
-    let finalY = gameState.currentPiece.y;
-    while (isValidPosition(gameState.board, {
-      ...gameState.currentPiece,
-      y: finalY + 1
-    })) {
-      finalY++;
+    // 计算最终位置 - 使用优化的算法
+    const dropY = calculateDropPosition(gameState.board, gameState.currentPiece);
+    const dropDistance = dropY - gameState.currentPiece.y;
+    
+    console.log('硬降距离:', dropDistance, '最终位置:', dropY);
+    
+    if (dropDistance <= 0) {
+      // 如果已经在底部，直接锁定
+      isHardDropping.current = false;
+      lockPiece();
+      return;
     }
     
-    const dropDistance = finalY - gameState.currentPiece.y;
-    console.log('硬降距离:', dropDistance, '最终位置:', finalY);
-    
-    // 立即更新方块位置并锁定
-    const finalPiece = { ...gameState.currentPiece, y: finalY };
+    // 创建最终位置的方块
+    const finalPiece = { ...gameState.currentPiece, y: dropY };
     
     // 检查T-Spin
     const tSpinType = checkTSpin(gameState.board, finalPiece, lastAction || 'move');
     
-    // 放置方块并消除行
+    // 立即放置方块并消除行
     const newBoard = placePiece(gameState.board, finalPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     
@@ -281,18 +300,18 @@ export const useGameLogic = (
       toast.success(`${newCombo + 1} 连击! +${attackValue} 攻击`, { duration: 1500 });
     }
     
-    // 重置状态并生成新方块
+    // 重置状态
     setLastAction(null);
     setLockDelay(false);
     lockDelayTime.current = 0;
     
-    // 短暂延迟后生成新方块
+    // 立即生成新方块
     setTimeout(() => {
       isHardDropping.current = false;
       spawnNewPiece();
-    }, 50);
+    }, 10); // 极短延迟确保状态更新完成
     
-    console.log('硬降完成 - 方块已锁定，准备生成新方块');
+    console.log('硬降完成 - 方块已锁定');
   }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, gameState.gameOver, gameState.paused, lastAction, gameState.combo, gameState.b2b, spawnNewPiece]);
 
   const lockPiece = useCallback(() => {

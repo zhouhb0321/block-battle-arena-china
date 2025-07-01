@@ -36,9 +36,17 @@ const GameCountdown: React.FC<GameCountdownProps> = ({ onCountdownEnd, show }) =
   if (!isVisible) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50 rounded-lg">
-      <div className="text-white text-8xl font-bold animate-pulse drop-shadow-2xl">
-        {count > 0 ? count : 'GO!'}
+    <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+      <div className="text-white text-8xl font-bold drop-shadow-2xl animate-bounce">
+        <div 
+          className={`transition-all duration-300 ${count > 0 ? 'scale-110' : 'scale-125'}`}
+          style={{
+            textShadow: '0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.6)',
+            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.8))'
+          }}
+        >
+          {count > 0 ? count : 'GO!'}
+        </div>
       </div>
     </div>
   );

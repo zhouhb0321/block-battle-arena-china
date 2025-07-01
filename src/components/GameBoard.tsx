@@ -19,11 +19,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
   cellSize = 25,
   clearingLines = []
 }) => {
-  // 创建显示用的棋盘 - 允许字符串和数字混合
+  // 创建显示用的棋盘
   const displayBoard: (number | string)[][] = board.map(row => [...row]);
 
-  // 添加幽灵方块
-  if (enableGhost && ghostPiece) {
+  // 添加幽灵方块（虚线样式）
+  if (enableGhost && ghostPiece && currentPiece) {
     const { shape, color } = ghostPiece.type;
     shape.forEach((row, rowIndex) => {
       row.forEach((cell, colIndex) => {
@@ -40,7 +40,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
     });
   }
 
-  // 添加当前方块
+  // 添加当前方块（实心样式）
   if (currentPiece) {
     const { shape, color } = currentPiece.type;
     shape.forEach((row, rowIndex) => {
@@ -49,7 +49,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           const boardY = currentPiece.y + rowIndex;
           const boardX = currentPiece.x + colIndex;
           if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
-            displayBoard[boardY][boardX] = color;
+            displayBoard[boardY][boardX] = `solid-${color}`;
           }
         }
       });
@@ -58,36 +58,58 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   const getCellStyle = (cellValue: number | string, rowIndex: number) => {
     const isClearing = clearingLines.includes(rowIndex);
+    const baseStyle = {
+      width: `${cellSize}px`,
+      height: `${cellSize}px`,
+    };
     
     if (cellValue === 0) {
       return {
+        ...baseStyle,
         backgroundColor: '#1a1a1a',
         border: '1px solid #333',
-        width: `${cellSize}px`,
-        height: `${cellSize}px`,
       };
     }
     
+    // 幽灵方块 - 虚线边框样式
     if (typeof cellValue === 'string' && cellValue.startsWith('ghost-')) {
       const color = cellValue.replace('ghost-', '');
       return {
-        backgroundColor: 'transparent',
+        ...baseStyle,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
         border: `2px dashed ${color}`,
-        opacity: 0.5,
-        width: `${cellSize}px`,
-        height: `${cellSize}px`,
+        opacity: 0.6,
+        borderRadius: '2px',
       };
     }
     
-    // 确保 backgroundColor 始终是字符串
-    const backgroundColor = typeof cellValue === 'string' ? cellValue : String(cellValue);
+    // 实心方块 - 带阴影和渐变的立体效果
+    if (typeof cellValue === 'string' && cellValue.startsWith('solid-')) {
+      const color = cellValue.replace('solid-', '');
+      return {
+        ...baseStyle,
+        backgroundColor: color,
+        border: `1px solid ${color}`,
+        boxShadow: isClearing 
+          ? '0 0 15px #fff, inset 2px 2px 4px rgba(255,255,255,0.4), inset -2px -2px 4px rgba(0,0,0,0.3)' 
+          : 'inset 2px 2px 4px rgba(255,255,255,0.3), inset -2px -2px 4px rgba(0,0,0,0.3)',
+        borderRadius: '1px',
+        animation: isClearing ? 'flash 0.3s ease-in-out' : 'none',
+      };
+    }
+    
+    // 已放置的方块 - 根据数字获取颜色
+    const colors = ['', '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000', '#666666'];
+    const backgroundColor = colors[cellValue as number] || '#666666';
     
     return {
+      ...baseStyle,
       backgroundColor,
       border: `1px solid ${backgroundColor}`,
-      width: `${cellSize}px`,
-      height: `${cellSize}px`,
-      boxShadow: isClearing ? '0 0 10px #fff' : 'inset 2px 2px 4px rgba(255,255,255,0.3)',
+      boxShadow: isClearing 
+        ? '0 0 15px #fff, inset 2px 2px 4px rgba(255,255,255,0.3), inset -2px -2px 4px rgba(0,0,0,0.3)' 
+        : 'inset 2px 2px 4px rgba(255,255,255,0.2), inset -2px -2px 4px rgba(0,0,0,0.3)',
+      borderRadius: '1px',
       animation: isClearing ? 'flash 0.3s ease-in-out' : 'none',
     };
   };
@@ -104,7 +126,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
       </style>
       
       <div 
-        className="grid gap-0 border-2 border-gray-600 bg-black"
+        className="grid gap-0 border-2 border-gray-600 bg-black shadow-2xl"
         style={{ 
           gridTemplateColumns: `repeat(10, ${cellSize}px)`,
           width: `${cellSize * 10 + 4}px`,

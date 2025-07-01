@@ -1,4 +1,3 @@
-
 import type { TetrominoType, GamePiece, ReplayAction } from './gameTypes';
 
 // 标准化方块颜色 - 与经典俄罗斯方块保持一致
@@ -290,13 +289,13 @@ export const checkTSpin = (
   return null;
 };
 
-// SRS 踢墙数据
+// 修复SRS踢墙数据 - 按照官方标准实现
 export const getKickTests = (
   pieceType: string,
   fromRotation: number,
   toRotation: number
 ): { x: number; y: number }[] => {
-  // I型方块特殊踢墙数据
+  // I型方块的特殊踢墙数据（官方SRS标准）
   if (pieceType === 'I') {
     const iKickData: { [key: string]: { x: number; y: number }[] } = {
       '0->1': [{ x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 2 }],
@@ -313,7 +312,12 @@ export const getKickTests = (
     return iKickData[key] || [{ x: 0, y: 0 }];
   }
 
-  // 其他方块的标准踢墙数据
+  // O型方块不需要踢墙（正方形）
+  if (pieceType === 'O') {
+    return [{ x: 0, y: 0 }];
+  }
+
+  // 其他方块（T, S, Z, J, L）的标准SRS踢墙数据
   const normalKickData: { [key: string]: { x: number; y: number }[] } = {
     '0->1': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 }],
     '1->0': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],

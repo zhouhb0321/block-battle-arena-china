@@ -113,7 +113,7 @@ export const useUserSettings = () => {
       console.log('为用户创建默认设置:', user.id);
       const { error } = await supabase
         .from('user_settings')
-        .insert({
+        .upsert({
           user_id: user.id,
           das: DEFAULT_SETTINGS.das,
           arr: DEFAULT_SETTINGS.arr,
@@ -125,6 +125,8 @@ export const useUserSettings = () => {
           background_music: DEFAULT_SETTINGS.backgroundMusic,
           music_volume: DEFAULT_SETTINGS.musicVolume,
           ghost_opacity: DEFAULT_SETTINGS.ghostOpacity
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) {
@@ -158,60 +160,32 @@ export const useUserSettings = () => {
     try {
       console.log('保存用户设置到数据库，用户ID:', user.id);
       
-      // 首先检查是否存在记录
-      const { data: existingData } = await supabase
+      // 使用upsert确保总是能保存成功
+      const { error } = await supabase
         .from('user_settings')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .upsert({
+          user_id: user.id,
+          das: updatedSettings.das,
+          arr: updatedSettings.arr,
+          sdf: updatedSettings.sdf,
+          controls: updatedSettings.controls,
+          enable_ghost: updatedSettings.enableGhost,
+          enable_sound: updatedSettings.enableSound,
+          master_volume: updatedSettings.masterVolume,
+          background_music: updatedSettings.backgroundMusic,
+          music_volume: updatedSettings.musicVolume,
+          ghost_opacity: updatedSettings.ghostOpacity,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
 
-      let result;
-      
-      if (existingData) {
-        // 更新现有记录
-        console.log('更新现有设置记录');
-        result = await supabase
-          .from('user_settings')
-          .update({
-            das: updatedSettings.das,
-            arr: updatedSettings.arr,
-            sdf: updatedSettings.sdf,
-            controls: updatedSettings.controls,
-            enable_ghost: updatedSettings.enableGhost,
-            enable_sound: updatedSettings.enableSound,
-            master_volume: updatedSettings.masterVolume,
-            background_music: updatedSettings.backgroundMusic,
-            music_volume: updatedSettings.musicVolume,
-            ghost_opacity: updatedSettings.ghostOpacity,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-      } else {
-        // 插入新记录
-        console.log('插入新设置记录');
-        result = await supabase
-          .from('user_settings')
-          .insert({
-            user_id: user.id,
-            das: updatedSettings.das,
-            arr: updatedSettings.arr,
-            sdf: updatedSettings.sdf,
-            controls: updatedSettings.controls,
-            enable_ghost: updatedSettings.enableGhost,
-            enable_sound: updatedSettings.enableSound,
-            master_volume: updatedSettings.masterVolume,
-            background_music: updatedSettings.backgroundMusic,
-            music_volume: updatedSettings.musicVolume,
-            ghost_opacity: updatedSettings.ghostOpacity
-          });
-      }
-
-      if (result.error) {
-        console.error('保存设置失败:', result.error);
-        toast.error('保存设置失败: ' + result.error.message);
+      if (error) {
+        console.error('保存设置失败:', error);
+        toast.error('保存设置失败: ' + error.message);
         // 回滚本地状态
         setSettings(settings);
-        throw result.error;
+        throw error;
       } else {
         console.log('设置保存成功');
         toast.success('设置已成功保存');
