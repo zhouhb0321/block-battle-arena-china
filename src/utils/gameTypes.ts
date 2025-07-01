@@ -1,14 +1,16 @@
+
 export interface GameState {
   board: number[][];
-  currentPiece: Piece;
-  nextPieces: Piece[];
-  holdPiece: Piece | null;
+  currentPiece: GamePiece | null;
+  nextPieces: GamePiece[];
+  holdPiece: GamePiece | null;
   canHold: boolean;
   isHolding: boolean;
   score: number;
   level: number;
   lines: number;
   gameOver: boolean;
+  paused: boolean;
   combo: number;
   b2b: number;
   pieces: number;
@@ -17,7 +19,8 @@ export interface GameState {
   apm: number;
   startTime: number | null;
   endTime: number | null;
-  ghostPiece: Piece;
+  ghostPiece: GamePiece | null;
+  clearingLines: number[];
 }
 
 export interface Piece {
@@ -25,9 +28,28 @@ export interface Piece {
   color: string;
   x: number;
   y: number;
+  type: TetrominoType;
+  rotation: number;
+}
+
+export interface GamePiece {
+  type: TetrominoType;
+  x: number;
+  y: number;
+  rotation: number;
+}
+
+export interface TetrominoType {
+  name: string;
+  type: string;
+  shape: number[][];
+  color: string;
 }
 
 export interface GameMode {
+  id: string;
+  displayName: string;
+  description: string;
   isTimeAttack: boolean;
   timeLimit?: number;
   targetLines?: number;
@@ -54,7 +76,80 @@ export interface GameSettings {
   masterVolume: number;
   backgroundMusic: string;
   musicVolume: number;
-  ghostOpacity: number; // Add ghostOpacity to the interface
+  ghostOpacity: number;
 }
+
+export interface AdContent {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  clickUrl: string;
+  isActive: boolean;
+}
+
+export interface GameReplay {
+  id: string;
+  userId: string;
+  gameMode: string;
+  score: number;
+  lines: number;
+  startTime: number;
+  endTime: number;
+  actions: ReplayAction[];
+  metadata: {
+    version: string;
+    settings: GameSettings;
+  };
+}
+
+export interface ReplayAction {
+  timestamp: number;
+  type: 'move' | 'rotate' | 'drop' | 'hold' | 'pause';
+  payload?: any;
+}
+
+export const GAME_MODES: GameMode[] = [
+  {
+    id: 'endless',
+    displayName: '无尽模式',
+    description: '经典俄罗斯方块，挑战你的极限！',
+    isTimeAttack: false
+  },
+  {
+    id: 'sprint40',
+    displayName: '40行冲刺',
+    description: '尽快消除40行方块',
+    isTimeAttack: false,
+    targetLines: 40
+  },
+  {
+    id: 'sprint100',
+    displayName: '100行冲刺',
+    description: '尽快消除100行方块',
+    isTimeAttack: false,
+    targetLines: 100
+  },
+  {
+    id: 'timeAttack2',
+    displayName: '2分钟挑战',
+    description: '在2分钟内获得最高分数',
+    isTimeAttack: true,
+    timeLimit: 120
+  },
+  {
+    id: 'timeAttack5',
+    displayName: '5分钟挑战',
+    description: '在5分钟内获得最高分数',
+    isTimeAttack: true,
+    timeLimit: 300
+  },
+  {
+    id: 'versus',
+    displayName: '对战模式',
+    description: '与其他玩家实时对战',
+    isTimeAttack: false
+  }
+];
 
 export type View = 'start' | 'game' | 'settings' | 'profile';
