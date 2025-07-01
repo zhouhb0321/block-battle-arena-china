@@ -1,10 +1,12 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from 'sonner';
+import PasswordResetForm from './PasswordResetForm';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -19,6 +21,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [username, setUsername] = useState('');
   const [guestName, setGuestName] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +31,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       toast.error(t('auth.missing_credentials') || '邮箱和密码不能为空');
       return;
     }
+
+    setLoading(true);
 
     try {
       if (isLogin) {
@@ -38,12 +44,22 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           return;
         }
         await register(username, email, password);
-        toast.success(t('auth.signup_success') || '注册成功');
+        toast.success(t('auth.signup_success') || '注册成功！请检查邮箱以激活账户。');
       }
       onClose();
     } catch (error: any) {
       console.error('Authentication failed:', error);
-      toast.error(t('auth.login_failed') || '登录失败，请重试');
+      if (error.message.includes('Invalid login credentials')) {
+        toast.error('邮箱或密码错误，请检查后重试');
+      } else if (error.message.includes('Email not confirmed')) {
+        toast.error('请先验证您的邮箱地址');
+      } else if (error.message.includes('User already registered')) {
+        toast.error('该邮箱已被注册，请直接登录或使用其他邮箱');
+      } else {
+        toast.error(error.message || (t('auth.login_failed') || '登录失败，请重试'));
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,7 +71,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     
     try {
       loginAsGuest();
-      toast.success(t('auth.guest_login_success'));
+      toast.success(t('auth.guest_login_success') || '游客登录成功');
       onClose();
     } catch (error: any) {
       console.error('Guest login failed:', error);
@@ -63,8 +79,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleClose = () => {
+    setShowPasswordReset(false);
+    onClose();
+  };
+
+  if (showPasswordReset) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-[425px]">
+          <PasswordResetForm onBack={() => setShowPasswordReset(false)} />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{isLogin ? (t('auth.login') || "登录") : (t('auth.signup') || "注册")}</DialogTitle>
@@ -105,8 +136,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button type="submit">{isLogin ? (t('auth.login') || "登录") : (t('auth.signup') || "注册")}</Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? '处理中...' : (isLogin ? (t('auth.login') || "登录") : (t('auth.signup') || "注册"))}
+          </Button>
         </form>
+        
+        {isLogin && (
+          <div className="text-center">
+            <button 
+              type="button" 
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+              onClick={() => setShowPasswordReset(true)}
+            >
+              忘记密码？
+            </button>
+          </div>
+        )}
+        
         <div className="border-t py-4">
           <div className="grid gap-2">
             <label htmlFor="guestname">{t('auth.guest_username') || "游客用户名"}</label>
@@ -118,7 +164,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               onChange={(e) => setGuestName(e.target.value)}
             />
           </div>
-          <Button type="button" onClick={handleGuestLogin}>{t('auth.guest_login') || "游客登录"}</Button>
+          <Button type="button" onClick={handleGuestLogin} className="w-full mt-2">
+            {t('auth.guest_login') || "游客登录"}
+          </Button>
         </div>
         <div className="text-center">
           <button type="button" className="text-sm text-gray-500 hover:text-gray-700" onClick={() => setIsLogin(!isLogin)}>

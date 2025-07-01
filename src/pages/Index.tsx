@@ -1,169 +1,208 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import AuthModal from '@/components/AuthModal';
+import { useLanguage } from '@/contexts/LanguageContext';
 import MainMenu from '@/components/MainMenu';
-import SimpleTetrisGame from '@/components/SimpleTetrisGame';
+import SinglePlayerMenu from '@/components/menus/SinglePlayerMenu';
+import MultiPlayerMenu from '@/components/menus/MultiPlayerMenu';
+import LeagueMenu from '@/components/menus/LeagueMenu';
 import SettingsMenu from '@/components/menus/SettingsMenu';
-import GameModeSelector from '@/components/GameModeSelector';
-import ReplaySystem from '@/components/ReplaySystem';
+import AuthModal from '@/components/AuthModal';
 import NavigationBar from '@/components/NavigationBar';
-import { Toaster } from '@/components/ui/sonner';
-import type { GameMode } from '@/utils/gameTypes';
-import type { ViewType } from '@/types/navigation';
+import GameController from '@/components/game/GameController';
+import AdSpace from '@/components/AdSpace';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Play, Users, Trophy, Settings, LogIn } from 'lucide-react';
+
+// Define ViewType locally to avoid import conflicts
+type ViewType = 'main' | 'singlePlayer' | 'multiPlayer' | 'league' | 'settings' | 'game';
 
 const Index = () => {
-  const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<ViewType>('home');
+  const { user, isAuthenticated } = useAuth();
+  const { t } = useLanguage();
+  const [currentView, setCurrentView] = useState<ViewType>('main');
+  const [gameConfig, setGameConfig] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [selectedGameMode, setSelectedGameMode] = useState<GameMode | null>(null);
 
-  console.log('Index rendered, user:', user, 'loading:', loading);
+  // Reset to main menu when user logs out
+  useEffect(() => {
+    if (!isAuthenticated && currentView !== 'main') {
+      setCurrentView('main');
+      setGameConfig(null);
+    }
+  }, [isAuthenticated, currentView]);
 
-  const handleGameStart = () => {
-    console.log('Game start triggered - showing mode selector');
-    setCurrentView('gameMode');
-  };
-
-  const handleModeSelect = (mode: GameMode) => {
-    console.log('Game mode selected:', mode);
-    setSelectedGameMode(mode);
+  const handleGameStart = (config: any) => {
+    setGameConfig(config);
     setCurrentView('game');
   };
 
   const handleBackToMenu = () => {
-    console.log('Back to menu triggered');
-    setCurrentView('home');
-    setSelectedGameMode(null);
-  };
-
-  const handleBackToModeSelector = () => {
-    console.log('Back to mode selector');
-    setCurrentView('gameMode');
-    setSelectedGameMode(null);
-  };
-
-  const handleSettings = () => {
-    setCurrentView('settings');
-  };
-
-  const handleLeaderboard = () => {
-    setCurrentView('ranked');
+    setCurrentView('main');
+    setGameConfig(null);
   };
 
   const handleViewChange = (view: ViewType) => {
-    console.log('View change to:', view);
+    if (!isAuthenticated && (view === 'multiPlayer' || view === 'league' || view === 'settings')) {
+      setShowAuthModal(true);
+      return;
+    }
     setCurrentView(view);
   };
 
-  const handleAuthModalOpen = () => {
-    setShowAuthModal(true);
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'singlePlayer':
+        return (
+          <SinglePlayerMenu 
+            onGameStart={handleGameStart}
+            onBackToMenu={handleBackToMenu}
+          />
+        );
+      case 'multiPlayer':
+        return (
+          <MultiPlayerMenu 
+            onGameStart={handleGameStart}
+            onBackToMenu={handleBackToMenu}
+          />
+        );
+      case 'league':
+        return (
+          <LeagueMenu 
+            onBackToMenu={handleBackToMenu}
+          />
+        );
+      case 'settings':
+        return (
+          <SettingsMenu 
+            onBackToMenu={handleBackToMenu}
+          />
+        );
+      case 'game':
+        return gameConfig ? (
+          <GameController 
+            gameConfig={gameConfig}
+            onBackToMenu={handleBackToMenu}
+          />
+        ) : null;
+      case 'main':
+      default:
+        return (
+          <div className="space-y-8">
+            {/* Welcome Section */}
+            <div className="text-center space-y-4">
+              <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {t('welcome.title') || 'Tetris Game'}
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                {t('welcome.subtitle') || '经典俄罗斯方块游戏，支持单人和多人模式'}
+              </p>
+              {user && (
+                <p className="text-lg text-green-600 font-medium">
+                  {t('welcome.greeting', { username: user.username }) || `欢迎回来，${user.username}！`}
+                </p>
+              )}
+            </div>
+
+            {/* Main Menu Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('singlePlayer')}>
+                <CardContent className="p-6 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                    <Play className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{t('menu.singlePlayer') || '单人游戏'}</h3>
+                    <p className="text-sm text-muted-foreground">{t('menu.singlePlayerDesc') || '挑战自己的极限'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('multiPlayer')}>
+                <CardContent className="p-6 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                    <Users className="w-8 h-8 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{t('menu.multiPlayer') || '多人游戏'}</h3>
+                    <p className="text-sm text-muted-foreground">{t('menu.multiPlayerDesc') || '与朋友一起游戏'}</p>
+                  </div>
+                  {!isAuthenticated && (
+                    <div className="text-xs text-amber-600 font-medium">
+                      {t('menu.loginRequired') || '需要登录'}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('league')}>
+                <CardContent className="p-6 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                    <Trophy className="w-8 h-8 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{t('menu.league') || '联赛模式'}</h3>
+                    <p className="text-sm text-muted-foreground">{t('menu.leagueDesc') || '参与排位赛'}</p>
+                  </div>
+                  {!isAuthenticated && (
+                    <div className="text-xs text-amber-600 font-medium">
+                      {t('menu.loginRequired') || '需要登录'}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('settings')}>
+                <CardContent className="p-6 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+                    <Settings className="w-8 h-8 text-gray-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{t('menu.settings') || '设置'}</h3>
+                    <p className="text-sm text-muted-foreground">{t('menu.settingsDesc') || '个性化设置'}</p>
+                  </div>
+                  {!isAuthenticated && (
+                    <div className="text-xs text-amber-600 font-medium">
+                      {t('menu.loginRequired') || '需要登录'}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Login Button for Guests */}
+            {!isAuthenticated && (
+              <div className="text-center">
+                <Button 
+                  onClick={() => setShowAuthModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
+                >
+                  <LogIn className="w-5 h-5 mr-2" />
+                  {t('auth.login') || '登录 / 注册'}
+                </Button>
+              </div>
+            )}
+
+            {/* Ad Space */}
+            <AdSpace position="main_menu" />
+          </div>
+        );
+    }
   };
 
-  // 修复加载状态 - 只在真正需要时显示加载
-  if (loading && !user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
-        <div className="text-white text-xl">正在加载...</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      <NavigationBar 
-        currentView={currentView}
-        onViewChange={handleViewChange}
-        onAuthModalOpen={handleAuthModalOpen}
-      />
-      
-      <div className="container mx-auto px-4 py-8">
-        {currentView === 'home' && (
-          <MainMenu
-            onGameStart={handleGameStart}
-            onLeaderboard={handleLeaderboard}
-            onSettings={handleSettings}
-          />
-        )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-800">
+      <NavigationBar />
+      <main className="container mx-auto px-4 py-8">
+        {renderCurrentView()}
+      </main>
 
-        {currentView === 'gameMode' && (
-          <GameModeSelector
-            onModeSelect={handleModeSelect}
-            onBack={handleBackToMenu}
-          />
-        )}
-        
-        {currentView === 'game' && selectedGameMode && (
-          <SimpleTetrisGame 
-            onBackToMenu={handleBackToModeSelector}
-          />
-        )}
-        
-        {currentView === 'settings' && (
-          <SettingsMenu onBackToMenu={handleBackToMenu} />
-        )}
-
-        {currentView === 'replays' && (
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center mb-6">
-              <button 
-                onClick={handleBackToMenu}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded mr-4"
-              >
-                返回主菜单
-              </button>
-              <h2 className="text-2xl font-bold text-white">游戏回放</h2>
-            </div>
-            <ReplaySystem />
-          </div>
-        )}
-        
-        {currentView === 'ranked' && (
-          <div className="text-center text-white">
-            <h2 className="text-2xl mb-4">排行榜</h2>
-            <p className="mb-4">排行榜功能开发中...</p>
-            <button 
-              onClick={handleBackToMenu}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-            >
-              返回菜单
-            </button>
-          </div>
-        )}
-
-        {currentView === 'admin' && user?.isAdmin && (
-          <div className="text-center text-white">
-            <h2 className="text-2xl mb-4">管理员面板</h2>
-            <p className="mb-4">管理员功能开发中...</p>
-            <button 
-              onClick={handleBackToMenu}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-            >
-              返回菜单
-            </button>
-          </div>
-        )}
-
-        {currentView === 'income' && user?.isAdmin && (
-          <div className="text-center text-white">
-            <h2 className="text-2xl mb-4">收入管理</h2>
-            <p className="mb-4">收入管理功能开发中...</p>
-            <button 
-              onClick={handleBackToMenu}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-            >
-              返回菜单
-            </button>
-          </div>
-        )}
-      </div>
-
+      {/* Auth Modal */}
       <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
       />
-      
-      <Toaster />
     </div>
   );
 };
