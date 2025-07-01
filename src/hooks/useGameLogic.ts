@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
@@ -213,11 +214,11 @@ export const useGameLogic = (
     }
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
-  // 修复硬降功能 - 参考提供的代码逻辑
+  // 修复硬降功能 - 立即降落到底部并锁定
   const hardDrop = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused) return;
 
-    console.log('硬降开始，当前方块位置:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
+    console.log('Hard drop started, current piece position:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
     
     let newY = gameState.currentPiece.y;
     // 找到最低的有效位置
@@ -229,28 +230,22 @@ export const useGameLogic = (
     }
     
     const dropDistance = newY - gameState.currentPiece.y;
-    console.log('硬降目标位置:', newY, '降落距离:', dropDistance);
+    console.log('Hard drop target position:', newY, 'drop distance:', dropDistance);
     
-    if (dropDistance <= 0) {
-      // 如果已经到底部，直接锁定
-      console.log('方块已在底部，直接锁定');
-      lockPiece();
-      return;
-    }
+    // 立即更新方块位置到最终位置
+    const finalPiece = { ...gameState.currentPiece, y: newY };
     
-    // 更新当前方块位置并添加硬降得分
-    const droppedPiece = { ...gameState.currentPiece, y: newY };
-    
+    // 更新状态并立即锁定
     setGameState(prev => ({
       ...prev,
-      currentPiece: droppedPiece,
-      ghostPiece: null, // 清除幽灵方块
+      currentPiece: finalPiece,
+      ghostPiece: null,
       score: prev.score + dropDistance * 2 // 硬降得分
     }));
     
     // 立即锁定方块
     setTimeout(() => {
-      console.log('硬降后锁定方块');
+      console.log('Locking piece after hard drop');
       lockPiece();
     }, 10);
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
@@ -258,7 +253,7 @@ export const useGameLogic = (
   const lockPiece = useCallback(() => {
     if (!gameState.currentPiece) return;
 
-    console.log('锁定方块，位置:', gameState.currentPiece.x, gameState.currentPiece.y);
+    console.log('Locking piece at position:', gameState.currentPiece.x, gameState.currentPiece.y);
     const tSpinType = checkTSpin(gameState.board, gameState.currentPiece, lastAction || 'move');
     const newBoard = placePiece(gameState.board, gameState.currentPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);

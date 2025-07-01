@@ -14,6 +14,20 @@ export const translations = {
     'auth.register_button': '注册',
     'auth.guest_login': '游客登录',
     'auth.forgot_password': '忘记密码？',
+    'auth.missing_credentials': '邮箱和密码不能为空',
+    'auth.missing_username': '用户名不能为空',
+    'auth.login_success': '登录成功',
+    'auth.signup_success': '注册成功！请检查邮箱以激活账户。',
+    'auth.login_failed': '登录失败，请重试',
+    'auth.username_required': '请输入用户名',
+    'auth.guest_login_success': '游客登录成功',
+    'auth.need_account': '需要注册一个帐户？',
+    'auth.already_have_account': '已有帐户？',
+    'auth.email_placeholder': '输入邮箱',
+    'auth.password_placeholder': '输入密码',
+    'auth.username_placeholder': '输入用户名',
+    'auth.guest_username': '游客用户名',
+    'auth.guest_username_placeholder': '输入游客用户名',
     
     // 菜单相关
     'menu.singlePlayer': '单人游戏',
@@ -35,6 +49,31 @@ export const translations = {
     'game.timeAttack': '限时挑战',
     'game.timeAttack_desc': '在限定时间内获得最高分',
     
+    // 游戏界面
+    'game.start': '开始游戏',
+    'game.pause': '暂停',
+    'game.resume': '继续',
+    'game.restart': '重新开始',
+    'game.back_to_menu': '返回菜单',
+    'game.score': '分数',
+    'game.lines': '行数',
+    'game.level': '等级',
+    'game.time': '时间',
+    'game.next': '下一个',
+    'game.hold': '暂存',
+    
+    // 设置相关
+    'settings.title': '游戏设置',
+    'settings.timing': '手感设置',
+    'settings.controls': '键位设置',
+    'settings.visual': '视觉设置',
+    'settings.audio': '音效设置',
+    'settings.music': '音乐设置',
+    'settings.save': '保存设置',
+    'settings.reset': '重置默认',
+    'settings.saved': '设置已保存',
+    'settings.save_failed': '保存设置失败',
+    
     // 通用
     'common.start': '开始',
     'common.cancel': '取消',
@@ -44,7 +83,9 @@ export const translations = {
     'common.close': '关闭',
     'common.loading': '加载中...',
     'common.error': '错误',
-    'common.success': '成功'
+    'common.success': '成功',
+    'common.yes': '是',
+    'common.no': '否'
   },
   en: {
     // Auth
@@ -60,6 +101,20 @@ export const translations = {
     'auth.register_button': 'Sign Up',
     'auth.guest_login': 'Play as Guest',
     'auth.forgot_password': 'Forgot Password?',
+    'auth.missing_credentials': 'Email and password are required',
+    'auth.missing_username': 'Username is required',
+    'auth.login_success': 'Login successful',
+    'auth.signup_success': 'Registration successful! Please check your email to activate your account.',
+    'auth.login_failed': 'Login failed, please try again',
+    'auth.username_required': 'Please enter a username',
+    'auth.guest_login_success': 'Guest login successful',
+    'auth.need_account': 'Need to create an account?',
+    'auth.already_have_account': 'Already have an account?',
+    'auth.email_placeholder': 'Enter email',
+    'auth.password_placeholder': 'Enter password',
+    'auth.username_placeholder': 'Enter username',
+    'auth.guest_username': 'Guest Username',
+    'auth.guest_username_placeholder': 'Enter guest username',
     
     // Menu
     'menu.singlePlayer': 'Single Player',
@@ -81,6 +136,31 @@ export const translations = {
     'game.timeAttack': 'Time Attack',
     'game.timeAttack_desc': 'Get the highest score in limited time',
     
+    // Game interface
+    'game.start': 'Start Game',
+    'game.pause': 'Pause',
+    'game.resume': 'Resume',
+    'game.restart': 'Restart',
+    'game.back_to_menu': 'Back to Menu',
+    'game.score': 'Score',
+    'game.lines': 'Lines',
+    'game.level': 'Level',
+    'game.time': 'Time',
+    'game.next': 'Next',
+    'game.hold': 'Hold',
+    
+    // Settings
+    'settings.title': 'Game Settings',
+    'settings.timing': 'Timing',
+    'settings.controls': 'Controls',
+    'settings.visual': 'Visual',
+    'settings.audio': 'Audio',
+    'settings.music': 'Music',
+    'settings.save': 'Save Settings',
+    'settings.reset': 'Reset to Default',
+    'settings.saved': 'Settings Saved',
+    'settings.save_failed': 'Failed to Save Settings',
+    
     // Common
     'common.start': 'Start',
     'common.cancel': 'Cancel',
@@ -90,7 +170,9 @@ export const translations = {
     'common.close': 'Close',
     'common.loading': 'Loading...',
     'common.error': 'Error',
-    'common.success': 'Success'
+    'common.success': 'Success',
+    'common.yes': 'Yes',
+    'common.no': 'No'
   }
 };
 

@@ -68,13 +68,8 @@ export const useUserSettings = () => {
 
       if (error) {
         console.error('Error loading settings:', error);
-        // If user doesn't have settings yet, create them
-        if (error.code === 'PGRST116') {
-          await createDefaultSettings();
-        } else {
-          toast.error('加载设置失败: ' + error.message);
-          setSettings(DEFAULT_SETTINGS);
-        }
+        toast.error('加载设置失败: ' + error.message);
+        setSettings(DEFAULT_SETTINGS);
         setLoading(false);
         return;
       }
@@ -153,6 +148,8 @@ export const useUserSettings = () => {
 
     try {
       console.log('Saving settings for user:', user.id, updatedSettings);
+      
+      // 使用 upsert 替代 insert，避免重复键错误
       const { error } = await supabase
         .from('user_settings')
         .upsert({
@@ -166,7 +163,8 @@ export const useUserSettings = () => {
           master_volume: updatedSettings.masterVolume,
           background_music: updatedSettings.backgroundMusic,
           music_volume: updatedSettings.musicVolume,
-          ghost_opacity: updatedSettings.ghostOpacity
+          ghost_opacity: updatedSettings.ghostOpacity,
+          updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id'
         });

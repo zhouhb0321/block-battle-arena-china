@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -85,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error loading user profile:', error);
@@ -104,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(newProfile);
           setIsAuthenticated(true);
         }
-      } else {
+      } else if (profile) {
         const userData: User = {
           id: profile.id,
           username: profile.username,
@@ -118,6 +119,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(userData);
         setIsAuthenticated(true);
+      } else {
+        // 如果没有档案，创建一个新的
+        const { data: authUser } = await supabase.auth.getUser();
+        if (authUser.user) {
+          const newProfile = {
+            id: authUser.user.id,
+            username: authUser.user.email?.split('@')[0] || 'Player',
+            email: authUser.user.email || '',
+            isGuest: false,
+            isPremium: false,
+            rating: 1000,
+            avatar: null
+          };
+          setUser(newProfile);
+          setIsAuthenticated(true);
+        }
       }
     } catch (error) {
       console.error('Error in loadUserProfile:', error);
@@ -209,7 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const guestUser: User = {
         id: guestId,
-        username: 'Guest',
+        username: 'Guest-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
         email: '',
         isGuest: true,
         isPremium: false,
