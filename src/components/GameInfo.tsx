@@ -21,7 +21,7 @@ interface GameInfoProps {
   combo?: number;
   rank?: string;
   b2b?: number;
-  gameStarted?: boolean; // 新增：游戏是否开始
+  gameStarted?: boolean;
 }
 
 const GameInfo: React.FC<GameInfoProps> = ({
@@ -103,14 +103,26 @@ const GameInfo: React.FC<GameInfoProps> = ({
         <div className="flex gap-2">
           {/* 只在游戏未开始或暂停时显示设置按钮 */}
           {onSettings && (!gameStarted || paused) && (
-            <Button size="sm" variant="outline" onClick={onSettings}>
+            <Button 
+              size="sm" 
+              onClick={onSettings}
+              className="bg-gray-600 hover:bg-gray-700 text-white border-gray-500"
+            >
               <Settings className="w-4 h-4" />
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={onPause}>
+          <Button 
+            size="sm" 
+            onClick={onPause}
+            className="bg-blue-600 hover:bg-blue-700 text-white border-blue-500"
+          >
             {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
           </Button>
-          <Button size="sm" variant="outline" onClick={onShare}>
+          <Button 
+            size="sm" 
+            onClick={onShare}
+            className="bg-green-600 hover:bg-green-700 text-white border-green-500"
+          >
             <Share2 className="w-4 h-4" />
           </Button>
         </div>

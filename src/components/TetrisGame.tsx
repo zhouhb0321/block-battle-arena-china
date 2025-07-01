@@ -24,6 +24,9 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig }) => 
   const [showModeSelector, setShowModeSelector] = useState(!gameConfig);
   const [showCountdown, setShowCountdown] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  
+  // 键盘控制循环引用
+  const keyboardLoopRef = useRef<number | null>(null);
 
   // Use gameConfig if provided, otherwise show mode selector
   useEffect(() => {
@@ -87,6 +90,31 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig }) => 
     onPause: gameLogic.pauseGame,
     onBackToMenu: onBackToMenu
   });
+
+  // 添加键盘控制循环
+  useEffect(() => {
+    if (!gameStarted || gameLogic.gameState.gameOver || gameLogic.gameState.paused) {
+      if (keyboardLoopRef.current) {
+        cancelAnimationFrame(keyboardLoopRef.current);
+        keyboardLoopRef.current = null;
+      }
+      return;
+    }
+
+    const keyboardLoop = (timestamp: number) => {
+      keyboardControls.processHeldKeys(timestamp);
+      keyboardLoopRef.current = requestAnimationFrame(keyboardLoop);
+    };
+
+    keyboardLoopRef.current = requestAnimationFrame(keyboardLoop);
+
+    return () => {
+      if (keyboardLoopRef.current) {
+        cancelAnimationFrame(keyboardLoopRef.current);
+        keyboardLoopRef.current = null;
+      }
+    };
+  }, [gameStarted, gameLogic.gameState.gameOver, gameLogic.gameState.paused, keyboardControls]);
 
   const handleModeSelect = (mode: GameMode) => {
     console.log('Mode selected:', mode);
@@ -173,6 +201,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig }) => 
           onRotateCounterclockwise={gameLogic.rotatePieceCounterclockwise}
           onRotate180={rotate180}
           onHold={gameLogic.holdCurrentPiece}
+          gameStarted={gameStarted}
         />
       )}
     </div>

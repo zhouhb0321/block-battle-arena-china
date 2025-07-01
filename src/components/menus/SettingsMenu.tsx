@@ -139,7 +139,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
 
   const resetToDefaults = () => {
     const defaultSettings: GameSettings = {
-      das: 167,
+      das: 67, // 修正为67ms
       arr: 33,
       sdf: 20,
       controls: {

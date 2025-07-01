@@ -6,7 +6,7 @@ import type { GameSettings } from '@/utils/gameTypes';
 import { toast } from 'sonner';
 
 const DEFAULT_SETTINGS: GameSettings = {
-  das: 100, // 优化为100ms，提升响应性
+  das: 67, // 修正为67ms，更符合主流设置
   arr: 33, // 保持33ms，标准设置
   sdf: 20,
   controls: {
@@ -63,6 +63,8 @@ export const useUserSettings = () => {
 
     try {
       console.log('加载用户设置，用户ID:', user.id);
+      toast.loading('正在同步您的个人设置...', { id: 'sync-settings' });
+      
       const { data, error } = await supabase
         .from('user_settings')
         .select('*')
@@ -71,7 +73,7 @@ export const useUserSettings = () => {
 
       if (error) {
         console.error('加载设置失败:', error);
-        toast.error('加载设置失败，使用默认设置');
+        toast.error('加载设置失败，使用默认设置', { id: 'sync-settings' });
         setSettings(DEFAULT_SETTINGS);
         setLoading(false);
         return;
@@ -93,14 +95,16 @@ export const useUserSettings = () => {
         };
         setSettings(loadedSettings);
         console.log('用户设置加载成功:', loadedSettings);
+        toast.success('欢迎回来！您的个人设置已加载', { id: 'sync-settings' });
       } else {
         console.log('用户无设置记录，创建默认设置');
+        toast.success('欢迎！已为您创建默认设置', { id: 'sync-settings' });
         await createDefaultSettings();
       }
     } catch (error) {
       console.error('加载设置时出错:', error);
       setSettings(DEFAULT_SETTINGS);
-      toast.error('加载设置时出现错误，使用默认设置');
+      toast.error('加载设置时出现错误，使用默认设置', { id: 'sync-settings' });
     } finally {
       setLoading(false);
     }
@@ -163,6 +167,7 @@ export const useUserSettings = () => {
 
     try {
       console.log('保存用户设置到数据库，用户ID:', user.id);
+      toast.loading('正在保存设置...', { id: 'save-settings' });
       
       const { error } = await supabase
         .from('user_settings')
@@ -185,17 +190,17 @@ export const useUserSettings = () => {
 
       if (error) {
         console.error('保存设置失败:', error);
-        toast.error('保存设置失败: ' + error.message);
+        toast.error('保存设置失败: ' + error.message, { id: 'save-settings' });
         // 回滚本地状态
         setSettings(settings);
         throw error;
       } else {
         console.log('设置保存成功');
-        toast.success('设置已成功保存');
+        toast.success('设置已成功保存并同步', { id: 'save-settings' });
       }
     } catch (error) {
       console.error('保存设置时出错:', error);
-      toast.error('保存设置时出现错误');
+      toast.error('保存设置时出现错误', { id: 'save-settings' });
       // 回滚本地状态
       setSettings(settings);
       throw error;
