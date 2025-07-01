@@ -22,29 +22,11 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
   gameStarted
 }) => {
   return (
-    <div className="flex gap-4 justify-center items-start">
-      {/* 左侧面板 - Hold区域 */}
+    <div className="flex gap-6 justify-center items-start">
+      {/* 左侧面板 - Next区域（4个方块预览）*/}
       <div className="flex flex-col gap-4">
-        <HoldPieceDisplay 
-          holdPiece={gameState.holdPiece}
-          canHold={gameState.canHold}
-        />
+        <NextPiecePreview nextPieces={gameState.nextPieces} />
         
-        {/* 游戏信息 */}
-        <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
-          <div className="text-white text-sm space-y-1">
-            <div>分数: {gameState.score.toLocaleString()}</div>
-            <div>行数: {gameState.lines}</div>
-            <div>等级: {gameState.level}</div>
-            {gameState.combo > 0 && (
-              <div className="text-yellow-400">连击: {gameState.combo + 1}</div>
-            )}
-            {gameState.b2b > 0 && (
-              <div className="text-purple-400">B2B: x{gameState.b2b}</div>
-            )}
-          </div>
-        </div>
-
         {/* 时间挑战倒计时 */}
         {gameMode.isTimeAttack && gameMode.timeLimit && onTimeUp && (
           <TimeChallengeClock
@@ -54,22 +36,7 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
             onTimeUp={onTimeUp}
           />
         )}
-      </div>
 
-      {/* 中央游戏区域 */}
-      <div className="flex-shrink-0">
-        <GameBoard
-          board={gameState.board}
-          currentPiece={gameState.currentPiece}
-          ghostPiece={gameSettings.enableGhost ? gameState.ghostPiece : null}
-          enableGhost={gameSettings.enableGhost}
-        />
-      </div>
-
-      {/* 右侧面板 - Next区域 */}
-      <div className="flex flex-col gap-4">
-        <NextPiecePreview nextPieces={gameState.nextPieces} />
-        
         {/* 目标进度 */}
         {gameMode.targetLines && (
           <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
@@ -90,6 +57,39 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
             </div>
           </div>
         )}
+      </div>
+
+      {/* 中央游戏区域 */}
+      <div className="flex-shrink-0">
+        <GameBoard
+          board={gameState.board}
+          currentPiece={gameState.currentPiece}
+          ghostPiece={gameSettings.enableGhost ? gameState.ghostPiece : null}
+          enableGhost={gameSettings.enableGhost}
+        />
+      </div>
+
+      {/* 右侧面板 - Hold区域和游戏信息 */}
+      <div className="flex flex-col gap-4">
+        <HoldPieceDisplay 
+          holdPiece={gameState.holdPiece}
+          canHold={gameState.canHold}
+        />
+        
+        {/* 游戏信息 */}
+        <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
+          <div className="text-white text-sm space-y-1">
+            <div>分数: {gameState.score.toLocaleString()}</div>
+            <div>行数: {gameState.lines}</div>
+            <div>等级: {gameState.level}</div>
+            {gameState.combo > 0 && (
+              <div className="text-yellow-400">连击: {gameState.combo + 1}</div>
+            )}
+            {gameState.b2b > 0 && (
+              <div className="text-purple-400">B2B: x{gameState.b2b}</div>
+            )}
+          </div>
+        </div>
 
         {/* 统计信息 */}
         <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">

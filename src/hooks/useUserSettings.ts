@@ -24,12 +24,13 @@ const DEFAULT_SETTINGS: GameSettings = {
   enableSound: true,
   masterVolume: 50,
   backgroundMusic: '',
-  musicVolume: 30
+  musicVolume: 30,
+  ghostOpacity: 50 // 添加幽灵方块透明度设置
 };
 
 export const useUserSettings = () => {
   const { user } = useAuth();
-  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<GameSettings & { ghostOpacity?: number }>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export const useUserSettings = () => {
       }
 
       if (data) {
-        const loadedSettings: GameSettings = {
+        const loadedSettings: GameSettings & { ghostOpacity?: number } = {
           das: data.das,
           arr: data.arr,
           sdf: data.sdf,
@@ -81,7 +82,8 @@ export const useUserSettings = () => {
           enableSound: data.enable_sound,
           masterVolume: data.master_volume,
           backgroundMusic: data.background_music || '',
-          musicVolume: data.music_volume || 30
+          musicVolume: data.music_volume || 30,
+          ghostOpacity: (data as any).ghost_opacity || 50
         };
         setSettings(loadedSettings);
       } else {
@@ -95,7 +97,7 @@ export const useUserSettings = () => {
     }
   };
 
-  const saveSettings = async (newSettings: Partial<GameSettings>) => {
+  const saveSettings = async (newSettings: Partial<GameSettings & { ghostOpacity?: number }>) => {
     const updatedSettings = { ...settings, ...newSettings };
     setSettings(updatedSettings);
 
@@ -118,7 +120,8 @@ export const useUserSettings = () => {
           enable_sound: updatedSettings.enableSound,
           master_volume: updatedSettings.masterVolume,
           background_music: updatedSettings.backgroundMusic,
-          music_volume: updatedSettings.musicVolume
+          music_volume: updatedSettings.musicVolume,
+          ghost_opacity: updatedSettings.ghostOpacity || 50
         });
 
       if (error) {

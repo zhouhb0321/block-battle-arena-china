@@ -31,8 +31,8 @@ const Index = () => {
     }
   }, [isAuthenticated, currentView]);
 
-  const handleGameStart = (gameType: string, gameMode: any) => {
-    setGameConfig({ gameType, gameMode });
+  const handleGameStart = (config: any) => {
+    setGameConfig(config);
     setCurrentView('game');
   };
 
@@ -67,8 +67,8 @@ const Index = () => {
         );
       case 'settings':
         return (
-          <LeagueMenu 
-            onBack={handleBackToMenu}
+          <SettingsMenu 
+            onBackToMenu={handleBackToMenu}
           />
         );
       case 'profile':
@@ -174,7 +174,7 @@ const Index = () => {
             )}
 
             {/* Ad Space */}
-            <AdSpace position="bottom" />
+            <AdSpace position="bottom" width={728} height={90} />
           </div>
         );
     }
