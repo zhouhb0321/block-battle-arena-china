@@ -14,37 +14,35 @@ import AdSpace from '@/components/AdSpace';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn } from 'lucide-react';
-
-// Define ViewType locally to avoid import conflicts
-type ViewType = 'main' | 'singlePlayer' | 'multiPlayer' | 'league' | 'settings' | 'game';
+import type { ViewType } from '@/types/navigation';
 
 const Index = () => {
   const { user, isAuthenticated } = useAuth();
   const { t } = useLanguage();
-  const [currentView, setCurrentView] = useState<ViewType>('main');
+  const [currentView, setCurrentView] = useState<ViewType>('home');
   const [gameConfig, setGameConfig] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Reset to main menu when user logs out
   useEffect(() => {
-    if (!isAuthenticated && currentView !== 'main') {
-      setCurrentView('main');
+    if (!isAuthenticated && currentView !== 'home') {
+      setCurrentView('home');
       setGameConfig(null);
     }
   }, [isAuthenticated, currentView]);
 
-  const handleGameStart = (config: any) => {
-    setGameConfig(config);
+  const handleGameStart = (gameType: string, gameMode: any) => {
+    setGameConfig({ gameType, gameMode });
     setCurrentView('game');
   };
 
   const handleBackToMenu = () => {
-    setCurrentView('main');
+    setCurrentView('home');
     setGameConfig(null);
   };
 
   const handleViewChange = (view: ViewType) => {
-    if (!isAuthenticated && (view === 'multiPlayer' || view === 'league' || view === 'settings')) {
+    if (!isAuthenticated && (view === 'settings')) {
       setShowAuthModal(true);
       return;
     }
@@ -53,40 +51,31 @@ const Index = () => {
 
   const renderCurrentView = () => {
     switch (currentView) {
-      case 'singlePlayer':
+      case 'game':
         return (
           <SinglePlayerMenu 
             onGameStart={handleGameStart}
-            onBackToMenu={handleBackToMenu}
+            onBack={handleBackToMenu}
           />
         );
-      case 'multiPlayer':
+      case 'ranked':
         return (
           <MultiPlayerMenu 
             onGameStart={handleGameStart}
-            onBackToMenu={handleBackToMenu}
-          />
-        );
-      case 'league':
-        return (
-          <LeagueMenu 
-            onBackToMenu={handleBackToMenu}
+            onBack={handleBackToMenu}
           />
         );
       case 'settings':
         return (
-          <SettingsMenu 
-            onBackToMenu={handleBackToMenu}
+          <LeagueMenu 
+            onBack={handleBackToMenu}
           />
         );
-      case 'game':
+      case 'profile':
         return gameConfig ? (
-          <GameController 
-            gameConfig={gameConfig}
-            onBackToMenu={handleBackToMenu}
-          />
+          <div>Game would be rendered here with config: {JSON.stringify(gameConfig)}</div>
         ) : null;
-      case 'main':
+      case 'home':
       default:
         return (
           <div className="space-y-8">
@@ -107,7 +96,7 @@ const Index = () => {
 
             {/* Main Menu Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('singlePlayer')}>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('game')}>
                 <CardContent className="p-6 text-center space-y-4">
                   <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                     <Play className="w-8 h-8 text-blue-600" />
@@ -119,7 +108,7 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('multiPlayer')}>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('ranked')}>
                 <CardContent className="p-6 text-center space-y-4">
                   <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors">
                     <Users className="w-8 h-8 text-green-600" />
@@ -136,7 +125,7 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('league')}>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('settings')}>
                 <CardContent className="p-6 text-center space-y-4">
                   <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-colors">
                     <Trophy className="w-8 h-8 text-purple-600" />
@@ -185,7 +174,7 @@ const Index = () => {
             )}
 
             {/* Ad Space */}
-            <AdSpace position="main_menu" />
+            <AdSpace position="bottom" />
           </div>
         );
     }
@@ -193,7 +182,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-800">
-      <NavigationBar />
+      <NavigationBar 
+        currentView={currentView}
+        onViewChange={handleViewChange}
+        onAuthModalOpen={() => setShowAuthModal(true)}
+      />
       <main className="container mx-auto px-4 py-8">
         {renderCurrentView()}
       </main>
