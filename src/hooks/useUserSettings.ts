@@ -59,15 +59,22 @@ export const useUserSettings = () => {
     }
 
     try {
+      console.log('Loading settings for user:', user.id);
       const { data, error } = await supabase
         .from('user_settings')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error loading settings:', error);
-        setSettings(DEFAULT_SETTINGS);
+        // If user doesn't have settings yet, create them
+        if (error.code === 'PGRST116') {
+          await createDefaultSettings();
+        } else {
+          toast.error('加载设置失败: ' + error.message);
+          setSettings(DEFAULT_SETTINGS);
+        }
         setLoading(false);
         return;
       }
@@ -86,14 +93,51 @@ export const useUserSettings = () => {
           ghostOpacity: data.ghost_opacity || 50
         };
         setSettings(loadedSettings);
+        console.log('Settings loaded successfully:', loadedSettings);
       } else {
-        setSettings(DEFAULT_SETTINGS);
+        // No settings found, create default ones
+        await createDefaultSettings();
       }
     } catch (error) {
       console.error('Error loading settings:', error);
       setSettings(DEFAULT_SETTINGS);
+      toast.error('加载设置时出现错误');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createDefaultSettings = async () => {
+    if (!user || user.isGuest) return;
+    
+    try {
+      console.log('Creating default settings for user:', user.id);
+      const { error } = await supabase
+        .from('user_settings')
+        .insert({
+          user_id: user.id,
+          das: DEFAULT_SETTINGS.das,
+          arr: DEFAULT_SETTINGS.arr,
+          sdf: DEFAULT_SETTINGS.sdf,
+          controls: DEFAULT_SETTINGS.controls,
+          enable_ghost: DEFAULT_SETTINGS.enableGhost,
+          enable_sound: DEFAULT_SETTINGS.enableSound,
+          master_volume: DEFAULT_SETTINGS.masterVolume,
+          background_music: DEFAULT_SETTINGS.backgroundMusic,
+          music_volume: DEFAULT_SETTINGS.musicVolume,
+          ghost_opacity: DEFAULT_SETTINGS.ghostOpacity
+        });
+
+      if (error) {
+        console.error('Error creating default settings:', error);
+        toast.error('创建默认设置失败: ' + error.message);
+      } else {
+        setSettings(DEFAULT_SETTINGS);
+        console.log('Default settings created successfully');
+      }
+    } catch (error) {
+      console.error('Error creating default settings:', error);
+      toast.error('创建默认设置时出现错误');
     }
   };
 
@@ -108,6 +152,7 @@ export const useUserSettings = () => {
     }
 
     try {
+      console.log('Saving settings for user:', user.id, updatedSettings);
       const { error } = await supabase
         .from('user_settings')
         .upsert({
@@ -122,14 +167,19 @@ export const useUserSettings = () => {
           background_music: updatedSettings.backgroundMusic,
           music_volume: updatedSettings.musicVolume,
           ghost_opacity: updatedSettings.ghostOpacity
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) {
         console.error('Error saving settings:', error);
         toast.error('保存设置失败: ' + error.message);
+        // Revert local changes if save failed
+        setSettings(settings);
         throw error;
       } else {
         toast.success('设置已成功保存');
+        console.log('Settings saved successfully');
       }
     } catch (error) {
       console.error('Error saving settings:', error);

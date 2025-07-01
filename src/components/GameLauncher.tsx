@@ -14,18 +14,20 @@ const GameLauncher: React.FC<GameLauncherProps> = ({ onBackToMenu }) => {
   const [gameConfig, setGameConfig] = useState<any>(null);
 
   const handleGameStart = (gameType: string, gameMode: any) => {
-    console.log('Starting game with:', { gameType, gameMode });
+    console.log('Starting game with type:', gameType, 'mode:', gameMode);
     setGameConfig({ gameType, gameMode });
     setGameStarted(true);
   };
 
   const handleBackToMenu = () => {
+    console.log('Back to menu from game');
     setGameStarted(false);
     setGameConfig(null);
     onBackToMenu();
   };
 
   const handleBackToModeSelect = () => {
+    console.log('Back to mode selection');
     setGameStarted(false);
     setGameConfig(null);
   };
@@ -33,6 +35,7 @@ const GameLauncher: React.FC<GameLauncherProps> = ({ onBackToMenu }) => {
   if (gameStarted && gameConfig) {
     return (
       <TetrisGame 
+        gameConfig={gameConfig}
         onBackToMenu={handleBackToModeSelect}
       />
     );
