@@ -1,9 +1,9 @@
 
 import React from 'react';
-import type { GamePiece, Board } from '@/utils/gameTypes';
+import type { GamePiece } from '@/utils/gameTypes';
 
 interface GameBoardProps {
-  board: Board;
+  board: number[][];
   currentPiece: GamePiece | null;
   ghostPiece?: GamePiece | null;
   enableGhost?: boolean;
@@ -91,6 +91,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   return (
     <div className="relative">
+      <style>
+        {`
+          @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+          }
+        `}
+      </style>
+      
       <div 
         className="grid gap-0 border-2 border-gray-600 bg-black"
         style={{ 
@@ -108,13 +117,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
           ))
         )}
       </div>
-      
-      <style jsx>{`
-        @keyframes flash {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
     </div>
   );
 };
