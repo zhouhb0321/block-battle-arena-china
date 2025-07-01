@@ -1,3 +1,4 @@
+
 import type { TetrominoType, GamePiece, ReplayAction } from './gameTypes';
 
 // 标准化方块颜色 - 与经典俄罗斯方块保持一致
@@ -86,7 +87,7 @@ export const generateSevenBag = (): TetrominoType[] => {
 };
 
 export const rotatePiece = (piece: TetrominoType, clockwise: boolean = true): TetrominoType => {
-  const { shape } } = piece;
+  const { shape } = piece;
   let rotated: number[][];
   
   if (clockwise) {
