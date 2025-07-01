@@ -5,8 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import LanguageSelector from '@/components/LanguageSelector';
 import { Home, Play, Users, User, Trophy, Settings, Shield, DollarSign } from 'lucide-react';
-
-type ViewType = 'home' | 'game' | 'settings' | 'profile' | 'ranked' | 'admin' | 'income';
+import type { ViewType } from '@/types/navigation';
 
 interface NavigationBarProps {
   currentView: ViewType;
