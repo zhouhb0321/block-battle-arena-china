@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { GameSettings } from '@/utils/gameTypes';
+import { toast } from 'sonner';
 
 const DEFAULT_SETTINGS: GameSettings = {
   das: 167,
@@ -24,7 +26,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   masterVolume: 50,
   backgroundMusic: '',
   musicVolume: 30,
-  ghostOpacity: 50 // Now properly typed
+  ghostOpacity: 50
 };
 
 export const useUserSettings = () => {
@@ -40,7 +42,6 @@ export const useUserSettings = () => {
     setLoading(true);
     
     if (!user || user.isGuest) {
-      // 游客用户从 localStorage 加载设置
       const savedSettings = localStorage.getItem('tetris_settings');
       if (savedSettings) {
         try {
@@ -82,7 +83,7 @@ export const useUserSettings = () => {
           masterVolume: data.master_volume,
           backgroundMusic: data.background_music || '',
           musicVolume: data.music_volume || 30,
-          ghostOpacity: (data as any).ghost_opacity || 50
+          ghostOpacity: data.ghost_opacity || 50
         };
         setSettings(loadedSettings);
       } else {
@@ -101,8 +102,8 @@ export const useUserSettings = () => {
     setSettings(updatedSettings);
 
     if (!user || user.isGuest) {
-      // 游客用户保存到 localStorage
       localStorage.setItem('tetris_settings', JSON.stringify(updatedSettings));
+      toast.success('设置已保存到本地');
       return;
     }
 
@@ -125,9 +126,15 @@ export const useUserSettings = () => {
 
       if (error) {
         console.error('Error saving settings:', error);
+        toast.error('保存设置失败: ' + error.message);
+        throw error;
+      } else {
+        toast.success('设置已成功保存');
       }
     } catch (error) {
       console.error('Error saving settings:', error);
+      toast.error('保存设置时出现错误');
+      throw error;
     }
   };
 

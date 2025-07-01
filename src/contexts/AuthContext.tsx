@@ -1,86 +1,53 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 
-export interface User {
+type User = {
   id: string;
   username: string;
   email: string;
   isGuest: boolean;
-  rating: number;
-  gamesPlayed: number;
-  friendsCount: number;
-  maxFriends: number;
   isPremium: boolean;
-  isVip: boolean;
-  isAdmin: boolean;
-  avatar?: string;
-}
+  rating: number;
+  avatar: string | null;
+  isAdmin?: boolean;
+};
 
-interface AuthContextType {
+type AuthContextType = {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
-  loginAsGuest: () => void;
-  logout: () => void;
   isAuthenticated: boolean;
   loading: boolean;
-  reloadUserProfile: () => Promise<void>;
-}
+  login: (email: string, password: string) => Promise<any>;
+  register: (email: string, password: string, username: string) => Promise<any>;
+  logout: () => Promise<void>;
+  loginAsGuest: () => Promise<void>;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const generateGuestName = (): string => {
-  const randomId = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
-  return `Guest-${randomId}`;
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // 优化登录状态检查
   useEffect(() => {
     let mounted = true;
-
+    
     const initializeAuth = async () => {
       try {
-        console.log('开始初始化认证...');
-        
-        // 首先检查是否有游客用户
-        const savedUser = localStorage.getItem('user');
-        if (savedUser) {
-          try {
-            const parsedUser = JSON.parse(savedUser);
-            if (parsedUser.isGuest && mounted) {
-              console.log('找到游客用户:', parsedUser);
-              setUser(parsedUser);
-              setLoading(false);
-              return;
-            }
-          } catch (error) {
-            console.error('解析保存的用户数据失败:', error);
-            localStorage.removeItem('user');
-          }
-        }
-
-        // 检查 Supabase 会话
+        // 首先快速检查本地session
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('获取会话失败:', error);
-        }
-        
-        if (session?.user && mounted) {
-          console.log('找到 Supabase 用户会话');
-          await loadUserProfile(session.user);
-        }
-        
         if (mounted) {
-          setLoading(false);
+          if (session?.user && !error) {
+            await loadUserProfile(session.user.id);
+          } else {
+            setLoading(false);
+          }
         }
       } catch (error) {
-        console.error('初始化认证失败:', error);
+        console.error('Error initializing auth:', error);
         if (mounted) {
           setLoading(false);
         }
@@ -92,15 +59,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('认证状态变化:', event, !!session);
-        
         if (!mounted) return;
         
+        console.log('Auth state changed:', event);
+        
         if (event === 'SIGNED_IN' && session?.user) {
-          await loadUserProfile(session.user);
+          await loadUserProfile(session.user.id);
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
-          localStorage.removeItem('user');
+          setIsAuthenticated(false);
+          setLoading(false);
         }
       }
     );
@@ -111,126 +79,166 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const loadUserProfile = async (supabaseUser: SupabaseUser) => {
+  const loadUserProfile = async (userId: string) => {
     try {
       const { data: profile, error } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', supabaseUser.id)
+        .eq('id', userId)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('加载用户资料失败:', error);
-      }
-
-      const isAdmin = supabaseUser.email === 'admin@tetris.com';
-
-      const userData: User = {
-        id: supabaseUser.id,
-        username: profile?.username || supabaseUser.user_metadata?.username || 'Player',
-        email: supabaseUser.email || '',
-        isGuest: false,
-        rating: profile?.rating || 1000,
-        gamesPlayed: profile?.games_played || 0,
-        friendsCount: 0,
-        maxFriends: 50,
-        isPremium: profile?.user_type === 'premium' || profile?.user_type === 'vip',
-        isVip: profile?.user_type === 'vip',
-        isAdmin: isAdmin,
-        avatar: profile?.avatar_url
-      };
-
-      console.log('用户数据加载完成:', userData);
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-    } catch (error) {
-      console.error('加载用户资料时出错:', error);
-    }
-  };
-
-  const reloadUserProfile = async () => {
-    if (!user || user.isGuest) return;
-    
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-    if (supabaseUser) {
-      await loadUserProfile(supabaseUser);
-    }
-  };
-
-  const login = async (email: string, password: string): Promise<void> => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-  };
-
-  const register = async (username: string, email: string, password: string): Promise<void> => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          username
+      if (error) {
+        console.error('Error loading user profile:', error);
+        // 创建默认用户档案
+        const { data: authUser } = await supabase.auth.getUser();
+        if (authUser.user) {
+          const newProfile = {
+            id: authUser.user.id,
+            username: authUser.user.email?.split('@')[0] || 'Player',
+            email: authUser.user.email || '',
+            isGuest: false,
+            isPremium: false,
+            rating: 1000,
+            avatar: null
+          };
+          setUser(newProfile);
+          setIsAuthenticated(true);
         }
+      } else {
+        const userData: User = {
+          id: profile.id,
+          username: profile.username,
+          email: profile.email,
+          isGuest: false,
+          isPremium: profile.user_type === 'premium',
+          rating: profile.rating,
+          avatar: profile.avatar_url,
+          // 检查是否为管理员
+          isAdmin: profile.email === 'admin@tetris.com'
+        };
+        setUser(userData);
+        setIsAuthenticated(true);
       }
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    if (data.user && !data.user.email_confirmed_at) {
-      throw new Error('请检查您的邮箱并点击确认链接来激活账户');
+    } catch (error) {
+      console.error('Error in loadUserProfile:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const loginAsGuest = (): void => {
-    const guestUser: User = {
-      id: `guest-${Date.now()}`,
-      username: generateGuestName(),
-      email: '',
-      isGuest: true,
-      rating: 0,
-      gamesPlayed: 0,
-      friendsCount: 0,
-      maxFriends: 0,
-      isPremium: false,
-      isVip: false,
-      isAdmin: false,
-    };
-    
-    console.log('创建游客用户:', guestUser);
-    setUser(guestUser);
-    localStorage.setItem('user', JSON.stringify(guestUser));
+  const login = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password
+      });
+
+      if (error) {
+        console.error('Login error:', error);
+        throw new Error(error.message);
+      }
+
+      if (data.user) {
+        await loadUserProfile(data.user.id);
+        toast.success('登录成功！');
+        return data;
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+      setLoading(false);
+      throw error;
+    }
   };
 
-  const logout = async (): Promise<void> => {
-    if (user && !user.isGuest) {
-      await supabase.auth.signOut();
-    } else {
+  const logout = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Logout error:', error);
+        throw error;
+      }
+      
       setUser(null);
-      localStorage.removeItem('user');
+      setIsAuthenticated(false);
+      toast.success('已成功退出登录');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <AuthContext.Provider value={{
-      user,
-      login,
-      register,
-      loginAsGuest,
-      logout,
-      isAuthenticated: !!user,
-      loading,
-      reloadUserProfile
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const register = async (email: string, password: string, username: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            username: username.trim(),
+          },
+        },
+      });
+  
+      if (error) {
+        console.error('Registration error:', error);
+        throw new Error(error.message);
+      }
+  
+      if (data.user) {
+        toast.success('注册成功！请验证您的邮箱。');
+        return data;
+      }
+    } catch (error) {
+      console.error('Registration failed:', error);
+      setLoading(false);
+      throw error;
+    }
+  };
+
+  const loginAsGuest = async () => {
+    try {
+      setLoading(true);
+      // Generate a random guest ID
+      const guestId = 'guest_' + Math.random().toString(36).substring(2, 15);
+      
+      const guestUser: User = {
+        id: guestId,
+        username: 'Guest',
+        email: '',
+        isGuest: true,
+        isPremium: false,
+        rating: 1000,
+        avatar: null
+      };
+      
+      setUser(guestUser);
+      setIsAuthenticated(true);
+      toast.success('以游客身份登录');
+    } catch (error) {
+      console.error('Guest login failed:', error);
+      toast.error('游客登录失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const value: AuthContextType = {
+    user,
+    isAuthenticated,
+    loading,
+    login,
+    register,
+    logout,
+    loginAsGuest
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

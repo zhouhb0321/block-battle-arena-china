@@ -2,7 +2,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Play, Users, Settings, LogIn } from 'lucide-react';
+import { Play, Users, Settings, LogIn, Shield } from 'lucide-react';
 import UserMenu from './UserMenu';
 import type { ViewType } from '@/types/navigation';
 
@@ -61,6 +61,18 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               <Settings className="w-4 h-4" />
               设置
             </Button>
+
+            {/* 管理员按钮 */}
+            {user?.isAdmin && (
+              <Button
+                variant={currentView === 'admin' ? 'default' : 'ghost'}
+                onClick={() => onViewChange('admin')}
+                className="flex items-center gap-2 text-purple-600"
+              >
+                <Shield className="w-4 h-4" />
+                管理面板
+              </Button>
+            )}
           </div>
 
           {/* User Menu or Login Button */}

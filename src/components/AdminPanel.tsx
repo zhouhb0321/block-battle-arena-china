@@ -1,217 +1,201 @@
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Shield, Users, Target, Trophy, DollarSign, Settings, LogOut } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import AdminAuth from './AdminAuth';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { Users, GamepadIcon, DollarSign, Megaphone } from 'lucide-react';
 
 const AdminPanel: React.FC = () => {
-  const { t } = useLanguage();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { user } = useAuth();
+  const [users, setUsers] = useState<any[]>([]);
+  const [gameStats, setGameStats] = useState({
+    totalGames: 0,
+    activeUsers: 0,
+    totalUsers: 0
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 检查管理员会话
-    const adminSession = localStorage.getItem('admin_session');
-    if (adminSession) {
-      try {
-        const session = JSON.parse(adminSession);
-        if (Date.now() < session.expires && session.authenticated) {
-          setIsAuthenticated(true);
-        } else {
-          localStorage.removeItem('admin_session');
-        }
-      } catch {
-        localStorage.removeItem('admin_session');
-      }
+    if (user?.isAdmin) {
+      loadAdminData();
     }
-  }, []);
+  }, [user]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_session');
-    setIsAuthenticated(false);
-    setActiveTab('dashboard');
+  const loadAdminData = async () => {
+    try {
+      // 加载用户数据
+      const { data: usersData } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // 加载游戏统计
+      const { data: gamesData } = await supabase
+        .from('game_matches')
+        .select('id');
+
+      setUsers(usersData || []);
+      setGameStats({
+        totalGames: gamesData?.length || 0,
+        activeUsers: usersData?.filter(u => u.games_played > 0).length || 0,
+        totalUsers: usersData?.length || 0
+      });
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!isAuthenticated) {
+  if (!user?.isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <AdminAuth onAuthenticated={() => setIsAuthenticated(true)} />
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-red-600">您没有管理员权限访问此页面。</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+          <p>加载管理面板...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center gap-3">
-              <Shield className="w-8 h-8 text-red-600" />
-              <h1 className="text-2xl font-bold text-gray-900">{t('admin.panel')}</h1>
-            </div>
-            <Button onClick={handleLogout} variant="outline" size="sm">
-              <LogOut className="w-4 h-4 mr-2" />
-              安全退出
-            </Button>
-          </div>
-        </div>
+    <div className="container mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">管理员面板</h1>
+        <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+          管理员权限
+        </Badge>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-6">
-          {/* 侧边栏 */}
-          <div className="w-64 space-y-2">
-            <Button
-              variant={activeTab === 'dashboard' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setActiveTab('dashboard')}
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              仪表盘
-            </Button>
-            <Button
-              variant={activeTab === 'users' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setActiveTab('users')}
-            >
-              <Users className="w-4 h-4 mr-2" />
-              用户管理
-            </Button>
-            <Button
-              variant={activeTab === 'ads' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setActiveTab('ads')}
-            >
-              <Target className="w-4 h-4 mr-2" />
-              广告管理
-            </Button>
-            <Button
-              variant={activeTab === 'ranking' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setActiveTab('ranking')}
-            >
-              <Trophy className="w-4 h-4 mr-2" />
-              排名系统
-            </Button>
-            <Button
-              variant={activeTab === 'income' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setActiveTab('income')}
-            >
-              <DollarSign className="w-4 h-4 mr-2" />
-              收入管理
-            </Button>
-          </div>
+      {/* 统计卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">总用户数</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{gameStats.totalUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              活跃用户: {gameStats.activeUsers}
+            </p>
+          </CardContent>
+        </Card>
 
-          {/* 主内容区 */}
-          <div className="flex-1">
-            {activeTab === 'dashboard' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">总用户数</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">12,345</div>
-                    <p className="text-xs text-green-600">+5.2% 较上月</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">活跃用户</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">8,901</div>
-                    <p className="text-xs text-green-600">+2.1% 较上月</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">游戏场次</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">456,789</div>
-                    <p className="text-xs text-green-600">+12.5% 较上月</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">广告收入</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">¥23,456</div>
-                    <p className="text-xs text-green-600">+8.3% 较上月</p>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">总游戏数</CardTitle>
+            <GamepadIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{gameStats.totalGames}</div>
+            <p className="text-xs text-muted-foreground">
+              已完成的游戏
+            </p>
+          </CardContent>
+        </Card>
 
-            {activeTab === 'users' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>用户管理</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">用户管理功能正在开发中...</p>
-                </CardContent>
-              </Card>
-            )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">系统状态</CardTitle>
+            <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">正常</div>
+            <p className="text-xs text-muted-foreground">
+              所有服务运行正常
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-            {activeTab === 'ads' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>广告管理</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">广告管理功能正在开发中...</p>
-                </CardContent>
-              </Card>
-            )}
+      <Tabs defaultValue="users" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="users">用户管理</TabsTrigger>
+          <TabsTrigger value="games">游戏记录</TabsTrigger>
+          <TabsTrigger value="revenue">收入管理</TabsTrigger>
+          <TabsTrigger value="ads">广告管理</TabsTrigger>
+        </TabsList>
 
-            {activeTab === 'ranking' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>排名系统设置</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">排名系统设置功能正在开发中...</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {activeTab === 'income' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>收入管理</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 border rounded-lg">
-                        <h3 className="font-semibold mb-2">支付宝收款</h3>
-                        <p className="text-sm text-gray-600">配置支付宝商户信息</p>
-                        <Button className="mt-2" size="sm">配置</Button>
-                      </div>
-                      <div className="p-4 border rounded-lg">
-                        <h3 className="font-semibold mb-2">PayPal收款</h3>
-                        <p className="text-sm text-gray-600">配置PayPal商户信息</p>
-                        <Button className="mt-2" size="sm">配置</Button>
+        <TabsContent value="users" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>用户列表</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {users.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between p-4 border rounded">
+                    <div>
+                      <div className="font-medium">{user.username}</div>
+                      <div className="text-sm text-gray-500">{user.email}</div>
+                      <div className="text-xs text-gray-400">
+                        等级: {user.rating} | 游戏: {user.games_played} | 胜率: {user.games_played > 0 ? ((user.games_won / user.games_played) * 100).toFixed(1) : 0}%
                       </div>
                     </div>
-                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-sm text-yellow-800">
-                        <strong>安全提示：</strong>所有支付配置都经过加密存储，仅管理员可访问。
-                      </p>
+                    <div className="flex gap-2">
+                      {user.user_type === 'premium' && (
+                        <Badge variant="secondary">VIP</Badge>
+                      )}
+                      {user.email === 'admin@tetris.com' && (
+                        <Badge variant="destructive">管理员</Badge>
+                      )}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="games" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>游戏记录管理</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">游戏记录功能开发中...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="revenue" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>收入管理</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">收入管理功能开发中...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ads" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>广告管理</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">广告管理功能开发中...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
