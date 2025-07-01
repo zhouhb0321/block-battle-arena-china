@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import GameBoard from './GameBoard';
@@ -197,15 +198,15 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       };
 
       // 立即放置方块并处理消行
-      const tSpinType = checkTSpin(prev.board, droppedPiece, 'move');
+      const tSpinResult = checkTSpin(prev.board, droppedPiece, 'move');
       const newBoard = placePiece(prev.board, droppedPiece);
       const { newBoard: clearedBoard, linesCleared, clearedLineIndices } = clearLines(newBoard);
       
       const newCombo = linesCleared > 0 ? prev.combo + 1 : -1;
-      const isSpecialClear = tSpinType !== null || linesCleared === 4;
+      const isSpecialClear = tSpinResult !== null || linesCleared === 4;
       const newB2B = isSpecialClear ? prev.b2b + 1 : (linesCleared > 0 ? 0 : prev.b2b);
-      const newScore = calculateScore(linesCleared, prev.level, !!tSpinType, newB2B > 0, newCombo);
-      const attackLines = calculateAttackLines(linesCleared, !!tSpinType, newB2B > 0, newCombo);
+      const newScore = calculateScore(linesCleared, prev.level, tSpinResult, newB2B > 0, newCombo);
+      const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 0, newCombo);
       const newLevel = Math.floor((prev.lines + linesCleared) / 10) + 1;
       
       const timeElapsed = (Date.now() - prev.startTime) / 1000;
@@ -215,8 +216,8 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       // 显示消行提示
       if (linesCleared > 0) {
         setTimeout(() => {
-          if (tSpinType) {
-            toast.success(`${tSpinType}! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
+          if (tSpinResult) {
+            toast.success(`${tSpinResult.type}! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
           } else if (linesCleared === 4) {
             toast.success(`Tetris! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
           } else {
@@ -252,17 +253,17 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     setGameState(prev => {
       if (!prev.currentPiece) return prev;
 
-      const tSpinType = checkTSpin(prev.board, prev.currentPiece, 'move');
+      const tSpinResult = checkTSpin(prev.board, prev.currentPiece, 'move');
       const newBoard = placePiece(prev.board, prev.currentPiece);
       const { newBoard: clearedBoard, linesCleared, clearedLineIndices } = clearLines(newBoard);
       
       if (linesCleared > 0) {
         setTimeout(() => {
           const newCombo = linesCleared > 0 ? prev.combo + 1 : -1;
-          const isSpecialClear = tSpinType !== null || linesCleared === 4;
+          const isSpecialClear = tSpinResult !== null || linesCleared === 4;
           const newB2B = isSpecialClear ? prev.b2b + 1 : (linesCleared > 0 ? 0 : prev.b2b);
-          const newScore = calculateScore(linesCleared, prev.level, !!tSpinType, newB2B > 0, newCombo);
-          const attackLines = calculateAttackLines(linesCleared, !!tSpinType, newB2B > 0, newCombo);
+          const newScore = calculateScore(linesCleared, prev.level, tSpinResult, newB2B > 0, newCombo);
+          const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 0, newCombo);
           const newLevel = Math.floor((prev.lines + linesCleared) / 10) + 1;
           
           const timeElapsed = (Date.now() - prev.startTime) / 1000;
@@ -285,8 +286,8 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             ghostPiece: null
           }));
 
-          if (tSpinType) {
-            toast.success(`${tSpinType}! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
+          if (tSpinResult) {
+            toast.success(`${tSpinResult.type}! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
           } else if (linesCleared === 4) {
             toast.success(`Tetris! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
           } else {
