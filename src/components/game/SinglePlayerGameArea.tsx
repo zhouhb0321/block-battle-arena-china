@@ -60,7 +60,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         {/* 移动端游戏区域 */}
         <div className="flex-1 flex items-center justify-center p-2">
           <div className="flex gap-2 items-start max-w-full">
-            {/* HOLD 区域 */}
+            {/* HOLD 区域 - 左侧 */}
             <div className="bg-gray-800 p-2 rounded">
               <PiecePreview 
                 piece={gameState.holdPiece?.type || null} 
@@ -110,7 +110,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               </div>
             </div>
 
-            {/* NEXT 区域 */}
+            {/* NEXT 区域 - 右侧 */}
             <div className="bg-gray-800 p-2 rounded">
               <h3 className="text-white text-xs mb-2 text-center font-bold">NEXT</h3>
               <div className="space-y-1">
@@ -118,7 +118,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                   <PiecePreview 
                     key={index} 
                     piece={piece.type} 
-                    title="" 
+                    title=""
                     cellSize={20}
                   />
                 ))}
@@ -151,7 +151,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       </div>
 
       <div className="flex gap-6 items-start">
-        {/* 左侧信息面板 */}
+        {/* 左侧HOLD面板 */}
         <div className="flex flex-col gap-4">
           <PiecePreview 
             piece={gameState.holdPiece?.type || null} 
@@ -225,7 +225,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               <PiecePreview 
                 key={index} 
                 piece={piece.type} 
-                title="" 
+                title=""
                 cellSize={mainCellSize}
               />
             ))}

@@ -49,7 +49,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
       <div className="flex gap-8 items-start">
         {/* 玩家1游戏区域 */}
         <div className="flex gap-4 items-start">
-          {/* 玩家1左侧信息面板 */}
+          {/* 玩家1左侧HOLD面板 */}
           <div className="flex flex-col gap-4">
             <PiecePreview 
               piece={gameState.holdPiece?.type || null} 
@@ -115,7 +115,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
                 <PiecePreview 
                   key={index} 
                   piece={piece.type} 
-                  title="" 
+                  title=""
                   cellSize={mainCellSize}
                 />
               ))}
@@ -125,7 +125,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
 
         {/* 玩家2游戏区域 */}
         <div className="flex gap-4 items-start">
-          {/* 玩家2左侧信息面板 */}
+          {/* 玩家2左侧HOLD面板 */}
           <div className="flex flex-col gap-4">
             <PiecePreview 
               piece={opponentState.holdPiece?.type || null} 
@@ -176,7 +176,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
                 <PiecePreview 
                   key={index} 
                   piece={piece.type} 
-                  title="" 
+                  title=""
                   cellSize={mainCellSize}
                 />
               ))}

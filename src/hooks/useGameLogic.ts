@@ -213,17 +213,23 @@ export const useGameLogic = (
     }
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
-  // 修复硬降落功能 - 确保方块正确降到最底部并立即锁定
+  // 修复硬降功能 - 参考提供的代码逻辑
   const hardDrop = useCallback(() => {
-    if (!gameState.currentPiece || gameState.gameOver) return;
+    if (!gameState.currentPiece || gameState.gameOver || gameState.paused) return;
 
-    console.log('硬降落开始，当前方块位置:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
+    console.log('硬降开始，当前方块位置:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
     
-    // 使用修复后的计算函数获取最终位置
-    const targetY = calculateDropPosition(gameState.board, gameState.currentPiece);
-    const dropDistance = targetY - gameState.currentPiece.y;
+    let newY = gameState.currentPiece.y;
+    // 找到最低的有效位置
+    while (isValidPosition(gameState.board, {
+      ...gameState.currentPiece,
+      y: newY + 1
+    })) {
+      newY++;
+    }
     
-    console.log('硬降落目标位置:', targetY, '降落距离:', dropDistance);
+    const dropDistance = newY - gameState.currentPiece.y;
+    console.log('硬降目标位置:', newY, '降落距离:', dropDistance);
     
     if (dropDistance <= 0) {
       // 如果已经到底部，直接锁定
@@ -232,29 +238,22 @@ export const useGameLogic = (
       return;
     }
     
-    // 立即移动到目标位置并添加硬降落得分
-    const droppedPiece = { ...gameState.currentPiece, y: targetY };
+    // 更新当前方块位置并添加硬降得分
+    const droppedPiece = { ...gameState.currentPiece, y: newY };
     
-    // 验证目标位置是否有效
-    if (!isValidPosition(gameState.board, droppedPiece)) {
-      console.error('硬降落目标位置无效!');
-      return;
-    }
-    
-    // 更新方块位置，清除幽灵，添加得分
     setGameState(prev => ({
       ...prev,
       currentPiece: droppedPiece,
-      ghostPiece: null,
-      score: prev.score + dropDistance * 2
+      ghostPiece: null, // 清除幽灵方块
+      score: prev.score + dropDistance * 2 // 硬降得分
     }));
     
-    // 立即锁定方块（无延迟）
+    // 立即锁定方块
     setTimeout(() => {
-      console.log('硬降落后锁定方块');
+      console.log('硬降后锁定方块');
       lockPiece();
     }, 10);
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
 
   const lockPiece = useCallback(() => {
     if (!gameState.currentPiece) return;
