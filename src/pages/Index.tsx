@@ -52,7 +52,12 @@ const Index = () => {
   const renderCurrentView = () => {
     switch (currentView) {
       case 'game':
-        return (
+        return gameConfig ? (
+          <GameController 
+            config={gameConfig}
+            onBack={handleBackToMenu}
+          />
+        ) : (
           <SinglePlayerMenu 
             onGameStart={handleGameStart}
             onBack={handleBackToMenu}

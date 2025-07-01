@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,12 +24,12 @@ const DEFAULT_SETTINGS: GameSettings = {
   masterVolume: 50,
   backgroundMusic: '',
   musicVolume: 30,
-  ghostOpacity: 50 // 添加幽灵方块透明度设置
+  ghostOpacity: 50 // Now properly typed
 };
 
 export const useUserSettings = () => {
   const { user } = useAuth();
-  const [settings, setSettings] = useState<GameSettings & { ghostOpacity?: number }>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -73,7 +72,7 @@ export const useUserSettings = () => {
       }
 
       if (data) {
-        const loadedSettings: GameSettings & { ghostOpacity?: number } = {
+        const loadedSettings: GameSettings = {
           das: data.das,
           arr: data.arr,
           sdf: data.sdf,
@@ -97,7 +96,7 @@ export const useUserSettings = () => {
     }
   };
 
-  const saveSettings = async (newSettings: Partial<GameSettings & { ghostOpacity?: number }>) => {
+  const saveSettings = async (newSettings: Partial<GameSettings>) => {
     const updatedSettings = { ...settings, ...newSettings };
     setSettings(updatedSettings);
 
@@ -121,7 +120,7 @@ export const useUserSettings = () => {
           master_volume: updatedSettings.masterVolume,
           background_music: updatedSettings.backgroundMusic,
           music_volume: updatedSettings.musicVolume,
-          ghost_opacity: updatedSettings.ghostOpacity || 50
+          ghost_opacity: updatedSettings.ghostOpacity
         });
 
       if (error) {
