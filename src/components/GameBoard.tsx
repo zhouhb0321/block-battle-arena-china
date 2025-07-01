@@ -19,8 +19,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
   cellSize = 25,
   clearingLines = []
 }) => {
-  // 创建显示用的棋盘
-  const displayBoard = board.map(row => [...row]);
+  // 创建显示用的棋盘 - 允许字符串和数字混合
+  const displayBoard: (number | string)[][] = board.map(row => [...row]);
 
   // 添加幽灵方块
   if (enableGhost && ghostPiece) {
@@ -56,7 +56,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
     });
   }
 
-  const getCellStyle = (cellValue: any, rowIndex: number) => {
+  const getCellStyle = (cellValue: number | string, rowIndex: number) => {
     const isClearing = clearingLines.includes(rowIndex);
     
     if (cellValue === 0) {
