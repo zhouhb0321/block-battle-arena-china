@@ -41,7 +41,8 @@ export const useGameLogic = (
     attack: 0,
     pps: 0,
     apm: 0,
-    ghostPiece: null
+    ghostPiece: null,
+    clearingLines: []
   });
 
   const gameLoopRef = useRef<number>();
@@ -278,7 +279,8 @@ export const useGameLogic = (
       attack: prev.attack! + attackValue,
       level: Math.floor((prev.lines + linesCleared) / 40) + 1,
       currentPiece: null,
-      ghostPiece: null
+      ghostPiece: null,
+      clearingLines: []
     }));
     
     if (tSpinType) {
@@ -372,7 +374,8 @@ export const useGameLogic = (
       attack: 0,
       pps: 0,
       apm: 0,
-      ghostPiece: null
+      ghostPiece: null,
+      clearingLines: []
     });
     setLockDelay(false);
     lockDelayTime.current = 0;

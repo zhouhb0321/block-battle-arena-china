@@ -10,7 +10,7 @@ import GameModeSelector from './GameModeSelector';
 import SinglePlayerGameArea from './game/SinglePlayerGameArea';
 import MultiPlayerGameArea from './game/MultiPlayerGameArea';
 import GameCountdown from './GameCountdown';
-import type { GameMode, GameSettings } from '@/utils/gameTypes';
+import { GAME_MODES, type GameMode, type GameSettings } from '@/utils/gameTypes';
 
 interface TetrisGameProps {
   onBackToMenu: () => void;
@@ -44,7 +44,9 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     return Math.max(baseSpeed / speedMultiplier, 50);
   }, []);
 
-  const gameLogic = useGameLogic(gameMode?.id || 'endless', gameSettings, calculateDropSpeed);
+  // Find the default game mode or use the first one
+  const defaultGameMode = GAME_MODES.find(mode => mode.id === 'endless') || GAME_MODES[0];
+  const gameLogic = useGameLogic(gameMode || defaultGameMode, gameSettings, calculateDropSpeed);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
   // 180度旋转功能

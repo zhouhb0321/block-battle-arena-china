@@ -10,7 +10,8 @@ import ReplaySystem from '@/components/ReplaySystem';
 import NavigationBar from '@/components/NavigationBar';
 import { Toaster } from '@/components/ui/sonner';
 import type { GameMode } from '@/utils/gameTypes';
-import type { ViewType } from '@/types/navigation';
+
+type ViewType = 'home' | 'gameMode' | 'game' | 'settings' | 'profile' | 'ranked' | 'admin' | 'income' | 'replays';
 
 const Index = () => {
   const { user, loading } = useAuth();
