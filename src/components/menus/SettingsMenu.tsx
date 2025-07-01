@@ -1,170 +1,222 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, User, Gamepad, Palette } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useUserSettings } from '@/hooks/useUserSettings';
-import { useKeyRecording } from '@/components/settings/useKeyRecording';
-import UserProfileSettings from '../UserProfileSettings';
-import ControlsTab from '../settings/ControlsTab';
-import VisualTab from '../settings/VisualTab';
+import { ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useGame } from '@/contexts/GameContext';
+import { supabase } from '@/integrations/supabase/client';
+import TimingTab from '@/components/settings/TimingTab';
+import ControlsTab from '@/components/settings/ControlsTab';
+import AudioTab from '@/components/settings/AudioTab';
+import VisualTab from '@/components/settings/VisualTab';
+import MusicTab from '@/components/settings/MusicTab';
+import type { GameSettings } from '@/utils/gameTypes';
 
 interface SettingsMenuProps {
   onBackToMenu: () => void;
 }
 
 const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
-  const { theme, setTheme } = useTheme();
-  const { settings, saveSettings, loading } = useUserSettings();
+  const { user } = useAuth();
+  const { gameSettings, updateGameSettings } = useGame();
+  const [loading, setLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [tempSettings, setTempSettings] = useState(settings);
 
-  // Update tempSettings when settings change
-  React.useEffect(() => {
-    setTempSettings(settings);
-  }, [settings]);
+  useEffect(() => {
+    if (user && !user.isGuest) {
+      loadUserSettings();
+    }
+  }, [user]);
 
-  const { recordingKey, handleKeyRecord } = useKeyRecording(
-    tempSettings,
-    setTempSettings,
-    setHasChanges
-  );
+  const loadUserSettings = async () => {
+    if (!user || user.isGuest) return;
 
-  const handleSettingChange = (key: string, value: any) => {
-    setTempSettings(prev => ({ ...prev, [key]: value }));
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Failed to load user settings:', error);
+        return;
+      }
+
+      if (data) {
+        const settings: GameSettings = {
+          das: data.das,
+          arr: data.arr,
+          sdf: data.sdf,
+          controls: data.controls,
+          enableGhost: data.enable_ghost,
+          enableSound: data.enable_sound,
+          masterVolume: data.master_volume,
+          backgroundMusic: data.background_music || '',
+          musicVolume: data.music_volume || 30,
+          ghostOpacity: 50 // 默认值，可以添加到数据库
+        };
+
+        updateGameSettings(settings);
+      }
+    } catch (error) {
+      console.error('Error loading user settings:', error);
+    }
+  };
+
+  const saveSettings = async () => {
+    if (!user || user.isGuest) {
+      // 对于游客，只保存到本地状态
+      setHasChanges(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          das: gameSettings.das,
+          arr: gameSettings.arr,
+          sdf: gameSettings.sdf,
+          controls: gameSettings.controls,
+          enable_ghost: gameSettings.enableGhost,
+          enable_sound: gameSettings.enableSound,
+          master_volume: gameSettings.masterVolume,
+          background_music: gameSettings.backgroundMusic,
+          music_volume: gameSettings.musicVolume,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      setHasChanges(false);
+      console.log('Settings saved successfully');
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      alert('保存设置失败，请重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSettingChange = (key: keyof GameSettings, value: any) => {
+    const newSettings = { ...gameSettings, [key]: value };
+    updateGameSettings(newSettings);
     setHasChanges(true);
   };
 
-  const handleSaveSettings = async () => {
-    try {
-      await saveSettings(tempSettings);
-      setHasChanges(false);
-    } catch (error) {
-      console.error('保存设置失败:', error);
-    }
+  const resetToDefaults = () => {
+    const defaultSettings: GameSettings = {
+      das: 167,
+      arr: 33,
+      sdf: 20,
+      controls: {
+        moveLeft: 'ArrowLeft',
+        moveRight: 'ArrowRight',
+        softDrop: 'ArrowDown',
+        hardDrop: 'Space',
+        rotateClockwise: 'ArrowUp',
+        rotateCounterclockwise: 'KeyZ',
+        rotate180: 'KeyA',
+        hold: 'KeyC',
+        pause: 'Escape',
+        backToMenu: 'KeyB'
+      },
+      enableGhost: true,
+      enableSound: true,
+      masterVolume: 50,
+      backgroundMusic: '',
+      musicVolume: 30,
+      ghostOpacity: 50
+    };
+
+    updateGameSettings(defaultSettings);
+    setHasChanges(true);
   };
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      {/* 优化返回按钮 - 更明显的样式 */}
-      <div className="flex items-center mb-6">
-        <Button 
-          variant="outline" 
-          onClick={onBackToMenu} 
-          className="mr-4 bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700 shadow-md px-4 py-2"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          返回主菜单
-        </Button>
-        <h2 className="text-3xl font-bold">设置</h2>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={onBackToMenu}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            返回
+          </Button>
+          <h2 className="text-3xl font-bold">游戏设置</h2>
+        </div>
+        
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={resetToDefaults}>
+            恢复默认
+          </Button>
+          <Button 
+            onClick={saveSettings} 
+            disabled={loading || !hasChanges}
+            className={hasChanges ? 'bg-green-600 hover:bg-green-700' : ''}
+          >
+            {loading ? '保存中...' : hasChanges ? '保存更改' : '已保存'}
+          </Button>
+        </div>
       </div>
 
-      {hasChanges && (
-        <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg">
-          <div className="flex items-center justify-between">
-            <span className="text-yellow-800 dark:text-yellow-200">您有未保存的设置更改</span>
-            <Button onClick={handleSaveSettings} size="sm" className="bg-green-600 hover:bg-green-700">
-              保存设置
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
-          <TabsTrigger value="profile" className="flex items-center gap-2">
-            <User className="w-4 h-4" />
-            用户资料
-          </TabsTrigger>
-          <TabsTrigger value="controls" className="flex items-center gap-2">
-            <Gamepad className="w-4 h-4" />
-            控制设置
-          </TabsTrigger>
-          <TabsTrigger value="visual" className="flex items-center gap-2">
-            <Palette className="w-4 h-4" />
-            视觉设置
-          </TabsTrigger>
-          <TabsTrigger value="theme" className="flex items-center gap-2">
-            <Palette className="w-4 h-4" />
-            主题
-          </TabsTrigger>
+      <Tabs defaultValue="timing" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="timing">手感</TabsTrigger>
+          <TabsTrigger value="controls">键位</TabsTrigger>
+          <TabsTrigger value="visual">视觉</TabsTrigger>
+          <TabsTrigger value="audio">音效</TabsTrigger>
+          <TabsTrigger value="music">音乐</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile">
-          <UserProfileSettings />
+        <TabsContent value="timing" className="space-y-4">
+          <TimingTab 
+            settings={gameSettings}
+            onSettingChange={handleSettingChange}
+          />
         </TabsContent>
 
-        <TabsContent value="controls">
-          {loading ? (
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
-              <p className="text-gray-600">加载设置中...</p>
-            </div>
-          ) : (
-            <ControlsTab
-              settings={tempSettings}
-              recordingKey={recordingKey}
-              onKeyRecord={handleKeyRecord}
-              onSettingChange={handleSettingChange}
-            />
-          )}
+        <TabsContent value="controls" className="space-y-4">
+          <ControlsTab 
+            settings={gameSettings}
+            onSettingChange={handleSettingChange}
+          />
         </TabsContent>
 
-        <TabsContent value="visual">
-          {loading ? (
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
-              <p className="text-gray-600">加载设置中...</p>
-            </div>
-          ) : (
-            <VisualTab
-              settings={tempSettings}
-              onSettingChange={handleSettingChange}
-            />
-          )}
+        <TabsContent value="visual" className="space-y-4">
+          <VisualTab 
+            settings={gameSettings}
+            onSettingChange={handleSettingChange}
+          />
         </TabsContent>
 
-        <TabsContent value="theme">
-          <Card>
-            <CardHeader>
-              <CardTitle>主题设置</CardTitle>
-              <CardDescription>选择你喜欢的主题风格</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button
-                  variant={theme === 'light' ? 'default' : 'outline'}
-                  onClick={() => setTheme('light')}
-                  className="h-16 flex flex-col items-center gap-2"
-                >
-                  <div className="w-6 h-6 bg-white border-2 border-gray-300 rounded"></div>
-                  浅色主题
-                </Button>
-                
-                <Button
-                  variant={theme === 'dark' ? 'default' : 'outline'}
-                  onClick={() => setTheme('dark')}
-                  className="h-16 flex flex-col items-center gap-2"
-                >
-                  <div className="w-6 h-6 bg-gray-800 border-2 border-gray-600 rounded"></div>
-                  深色主题
-                </Button>
-                
-                <Button
-                  variant={theme === 'system' ? 'default' : 'outline'}
-                  onClick={() => setTheme('system')}
-                  className="h-16 flex flex-col items-center gap-2"
-                >
-                  <div className="w-6 h-6 bg-gradient-to-br from-white to-gray-800 border-2 border-gray-400 rounded"></div>
-                  跟随系统
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="audio" className="space-y-4">
+          <AudioTab 
+            settings={gameSettings}
+            onSettingChange={handleSettingChange}
+          />
+        </TabsContent>
+
+        <TabsContent value="music" className="space-y-4">
+          <MusicTab 
+            settings={gameSettings}
+            onSettingChange={handleSettingChange}
+          />
         </TabsContent>
       </Tabs>
+
+      {user && user.isGuest && (
+        <Card className="mt-6 border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <p className="text-orange-800 text-sm">
+              您当前为游客模式，设置仅保存在本次会话中。登录后可永久保存您的个人设置。
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

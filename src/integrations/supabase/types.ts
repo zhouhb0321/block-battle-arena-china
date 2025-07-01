@@ -54,6 +54,151 @@ export type Database = {
         }
         Relationships: []
       }
+      battle_participants: {
+        Row: {
+          eliminated_at: string | null
+          id: string
+          joined_at: string
+          losses: number
+          position: number
+          room_id: string
+          score: number
+          status: string
+          user_id: string
+          username: string
+          wins: number
+        }
+        Insert: {
+          eliminated_at?: string | null
+          id?: string
+          joined_at?: string
+          losses?: number
+          position: number
+          room_id: string
+          score?: number
+          status?: string
+          user_id: string
+          username: string
+          wins?: number
+        }
+        Update: {
+          eliminated_at?: string | null
+          id?: string
+          joined_at?: string
+          losses?: number
+          position?: number
+          room_id?: string
+          score?: number
+          status?: string
+          user_id?: string
+          username?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_records: {
+        Row: {
+          attack_received: number
+          attack_sent: number
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          lines_cleared: number
+          loser_id: string | null
+          loser_score: number
+          match_number: number
+          room_id: string
+          winner_id: string | null
+          winner_score: number
+        }
+        Insert: {
+          attack_received?: number
+          attack_sent?: number
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          lines_cleared?: number
+          loser_id?: string | null
+          loser_score?: number
+          match_number: number
+          room_id: string
+          winner_id?: string | null
+          winner_score?: number
+        }
+        Update: {
+          attack_received?: number
+          attack_sent?: number
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          lines_cleared?: number
+          loser_id?: string | null
+          loser_score?: number
+          match_number?: number
+          room_id?: string
+          winner_id?: string | null
+          winner_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_records_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_rooms: {
+        Row: {
+          created_at: string
+          created_by: string
+          current_players: number
+          finished_at: string | null
+          id: string
+          max_players: number
+          mode: string
+          room_code: string
+          settings: Json | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          current_players?: number
+          finished_at?: string | null
+          id?: string
+          max_players?: number
+          mode: string
+          room_code: string
+          settings?: Json | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          current_players?: number
+          finished_at?: string | null
+          id?: string
+          max_players?: number
+          mode?: string
+          room_code?: string
+          settings?: Json | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       game_matches: {
         Row: {
           created_at: string
@@ -170,10 +315,14 @@ export type Database = {
           duration: number
           final_lines: number
           final_score: number
+          game_mode: string | null
           id: string
+          is_public: boolean | null
           match_id: string
+          metadata: Json | null
           pps: number
           replay_data: Json
+          room_id: string | null
           user_id: string
         }
         Insert: {
@@ -182,10 +331,14 @@ export type Database = {
           duration: number
           final_lines: number
           final_score: number
+          game_mode?: string | null
           id?: string
+          is_public?: boolean | null
           match_id: string
+          metadata?: Json | null
           pps: number
           replay_data: Json
+          room_id?: string | null
           user_id: string
         }
         Update: {
@@ -194,10 +347,14 @@ export type Database = {
           duration?: number
           final_lines?: number
           final_score?: number
+          game_mode?: string | null
           id?: string
+          is_public?: boolean | null
           match_id?: string
+          metadata?: Json | null
           pps?: number
           replay_data?: Json
+          room_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -206,6 +363,13 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "game_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_replays_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rooms"
             referencedColumns: ["id"]
           },
           {
@@ -274,6 +438,86 @@ export type Database = {
           pps?: number
           replay_data?: Json
           user_id?: string
+        }
+        Relationships: []
+      }
+      league_rankings: {
+        Row: {
+          best_streak: number
+          games_lost: number
+          games_played: number
+          games_won: number
+          id: string
+          rank_tier: string
+          rating: number
+          season_id: string
+          updated_at: string
+          user_id: string
+          win_streak: number
+        }
+        Insert: {
+          best_streak?: number
+          games_lost?: number
+          games_played?: number
+          games_won?: number
+          id?: string
+          rank_tier?: string
+          rating?: number
+          season_id: string
+          updated_at?: string
+          user_id: string
+          win_streak?: number
+        }
+        Update: {
+          best_streak?: number
+          games_lost?: number
+          games_played?: number
+          games_won?: number
+          id?: string
+          rank_tier?: string
+          rating?: number
+          season_id?: string
+          updated_at?: string
+          user_id?: string
+          win_streak?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_rankings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_seasons: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          name: string
+          settings: Json | null
+          start_date: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          name: string
+          settings?: Json | null
+          start_date: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          name?: string
+          settings?: Json | null
+          start_date?: string
+          status?: string
         }
         Relationships: []
       }
