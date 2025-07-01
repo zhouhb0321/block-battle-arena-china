@@ -1,4 +1,5 @@
 
+
 export interface GameState {
   board: number[][];
   currentPiece: GamePiece | null;
@@ -85,18 +86,35 @@ export interface AdContent {
   description: string;
   imageUrl: string;
   clickUrl: string;
+  targetUrl: string;
   isActive: boolean;
+  region?: string;
+  language?: string;
+  startDate?: string;
+  endDate?: string;
+  clicks?: number;
+  impressions?: number;
 }
 
 export interface GameReplay {
   id: string;
+  matchId?: string;
   userId: string;
+  gameType?: string;
   gameMode: string;
   score: number;
   lines: number;
+  level?: number;
+  pps?: number;
+  apm?: number;
+  duration?: number;
   startTime: number;
   endTime: number;
   actions: ReplayAction[];
+  finalBoard?: number[][];
+  date?: string;
+  playerName?: string;
+  isPersonalBest?: boolean;
   metadata: {
     version: string;
     settings: GameSettings;
@@ -105,8 +123,8 @@ export interface GameReplay {
 
 export interface ReplayAction {
   timestamp: number;
-  type: 'move' | 'rotate' | 'drop' | 'hold' | 'pause';
-  payload?: any;
+  action: 'move' | 'rotate' | 'drop' | 'hold' | 'pause' | 'place';
+  data?: any;
 }
 
 export const GAME_MODES: GameMode[] = [
@@ -153,3 +171,4 @@ export const GAME_MODES: GameMode[] = [
 ];
 
 export type View = 'start' | 'game' | 'settings' | 'profile';
+

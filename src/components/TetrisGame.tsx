@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useGameLogic } from '@/hooks/useGameLogic';
@@ -34,7 +33,8 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     sdf: settings.sdf,
     controls: settings.controls,
     backgroundMusic: settings.backgroundMusic || '',
-    musicVolume: settings.musicVolume || 30
+    musicVolume: settings.musicVolume || 30,
+    ghostOpacity: settings.ghostOpacity || 50
   };
 
   const calculateDropSpeed = useCallback((lines: number): number => {

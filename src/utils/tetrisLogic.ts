@@ -86,7 +86,7 @@ export const generateSevenBag = (): TetrominoType[] => {
 };
 
 export const rotatePiece = (piece: TetrominoType, clockwise: boolean = true): TetrominoType => {
-  const { shape } = piece;
+  const { shape } } = piece;
   let rotated: number[][];
   
   if (clockwise) {

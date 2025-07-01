@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useGame } from '@/contexts/GameContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -73,7 +72,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
       enableSound: true,
       masterVolume: 50,
       backgroundMusic: '',
-      musicVolume: 30
+      musicVolume: 30,
+      ghostOpacity: 50
     };
     setTempSettings(defaultSettings);
   };
