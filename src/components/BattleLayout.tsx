@@ -95,6 +95,7 @@ const BattleLayout: React.FC<BattleLayoutProps> = ({
                 <PiecePreview 
                   key={index}
                   piece={piece.type} 
+                  title=""
                   cellSize={cellSize * 0.8}
                 />
               ))}
@@ -148,6 +149,7 @@ const BattleLayout: React.FC<BattleLayoutProps> = ({
                 <PiecePreview 
                   key={index}
                   piece={piece.type} 
+                  title=""
                   cellSize={cellSize * 0.8}
                 />
               ))}
