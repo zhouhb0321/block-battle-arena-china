@@ -79,9 +79,12 @@ const GameBoard: React.FC<GameBoardProps> = ({
       };
     }
     
+    // 确保 backgroundColor 始终是字符串
+    const backgroundColor = typeof cellValue === 'string' ? cellValue : String(cellValue);
+    
     return {
-      backgroundColor: cellValue,
-      border: `1px solid ${cellValue}`,
+      backgroundColor,
+      border: `1px solid ${backgroundColor}`,
       width: `${cellSize}px`,
       height: `${cellSize}px`,
       boxShadow: isClearing ? '0 0 10px #fff' : 'inset 2px 2px 4px rgba(255,255,255,0.3)',
