@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import GameBoard from './GameBoard';
@@ -23,6 +22,8 @@ import {
   BOARD_WIDTH,
   BOARD_HEIGHT
 } from '@/utils/tetrisLogic';
+import { calculateDropSpeed, getGravityInfo } from '@/utils/gravitySystem';
+import { getB2BDisplayText } from '@/utils/b2bSystem';
 import type { TetrominoType, GamePiece, GameState } from '@/utils/gameTypes';
 
 interface FixedTetrisGameProps {
@@ -182,7 +183,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     });
   }, []);
 
-  // 修复硬降落 - 立即锁定方块
+  // 修复硬降落 - 立即锁定方块，整合新的重力和B2B系统
   const hardDrop = useCallback(() => {
     setGameState(prev => {
       if (!prev.currentPiece || prev.paused || prev.gameOver) return prev;
@@ -205,9 +206,16 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       const newCombo = linesCleared > 0 ? prev.combo + 1 : -1;
       const isSpecialClear = tSpinResult !== null || linesCleared === 4;
       const newB2B = isSpecialClear ? prev.b2b + 1 : (linesCleared > 0 ? 0 : prev.b2b);
-      const newScore = calculateScore(linesCleared, prev.level, tSpinResult, newB2B > 0, newCombo);
-      const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 0, newCombo);
-      const newLevel = Math.floor((prev.lines + linesCleared) / 10) + 1;
+      
+      // 检查是否为全清
+      const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
+      
+      // 使用新的重力系统计算等级
+      const newTotalLines = prev.lines + linesCleared;
+      const gravityInfo = getGravityInfo(newTotalLines);
+      
+      const newScore = calculateScore(linesCleared, gravityInfo.level, tSpinResult, newB2B > 1, newCombo, isPerfectClear);
+      const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 1, newCombo, newB2B);
       
       const timeElapsed = (Date.now() - prev.startTime) / 1000;
       const newPps = prev.pieces > 0 ? prev.pieces / Math.max(timeElapsed, 1) : 0;
@@ -216,10 +224,17 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       // 显示消行提示
       if (linesCleared > 0) {
         setTimeout(() => {
+          if (isPerfectClear) {
+            toast.success('全清！+3500分！', { duration: 3000 });
+          }
+          
           if (tSpinResult) {
-            toast.success(`${tSpinResult.type}! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
+            const miniText = tSpinResult.isMini ? ' Mini' : '';
+            const b2bText = newB2B > 1 ? ` ${getB2BDisplayText(newB2B)}` : '';
+            toast.success(`${tSpinResult.type}${miniText}!${b2bText}`, { duration: 2000 });
           } else if (linesCleared === 4) {
-            toast.success(`Tetris! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
+            const b2bText = newB2B > 1 ? ` ${getB2BDisplayText(newB2B)}` : '';
+            toast.success(`Tetris!${b2bText}`, { duration: 2000 });
           } else {
             toast.success(`消除了 ${linesCleared} 行! +${newScore} 分`, { duration: 1500 });
           }
@@ -235,8 +250,8 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
         board: clearedBoard,
         currentPiece: null,
         score: prev.score + newScore + dropDistance * 2,
-        lines: prev.lines + linesCleared,
-        level: newLevel,
+        lines: newTotalLines,
+        level: gravityInfo.level,
         combo: newCombo,
         b2b: newB2B,
         attack: prev.attack + attackLines,
@@ -248,7 +263,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     });
   }, []);
 
-  // 放置方块到棋盘
+  // 放置方块到棋盘 - 整合新系统
   const placePieceOnBoard = useCallback(() => {
     setGameState(prev => {
       if (!prev.currentPiece) return prev;
@@ -262,9 +277,16 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
           const newCombo = linesCleared > 0 ? prev.combo + 1 : -1;
           const isSpecialClear = tSpinResult !== null || linesCleared === 4;
           const newB2B = isSpecialClear ? prev.b2b + 1 : (linesCleared > 0 ? 0 : prev.b2b);
-          const newScore = calculateScore(linesCleared, prev.level, tSpinResult, newB2B > 0, newCombo);
-          const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 0, newCombo);
-          const newLevel = Math.floor((prev.lines + linesCleared) / 10) + 1;
+          
+          // 检查是否为全清
+          const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
+          
+          // 使用新的重力系统计算等级
+          const newTotalLines = prev.lines + linesCleared;
+          const gravityInfo = getGravityInfo(newTotalLines);
+          
+          const newScore = calculateScore(linesCleared, gravityInfo.level, tSpinResult, newB2B > 1, newCombo, isPerfectClear);
+          const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 1, newCombo, newB2B);
           
           const timeElapsed = (Date.now() - prev.startTime) / 1000;
           const newPps = prev.pieces > 0 ? prev.pieces / Math.max(timeElapsed, 1) : 0;
@@ -275,8 +297,8 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             board: clearedBoard,
             currentPiece: null,
             score: current.score + newScore,
-            lines: current.lines + linesCleared,
-            level: newLevel,
+            lines: newTotalLines,
+            level: gravityInfo.level,
             combo: newCombo,
             b2b: newB2B,
             attack: current.attack + attackLines,
@@ -286,10 +308,18 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             ghostPiece: null
           }));
 
+          // 显示提示
+          if (isPerfectClear) {
+            toast.success('全清！+3500分！', { duration: 3000 });
+          }
+          
           if (tSpinResult) {
-            toast.success(`${tSpinResult.type}! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
+            const miniText = tSpinResult.isMini ? ' Mini' : '';
+            const b2bText = newB2B > 1 ? ` ${getB2BDisplayText(newB2B)}` : '';
+            toast.success(`${tSpinResult.type}${miniText}!${b2bText}`, { duration: 2000 });
           } else if (linesCleared === 4) {
-            toast.success(`Tetris! +${newScore} 分${newB2B > 1 ? ` B2B x${newB2B}` : ''}`, { duration: 2000 });
+            const b2bText = newB2B > 1 ? ` ${getB2BDisplayText(newB2B)}` : '';
+            toast.success(`Tetris!${b2bText}`, { duration: 2000 });
           } else {
             toast.success(`消除了 ${linesCleared} 行! +${newScore} 分`, { duration: 1500 });
           }
@@ -395,7 +425,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     }
   }, [movePiece, hardDrop, rotatePieceClockwise, holdPiece, gameState.paused, gameState.gameOver, onBackToMenu]);
 
-  // 游戏循环
+  // 游戏循环 - 使用新的重力系统
   useEffect(() => {
     if (gameState.paused || gameState.gameOver) {
       if (gameLoopRef.current) {
@@ -405,7 +435,8 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       return;
     }
 
-    const dropInterval = Math.max(50, 1000 - (gameState.level - 1) * 50);
+    // 使用新的重力系统计算下降速度
+    const dropInterval = calculateDropSpeed(gameState.lines);
     
     gameLoopRef.current = setInterval(() => {
       setGameState(prev => {
@@ -435,7 +466,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
         gameLoopRef.current = null;
       }
     };
-  }, [gameState.level, gameState.paused, gameState.gameOver, placePieceOnBoard]);
+  }, [gameState.lines, gameState.paused, gameState.gameOver, placePieceOnBoard]);
 
   // 检查是否需要生成新方块
   useEffect(() => {
@@ -496,6 +527,18 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
   const currentTime = Date.now();
   const elapsedTime = Math.floor((currentTime - gameState.startTime) / 1000);
 
+  // 获取重力信息用于显示
+  const gravityInfo = getGravityInfo(gameState.lines);
+  
+  // 生成用户显示名
+  const getDisplayName = (): string => {
+    if (user?.email) {
+      // 如果是邮箱格式，提取@前的部分作为用户名
+      return user.email.includes('@') ? user.email.split('@')[0] : user.email;
+    }
+    return 'Player';
+  };
+
   return (
     <div className="flex flex-col items-center p-4 bg-gray-900 min-h-screen">
       <div className="flex gap-6 max-w-6xl w-full justify-center">
@@ -509,11 +552,21 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
           
           <div className="bg-gray-800 p-4 rounded-lg text-white text-sm">
             <div className="space-y-2">
+              <div className="font-bold text-lg">{getDisplayName()}</div>
               <div>得分: {gameState.score.toLocaleString()}</div>
               <div>行数: {gameState.lines}</div>
-              <div>等级: {gameState.level}</div>
+              <div className="flex items-center gap-2">
+                <span>等级: {gravityInfo.level}</span>
+                <span className="text-xs opacity-70">
+                  (G: {gravityInfo.gravity.toFixed(3)})
+                </span>
+              </div>
               <div>连击: {gameState.combo >= 0 ? `${gameState.combo + 1}x` : '无'}</div>
-              <div>B2B: {gameState.b2b > 0 ? `${gameState.b2b}x` : '无'}</div>
+              {gameState.b2b > 1 && (
+                <div className="text-orange-400 font-bold">
+                  {getB2BDisplayText(gameState.b2b)}
+                </div>
+              )}
               <div>方块数: {gameState.pieces}</div>
               <div>PPS: {gameState.pps.toFixed(2)}</div>
               <div>攻击力: {gameState.attack}</div>
@@ -542,7 +595,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
               <div className="mb-2">PPS: {gameState.pps.toFixed(2)}</div>
               <div className="mb-2">攻击力: {gameState.attack}</div>
               <div className="flex gap-2 justify-center">
-                <Button onClick={restartGame} className="bg-blue-600 hover:bg-blue-700">
+                <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
                   重新开始
                 </Button>
                 {onBackToMenu && (
@@ -566,7 +619,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             </div>
           )}
 
-          {/* 修复按钮可见性 - 使用高对比度颜色 */}
+          {/* 游戏中不显示设置按钮 - 只在暂停或游戏结束时显示控制按钮 */}
           <div className="flex gap-3 mb-4">
             <Button
               onClick={() => setGameState(prev => ({ ...prev, paused: !prev.paused }))}
@@ -576,7 +629,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
               {gameState.paused ? '继续' : '暂停'}
             </Button>
             <Button
-              onClick={restartGame}
+              onClick={() => window.location.reload()}
               className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-green-400"
             >
               重新开始
@@ -624,6 +677,8 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
               <div>平均PPS: {gameState.pps.toFixed(2)}</div>
               <div>总攻击力: {gameState.attack}</div>
               <div>消行效率: {gameState.pieces > 0 ? (gameState.lines / gameState.pieces * 100).toFixed(1) : 0}%</div>
+              <div>最高等级: {gravityInfo.level}</div>
+              <div>重力值: {gravityInfo.gravity.toFixed(3)}G</div>
             </div>
           )}
         </div>

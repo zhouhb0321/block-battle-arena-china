@@ -1,4 +1,5 @@
 import type { TetrominoType, GamePiece, ReplayAction } from './gameTypes';
+import { calculateB2BAttackBonus } from './b2bSystem';
 
 // 标准化方块颜色 - 与经典俄罗斯方块保持一致
 export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
@@ -416,12 +417,13 @@ export const calculateScore = (
   return baseScore * level;
 };
 
-// 计算攻击力
+// 计算攻击力 - 整合新的B2B奖励系统
 export const calculateAttackLines = (
   linesCleared: number,
   tSpinResult: { type: string; isMini: boolean } | null = null,
   isB2B: boolean = false,
-  combo: number = 0
+  combo: number = 0,
+  b2bCount: number = 0
 ): number => {
   let attackLines = 0;
   
@@ -447,9 +449,10 @@ export const calculateAttackLines = (
     }
   }
   
-  // Back-to-Back 加成
+  // 新的B2B奖励系统
   if (isB2B && attackLines > 0) {
-    attackLines += 1;
+    const b2bBonus = calculateB2BAttackBonus(b2bCount);
+    attackLines += b2bBonus;
   }
   
   // 连击加成

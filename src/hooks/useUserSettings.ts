@@ -6,8 +6,8 @@ import type { GameSettings } from '@/utils/gameTypes';
 import { toast } from 'sonner';
 
 const DEFAULT_SETTINGS: GameSettings = {
-  das: 167,
-  arr: 100, // 修改为100ms
+  das: 100, // 优化为100ms，提升响应性
+  arr: 33, // 保持33ms，标准设置
   sdf: 20,
   controls: {
     moveLeft: 'ArrowLeft',
@@ -71,7 +71,7 @@ export const useUserSettings = () => {
 
       if (error) {
         console.error('加载设置失败:', error);
-        toast.error('加载设置失败: ' + error.message);
+        toast.error('加载设置失败，使用默认设置');
         setSettings(DEFAULT_SETTINGS);
         setLoading(false);
         return;
@@ -80,13 +80,13 @@ export const useUserSettings = () => {
       if (data) {
         console.log('从数据库加载的设置:', data);
         const loadedSettings: GameSettings = {
-          das: data.das,
-          arr: data.arr,
-          sdf: data.sdf,
-          controls: data.controls as any,
-          enableGhost: data.enable_ghost,
-          enableSound: data.enable_sound,
-          masterVolume: data.master_volume,
+          das: data.das || DEFAULT_SETTINGS.das,
+          arr: data.arr || DEFAULT_SETTINGS.arr,
+          sdf: data.sdf || DEFAULT_SETTINGS.sdf,
+          controls: (data.controls as any) || DEFAULT_SETTINGS.controls,
+          enableGhost: data.enable_ghost ?? DEFAULT_SETTINGS.enableGhost,
+          enableSound: data.enable_sound ?? DEFAULT_SETTINGS.enableSound,
+          masterVolume: data.master_volume || DEFAULT_SETTINGS.masterVolume,
           backgroundMusic: data.background_music || '',
           musicVolume: data.music_volume || 30,
           ghostOpacity: data.ghost_opacity || 50
@@ -100,7 +100,7 @@ export const useUserSettings = () => {
     } catch (error) {
       console.error('加载设置时出错:', error);
       setSettings(DEFAULT_SETTINGS);
-      toast.error('加载设置时出现错误');
+      toast.error('加载设置时出现错误，使用默认设置');
     } finally {
       setLoading(false);
     }
@@ -135,7 +135,6 @@ export const useUserSettings = () => {
       } else {
         setSettings(DEFAULT_SETTINGS);
         console.log('默认设置创建成功');
-        toast.success('默认设置已创建');
       }
     } catch (error) {
       console.error('创建默认设置时出错:', error);
@@ -152,15 +151,19 @@ export const useUserSettings = () => {
 
     if (!user || user.isGuest) {
       console.log('保存游客设置到本地存储');
-      localStorage.setItem('tetris_settings', JSON.stringify(updatedSettings));
-      toast.success('设置已保存到本地');
+      try {
+        localStorage.setItem('tetris_settings', JSON.stringify(updatedSettings));
+        toast.success('设置已保存到本地');
+      } catch (error) {
+        console.error('保存到本地存储失败:', error);
+        toast.error('保存设置失败');
+      }
       return;
     }
 
     try {
       console.log('保存用户设置到数据库，用户ID:', user.id);
       
-      // 使用upsert确保总是能保存成功
       const { error } = await supabase
         .from('user_settings')
         .upsert({
