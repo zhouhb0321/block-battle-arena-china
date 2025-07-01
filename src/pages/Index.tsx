@@ -9,7 +9,7 @@ import LeagueMenu from '@/components/menus/LeagueMenu';
 import SettingsMenu from '@/components/menus/SettingsMenu';
 import AuthModal from '@/components/AuthModal';
 import NavigationBar from '@/components/NavigationBar';
-import GameController from '@/components/game/GameController';
+import ReplaySystem from '@/components/ReplaySystem';
 import AdSpace from '@/components/AdSpace';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ const Index = () => {
   };
 
   const handleViewChange = (view: ViewType) => {
-    if (!isAuthenticated && (view === 'settings')) {
+    if (!isAuthenticated && (view === 'settings' || view === 'replays')) {
       setShowAuthModal(true);
       return;
     }
@@ -52,12 +52,7 @@ const Index = () => {
   const renderCurrentView = () => {
     switch (currentView) {
       case 'game':
-        return gameConfig ? (
-          <GameController 
-            config={gameConfig}
-            onBack={handleBackToMenu}
-          />
-        ) : (
+        return (
           <SinglePlayerMenu 
             onGameStart={handleGameStart}
             onBack={handleBackToMenu}
@@ -75,6 +70,10 @@ const Index = () => {
           <SettingsMenu 
             onBackToMenu={handleBackToMenu}
           />
+        );
+      case 'replays':
+        return (
+          <ReplaySystem />
         );
       case 'profile':
         return gameConfig ? (
