@@ -201,7 +201,6 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig }) => 
           onRotateCounterclockwise={gameLogic.rotatePieceCounterclockwise}
           onRotate180={rotate180}
           onHold={gameLogic.holdCurrentPiece}
-          gameStarted={gameStarted}
         />
       )}
     </div>

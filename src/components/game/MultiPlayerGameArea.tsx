@@ -38,6 +38,9 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
   onCountdownEnd = () => {}
 }) => {
   const mainCellSize = 30; // 主游戏板的方块大小
+  
+  // 判断游戏是否已开始
+  const gameStarted = !showCountdown && (gameState.score > 0 || gameState.lines > 0 || gameState.pieces !== undefined);
 
   return (
     <div className="flex gap-6 items-center justify-center w-full min-h-screen">
@@ -79,6 +82,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
               onShare={onShare}
               mode="multi"
               combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}
+              gameStarted={gameStarted}
             />
             
             <div className="relative">
@@ -155,6 +159,7 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
               onShare={() => {}}
               mode="multi"
               combo={opponentState.combo && opponentState.combo >= 0 ? opponentState.combo : undefined}
+              gameStarted={gameStarted}
             />
             
             <div className="relative">
