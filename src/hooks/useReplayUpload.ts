@@ -37,7 +37,14 @@ export const useReplayUpload = () => {
 
       setUploadProgress(25);
 
-      // 准备上传数据
+      // 准备上传数据 - 正确处理 JSON 类型
+      const replayDataForUpload = {
+        actions: replayData.actions,
+        initialBoard: replayData.finalBoard || Array(20).fill(null).map(() => Array(10).fill(0)),
+        checksum: checksumHex,
+        version: '1.0'
+      };
+
       const uploadData = {
         user_id: user.id,
         game_mode: replayData.gameType || 'sprint_40',
@@ -47,15 +54,10 @@ export const useReplayUpload = () => {
         duration: replayData.duration || 0,
         pps: replayData.pps || 0,
         apm: replayData.apm || 0,
-        replay_data: {
-          actions: replayData.actions,
-          initialBoard: replayData.finalBoard || Array(20).fill(null).map(() => Array(10).fill(0)),
-          checksum: checksumHex,
-          version: '1.0'
-        },
-        game_settings: replayData.metadata?.settings || {},
-        key_inputs: [], // 可以添加按键输入记录
-        game_events: [], // 可以添加游戏事件记录
+        replay_data: replayDataForUpload as any, // 类型断言为 any 以匹配 Json 类型
+        game_settings: (replayData.metadata?.settings || {}) as any,
+        key_inputs: [] as any, // 可以添加按键输入记录
+        game_events: [] as any, // 可以添加游戏事件记录
         is_personal_best: false, // 将在服务器端计算
         is_world_record: false   // 将在服务器端计算
       };

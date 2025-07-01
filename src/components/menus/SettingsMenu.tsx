@@ -12,6 +12,7 @@ import ControlsTab from '@/components/settings/ControlsTab';
 import AudioTab from '@/components/settings/AudioTab';
 import VisualTab from '@/components/settings/VisualTab';
 import MusicTab from '@/components/settings/MusicTab';
+import { useKeyRecording } from '@/components/settings/useKeyRecording';
 import type { GameSettings } from '@/utils/gameTypes';
 
 interface SettingsMenuProps {
@@ -23,6 +24,14 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
   const { gameSettings, updateGameSettings } = useGame();
   const [loading, setLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [tempSettings, setTempSettings] = useState(gameSettings);
+
+  // 键位录制相关
+  const { recordingKey, handleKeyRecord } = useKeyRecording(
+    tempSettings,
+    setTempSettings,
+    setHasChanges
+  );
 
   useEffect(() => {
     if (user && !user.isGuest) {
@@ -46,11 +55,27 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
       }
 
       if (data) {
+        // 正确处理 Json 类型转换
+        const controls = typeof data.controls === 'object' && data.controls !== null 
+          ? data.controls as Record<string, string>
+          : {
+              moveLeft: 'ArrowLeft',
+              moveRight: 'ArrowRight',
+              softDrop: 'ArrowDown',
+              hardDrop: 'Space',
+              rotateClockwise: 'ArrowUp',
+              rotateCounterclockwise: 'KeyZ',
+              rotate180: 'KeyA',
+              hold: 'KeyC',
+              pause: 'Escape',
+              backToMenu: 'KeyB'
+            };
+
         const settings: GameSettings = {
           das: data.das,
           arr: data.arr,
           sdf: data.sdf,
-          controls: data.controls,
+          controls: controls as GameSettings['controls'],
           enableGhost: data.enable_ghost,
           enableSound: data.enable_sound,
           masterVolume: data.master_volume,
@@ -60,6 +85,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
         };
 
         updateGameSettings(settings);
+        setTempSettings(settings);
       }
     } catch (error) {
       console.error('Error loading user settings:', error);
@@ -69,6 +95,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
   const saveSettings = async () => {
     if (!user || user.isGuest) {
       // 对于游客，只保存到本地状态
+      updateGameSettings(tempSettings);
       setHasChanges(false);
       return;
     }
@@ -79,20 +106,21 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
         .from('user_settings')
         .upsert({
           user_id: user.id,
-          das: gameSettings.das,
-          arr: gameSettings.arr,
-          sdf: gameSettings.sdf,
-          controls: gameSettings.controls,
-          enable_ghost: gameSettings.enableGhost,
-          enable_sound: gameSettings.enableSound,
-          master_volume: gameSettings.masterVolume,
-          background_music: gameSettings.backgroundMusic,
-          music_volume: gameSettings.musicVolume,
+          das: tempSettings.das,
+          arr: tempSettings.arr,
+          sdf: tempSettings.sdf,
+          controls: tempSettings.controls,
+          enable_ghost: tempSettings.enableGhost,
+          enable_sound: tempSettings.enableSound,
+          master_volume: tempSettings.masterVolume,
+          background_music: tempSettings.backgroundMusic,
+          music_volume: tempSettings.musicVolume,
           updated_at: new Date().toISOString()
         });
 
       if (error) throw error;
 
+      updateGameSettings(tempSettings);
       setHasChanges(false);
       console.log('Settings saved successfully');
     } catch (error) {
@@ -104,8 +132,8 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
   };
 
   const handleSettingChange = (key: keyof GameSettings, value: any) => {
-    const newSettings = { ...gameSettings, [key]: value };
-    updateGameSettings(newSettings);
+    const newSettings = { ...tempSettings, [key]: value };
+    setTempSettings(newSettings);
     setHasChanges(true);
   };
 
@@ -134,7 +162,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
       ghostOpacity: 50
     };
 
-    updateGameSettings(defaultSettings);
+    setTempSettings(defaultSettings);
     setHasChanges(true);
   };
 
@@ -174,35 +202,37 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
 
         <TabsContent value="timing" className="space-y-4">
           <TimingTab 
-            settings={gameSettings}
+            settings={tempSettings}
             onSettingChange={handleSettingChange}
           />
         </TabsContent>
 
         <TabsContent value="controls" className="space-y-4">
           <ControlsTab 
-            settings={gameSettings}
+            settings={tempSettings}
+            recordingKey={recordingKey}
+            onKeyRecord={handleKeyRecord}
             onSettingChange={handleSettingChange}
           />
         </TabsContent>
 
         <TabsContent value="visual" className="space-y-4">
           <VisualTab 
-            settings={gameSettings}
+            settings={tempSettings}
             onSettingChange={handleSettingChange}
           />
         </TabsContent>
 
         <TabsContent value="audio" className="space-y-4">
           <AudioTab 
-            settings={gameSettings}
+            settings={tempSettings}
             onSettingChange={handleSettingChange}
           />
         </TabsContent>
 
         <TabsContent value="music" className="space-y-4">
           <MusicTab 
-            settings={gameSettings}
+            settings={tempSettings}
             onSettingChange={handleSettingChange}
           />
         </TabsContent>

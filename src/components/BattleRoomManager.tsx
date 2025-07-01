@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBattleWebSocket } from '@/hooks/useBattleWebSocket';
 import { Plus, Users, Trophy, Zap } from 'lucide-react';
 
 interface BattleRoom {
@@ -60,7 +59,13 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setRooms(data || []);
+      // 正确处理类型转换
+      const typedRooms = (data || []).map(room => ({
+        ...room,
+        mode: room.mode as 'versus' | 'battle_royale' | 'league',
+        status: room.status as 'waiting' | 'playing' | 'finished'
+      }));
+      setRooms(typedRooms);
     } catch (error) {
       console.error('Failed to load rooms:', error);
     } finally {
