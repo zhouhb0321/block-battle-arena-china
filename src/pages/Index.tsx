@@ -1,10 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import MainMenu from '@/components/MainMenu';
-import SinglePlayerMenu from '@/components/menus/SinglePlayerMenu';
+import GameLauncher from '@/components/GameLauncher';
 import MultiPlayerMenu from '@/components/menus/MultiPlayerMenu';
-import LeagueMenu from '@/components/menus/LeagueMenu';
 import SettingsMenu from '@/components/menus/SettingsMenu';
 import AuthModal from '@/components/AuthModal';
 import NavigationBar from '@/components/NavigationBar';
@@ -19,29 +18,21 @@ const Index = () => {
   const { user, isAuthenticated } = useAuth();
   const { t } = useLanguage();
   const [currentView, setCurrentView] = useState<ViewType>('home');
-  const [gameConfig, setGameConfig] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Reset to main menu when user logs out
   useEffect(() => {
     if (!isAuthenticated && currentView !== 'home') {
       setCurrentView('home');
-      setGameConfig(null);
     }
   }, [isAuthenticated, currentView]);
 
-  const handleGameStart = (config: any) => {
-    setGameConfig(config);
-    setCurrentView('game');
-  };
-
   const handleBackToMenu = () => {
     setCurrentView('home');
-    setGameConfig(null);
   };
 
   const handleViewChange = (view: ViewType) => {
-    if (!isAuthenticated && (view === 'settings' || view === 'replays')) {
+    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked')) {
       setShowAuthModal(true);
       return;
     }
@@ -52,15 +43,16 @@ const Index = () => {
     switch (currentView) {
       case 'game':
         return (
-          <SinglePlayerMenu 
-            onGameStart={handleGameStart}
-            onBack={handleBackToMenu}
+          <GameLauncher 
+            onBackToMenu={handleBackToMenu}
           />
         );
       case 'ranked':
         return (
           <MultiPlayerMenu 
-            onGameStart={handleGameStart}
+            onGameStart={(gameType, gameMode) => {
+              console.log('Multi-player game start:', { gameType, gameMode });
+            }}
             onBack={handleBackToMenu}
           />
         );
@@ -75,9 +67,15 @@ const Index = () => {
           <ReplaySystem />
         );
       case 'profile':
-        return gameConfig ? (
-          <div>Game would be rendered here with config: {JSON.stringify(gameConfig)}</div>
-        ) : null;
+        return (
+          <div className="text-center p-8">
+            <h2 className="text-2xl font-bold mb-4">个人资料</h2>
+            <p>个人资料页面开发中...</p>
+            <Button onClick={handleBackToMenu} className="mt-4">
+              返回首页
+            </Button>
+          </div>
+        );
       case 'home':
       default:
         return (
@@ -128,14 +126,14 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('settings')}>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('replays')}>
                 <CardContent className="p-6 text-center space-y-4">
                   <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-colors">
                     <Trophy className="w-8 h-8 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">{t('menu.league') || '联赛模式'}</h3>
-                    <p className="text-sm text-muted-foreground">{t('menu.leagueDesc') || '参与排位赛'}</p>
+                    <h3 className="text-lg font-semibold">{t('menu.replays') || '回放系统'}</h3>
+                    <p className="text-sm text-muted-foreground">{t('menu.replaysDesc') || '观看和分享回放'}</p>
                   </div>
                   {!isAuthenticated && (
                     <div className="text-xs text-amber-600 font-medium">

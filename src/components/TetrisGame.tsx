@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useGameLogic } from '@/hooks/useGameLogic';
@@ -6,8 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import GameModeSelector from './GameModeSelector';
-import SinglePlayerGameArea from './game/SinglePlayerGameArea';
-import MultiPlayerGameArea from './game/MultiPlayerGameArea';
+import EnhancedGameArea from './EnhancedGameArea';
 import GameCountdown from './GameCountdown';
 import { GAME_MODES, type GameMode, type GameSettings } from '@/utils/gameTypes';
 
@@ -107,6 +107,11 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
     setShowCountdown(true);
   };
 
+  const handleTimeUp = () => {
+    console.log('Time up!');
+    gameLogic.pauseGame();
+  };
+
   useEffect(() => {
     if (gameContainerRef.current && gameStarted) {
       gameContainerRef.current.focus();
@@ -136,39 +141,46 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu }) => {
         />
       )}
       
-      {gameMode?.id === 'versus' ? (
-        <MultiPlayerGameArea
+      {/* 游戏控制按钮 */}
+      <div className="flex justify-center gap-4 mb-6">
+        <Button
+          onClick={gameLogic.pauseGame}
+          disabled={gameLogic.gameState.gameOver}
+          variant={gameLogic.gameState.paused ? "default" : "outline"}
+        >
+          {gameLogic.gameState.paused ? '继续' : '暂停'}
+        </Button>
+        <Button onClick={handleReset} variant="outline">
+          重新开始
+        </Button>
+        <Button onClick={handleBackToMenu} variant="outline">
+          返回菜单
+        </Button>
+      </div>
+
+      {/* 游戏状态提示 */}
+      {gameLogic.gameState.gameOver && (
+        <div className="text-center mb-4 p-4 bg-red-600 text-white rounded-lg">
+          <h3 className="text-xl font-bold">游戏结束</h3>
+          <p>最终得分: {gameLogic.gameState.score.toLocaleString()}</p>
+        </div>
+      )}
+
+      {gameLogic.gameState.paused && !gameLogic.gameState.gameOver && (
+        <div className="text-center mb-4 p-4 bg-yellow-600 text-white rounded-lg">
+          <h3 className="text-xl font-bold">游戏暂停</h3>
+          <p>按继续按钮或 P 键恢复游戏</p>
+        </div>
+      )}
+
+      {/* 增强的游戏区域 */}
+      {gameMode && (
+        <EnhancedGameArea
           gameState={gameLogic.gameState}
           gameSettings={gameSettings}
-          username={user?.username || t('common.guest')}
-          onPause={gameLogic.pauseGame}
-          onShare={gameLogic.shareGame}
-          onReset={handleReset}
-          onBackToMenu={handleBackToMenu}
-          opponentState={gameLogic.gameState}
-          opponentUsername="对手"
-          showCountdown={showCountdown}
-          onCountdownEnd={handleCountdownEnd}
-        />
-      ) : (
-        <SinglePlayerGameArea
-          gameState={gameLogic.gameState}
-          gameSettings={gameSettings}
-          username={user?.username || t('common.guest')}
-          onPause={gameLogic.pauseGame}
-          onShare={gameLogic.shareGame}
-          onReset={handleReset}
-          onBackToMenu={handleBackToMenu}
-          showCountdown={showCountdown}
-          onCountdownEnd={handleCountdownEnd}
-          onMoveLeft={() => gameLogic.movePiece(-1, 0)}
-          onMoveRight={() => gameLogic.movePiece(1, 0)}
-          onSoftDrop={() => gameLogic.movePiece(0, 1)}
-          onHardDrop={gameLogic.hardDrop}
-          onRotateClockwise={gameLogic.rotatePieceClockwise}
-          onRotateCounterclockwise={gameLogic.rotatePieceCounterclockwise}
-          onRotate180={rotate180}
-          onHold={gameLogic.holdCurrentPiece}
+          gameMode={gameMode}
+          onTimeUp={handleTimeUp}
+          gameStarted={gameStarted}
         />
       )}
     </div>
