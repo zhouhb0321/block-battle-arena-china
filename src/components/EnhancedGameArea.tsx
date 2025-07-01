@@ -62,6 +62,7 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
           board={gameState.board}
           currentPiece={gameState.currentPiece}
           ghostPiece={gameSettings.enableGhost ? gameState.ghostPiece : null}
+          enableGhost={gameSettings.enableGhost}
         />
       </div>
 
