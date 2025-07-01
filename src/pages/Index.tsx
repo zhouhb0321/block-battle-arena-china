@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -14,8 +13,7 @@ import AdSpace from '@/components/AdSpace';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn } from 'lucide-react';
-
-type ViewType = 'home' | 'game' | 'settings' | 'profile' | 'ranked' | 'admin' | 'income' | 'replays' | 'gameMode';
+import type { ViewType } from '@/types/navigation';
 
 const Index = () => {
   const { user, isAuthenticated } = useAuth();
