@@ -14,7 +14,8 @@ import AdSpace from '@/components/AdSpace';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn } from 'lucide-react';
-import type { ViewType } from '@/types/navigation';
+
+type ViewType = 'home' | 'game' | 'settings' | 'profile' | 'ranked' | 'admin' | 'income' | 'replays' | 'gameMode';
 
 const Index = () => {
   const { user, isAuthenticated } = useAuth();
@@ -93,7 +94,7 @@ const Index = () => {
               </p>
               {user && (
                 <p className="text-lg text-green-600 font-medium">
-                  {t('welcome.greeting', { username: user.username }) || `欢迎回来，${user.username}！`}
+                  {t('welcome.greeting') || `欢迎回来，${user.username}！`}
                 </p>
               )}
             </div>
