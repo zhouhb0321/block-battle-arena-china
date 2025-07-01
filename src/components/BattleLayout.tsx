@@ -60,13 +60,10 @@ const BattleLayout: React.FC<BattleLayoutProps> = ({
         <div className="flex gap-4">
           {/* HOLD区域 - 左侧 */}
           <div className="flex flex-col gap-4">
-            <div className="bg-gray-800 p-3 rounded">
-              <h3 className="text-white text-sm font-bold mb-2">HOLD</h3>
-              <HoldPieceDisplay 
-                piece={player1HoldPiece} 
-                cellSize={cellSize}
-              />
-            </div>
+            <HoldPieceDisplay 
+              holdPiece={player1HoldPiece} 
+              canHold={true}
+            />
             
             {/* 玩家1统计 */}
             <div className="bg-gray-800 p-3 rounded text-white text-sm">
@@ -97,7 +94,7 @@ const BattleLayout: React.FC<BattleLayoutProps> = ({
               {player1NextPieces.slice(0, 5).map((piece, index) => (
                 <PiecePreview 
                   key={index}
-                  piece={piece} 
+                  piece={piece.type} 
                   cellSize={cellSize * 0.8}
                 />
               ))}
@@ -116,13 +113,10 @@ const BattleLayout: React.FC<BattleLayoutProps> = ({
         <div className="flex gap-4">
           {/* HOLD区域 - 左侧 */}
           <div className="flex flex-col gap-4">
-            <div className="bg-gray-800 p-3 rounded">
-              <h3 className="text-white text-sm font-bold mb-2">HOLD</h3>
-              <HoldPieceDisplay 
-                piece={player2HoldPiece} 
-                cellSize={cellSize}
-              />
-            </div>
+            <HoldPieceDisplay 
+              holdPiece={player2HoldPiece} 
+              canHold={true}
+            />
             
             {/* 玩家2统计 */}
             <div className="bg-gray-800 p-3 rounded text-white text-sm">
@@ -153,7 +147,7 @@ const BattleLayout: React.FC<BattleLayoutProps> = ({
               {player2NextPieces.slice(0, 5).map((piece, index) => (
                 <PiecePreview 
                   key={index}
-                  piece={piece} 
+                  piece={piece.type} 
                   cellSize={cellSize * 0.8}
                 />
               ))}
