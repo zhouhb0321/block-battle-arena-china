@@ -42,13 +42,16 @@ export const useUserSettings = () => {
     setLoading(true);
     
     if (!user || user.isGuest) {
+      console.log('加载游客设置');
       const savedSettings = localStorage.getItem('tetris_settings');
       if (savedSettings) {
         try {
           const parsed = JSON.parse(savedSettings);
-          setSettings({ ...DEFAULT_SETTINGS, ...parsed });
+          const mergedSettings = { ...DEFAULT_SETTINGS, ...parsed };
+          setSettings(mergedSettings);
+          console.log('游客设置加载成功:', mergedSettings);
         } catch (error) {
-          console.error('Error parsing saved settings:', error);
+          console.error('解析游客设置失败:', error);
           setSettings(DEFAULT_SETTINGS);
         }
       } else {
@@ -59,7 +62,7 @@ export const useUserSettings = () => {
     }
 
     try {
-      console.log('Loading settings for user:', user.id);
+      console.log('加载用户设置，用户ID:', user.id);
       const { data, error } = await supabase
         .from('user_settings')
         .select('*')
@@ -67,7 +70,7 @@ export const useUserSettings = () => {
         .maybeSingle();
 
       if (error) {
-        console.error('Error loading settings:', error);
+        console.error('加载设置失败:', error);
         toast.error('加载设置失败: ' + error.message);
         setSettings(DEFAULT_SETTINGS);
         setLoading(false);
@@ -75,6 +78,7 @@ export const useUserSettings = () => {
       }
 
       if (data) {
+        console.log('从数据库加载的设置:', data);
         const loadedSettings: GameSettings = {
           das: data.das,
           arr: data.arr,
@@ -88,13 +92,13 @@ export const useUserSettings = () => {
           ghostOpacity: data.ghost_opacity || 50
         };
         setSettings(loadedSettings);
-        console.log('Settings loaded successfully:', loadedSettings);
+        console.log('用户设置加载成功:', loadedSettings);
       } else {
-        // No settings found, create default ones
+        console.log('用户无设置记录，创建默认设置');
         await createDefaultSettings();
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
+      console.error('加载设置时出错:', error);
       setSettings(DEFAULT_SETTINGS);
       toast.error('加载设置时出现错误');
     } finally {
@@ -106,7 +110,7 @@ export const useUserSettings = () => {
     if (!user || user.isGuest) return;
     
     try {
-      console.log('Creating default settings for user:', user.id);
+      console.log('为用户创建默认设置:', user.id);
       const { error } = await supabase
         .from('user_settings')
         .insert({
@@ -124,64 +128,99 @@ export const useUserSettings = () => {
         });
 
       if (error) {
-        console.error('Error creating default settings:', error);
+        console.error('创建默认设置失败:', error);
         toast.error('创建默认设置失败: ' + error.message);
       } else {
         setSettings(DEFAULT_SETTINGS);
-        console.log('Default settings created successfully');
+        console.log('默认设置创建成功');
+        toast.success('默认设置已创建');
       }
     } catch (error) {
-      console.error('Error creating default settings:', error);
+      console.error('创建默认设置时出错:', error);
       toast.error('创建默认设置时出现错误');
     }
   };
 
   const saveSettings = async (newSettings: Partial<GameSettings>) => {
     const updatedSettings = { ...settings, ...newSettings };
+    console.log('保存设置 - 更新后的设置:', updatedSettings);
+    
+    // 立即更新本地状态
     setSettings(updatedSettings);
 
     if (!user || user.isGuest) {
+      console.log('保存游客设置到本地存储');
       localStorage.setItem('tetris_settings', JSON.stringify(updatedSettings));
       toast.success('设置已保存到本地');
       return;
     }
 
     try {
-      console.log('Saving settings for user:', user.id, updatedSettings);
+      console.log('保存用户设置到数据库，用户ID:', user.id);
       
-      // 使用 upsert 替代 insert，避免重复键错误
-      const { error } = await supabase
+      // 首先检查是否存在记录
+      const { data: existingData } = await supabase
         .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          das: updatedSettings.das,
-          arr: updatedSettings.arr,
-          sdf: updatedSettings.sdf,
-          controls: updatedSettings.controls,
-          enable_ghost: updatedSettings.enableGhost,
-          enable_sound: updatedSettings.enableSound,
-          master_volume: updatedSettings.masterVolume,
-          background_music: updatedSettings.backgroundMusic,
-          music_volume: updatedSettings.musicVolume,
-          ghost_opacity: updatedSettings.ghostOpacity,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error saving settings:', error);
-        toast.error('保存设置失败: ' + error.message);
-        // Revert local changes if save failed
-        setSettings(settings);
-        throw error;
+      let result;
+      
+      if (existingData) {
+        // 更新现有记录
+        console.log('更新现有设置记录');
+        result = await supabase
+          .from('user_settings')
+          .update({
+            das: updatedSettings.das,
+            arr: updatedSettings.arr,
+            sdf: updatedSettings.sdf,
+            controls: updatedSettings.controls,
+            enable_ghost: updatedSettings.enableGhost,
+            enable_sound: updatedSettings.enableSound,
+            master_volume: updatedSettings.masterVolume,
+            background_music: updatedSettings.backgroundMusic,
+            music_volume: updatedSettings.musicVolume,
+            ghost_opacity: updatedSettings.ghostOpacity,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
       } else {
+        // 插入新记录
+        console.log('插入新设置记录');
+        result = await supabase
+          .from('user_settings')
+          .insert({
+            user_id: user.id,
+            das: updatedSettings.das,
+            arr: updatedSettings.arr,
+            sdf: updatedSettings.sdf,
+            controls: updatedSettings.controls,
+            enable_ghost: updatedSettings.enableGhost,
+            enable_sound: updatedSettings.enableSound,
+            master_volume: updatedSettings.masterVolume,
+            background_music: updatedSettings.backgroundMusic,
+            music_volume: updatedSettings.musicVolume,
+            ghost_opacity: updatedSettings.ghostOpacity
+          });
+      }
+
+      if (result.error) {
+        console.error('保存设置失败:', result.error);
+        toast.error('保存设置失败: ' + result.error.message);
+        // 回滚本地状态
+        setSettings(settings);
+        throw result.error;
+      } else {
+        console.log('设置保存成功');
         toast.success('设置已成功保存');
-        console.log('Settings saved successfully');
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
+      console.error('保存设置时出错:', error);
       toast.error('保存设置时出现错误');
+      // 回滚本地状态
+      setSettings(settings);
       throw error;
     }
   };

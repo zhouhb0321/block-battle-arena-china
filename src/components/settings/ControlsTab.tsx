@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import type { GameSettings } from '@/utils/gameTypes';
 
 interface ControlsTabProps {
@@ -22,6 +23,7 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
     const keyMap: { [key: string]: string } = {
       'ArrowLeft': '←', 'ArrowRight': '→', 'ArrowUp': '↑', 'ArrowDown': '↓',
       'Space': '空格', 'KeyZ': 'Z', 'KeyX': 'X', 'KeyC': 'C', 'KeyA': 'A',
+      'KeyS': 'S', 'KeyD': 'D', 'KeyQ': 'Q', 'KeyW': 'W', 'KeyE': 'E',
       'KeyB': 'B', 'Escape': 'Esc', 'Enter': '回车', 'Tab': 'Tab',
       'ShiftLeft': '左Shift', 'ShiftRight': '右Shift',
       'ControlLeft': '左Ctrl', 'ControlRight': '右Ctrl'
@@ -42,6 +44,80 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
     backToMenu: '⬅'
   };
 
+  const controlLabels = {
+    moveLeft: '左移', 
+    moveRight: '右移', 
+    softDrop: '软降', 
+    hardDrop: '硬降',
+    rotateClockwise: '顺时针旋转', 
+    rotateCounterclockwise: '逆时针旋转',
+    rotate180: '180°旋转', 
+    hold: '暂存', 
+    pause: '暂停', 
+    backToMenu: '返回菜单'
+  };
+
+  const handleKeyBinding = (controlName: string, newKey: string) => {
+    console.log('更新键位绑定:', controlName, newKey);
+    
+    // 检查是否与其他键位冲突
+    const conflictKey = Object.entries(settings.controls).find(
+      ([key, value]) => key !== controlName && value === newKey
+    );
+    
+    if (conflictKey) {
+      // 交换键位
+      const conflictKeyName = conflictKey[0] as keyof typeof settings.controls;
+      const oldValue = settings.controls[controlName as keyof typeof settings.controls];
+      
+      const newControls = {
+        ...settings.controls,
+        [controlName]: newKey,
+        [conflictKeyName]: oldValue
+      };
+      
+      onSettingChange('controls', newControls);
+      
+      const conflictLabel = controlLabels[conflictKeyName as keyof typeof controlLabels];
+      const currentLabel = controlLabels[controlName as keyof typeof controlLabels];
+      console.log(`键位已交换: ${currentLabel} 和 ${conflictLabel}`);
+    } else {
+      // 直接更新
+      const newControls = {
+        ...settings.controls,
+        [controlName]: newKey
+      };
+      onSettingChange('controls', newControls);
+      console.log('键位已更新:', controlName, newKey);
+    }
+  };
+
+  // 键盘事件处理
+  React.useEffect(() => {
+    if (!recordingKey) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      console.log('录制到按键:', event.code);
+      handleKeyBinding(recordingKey, event.code);
+      onKeyRecord(''); // 停止录制
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    
+    // 5秒后自动停止录制
+    const timeout = setTimeout(() => {
+      onKeyRecord('');
+    }, 5000);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      clearTimeout(timeout);
+    };
+  }, [recordingKey]);
+
   return (
     <Card className="bg-gray-800 border-gray-700">
       <CardHeader>
@@ -52,18 +128,7 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries({
-            moveLeft: '左移', 
-            moveRight: '右移', 
-            softDrop: '软降', 
-            hardDrop: '硬降',
-            rotateClockwise: '顺时针旋转', 
-            rotateCounterclockwise: '逆时针旋转',
-            rotate180: '180°旋转', 
-            hold: '暂存', 
-            pause: '暂停', 
-            backToMenu: '返回菜单'
-          }).map(([key, label]) => (
+          {Object.entries(controlLabels).map(([key, label]) => (
             <div key={key} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
               <div className="flex items-center gap-3">
                 <span className="text-xl">{controlIcons[key as keyof typeof controlIcons]}</span>
@@ -88,18 +153,16 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
 
         {recordingKey && (
           <div className="bg-blue-900/50 border border-blue-500/50 p-4 rounded-lg">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline" className="bg-blue-600 text-white border-blue-400">
+                正在录制
+              </Badge>
               <span className="text-blue-200">
-                正在为 <strong>{Object.entries({
-                  moveLeft: '左移', moveRight: '右移', softDrop: '软降', hardDrop: '硬降',
-                  rotateClockwise: '顺时针旋转', rotateCounterclockwise: '逆时针旋转',
-                  rotate180: '180°旋转', hold: '暂存', pause: '暂停', backToMenu: '返回菜单'
-                }).find(([k]) => k === recordingKey)?.[1]}</strong> 录制按键...
+                正在为 <strong>{controlLabels[recordingKey as keyof typeof controlLabels]}</strong> 录制按键...
               </span>
             </div>
-            <p className="text-blue-300 text-sm mt-2">
-              请按下您想要设置的按键，或等待5秒自动取消。
+            <p className="text-blue-300 text-sm">
+              请按下您想要设置的按键，或等待5秒自动取消。如与其他按键冲突将自动交换。
             </p>
           </div>
         )}

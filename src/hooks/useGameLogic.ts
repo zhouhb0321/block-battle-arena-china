@@ -53,6 +53,7 @@ export const useGameLogic = (
   const lockDelayTime = useRef<number>(0);
   const [lockDelay, setLockDelay] = useState(false);
   const [lastAction, setLastAction] = useState<'rotate' | 'move' | null>(null);
+  const isHardDropping = useRef(false);
 
   // Helper function to create GamePiece from TetrominoType
   const createGamePieceFromType = useCallback((pieceType: TetrominoType, x: number = 4, y: number = 0): GamePiece => {
@@ -115,10 +116,11 @@ export const useGameLogic = (
     
     setLockDelay(false);
     lockDelayTime.current = 0;
+    isHardDropping.current = false;
   }, [createGamePieceFromType]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
-    if (!gameState.currentPiece || gameState.gameOver) return false;
+    if (!gameState.currentPiece || gameState.gameOver || isHardDropping.current) return false;
 
     const newPiece = {
       ...gameState.currentPiece,
@@ -151,7 +153,7 @@ export const useGameLogic = (
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, lockDelay]);
 
   const rotatePieceClockwise = useCallback(() => {
-    if (!gameState.currentPiece || gameState.gameOver) return;
+    if (!gameState.currentPiece || gameState.gameOver || isHardDropping.current) return;
 
     const rotated = rotatePiece(gameState.currentPiece.type, true);
     const newRotation = (gameState.currentPiece.rotation + 1) % 4;
@@ -183,7 +185,7 @@ export const useGameLogic = (
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
   const rotatePieceCounterclockwise = useCallback(() => {
-    if (!gameState.currentPiece || gameState.gameOver) return;
+    if (!gameState.currentPiece || gameState.gameOver || isHardDropping.current) return;
 
     const rotated = rotatePiece(gameState.currentPiece.type, false);
     const newRotation = (gameState.currentPiece.rotation + 3) % 4;
@@ -214,46 +216,89 @@ export const useGameLogic = (
     }
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
-  // 修复硬降功能 - 立即降落到底部并锁定
+  // 完全重写硬降功能 - 确保立即执行
   const hardDrop = useCallback(() => {
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused) return;
+    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
-    console.log('Hard drop started, current piece position:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
+    console.log('硬降开始 - 当前方块位置:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
     
-    let newY = gameState.currentPiece.y;
-    // 找到最低的有效位置
+    // 设置硬降状态，防止其他操作干扰
+    isHardDropping.current = true;
+    
+    // 计算最终位置
+    let finalY = gameState.currentPiece.y;
     while (isValidPosition(gameState.board, {
       ...gameState.currentPiece,
-      y: newY + 1
+      y: finalY + 1
     })) {
-      newY++;
+      finalY++;
     }
     
-    const dropDistance = newY - gameState.currentPiece.y;
-    console.log('Hard drop target position:', newY, 'drop distance:', dropDistance);
+    const dropDistance = finalY - gameState.currentPiece.y;
+    console.log('硬降距离:', dropDistance, '最终位置:', finalY);
     
-    // 立即更新方块位置到最终位置
-    const finalPiece = { ...gameState.currentPiece, y: newY };
+    // 立即更新方块位置并锁定
+    const finalPiece = { ...gameState.currentPiece, y: finalY };
     
-    // 更新状态并立即锁定
+    // 检查T-Spin
+    const tSpinType = checkTSpin(gameState.board, finalPiece, lastAction || 'move');
+    
+    // 放置方块并消除行
+    const newBoard = placePiece(gameState.board, finalPiece);
+    const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
+    
+    // 计算得分和连击
+    const newCombo = linesCleared > 0 ? gameState.combo! + 1 : -1;
+    const isSpecialClear = tSpinType !== null || linesCleared === 4;
+    const newB2B = isSpecialClear ? gameState.b2b! + 1 : (linesCleared > 0 ? 0 : gameState.b2b!);
+    
+    const lineScore = calculateScore(linesCleared, gameState.level, !!tSpinType, gameState.b2b! > 0, newCombo);
+    const attackValue = calculateAttackLines(linesCleared, !!tSpinType, gameState.b2b! > 0, newCombo);
+    
+    // 立即更新游戏状态
     setGameState(prev => ({
       ...prev,
-      currentPiece: finalPiece,
+      board: clearedBoard,
+      currentPiece: null,
       ghostPiece: null,
-      score: prev.score + dropDistance * 2 // 硬降得分
+      lines: prev.lines + linesCleared,
+      combo: newCombo,
+      b2b: newB2B,
+      score: prev.score + lineScore + (dropDistance * 2), // 硬降得分
+      attack: prev.attack! + attackValue,
+      level: Math.floor((prev.lines + linesCleared) / 40) + 1,
+      clearingLines: []
     }));
     
-    // 立即锁定方块
+    // 显示特殊消除提示
+    if (tSpinType) {
+      toast.success(`${tSpinType}!${gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : ''}`, { duration: 2000 });
+    } else if (linesCleared === 4) {
+      toast.success(`Tetris!${gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : ''}`, { duration: 2000 });
+    }
+    
+    if (newCombo > 0) {
+      toast.success(`${newCombo + 1} 连击! +${attackValue} 攻击`, { duration: 1500 });
+    }
+    
+    // 重置状态并生成新方块
+    setLastAction(null);
+    setLockDelay(false);
+    lockDelayTime.current = 0;
+    
+    // 短暂延迟后生成新方块
     setTimeout(() => {
-      console.log('Locking piece after hard drop');
-      lockPiece();
-    }, 10);
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
+      isHardDropping.current = false;
+      spawnNewPiece();
+    }, 50);
+    
+    console.log('硬降完成 - 方块已锁定，准备生成新方块');
+  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, gameState.gameOver, gameState.paused, lastAction, gameState.combo, gameState.b2b, spawnNewPiece]);
 
   const lockPiece = useCallback(() => {
-    if (!gameState.currentPiece) return;
+    if (!gameState.currentPiece || isHardDropping.current) return;
 
-    console.log('Locking piece at position:', gameState.currentPiece.x, gameState.currentPiece.y);
+    console.log('锁定方块位置:', gameState.currentPiece.x, gameState.currentPiece.y);
     const tSpinType = checkTSpin(gameState.board, gameState.currentPiece, lastAction || 'move');
     const newBoard = placePiece(gameState.board, gameState.currentPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
@@ -294,7 +339,7 @@ export const useGameLogic = (
   }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, lastAction, gameState.combo, gameState.b2b, spawnNewPiece]);
 
   const holdCurrentPiece = useCallback(() => {
-    if (!gameState.currentPiece || !gameState.canHold || gameState.gameOver) return;
+    if (!gameState.currentPiece || !gameState.canHold || gameState.gameOver || isHardDropping.current) return;
 
     if (gameState.holdPiece) {
       const newPiece = createGamePieceFromType(gameState.holdPiece.type);
@@ -321,7 +366,8 @@ export const useGameLogic = (
   }, [gameState.currentPiece, gameState.holdPiece, gameState.canHold, gameState.gameOver, gameState.board, spawnNewPiece, createGamePieceFromType]);
 
   const startGame = useCallback(() => {
-    console.log('Starting game...');
+    console.log('开始游戏...');
+    isHardDropping.current = false;
     setGameState(prev => ({
       ...prev,
       paused: false,
@@ -335,7 +381,7 @@ export const useGameLogic = (
         if (prev.nextPieces.length === 0) {
           const sevenBag = generateSevenBag();
           const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
-          console.log('Initializing seven bag for game start:', gamePieces.map(p => p.type.name));
+          console.log('初始化七袋系统:', gamePieces.map(p => p.type.name));
           return { ...prev, nextPieces: gamePieces };
         }
         return prev;
@@ -351,7 +397,8 @@ export const useGameLogic = (
   }, []);
 
   const resetGame = useCallback(() => {
-    console.log('Resetting game...');
+    console.log('重置游戏...');
+    isHardDropping.current = false;
     setGameState({
       board: Array(20).fill(null).map(() => Array(10).fill(0)),
       currentPiece: null,
@@ -380,14 +427,14 @@ export const useGameLogic = (
   }, []);
 
   const shareGame = useCallback(() => {
-    console.log('Sharing game...');
+    console.log('分享游戏...');
     toast.success('游戏分享功能即将推出！');
   }, []);
 
   // Game loop
   useEffect(() => {
     const gameLoop = (timestamp: number) => {
-      if (gameState.gameOver || gameState.paused) {
+      if (gameState.gameOver || gameState.paused || isHardDropping.current) {
         gameLoopRef.current = requestAnimationFrame(gameLoop);
         return;
       }

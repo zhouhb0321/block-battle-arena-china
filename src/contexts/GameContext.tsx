@@ -1,30 +1,7 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import type { GameSettings } from '@/utils/gameTypes';
-
-const DEFAULT_SETTINGS: GameSettings = {
-  das: 167,
-  arr: 33,
-  sdf: 20,
-  controls: {
-    moveLeft: 'ArrowLeft',
-    moveRight: 'ArrowRight',
-    softDrop: 'ArrowDown',
-    hardDrop: 'Space',
-    rotateClockwise: 'ArrowUp',
-    rotateCounterclockwise: 'KeyZ',
-    rotate180: 'KeyA',
-    hold: 'KeyC',
-    pause: 'Escape',
-    backToMenu: 'KeyB'
-  },
-  enableGhost: true,
-  enableSound: true,
-  masterVolume: 50,
-  backgroundMusic: '',
-  musicVolume: 30,
-  ghostOpacity: 50
-};
 
 interface GameContextType {
   gameSettings: GameSettings;
@@ -33,31 +10,59 @@ interface GameContextType {
   resetGame: () => void;
   pauseGame: () => void;
   resumeGame: () => void;
+  refreshSettings: () => void;
 }
 
 const GameContext = createContext<GameContextType | null>(null);
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [gameSettings, setGameSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const { settings, saveSettings, reloadSettings } = useUserSettings();
+  const [gameSettings, setGameSettings] = useState<GameSettings>(settings);
 
-  const updateSettings = (settings: Partial<GameSettings>) => {
-    setGameSettings(prev => ({ ...prev, ...settings }));
+  // 同步用户设置到游戏设置
+  useEffect(() => {
+    console.log('同步用户设置到游戏设置:', settings);
+    setGameSettings(settings);
+  }, [settings]);
+
+  const updateSettings = async (newSettings: Partial<GameSettings>) => {
+    console.log('更新游戏设置:', newSettings);
+    
+    // 立即更新本地状态
+    const updatedSettings = { ...gameSettings, ...newSettings };
+    setGameSettings(updatedSettings);
+    
+    try {
+      // 保存到数据库/本地存储
+      await saveSettings(newSettings);
+      console.log('设置已保存并同步');
+    } catch (error) {
+      console.error('保存设置失败:', error);
+      // 如果保存失败，回滚本地状态
+      setGameSettings(gameSettings);
+      throw error;
+    }
   };
 
-  const updateGameSettings = (settings: Partial<GameSettings>) => {
-    setGameSettings(prev => ({ ...prev, ...settings }));
+  const updateGameSettings = async (newSettings: Partial<GameSettings>) => {
+    await updateSettings(newSettings);
+  };
+
+  const refreshSettings = async () => {
+    console.log('刷新设置');
+    await reloadSettings();
   };
 
   const resetGame = () => {
-    console.log('Game reset');
+    console.log('游戏重置');
   };
 
   const pauseGame = () => {
-    console.log('Game paused');
+    console.log('游戏暂停');
   };
 
   const resumeGame = () => {
-    console.log('Game resumed');
+    console.log('游戏继续');
   };
 
   return (
@@ -67,7 +72,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       updateGameSettings,  
       resetGame,
       pauseGame,
-      resumeGame
+      resumeGame,
+      refreshSettings
     }}>
       {children}
     </GameContext.Provider>
