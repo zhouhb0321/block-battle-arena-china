@@ -22,12 +22,12 @@ const GameCountdown: React.FC<GameCountdownProps> = ({ onCountdownEnd, show }) =
             setTimeout(() => {
               setIsVisible(false);
               onCountdownEnd();
-            }, 500);
+            }, 800);
             return 0;
           }
           return prev - 1;
         });
-      }, 800);
+      }, 1000);
 
       return () => clearInterval(timer);
     }
@@ -37,12 +37,28 @@ const GameCountdown: React.FC<GameCountdownProps> = ({ onCountdownEnd, show }) =
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
-      <div className="text-white text-8xl font-bold drop-shadow-2xl animate-bounce">
+      <div className="relative">
         <div 
-          className={`transition-all duration-300 ${count > 0 ? 'scale-110' : 'scale-125'}`}
+          className={`text-white font-bold transition-all duration-300 ${
+            count > 0 ? 'text-6xl animate-bounce' : 'text-7xl animate-pulse'
+          }`}
           style={{
-            textShadow: '0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.6)',
-            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.8))'
+            textShadow: '0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.6), 0 4px 8px rgba(0,0,0,0.8)',
+            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.8))',
+            transform: count > 0 ? 'scale(1.1)' : 'scale(1.2)',
+          }}
+        >
+          {count > 0 ? count : 'GO!'}
+        </div>
+        
+        {/* 添加脉冲效果 */}
+        <div 
+          className={`absolute inset-0 text-white font-bold opacity-30 ${
+            count > 0 ? 'text-6xl animate-ping' : 'text-7xl animate-ping'
+          }`}
+          style={{
+            textShadow: '0 0 20px rgba(255,255,255,0.8)',
+            transform: count > 0 ? 'scale(1.1)' : 'scale(1.2)',
           }}
         >
           {count > 0 ? count : 'GO!'}

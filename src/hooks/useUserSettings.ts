@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 const DEFAULT_SETTINGS: GameSettings = {
   das: 167,
-  arr: 33,
+  arr: 100, // 修改为100ms
   sdf: 20,
   controls: {
     moveLeft: 'ArrowLeft',

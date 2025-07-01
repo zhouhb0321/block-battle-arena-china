@@ -258,16 +258,17 @@ export const createGhostPiece = (
   };
 };
 
-// T-Spin检测
+// 改进T-Spin检测 - 包含T-Spin Mini检测
 export const checkTSpin = (
   board: number[][],
   piece: GamePiece,
   lastAction: 'rotate' | 'move'
-): string | null => {
+): { type: string; isMini: boolean } | null => {
   if (piece.type.name !== 'T' || lastAction !== 'rotate') {
     return null;
   }
 
+  // T型方块的四个角落位置
   const corners = [
     [piece.x, piece.y], // 左上
     [piece.x + 2, piece.y], // 右上
@@ -276,36 +277,59 @@ export const checkTSpin = (
   ];
 
   let filledCorners = 0;
-  corners.forEach(([x, y]) => {
+  let filledCornerIndices: number[] = [];
+  
+  corners.forEach(([x, y], index) => {
     if (x < 0 || x >= BOARD_WIDTH || y < 0 || y >= BOARD_HEIGHT || board[y]?.[x] !== 0) {
       filledCorners++;
+      filledCornerIndices.push(index);
     }
   });
 
   if (filledCorners >= 3) {
-    return 'T-Spin';
+    // 判断是否为T-Spin Mini
+    // T-Spin Mini的条件：旋转后T型方块的旋转中心对应的两个角落都被填充
+    const rotation = piece.rotation % 4;
+    let isMini = false;
+    
+    switch (rotation) {
+      case 0: // 正向T
+        isMini = filledCornerIndices.includes(0) && filledCornerIndices.includes(1); // 上方两角
+        break;
+      case 1: // 右向T
+        isMini = filledCornerIndices.includes(1) && filledCornerIndices.includes(3); // 右方两角
+        break;
+      case 2: // 倒向T
+        isMini = filledCornerIndices.includes(2) && filledCornerIndices.includes(3); // 下方两角
+        break;
+      case 3: // 左向T
+        isMini = filledCornerIndices.includes(0) && filledCornerIndices.includes(2); // 左方两角
+        break;
+    }
+    
+    return { type: 'T-Spin', isMini };
   }
 
   return null;
 };
 
-// 修复SRS踢墙数据 - 按照官方标准实现
+// 修正SRS踢墙数据 - 限制Y轴偏移，确保不超过±1格
 export const getKickTests = (
   pieceType: string,
   fromRotation: number,
   toRotation: number
 ): { x: number; y: number }[] => {
-  // I型方块的特殊踢墙数据（官方SRS标准）
+  // I型方块的特殊踢墙数据（优化版，限制Y轴偏移）
   if (pieceType === 'I') {
     const iKickData: { [key: string]: { x: number; y: number }[] } = {
-      '0->1': [{ x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 2 }],
-      '1->0': [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 1 }, { x: -1, y: -2 }],
-      '1->2': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 2 }, { x: 2, y: -1 }],
-      '2->1': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -2, y: 0 }, { x: 1, y: -2 }, { x: -2, y: 1 }],
-      '2->3': [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 1 }, { x: -1, y: -2 }],
-      '3->2': [{ x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 2 }],
-      '3->0': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -2, y: 0 }, { x: 1, y: -2 }, { x: -2, y: 1 }],
-      '0->3': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 2 }, { x: 2, y: -1 }]
+      '0->1': [{ x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 1 }],
+      '1->0': [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 1 }, { x: -1, y: -1 }],
+      '1->2': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 1 }, { x: 2, y: -1 }],
+      '2->1': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -2, y: 0 }, { x: 1, y: -1 }, { x: -2, y: 1 }],
+      '2->3': [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 1 }, { x: -1, y: -1 }],
+      '3->2': [{ x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 1 }],
+      '3->0': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -2, y: 0 }, { x: 1, y: -1 }, { x: -2, y: 1 }],
+      '0->3': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 1 }, { x: 2, y: -1 }]
     };
     
     const key = `${fromRotation}->${toRotation}`;
@@ -317,42 +341,55 @@ export const getKickTests = (
     return [{ x: 0, y: 0 }];
   }
 
-  // 其他方块（T, S, Z, J, L）的标准SRS踢墙数据
+  // 其他方块（T, S, Z, J, L）的标准SRS踢墙数据（限制Y轴偏移）
   const normalKickData: { [key: string]: { x: number; y: number }[] } = {
-    '0->1': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 }],
-    '1->0': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
-    '1->2': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
-    '2->1': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 }],
-    '2->3': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: -2 }, { x: 1, y: -2 }],
-    '3->2': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: 2 }, { x: -1, y: 2 }],
-    '3->0': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: 2 }, { x: -1, y: 2 }],
-    '0->3': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: -2 }, { x: 1, y: -2 }]
+    '0->1': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -1 }, { x: -1, y: -1 }],
+    '1->0': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 1 }, { x: 1, y: 1 }],
+    '1->2': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 1 }, { x: 1, y: 1 }],
+    '2->1': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -1 }, { x: -1, y: -1 }],
+    '2->3': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: -1 }, { x: 1, y: -1 }],
+    '3->2': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 1 }],
+    '3->0': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 1 }],
+    '0->3': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: -1 }, { x: 1, y: -1 }]
   };
   
   const key = `${fromRotation}->${toRotation}`;
   return normalKickData[key] || [{ x: 0, y: 0 }];
 };
 
-// 计算得分 - 基于tetr.io系统
+// 重写得分计算系统 - 符合标准俄罗斯方块得分表
 export const calculateScore = (
   linesCleared: number,
   level: number,
-  isTSpin: boolean = false,
+  tSpinResult: { type: string; isMini: boolean } | null = null,
   isB2B: boolean = false,
-  combo: number = 0
+  combo: number = 0,
+  isPerfectClear: boolean = false
 ): number => {
   let baseScore = 0;
   
   if (linesCleared === 0) return 0;
   
-  // 基础分数
-  if (isTSpin) {
-    switch (linesCleared) {
-      case 1: baseScore = 800; break;
-      case 2: baseScore = 1200; break;
-      case 3: baseScore = 1600; break;
+  // 基础分数计算
+  if (tSpinResult) {
+    if (tSpinResult.isMini) {
+      // T-Spin Mini 得分
+      switch (linesCleared) {
+        case 0: baseScore = 100; break; // T-Spin Mini
+        case 1: baseScore = 200; break; // T-Spin Mini Single
+        case 2: baseScore = 400; break; // T-Spin Mini Double
+      }
+    } else {
+      // 普通 T-Spin 得分
+      switch (linesCleared) {
+        case 0: baseScore = 400; break; // T-Spin
+        case 1: baseScore = 800; break; // T-Spin Single
+        case 2: baseScore = 1200; break; // T-Spin Double
+        case 3: baseScore = 1600; break; // T-Spin Triple
+      }
     }
   } else {
+    // 普通消行得分
     switch (linesCleared) {
       case 1: baseScore = 100; break;
       case 2: baseScore = 300; break;
@@ -361,14 +398,19 @@ export const calculateScore = (
     }
   }
   
-  // Back-to-Back 加成
-  if (isB2B && (linesCleared === 4 || isTSpin)) {
+  // 全清加成
+  if (isPerfectClear) {
+    baseScore += 3500;
+  }
+  
+  // Back-to-Back 加成（+50%）
+  if (isB2B && (linesCleared === 4 || tSpinResult)) {
     baseScore = Math.floor(baseScore * 1.5);
   }
   
   // 连击加成
   if (combo > 0) {
-    baseScore += combo * 50 * level;
+    baseScore += combo * 50;
   }
   
   return baseScore * level;
@@ -377,17 +419,24 @@ export const calculateScore = (
 // 计算攻击力
 export const calculateAttackLines = (
   linesCleared: number,
-  isTSpin: boolean = false,
+  tSpinResult: { type: string; isMini: boolean } | null = null,
   isB2B: boolean = false,
   combo: number = 0
 ): number => {
   let attackLines = 0;
   
-  if (isTSpin) {
-    switch (linesCleared) {
-      case 1: attackLines = 2; break;
-      case 2: attackLines = 4; break;
-      case 3: attackLines = 6; break;
+  if (tSpinResult) {
+    if (tSpinResult.isMini) {
+      switch (linesCleared) {
+        case 1: attackLines = 0; break;
+        case 2: attackLines = 1; break;
+      }
+    } else {
+      switch (linesCleared) {
+        case 1: attackLines = 2; break;
+        case 2: attackLines = 4; break;
+        case 3: attackLines = 6; break;
+      }
     }
   } else {
     switch (linesCleared) {

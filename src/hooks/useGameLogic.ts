@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
@@ -260,19 +259,22 @@ export const useGameLogic = (
     const finalPiece = { ...gameState.currentPiece, y: dropY };
     
     // 检查T-Spin
-    const tSpinType = checkTSpin(gameState.board, finalPiece, lastAction || 'move');
+    const tSpinResult = checkTSpin(gameState.board, finalPiece, lastAction || 'move');
     
     // 立即放置方块并消除行
     const newBoard = placePiece(gameState.board, finalPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     
+    // 检查是否为全清
+    const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
+    
     // 计算得分和连击
     const newCombo = linesCleared > 0 ? gameState.combo! + 1 : -1;
-    const isSpecialClear = tSpinType !== null || linesCleared === 4;
+    const isSpecialClear = tSpinResult !== null || linesCleared === 4;
     const newB2B = isSpecialClear ? gameState.b2b! + 1 : (linesCleared > 0 ? 0 : gameState.b2b!);
     
-    const lineScore = calculateScore(linesCleared, gameState.level, !!tSpinType, gameState.b2b! > 0, newCombo);
-    const attackValue = calculateAttackLines(linesCleared, !!tSpinType, gameState.b2b! > 0, newCombo);
+    const lineScore = calculateScore(linesCleared, gameState.level, tSpinResult, gameState.b2b! > 0, newCombo, isPerfectClear);
+    const attackValue = calculateAttackLines(linesCleared, tSpinResult, gameState.b2b! > 0, newCombo);
     
     // 立即更新游戏状态
     setGameState(prev => ({
@@ -290,8 +292,14 @@ export const useGameLogic = (
     }));
     
     // 显示特殊消除提示
-    if (tSpinType) {
-      toast.success(`${tSpinType}!${gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : ''}`, { duration: 2000 });
+    if (isPerfectClear) {
+      toast.success('全清！+3500分！', { duration: 3000 });
+    }
+    
+    if (tSpinResult) {
+      const miniText = tSpinResult.isMini ? ' Mini' : '';
+      const b2bText = gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : '';
+      toast.success(`${tSpinResult.type}${miniText}!${b2bText}`, { duration: 2000 });
     } else if (linesCleared === 4) {
       toast.success(`Tetris!${gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : ''}`, { duration: 2000 });
     }
@@ -318,16 +326,19 @@ export const useGameLogic = (
     if (!gameState.currentPiece || isHardDropping.current) return;
 
     console.log('锁定方块位置:', gameState.currentPiece.x, gameState.currentPiece.y);
-    const tSpinType = checkTSpin(gameState.board, gameState.currentPiece, lastAction || 'move');
+    const tSpinResult = checkTSpin(gameState.board, gameState.currentPiece, lastAction || 'move');
     const newBoard = placePiece(gameState.board, gameState.currentPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     
+    // 检查是否为全清
+    const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
+    
     const newCombo = linesCleared > 0 ? gameState.combo! + 1 : -1;
-    const isSpecialClear = tSpinType !== null || linesCleared === 4;
+    const isSpecialClear = tSpinResult !== null || linesCleared === 4;
     const newB2B = isSpecialClear ? gameState.b2b! + 1 : (linesCleared > 0 ? 0 : gameState.b2b!);
     
-    const lineScore = calculateScore(linesCleared, gameState.level, !!tSpinType, gameState.b2b! > 0, newCombo);
-    const attackValue = calculateAttackLines(linesCleared, !!tSpinType, gameState.b2b! > 0, newCombo);
+    const lineScore = calculateScore(linesCleared, gameState.level, tSpinResult, gameState.b2b! > 0, newCombo, isPerfectClear);
+    const attackValue = calculateAttackLines(linesCleared, tSpinResult, gameState.b2b! > 0, newCombo);
     
     setGameState(prev => ({
       ...prev,
@@ -343,8 +354,15 @@ export const useGameLogic = (
       clearingLines: []
     }));
     
-    if (tSpinType) {
-      toast.success(`${tSpinType}!${gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : ''}`, { duration: 2000 });
+    // 显示特殊消除提示
+    if (isPerfectClear) {
+      toast.success('全清！+3500分！', { duration: 3000 });
+    }
+    
+    if (tSpinResult) {
+      const miniText = tSpinResult.isMini ? ' Mini' : '';
+      const b2bText = gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : '';
+      toast.success(`${tSpinResult.type}${miniText}!${b2bText}`, { duration: 2000 });
     } else if (linesCleared === 4) {
       toast.success(`Tetris!${gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : ''}`, { duration: 2000 });
     }
