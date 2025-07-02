@@ -29,6 +29,24 @@ export const translations = {
     'auth.guest_username': '游客用户名',
     'auth.guest_username_placeholder': '输入游客用户名',
     
+    // 导航相关
+    'nav.play': '开始游戏',
+    'nav.multiplayer': '多人游戏',
+    'nav.settings': '设置',
+    'nav.leaderboard': '排行榜',
+    
+    // 游戏相关
+    'game.title': '俄罗斯方块',
+    'game.game_paused': '游戏暂停',
+    'game.game_over': '游戏结束',
+    'game.final_score': '最终得分',
+    'game.lines_cleared': '消除行数',
+    'game.attack_sent': '攻击力',
+    'game.pps': 'PPS',
+    'game.apm': 'APM',
+    'game.restart': '重新开始',
+    'game.back_to_menu': '返回菜单',
+    
     // 菜单相关
     'menu.singlePlayer': '单人游戏',
     'menu.singlePlayerDesc': '挑战各种单人游戏模式',
@@ -40,6 +58,22 @@ export const translations = {
     'menu.profileDesc': '查看和编辑个人信息',
     'menu.leaderboard': '排行榜',
     'menu.leaderboardDesc': '查看全球玩家排名',
+    
+    // 多人游戏
+    'multiplayer.quick_game': '快速游戏',
+    'multiplayer.quick_game_desc': '公共房间，随机加入，像攀登塔一样挑战',
+    'multiplayer.league': '方块联盟',
+    'multiplayer.league_desc': '1v1 随机配对，5局3胜制，获得联盟分',
+    'multiplayer.custom_room': '自定义房间',
+    'multiplayer.custom_room_desc': '创建公共或私人房间，自定义规则',
+    'multiplayer.select_room': '选择或创建房间',
+    'multiplayer.battle_room': '对战房间',
+    'multiplayer.connected': '已连接',
+    'multiplayer.connecting': '连接中...',
+    'multiplayer.waiting_players': '等待其他玩家加入...',
+    'multiplayer.room_id': '房间ID',
+    'multiplayer.leave_room': '离开房间',
+    'multiplayer.enter_game': '进入游戏',
     
     // 游戏模式
     'game.sprint40': '40行竞速',
@@ -53,8 +87,6 @@ export const translations = {
     'game.start': '开始游戏',
     'game.pause': '暂停',
     'game.resume': '继续',
-    'game.restart': '重新开始',
-    'game.back_to_menu': '返回菜单',
     'game.score': '分数',
     'game.lines': '行数',
     'game.level': '等级',
@@ -73,6 +105,9 @@ export const translations = {
     'settings.reset': '重置默认',
     'settings.saved': '设置已保存',
     'settings.save_failed': '保存设置失败',
+    
+    // 管理员
+    'admin.panel': '管理面板',
     
     // 通用
     'common.start': '开始',
@@ -116,6 +151,24 @@ export const translations = {
     'auth.guest_username': 'Guest Username',
     'auth.guest_username_placeholder': 'Enter guest username',
     
+    // Navigation
+    'nav.play': 'Play',
+    'nav.multiplayer': 'Multiplayer',
+    'nav.settings': 'Settings',
+    'nav.leaderboard': 'Leaderboard',
+    
+    // Game
+    'game.title': 'Tetris',
+    'game.game_paused': 'Game Paused',
+    'game.game_over': 'Game Over',
+    'game.final_score': 'Final Score',
+    'game.lines_cleared': 'Lines Cleared',
+    'game.attack_sent': 'Attack',
+    'game.pps': 'PPS',
+    'game.apm': 'APM',
+    'game.restart': 'Restart',
+    'game.back_to_menu': 'Back to Menu',
+    
     // Menu
     'menu.singlePlayer': 'Single Player',
     'menu.singlePlayerDesc': 'Challenge various single player modes',
@@ -127,6 +180,22 @@ export const translations = {
     'menu.profileDesc': 'View and edit your profile',
     'menu.leaderboard': 'Leaderboard',
     'menu.leaderboardDesc': 'View global player rankings',
+    
+    // Multiplayer
+    'multiplayer.quick_game': 'Quick Game',
+    'multiplayer.quick_game_desc': 'Public rooms, join anytime, challenge like climbing a tower',
+    'multiplayer.league': 'Block League',
+    'multiplayer.league_desc': '1v1 random pairing, best of 5, earn league points',
+    'multiplayer.custom_room': 'Custom Room',
+    'multiplayer.custom_room_desc': 'Create public or private rooms with custom rules',
+    'multiplayer.select_room': 'Select or Create Room',
+    'multiplayer.battle_room': 'Battle Room',
+    'multiplayer.connected': 'Connected',
+    'multiplayer.connecting': 'Connecting...',
+    'multiplayer.waiting_players': 'Waiting for other players to join...',
+    'multiplayer.room_id': 'Room ID',
+    'multiplayer.leave_room': 'Leave Room',
+    'multiplayer.enter_game': 'Enter Game',
     
     // Game modes
     'game.sprint40': '40 Line Sprint',
@@ -140,8 +209,6 @@ export const translations = {
     'game.start': 'Start Game',
     'game.pause': 'Pause',
     'game.resume': 'Resume',
-    'game.restart': 'Restart',
-    'game.back_to_menu': 'Back to Menu',
     'game.score': 'Score',
     'game.lines': 'Lines',
     'game.level': 'Level',
@@ -161,6 +228,9 @@ export const translations = {
     'settings.saved': 'Settings Saved',
     'settings.save_failed': 'Failed to Save Settings',
     
+    // Admin
+    'admin.panel': 'Admin Panel',
+    
     // Common
     'common.start': 'Start',
     'common.cancel': 'Cancel',
@@ -173,10 +243,498 @@ export const translations = {
     'common.success': 'Success',
     'common.yes': 'Yes',
     'common.no': 'No'
+  },
+  es: {
+    // Auth
+    'auth.login': 'Iniciar Sesión',
+    'auth.login_desc': 'Ingresa tus credenciales para iniciar sesión',
+    'auth.register': 'Registrarse',
+    'auth.register_desc': 'Crea una nueva cuenta para empezar a jugar',
+    'auth.email': 'Email',
+    'auth.password': 'Contraseña',
+    'auth.username': 'Nombre de Usuario',
+    'auth.confirm_password': 'Confirmar Contraseña',
+    'auth.login_button': 'Entrar',
+    'auth.register_button': 'Registrarse',
+    'auth.guest_login': 'Jugar como Invitado',
+    'auth.forgot_password': '¿Olvidaste la contraseña?',
+    'auth.missing_credentials': 'Email y contraseña son requeridos',
+    'auth.missing_username': 'Nombre de usuario es requerido',
+    'auth.login_success': 'Inicio de sesión exitoso',
+    'auth.signup_success': '¡Registro exitoso! Verifica tu email para activar tu cuenta.',
+    'auth.login_failed': 'Error al iniciar sesión, intenta de nuevo',
+    'auth.username_required': 'Por favor ingresa un nombre de usuario',
+    'auth.guest_login_success': 'Inicio de sesión como invitado exitoso',
+    'auth.need_account': '¿Necesitas crear una cuenta?',
+    'auth.already_have_account': '¿Ya tienes una cuenta?',
+    'auth.email_placeholder': 'Ingresa email',
+    'auth.password_placeholder': 'Ingresa contraseña',
+    'auth.username_placeholder': 'Ingresa nombre de usuario',
+    'auth.guest_username': 'Nombre de Invitado',
+    'auth.guest_username_placeholder': 'Ingresa nombre de invitado',
+    
+    // Navigation
+    'nav.play': 'Jugar',
+    'nav.multiplayer': 'Multijugador',
+    'nav.settings': 'Configuración',
+    'nav.leaderboard': 'Tabla de Posiciones',
+    
+    // Game
+    'game.title': 'Tetris',
+    'game.game_paused': 'Juego Pausado',
+    'game.game_over': 'Fin del Juego',
+    'game.final_score': 'Puntuación Final',
+    'game.lines_cleared': 'Líneas Eliminadas',
+    'game.attack_sent': 'Ataque',
+    'game.pps': 'PPS',
+    'game.apm': 'APM',
+    'game.restart': 'Reiniciar',
+    'game.back_to_menu': 'Volver al Menú',
+    
+    // Menu
+    'menu.singlePlayer': 'Un Jugador',
+    'menu.singlePlayerDesc': 'Desafía varios modos de un jugador',
+    'menu.multiPlayer': 'Multijugador',
+    'menu.multiPlayerDesc': 'Batalla contra otros jugadores',
+    'menu.settings': 'Configuración',
+    'menu.settingsDesc': 'Ajusta configuración y preferencias del juego',
+    'menu.profile': 'Perfil',
+    'menu.profileDesc': 'Ver y editar tu perfil',
+    'menu.leaderboard': 'Tabla de Posiciones',
+    'menu.leaderboardDesc': 'Ver clasificaciones globales de jugadores',
+    
+    // Multiplayer
+    'multiplayer.quick_game': 'Juego Rápido',
+    'multiplayer.quick_game_desc': 'Salas públicas, únete en cualquier momento, desafía como escalando una torre',
+    'multiplayer.league': 'Liga de Bloques',
+    'multiplayer.league_desc': '1v1 emparejamiento aleatorio, mejor de 5, gana puntos de liga',
+    'multiplayer.custom_room': 'Sala Personalizada',
+    'multiplayer.custom_room_desc': 'Crea salas públicas o privadas con reglas personalizadas',
+    'multiplayer.select_room': 'Seleccionar o Crear Sala',
+    'multiplayer.battle_room': 'Sala de Batalla',
+    'multiplayer.connected': 'Conectado',
+    'multiplayer.connecting': 'Conectando...',
+    'multiplayer.waiting_players': 'Esperando que se unan otros jugadores...',
+    'multiplayer.room_id': 'ID de Sala',
+    'multiplayer.leave_room': 'Salir de la Sala',
+    'multiplayer.enter_game': 'Entrar al Juego',
+    
+    // Game modes
+    'game.sprint40': 'Sprint de 40 Líneas',
+    'game.sprint40_desc': 'Elimina 40 líneas lo más rápido posible',
+    'game.endurance': 'Resistencia',
+    'game.endurance_desc': 'Ve cuánto tiempo puedes durar',
+    'game.timeAttack': 'Ataque por Tiempo',
+    'game.timeAttack_desc': 'Obtén la puntuación más alta en tiempo limitado',
+    
+    // Game interface
+    'game.start': 'Iniciar Juego',
+    'game.pause': 'Pausar',
+    'game.resume': 'Continuar',
+    'game.score': 'Puntuación',
+    'game.lines': 'Líneas',
+    'game.level': 'Nivel',
+    'game.time': 'Tiempo',
+    'game.next': 'Siguiente',
+    'game.hold': 'Retener',
+    
+    // Settings
+    'settings.title': 'Configuración del Juego',
+    'settings.timing': 'Tiempo',
+    'settings.controls': 'Controles',
+    'settings.visual': 'Visual',
+    'settings.audio': 'Audio',
+    'settings.music': 'Música',
+    'settings.save': 'Guardar Configuración',
+    'settings.reset': 'Restablecer por Defecto',
+    'settings.saved': 'Configuración Guardada',
+    'settings.save_failed': 'Error al Guardar Configuración',
+    
+    // Admin
+    'admin.panel': 'Panel de Administración',
+    
+    // Common
+    'common.start': 'Iniciar',
+    'common.cancel': 'Cancelar',
+    'common.confirm': 'Confirmar',
+    'common.save': 'Guardar',
+    'common.back': 'Volver',
+    'common.close': 'Cerrar',
+    'common.loading': 'Cargando...',
+    'common.error': 'Error',
+    'common.success': 'Éxito',
+    'common.yes': 'Sí',
+    'common.no': 'No'
+  },
+  'zh-TW': {
+    // Auth
+    'auth.login': '登入',
+    'auth.login_desc': '請輸入您的帳號資訊進行登入',
+    'auth.register': '註冊',
+    'auth.register_desc': '建立新帳號開始遊戲',
+    'auth.email': '電子郵件',
+    'auth.password': '密碼',
+    'auth.username': '使用者名稱',
+    'auth.confirm_password': '確認密碼',
+    'auth.login_button': '登入',
+    'auth.register_button': '註冊',
+    'auth.guest_login': '訪客登入',
+    'auth.forgot_password': '忘記密碼？',
+    'auth.missing_credentials': '電子郵件和密碼不能為空',
+    'auth.missing_username': '使用者名稱不能為空',
+    'auth.login_success': '登入成功',
+    'auth.signup_success': '註冊成功！請檢查電子郵件以啟用帳戶。',
+    'auth.login_failed': '登入失敗，請重試',
+    'auth.username_required': '請輸入使用者名稱',
+    'auth.guest_login_success': '訪客登入成功',
+    'auth.need_account': '需要註冊一個帳戶？',
+    'auth.already_have_account': '已有帳戶？',
+    'auth.email_placeholder': '輸入電子郵件',
+    'auth.password_placeholder': '輸入密碼',
+    'auth.username_placeholder': '輸入使用者名稱',
+    'auth.guest_username': '訪客使用者名稱',
+    'auth.guest_username_placeholder': '輸入訪客使用者名稱',
+    
+    // Navigation
+    'nav.play': '開始遊戲',
+    'nav.multiplayer': '多人遊戲',
+    'nav.settings': '設定',
+    'nav.leaderboard': '排行榜',
+    
+    // Game
+    'game.title': '俄羅斯方塊',
+    'game.game_paused': '遊戲暫停',
+    'game.game_over': '遊戲結束',
+    'game.final_score': '最終得分',
+    'game.lines_cleared': '消除行數',
+    'game.attack_sent': '攻擊力',
+    'game.pps': 'PPS',
+    'game.apm': 'APM',
+    'game.restart': '重新開始',
+    'game.back_to_menu': '返回選單',
+    
+    // Menu
+    'menu.singlePlayer': '單人遊戲',
+    'menu.singlePlayerDesc': '挑戰各種單人遊戲模式',
+    'menu.multiPlayer': '多人遊戲',
+    'menu.multiPlayerDesc': '與其他玩家進行對戰',
+    'menu.settings': '設定',
+    'menu.settingsDesc': '調整遊戲設定和偏好',
+    'menu.profile': '個人資料',
+    'menu.profileDesc': '查看和編輯個人資訊',
+    'menu.leaderboard': '排行榜',
+    'menu.leaderboardDesc': '查看全球玩家排名',
+    
+    // Multiplayer
+    'multiplayer.quick_game': '快速遊戲',
+    'multiplayer.quick_game_desc': '公共房間，隨機加入，像攀登塔一樣挑戰',
+    'multiplayer.league': '方塊聯盟',
+    'multiplayer.league_desc': '1v1 隨機配對，5局3勝制，獲得聯盟分',
+    'multiplayer.custom_room': '自定義房間',
+    'multiplayer.custom_room_desc': '建立公共或私人房間，自定義規則',
+    'multiplayer.select_room': '選擇或建立房間',
+    'multiplayer.battle_room': '對戰房間',
+    'multiplayer.connected': '已連接',
+    'multiplayer.connecting': '連接中...',
+    'multiplayer.waiting_players': '等待其他玩家加入...',
+    'multiplayer.room_id': '房間ID',
+    'multiplayer.leave_room': '離開房間',
+    'multiplayer.enter_game': '進入遊戲',
+    
+    // Game modes
+    'game.sprint40': '40行競速',
+    'game.sprint40_desc': '儘快完成40行消除',
+    'game.endurance': '耐力模式',
+    'game.endurance_desc': '看看你能堅持多久',
+    'game.timeAttack': '限時挑戰',
+    'game.timeAttack_desc': '在限定時間內獲得最高分',
+    
+    // Game interface
+    'game.start': '開始遊戲',
+    'game.pause': '暫停',
+    'game.resume': '繼續',
+    'game.score': '分數',
+    'game.lines': '行數',
+    'game.level': '等級',
+    'game.time': '時間',
+    'game.next': '下一個',
+    'game.hold': '暫存',
+    
+    // Settings
+    'settings.title': '遊戲設定',
+    'settings.timing': '手感設定',
+    'settings.controls': '鍵位設定',
+    'settings.visual': '視覺設定',
+    'settings.audio': '音效設定',
+    'settings.music': '音樂設定',
+    'settings.save': '儲存設定',
+    'settings.reset': '重置預設',
+    'settings.saved': '設定已儲存',
+    'settings.save_failed': '儲存設定失敗',
+    
+    // Admin
+    'admin.panel': '管理面板',
+    
+    // Common
+    'common.start': '開始',
+    'common.cancel': '取消',
+    'common.confirm': '確認',
+    'common.save': '儲存',
+    'common.back': '返回',
+    'common.close': '關閉',
+    'common.loading': '載入中...',
+    'common.error': '錯誤',
+    'common.success': '成功',
+    'common.yes': '是',
+    'common.no': '否'
+  },
+  ja: {
+    // Auth
+    'auth.login': 'ログイン',
+    'auth.login_desc': 'ログイン情報を入力してください',
+    'auth.register': '登録',
+    'auth.register_desc': '新しいアカウントを作成してゲームを開始',
+    'auth.email': 'メールアドレス',
+    'auth.password': 'パスワード',
+    'auth.username': 'ユーザー名',
+    'auth.confirm_password': 'パスワード確認',
+    'auth.login_button': 'サインイン',
+    'auth.register_button': '登録',
+    'auth.guest_login': 'ゲストとしてプレイ',
+    'auth.forgot_password': 'パスワードを忘れましたか？',
+    'auth.missing_credentials': 'メールアドレスとパスワードが必要です',
+    'auth.missing_username': 'ユーザー名が必要です',
+    'auth.login_success': 'ログイン成功',
+    'auth.signup_success': '登録成功！メールを確認してアカウントを有効化してください。',
+    'auth.login_failed': 'ログインに失敗しました。再試行してください',
+    'auth.username_required': 'ユーザー名を入力してください',
+    'auth.guest_login_success': 'ゲストログイン成功',
+    'auth.need_account': 'アカウントが必要ですか？',
+    'auth.already_have_account': 'すでにアカウントをお持ちですか？',
+    'auth.email_placeholder': 'メールアドレスを入力',
+    'auth.password_placeholder': 'パスワードを入力',
+    'auth.username_placeholder': 'ユーザー名を入力',
+    'auth.guest_username': 'ゲストユーザー名',
+    'auth.guest_username_placeholder': 'ゲストユーザー名を入力',
+    
+    // Navigation
+    'nav.play': 'プレイ',
+    'nav.multiplayer': 'マルチプレイヤー',
+    'nav.settings': '設定',
+    'nav.leaderboard': 'リーダーボード',
+    
+    // Game
+    'game.title': 'テトリス',
+    'game.game_paused': 'ゲーム一時停止',
+    'game.game_over': 'ゲームオーバー',
+    'game.final_score': '最終スコア',
+    'game.lines_cleared': 'ライン消去数',
+    'game.attack_sent': 'アタック',
+    'game.pps': 'PPS',
+    'game.apm': 'APM',
+    'game.restart': '再開',
+    'game.back_to_menu': 'メニューに戻る',
+    
+    // Menu
+    'menu.singlePlayer': 'シングルプレイヤー',
+    'menu.singlePlayerDesc': '様々なシングルプレイヤーモードに挑戦',
+    'menu.multiPlayer': 'マルチプレイヤー',
+    'menu.multiPlayerDesc': '他のプレイヤーとバトル',
+    'menu.settings': '設定',
+    'menu.settingsDesc': 'ゲーム設定と設定を調整',
+    'menu.profile': 'プロフィール',
+    'menu.profileDesc': 'プロフィールを表示・編集',
+    'menu.leaderboard': 'リーダーボード',
+    'menu.leaderboardDesc': 'グローバルプレイヤーランキングを表示',
+    
+    // Multiplayer
+    'multiplayer.quick_game': 'クイックゲーム',
+    'multiplayer.quick_game_desc': '公開ルーム、いつでも参加、タワーを登るようにチャレンジ',
+    'multiplayer.league': 'ブロックリーグ',
+    'multiplayer.league_desc': '1v1ランダムマッチ、5戦3勝制、リーグポイント獲得',
+    'multiplayer.custom_room': 'カスタムルーム',
+    'multiplayer.custom_room_desc': 'カスタムルールで公開または非公開ルームを作成',
+    'multiplayer.select_room': 'ルーム選択または作成',
+    'multiplayer.battle_room': 'バトルルーム',
+    'multiplayer.connected': '接続済み',
+    'multiplayer.connecting': '接続中...',
+    'multiplayer.waiting_players': '他のプレイヤーの参加を待っています...',
+    'multiplayer.room_id': 'ルームID',
+    'multiplayer.leave_room': 'ルームを退出',
+    'multiplayer.enter_game': 'ゲームに入る',
+    
+    // Game modes
+    'game.sprint40': '40ラインスプリント',
+    'game.sprint40_desc': '40ラインをできるだけ早く消去',
+    'game.endurance': 'エンデュランス',
+    'game.endurance_desc': 'どこまで続けられるか挑戦',
+    'game.timeAttack': 'タイムアタック',
+    'game.timeAttack_desc': '制限時間内で最高スコアを獲得',
+    
+    // Game interface
+    'game.start': 'ゲーム開始',
+    'game.pause': '一時停止',
+    'game.resume': '再開',
+    'game.score': 'スコア',
+    'game.lines': 'ライン',
+    'game.level': 'レベル',
+    'game.time': '時間',
+    'game.next': '次',
+    'game.hold': 'ホールド',
+    
+    // Settings
+    'settings.title': 'ゲーム設定',
+    'settings.timing': 'タイミング',
+    'settings.controls': 'コントロール',
+    'settings.visual': 'ビジュアル',
+    'settings.audio': 'オーディオ',
+    'settings.music': '音楽',
+    'settings.save': '設定を保存',
+    'settings.reset': 'デフォルトにリセット',
+    'settings.saved': '設定が保存されました',
+    'settings.save_failed': '設定の保存に失敗しました',
+    
+    // Admin
+    'admin.panel': '管理パネル',
+    
+    // Common
+    'common.start': '開始',
+    'common.cancel': 'キャンセル',
+    'common.confirm': '確認',
+    'common.save': '保存',
+    'common.back': '戻る',
+    'common.close': '閉じる',
+    'common.loading': '読み込み中...',
+    'common.error': 'エラー',
+    'common.success': '成功',
+    'common.yes': 'はい',
+    'common.no': 'いいえ'
+  },
+  ko: {
+    // Auth
+    'auth.login': '로그인',
+    'auth.login_desc': '로그인 정보를 입력하세요',
+    'auth.register': '회원가입',
+    'auth.register_desc': '새 계정을 생성하여 게임 시작',
+    'auth.email': '이메일',
+    'auth.password': '비밀번호',
+    'auth.username': '사용자명',
+    'auth.confirm_password': '비밀번호 확인',
+    'auth.login_button': '로그인',
+    'auth.register_button': '가입',
+    'auth.guest_login': '게스트로 플레이',
+    'auth.forgot_password': '비밀번호를 잊으셨나요?',
+    'auth.missing_credentials': '이메일과 비밀번호가 필요합니다',
+    'auth.missing_username': '사용자명이 필요합니다',
+    'auth.login_success': '로그인 성공',
+    'auth.signup_success': '가입 성공! 이메일을 확인하여 계정을 활성화하세요.',
+    'auth.login_failed': '로그인 실패, 다시 시도하세요',
+    'auth.username_required': '사용자명을 입력하세요',
+    'auth.guest_login_success': '게스트 로그인 성공',
+    'auth.need_account': '계정이 필요하신가요?',
+    'auth.already_have_account': '이미 계정이 있으신가요?',
+    'auth.email_placeholder': '이메일 입력',
+    'auth.password_placeholder': '비밀번호 입력',
+    'auth.username_placeholder': '사용자명 입력',
+    'auth.guest_username': '게스트 사용자명',
+    'auth.guest_username_placeholder': '게스트 사용자명 입력',
+    
+    // Navigation
+    'nav.play': '플레이',
+    'nav.multiplayer': '멀티플레이어',
+    'nav.settings': '설정',
+    'nav.leaderboard': '리더보드',
+    
+    // Game
+    'game.title': '테트리스',
+    'game.game_paused': '게임 일시정지',
+    'game.game_over': '게임 오버',
+    'game.final_score': '최종 점수',
+    'game.lines_cleared': '제거된 줄',
+    'game.attack_sent': '공격',
+    'game.pps': 'PPS',
+    'game.apm': 'APM',
+    'game.restart': '다시 시작',
+    'game.back_to_menu': '메뉴로 돌아가기',
+    
+    // Menu
+    'menu.singlePlayer': '싱글플레이어',
+    'menu.singlePlayerDesc': '다양한 싱글플레이어 모드에 도전',
+    'menu.multiPlayer': '멀티플레이어',
+    'menu.multiPlayerDesc': '다른 플레이어와 대전',
+    'menu.settings': '설정',
+    'menu.settingsDesc': '게임 설정과 환경설정 조정',
+    'menu.profile': '프로필',
+    'menu.profileDesc': '프로필 보기 및 편집',
+    'menu.leaderboard': '리더보드',
+    'menu.leaderboardDesc': '글로벌 플레이어 순위 보기',
+    
+    // Multiplayer
+    'multiplayer.quick_game': '빠른 게임',
+    'multiplayer.quick_game_desc': '공개 방, 언제든 참여, 타워 오르기 같은 도전',
+    'multiplayer.league': '블록 리그',
+    'multiplayer.league_desc': '1v1 랜덤 매칭, 5경기 3승제, 리그 포인트 획득',
+    'multiplayer.custom_room': '커스텀 방',
+    'multiplayer.custom_room_desc': '커스텀 규칙으로 공개 또는 비공개 방 생성',
+    'multiplayer.select_room': '방 선택 또는 생성',
+    'multiplayer.battle_room': '대전 방',
+    'multiplayer.connected': '연결됨',
+    'multiplayer.connecting': '연결 중...',
+    'multiplayer.waiting_players': '다른 플레이어가 참여하기를 기다리는 중...',
+    'multiplayer.room_id': '방 ID',
+    'multiplayer.leave_room': '방 나가기',
+    'multiplayer.enter_game': '게임 입장',
+    
+    // Game modes
+    'game.sprint40': '40라인 스프린트',
+    'game.sprint40_desc': '40라인을 가능한 한 빠르게 제거',
+    'game.endurance': '지구력',
+    'game.endurance_desc': '얼마나 오래 버틸 수 있는지 도전',
+    'game.timeAttack': '타임 어택',
+    'game.timeAttack_desc': '제한 시간 내에서 최고 점수 획득',
+    
+    // Game interface
+    'game.start': '게임 시작',
+    'game.pause': '일시정지',
+    'game.resume': '계속',
+    'game.score': '점수',
+    'game.lines': '라인',
+    'game.level': '레벨',
+    'game.time': '시간',
+    'game.next': '다음',
+    'game.hold': '홀드',
+    
+    // Settings
+    'settings.title': '게임 설정',
+    'settings.timing': '타이밍',
+    'settings.controls': '컨트롤',
+    'settings.visual': '비주얼',
+    'settings.audio': '오디오',
+    'settings.music': '음악',
+    'settings.save': '설정 저장',
+    'settings.reset': '기본값으로 재설정',
+    'settings.saved': '설정이 저장되었습니다',
+    'settings.save_failed': '설정 저장에 실패했습니다',
+    
+    // Admin
+    'admin.panel': '관리자 패널',
+    
+    // Common
+    'common.start': '시작',
+    'common.cancel': '취소',
+    'common.confirm': '확인',
+    'common.save': '저장',
+    'common.back': '뒤로',
+    'common.close': '닫기',
+    'common.loading': '로딩 중...',
+    'common.error': '오류',
+    'common.success': '성공',
+    'common.yes': '예',
+    'common.no': '아니오'
   }
 };
 
-export const t = (key: string, lang: string = 'zh'): string => {
-  const langTranslations = translations[lang as keyof typeof translations] || translations.zh;
+export const t = (key: string, lang: string = 'en'): string => {
+  const langTranslations = translations[lang as keyof typeof translations] || translations.en;
   return langTranslations[key as keyof typeof langTranslations] || key;
 };

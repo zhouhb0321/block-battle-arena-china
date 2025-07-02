@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface GameOverlayProps {
   paused: boolean;
@@ -25,14 +26,15 @@ const GameOverlay: React.FC<GameOverlayProps> = ({
   onReset,
   onBackToMenu
 }) => {
+  const { t } = useLanguage();
   if (paused) {
     return (
-      <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center rounded-lg">
+      <div className="absolute inset-0 bg-black/75 flex items-center justify-center rounded-lg">
         <div className="text-white text-center">
-          <div className="text-2xl font-bold mb-4">游戏暂停</div>
+          <div className="text-2xl font-bold mb-4">{t('game.game_paused')}</div>
           {onBackToMenu && (
             <Button onClick={onBackToMenu} variant="outline" className="mb-2">
-              返回菜单
+              {t('game.back_to_menu')}
             </Button>
           )}
         </div>
@@ -42,23 +44,23 @@ const GameOverlay: React.FC<GameOverlayProps> = ({
 
   if (gameOver) {
     return (
-      <div className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center rounded-lg">
-        <div className="text-white text-center p-6 bg-gray-800 rounded-lg">
-          <div className="text-3xl mb-4 font-bold text-red-400">游戏结束</div>
+      <div className="absolute inset-0 bg-black/90 flex items-center justify-center rounded-lg">
+        <div className="text-white text-center p-6 bg-card rounded-lg border border-border">
+          <div className="text-3xl mb-4 font-bold text-game-red">{t('game.game_over')}</div>
           <div className="space-y-2 mb-6">
-            <div>最终得分: <span className="font-bold text-yellow-400">{score.toLocaleString()}</span></div>
-            <div>消除行数: <span className="font-bold">{lines}</span></div>
-            <div>攻击力: <span className="font-bold text-red-400">{totalAttack}</span></div>
-            <div>PPS: <span className="font-bold">{pps.toFixed(2)}</span></div>
-            <div>APM: <span className="font-bold">{apm.toFixed(1)}</span></div>
+            <div>{t('game.final_score')}: <span className="font-bold text-game-yellow">{score.toLocaleString()}</span></div>
+            <div>{t('game.lines_cleared')}: <span className="font-bold">{lines}</span></div>
+            <div>{t('game.attack_sent')}: <span className="font-bold text-game-red">{totalAttack}</span></div>
+            <div>{t('game.pps')}: <span className="font-bold">{pps.toFixed(2)}</span></div>
+            <div>{t('game.apm')}: <span className="font-bold">{apm.toFixed(1)}</span></div>
           </div>
           <div className="flex gap-2 justify-center">
-            <Button onClick={onReset} className="bg-blue-600 hover:bg-blue-700">
-              重新开始
+            <Button onClick={onReset} className="bg-game-blue hover:bg-game-blue/80">
+              {t('game.restart')}
             </Button>
             {onBackToMenu && (
               <Button onClick={onBackToMenu} variant="outline">
-                返回菜单
+                {t('game.back_to_menu')}
               </Button>
             )}
           </div>
