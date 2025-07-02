@@ -4,8 +4,8 @@ import type { GameSettings } from '@/utils/gameTypes';
 
 export const useKeyRecording = (
   tempSettings: GameSettings,
-  setTempSettings: React.Dispatch<React.SetStateAction<GameSettings>>,
-  setHasChanges: (value: boolean) => void
+  updateSetting: (key: keyof GameSettings, value: any) => void,
+  setHasChanges: () => void
 ) => {
   const [recordingKey, setRecordingKey] = useState<string | null>(null);
 
@@ -26,13 +26,13 @@ export const useKeyRecording = (
         [existingKey]: oldKeyCode
       };
       
-      setTempSettings(prev => ({ ...prev, controls: newControls }));
+      updateSetting('controls', newControls);
     } else {
       const newControls = { ...tempSettings.controls, [controlName]: keyCode };
-      setTempSettings(prev => ({ ...prev, controls: newControls }));
+      updateSetting('controls', newControls);
     }
     
-    setHasChanges(true);
+    setHasChanges();
   };
 
   const handleKeyRecord = (controlName: string) => {

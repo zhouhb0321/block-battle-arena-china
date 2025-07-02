@@ -33,8 +33,8 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
 
   const { recordingKey, handleKeyRecord } = useKeyRecording(
     tempSettings,
-    setTempSettings,
-    setHasChanges
+    (key, value) => setTempSettings(prev => ({ ...prev, [key]: value })),
+    () => setHasChanges(true)
   );
 
   const handleSettingChange = (key: string, value: any) => {
