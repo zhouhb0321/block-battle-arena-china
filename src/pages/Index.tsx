@@ -79,110 +79,168 @@ const Index = () => {
       case 'home':
       default:
         return (
-          <div className="space-y-8">
-            {/* Welcome Section */}
-            <div className="text-center space-y-4">
-              <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {t('welcome.title') || 'Tetris Game'}
+          <div className="space-y-12 animate-fade-in">
+            {/* Hero Section */}
+            <div className="text-center space-y-6 py-12">
+              <h1 className="text-5xl md:text-7xl font-bold bg-game-gradient-primary bg-clip-text text-transparent">
+                Tetris Gaming Platform
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                {t('welcome.subtitle') || '经典俄罗斯方块游戏，支持单人和多人模式'}
+              <p className="text-xl md:text-2xl text-foreground/80 max-w-3xl mx-auto leading-relaxed">
+                专业竞技 • 社交互动 • 技能提升 • 全球排行
               </p>
               {user && (
-                <p className="text-lg text-green-600 font-medium">
-                  {t('welcome.greeting') || `欢迎回来，${user.username}！`}
-                </p>
+                <div className="inline-block px-6 py-3 bg-game-gradient-primary rounded-full text-white font-medium shadow-lg">
+                  欢迎回来，{user.username}！准备开始游戏了吗？
+                </div>
               )}
             </div>
 
-            {/* Main Menu Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('game')}>
-                <CardContent className="p-6 text-center space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    <Play className="w-8 h-8 text-blue-600" />
+            {/* Quick Start Actions */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button 
+                size="lg"
+                onClick={() => handleViewChange('game')}
+                className="bg-game-gradient-primary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <Play className="w-6 h-6 mr-3" />
+                立即开始游戏
+              </Button>
+              
+              <Button 
+                size="lg"
+                variant="outline"
+                onClick={() => handleViewChange('ranked')}
+                disabled={!isAuthenticated}
+                className="border-2 border-primary px-8 py-4 text-lg font-medium rounded-xl hover:bg-primary hover:text-primary-foreground transition-all duration-300"
+              >
+                <Trophy className="w-6 h-6 mr-3" />
+                排位对战
+              </Button>
+              
+              {!isAuthenticated && (
+                <Button 
+                  size="lg"
+                  onClick={() => setShowAuthModal(true)}
+                  className="bg-game-gradient-secondary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <LogIn className="w-6 h-6 mr-3" />
+                  登录 / 注册
+                </Button>
+              )}
+            </div>
+
+            {/* Game Modes Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('game')}>
+                <CardContent className="p-8 text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto bg-game-blue/10 rounded-2xl flex items-center justify-center group-hover:bg-game-blue/20 transition-colors">
+                    <Play className="w-10 h-10 text-game-blue" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">{t('menu.singlePlayer') || '单人游戏'}</h3>
-                    <p className="text-sm text-muted-foreground">{t('menu.singlePlayerDesc') || '挑战自己的极限'}</p>
+                    <h3 className="text-xl font-bold text-foreground mb-2">40行竞速</h3>
+                    <p className="text-sm text-muted-foreground">以最快速度消除40行</p>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('ranked')}>
-                <CardContent className="p-6 text-center space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                    <Users className="w-8 h-8 text-green-600" />
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('game')}>
+                <CardContent className="p-8 text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto bg-game-orange/10 rounded-2xl flex items-center justify-center group-hover:bg-game-orange/20 transition-colors">
+                    <Trophy className="w-10 h-10 text-game-orange" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">{t('menu.multiPlayer') || '多人游戏'}</h3>
-                    <p className="text-sm text-muted-foreground">{t('menu.multiPlayerDesc') || '与朋友一起游戏'}</p>
+                    <h3 className="text-xl font-bold text-foreground mb-2">2分钟闪电战</h3>
+                    <p className="text-sm text-muted-foreground">限时挑战最高分</p>
                   </div>
-                  {!isAuthenticated && (
-                    <div className="text-xs text-amber-600 font-medium">
-                      {t('menu.loginRequired') || '需要登录'}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('replays')}>
-                <CardContent className="p-6 text-center space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                    <Trophy className="w-8 h-8 text-purple-600" />
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('game')}>
+                <CardContent className="p-8 text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto bg-game-green/10 rounded-2xl flex items-center justify-center group-hover:bg-game-green/20 transition-colors">
+                    <Settings className="w-10 h-10 text-game-green" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">{t('menu.replays') || '回放系统'}</h3>
-                    <p className="text-sm text-muted-foreground">{t('menu.replaysDesc') || '观看和分享回放'}</p>
+                    <h3 className="text-xl font-bold text-foreground mb-2">无尽模式</h3>
+                    <p className="text-sm text-muted-foreground">放松练习，持续挑战</p>
                   </div>
-                  {!isAuthenticated && (
-                    <div className="text-xs text-amber-600 font-medium">
-                      {t('menu.loginRequired') || '需要登录'}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => handleViewChange('settings')}>
-                <CardContent className="p-6 text-center space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-gray-200 transition-colors">
-                    <Settings className="w-8 h-8 text-gray-600" />
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('ranked')}>
+                <CardContent className="p-8 text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto bg-game-purple/10 rounded-2xl flex items-center justify-center group-hover:bg-game-purple/20 transition-colors">
+                    <Users className="w-10 h-10 text-game-purple" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">{t('menu.settings') || '设置'}</h3>
-                    <p className="text-sm text-muted-foreground">{t('menu.settingsDesc') || '个性化设置'}</p>
+                    <h3 className="text-xl font-bold text-foreground mb-2">排位模式</h3>
+                    <p className="text-sm text-muted-foreground">全球竞技排行榜</p>
+                    {!isAuthenticated && (
+                      <div className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
+                        需要登录
+                      </div>
+                    )}
                   </div>
-                  {!isAuthenticated && (
-                    <div className="text-xs text-amber-600 font-medium">
-                      {t('menu.loginRequired') || '需要登录'}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>
 
-            {/* Login Button for Guests */}
-            {!isAuthenticated && (
-              <div className="text-center">
-                <Button 
-                  onClick={() => setShowAuthModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
-                >
-                  <LogIn className="w-5 h-5 mr-2" />
-                  {t('auth.login') || '登录 / 注册'}
-                </Button>
+            {/* Platform Features */}
+            <div className="bg-card/30 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-border/50">
+              <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 bg-game-gradient-primary bg-clip-text text-transparent">
+                平台特色
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-game-blue/10 rounded-full flex items-center justify-center">
+                    <Trophy className="w-8 h-8 text-game-blue" />
+                  </div>
+                  <h3 className="text-xl font-semibold">专业竞技</h3>
+                  <p className="text-muted-foreground">标准SRS系统，支持T-Spin等高级技巧</p>
+                </div>
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-game-orange/10 rounded-full flex items-center justify-center">
+                    <Users className="w-8 h-8 text-game-orange" />
+                  </div>
+                  <h3 className="text-xl font-semibold">社交功能</h3>
+                  <p className="text-muted-foreground">多人对战，房间系统，好友互动</p>
+                </div>
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-game-green/10 rounded-full flex items-center justify-center">
+                    <Play className="w-8 h-8 text-game-green" />
+                  </div>
+                  <h3 className="text-xl font-semibold">回放系统</h3>
+                  <p className="text-muted-foreground">记录分享精彩时刻，学习提升技巧</p>
+                </div>
               </div>
-            )}
+            </div>
+
+            {/* Ready to Start */}
+            <div className="text-center space-y-6 py-8">
+              <h2 className="text-2xl md:text-3xl font-bold">Ready to Get Started?</h2>
+              <p className="text-lg text-muted-foreground">加入我们的游戏社区，开始你的俄罗斯方块之旅</p>
+              {!isAuthenticated && (
+                <Button 
+                  size="lg"
+                  onClick={() => setShowAuthModal(true)}
+                  className="bg-game-gradient-primary hover:opacity-90 text-white px-10 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  立即注册开始游戏
+                </Button>
+              )}
+            </div>
 
             {/* Ad Space */}
-            <AdSpace position="bottom" width={728} height={90} />
+            <div className="flex justify-center">
+              <AdSpace position="bottom" width={728} height={90} />
+            </div>
           </div>
         );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-game-gradient-bg">
       <NavigationBar 
         currentView={currentView}
         onViewChange={handleViewChange}
