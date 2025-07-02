@@ -539,10 +539,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (savedLanguage && translations[savedLanguage]) {
       setLanguage(savedLanguage);
     } else {
-      // Auto-detect language on first visit
-      const detectedLang = detectLanguage();
-      setLanguage(detectedLang);
-      localStorage.setItem('language', detectedLang);
+      // Set English as default language on first visit
+      setLanguage('en');
+      localStorage.setItem('language', 'en');
     }
   }, []);
 

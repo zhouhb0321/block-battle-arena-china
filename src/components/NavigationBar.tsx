@@ -1,9 +1,11 @@
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Settings, LogIn, Shield } from 'lucide-react';
 import UserMenu from './UserMenu';
+import LanguageSelector from './LanguageSelector';
 import type { ViewType } from '@/types/navigation';
 
 interface NavigationBarProps {
@@ -18,16 +20,17 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   onAuthModalOpen
 }) => {
   const { user, isAuthenticated } = useAuth();
+  const { t } = useLanguage();
 
   return (
-    <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+    <nav className="bg-background/95 backdrop-blur-md border-b border-border sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <h1 className="text-xl font-bold text-blue-600 cursor-pointer" 
+            <h1 className="text-xl font-bold bg-game-gradient-primary bg-clip-text text-transparent cursor-pointer" 
                 onClick={() => onViewChange('home')}>
-              Tetris Game
+              {t('game.title')}
             </h1>
           </div>
 
@@ -39,7 +42,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               className="flex items-center gap-2"
             >
               <Play className="w-4 h-4" />
-              单人游戏
+              {t('nav.play')}
             </Button>
 
             <Button
@@ -49,7 +52,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               disabled={!isAuthenticated}
             >
               <Users className="w-4 h-4" />
-              多人游戏
+              {t('nav.multiplayer')}
             </Button>
 
             <Button
@@ -59,24 +62,25 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               disabled={!isAuthenticated}
             >
               <Settings className="w-4 h-4" />
-              设置
+              {t('nav.settings')}
             </Button>
 
-            {/* 管理员按钮 */}
+            {/* Admin Button */}
             {user?.isAdmin && (
               <Button
                 variant={currentView === 'admin' ? 'default' : 'ghost'}
                 onClick={() => onViewChange('admin')}
-                className="flex items-center gap-2 text-purple-600"
+                className="flex items-center gap-2 text-game-purple"
               >
                 <Shield className="w-4 h-4" />
-                管理面板
+                {t('admin.panel')}
               </Button>
             )}
           </div>
 
-          {/* User Menu or Login Button */}
-          <div className="flex items-center">
+          {/* User Menu, Language Selector, and Login Button */}
+          <div className="flex items-center gap-3">
+            <LanguageSelector />
             {isAuthenticated && user ? (
               <UserMenu 
                 onSettingsClick={() => onViewChange('settings')}
@@ -85,7 +89,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             ) : (
               <Button onClick={onAuthModalOpen} className="flex items-center gap-2">
                 <LogIn className="w-4 h-4" />
-                登录
+                {t('auth.login')}
               </Button>
             )}
           </div>

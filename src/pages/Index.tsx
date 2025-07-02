@@ -69,10 +69,10 @@ const Index = () => {
       case 'profile':
         return (
           <div className="text-center p-8">
-            <h2 className="text-2xl font-bold mb-4">个人资料</h2>
-            <p>个人资料页面开发中...</p>
+            <h2 className="text-2xl font-bold mb-4">{t('nav.profile')}</h2>
+            <p>Profile page under development...</p>
             <Button onClick={handleBackToMenu} className="mt-4">
-              返回首页
+              {t('common.backToHome')}
             </Button>
           </div>
         );
@@ -83,14 +83,14 @@ const Index = () => {
             {/* Hero Section */}
             <div className="text-center space-y-6 py-12">
               <h1 className="text-5xl md:text-7xl font-bold bg-game-gradient-primary bg-clip-text text-transparent">
-                Tetris Gaming Platform
+                {t('game.title')}
               </h1>
               <p className="text-xl md:text-2xl text-foreground/80 max-w-3xl mx-auto leading-relaxed">
-                专业竞技 • 社交互动 • 技能提升 • 全球排行
+                {t('game.description')}
               </p>
               {user && (
                 <div className="inline-block px-6 py-3 bg-game-gradient-primary rounded-full text-white font-medium shadow-lg">
-                  欢迎回来，{user.username}！准备开始游戏了吗？
+                  {t('common.welcome')}, {user.username}!
                 </div>
               )}
             </div>
@@ -103,7 +103,7 @@ const Index = () => {
                 className="bg-game-gradient-primary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <Play className="w-6 h-6 mr-3" />
-                立即开始游戏
+                {t('game.play')}
               </Button>
               
               <Button 
@@ -114,7 +114,7 @@ const Index = () => {
                 className="border-2 border-primary px-8 py-4 text-lg font-medium rounded-xl hover:bg-primary hover:text-primary-foreground transition-all duration-300"
               >
                 <Trophy className="w-6 h-6 mr-3" />
-                排位对战
+                {t('game.ranked')}
               </Button>
               
               {!isAuthenticated && (
@@ -124,7 +124,7 @@ const Index = () => {
                   className="bg-game-gradient-secondary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   <LogIn className="w-6 h-6 mr-3" />
-                  登录 / 注册
+                  {t('auth.login')} / {t('auth.register')}
                 </Button>
               )}
             </div>
@@ -137,8 +137,8 @@ const Index = () => {
                     <Play className="w-10 h-10 text-game-blue" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">40行竞速</h3>
-                    <p className="text-sm text-muted-foreground">以最快速度消除40行</p>
+                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.sprint40')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('game.singlePlayerDesc')}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -149,8 +149,8 @@ const Index = () => {
                     <Trophy className="w-10 h-10 text-game-orange" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">2分钟闪电战</h3>
-                    <p className="text-sm text-muted-foreground">限时挑战最高分</p>
+                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.ultra2min')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('game.singlePlayerDesc')}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -161,8 +161,8 @@ const Index = () => {
                     <Settings className="w-10 h-10 text-game-green" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">无尽模式</h3>
-                    <p className="text-sm text-muted-foreground">放松练习，持续挑战</p>
+                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.endless')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('game.singlePlayerDesc')}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -173,11 +173,11 @@ const Index = () => {
                     <Users className="w-10 h-10 text-game-purple" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">排位模式</h3>
-                    <p className="text-sm text-muted-foreground">全球竞技排行榜</p>
+                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.ranked')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('game.rankedDesc')}</p>
                     {!isAuthenticated && (
                       <div className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
-                        需要登录
+                        {t('common.needLogin')}
                       </div>
                     )}
                   </div>
@@ -188,29 +188,29 @@ const Index = () => {
             {/* Platform Features */}
             <div className="bg-card/30 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-border/50">
               <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 bg-game-gradient-primary bg-clip-text text-transparent">
-                平台特色
+                Platform Features
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="text-center space-y-4">
                   <div className="w-16 h-16 mx-auto bg-game-blue/10 rounded-full flex items-center justify-center">
                     <Trophy className="w-8 h-8 text-game-blue" />
                   </div>
-                  <h3 className="text-xl font-semibold">专业竞技</h3>
-                  <p className="text-muted-foreground">标准SRS系统，支持T-Spin等高级技巧</p>
+                  <h3 className="text-xl font-semibold">Professional Competition</h3>
+                  <p className="text-muted-foreground">Standard SRS system with T-Spin support</p>
                 </div>
                 <div className="text-center space-y-4">
                   <div className="w-16 h-16 mx-auto bg-game-orange/10 rounded-full flex items-center justify-center">
                     <Users className="w-8 h-8 text-game-orange" />
                   </div>
-                  <h3 className="text-xl font-semibold">社交功能</h3>
-                  <p className="text-muted-foreground">多人对战，房间系统，好友互动</p>
+                  <h3 className="text-xl font-semibold">Social Features</h3>
+                  <p className="text-muted-foreground">Multiplayer battles, room system, friend interactions</p>
                 </div>
                 <div className="text-center space-y-4">
                   <div className="w-16 h-16 mx-auto bg-game-green/10 rounded-full flex items-center justify-center">
                     <Play className="w-8 h-8 text-game-green" />
                   </div>
-                  <h3 className="text-xl font-semibold">回放系统</h3>
-                  <p className="text-muted-foreground">记录分享精彩时刻，学习提升技巧</p>
+                  <h3 className="text-xl font-semibold">Replay System</h3>
+                  <p className="text-muted-foreground">Record and share exciting moments, improve your skills</p>
                 </div>
               </div>
             </div>
@@ -218,14 +218,14 @@ const Index = () => {
             {/* Ready to Start */}
             <div className="text-center space-y-6 py-8">
               <h2 className="text-2xl md:text-3xl font-bold">Ready to Get Started?</h2>
-              <p className="text-lg text-muted-foreground">加入我们的游戏社区，开始你的俄罗斯方块之旅</p>
+              <p className="text-lg text-muted-foreground">Join our gaming community and start your Tetris journey</p>
               {!isAuthenticated && (
                 <Button 
                   size="lg"
                   onClick={() => setShowAuthModal(true)}
                   className="bg-game-gradient-primary hover:opacity-90 text-white px-10 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                 >
-                  立即注册开始游戏
+                  {t('auth.register')} & Start Playing
                 </Button>
               )}
             </div>

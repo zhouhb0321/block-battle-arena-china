@@ -6,8 +6,8 @@ import type { GameSettings } from '@/utils/gameTypes';
 import { toast } from 'sonner';
 
 const DEFAULT_SETTINGS: GameSettings = {
-  das: 67, // 修正为67ms，更符合主流设置
-  arr: 33, // 保持33ms，标准设置
+  das: 133, // DAS 133ms - standard setting
+  arr: 0, // ARR 0ms - instant repeat for optimal responsiveness  
   sdf: 20,
   controls: {
     moveLeft: 'ArrowLeft',

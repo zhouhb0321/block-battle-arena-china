@@ -42,7 +42,7 @@ export const useKeyboardControls = ({
     }
 
     const { controls } = gameSettings;
-    const now = Date.now();
+    const now = performance.now();
     
     // 记录按键时间
     if (!keyPressedTime.current[event.code]) {
@@ -108,12 +108,12 @@ export const useKeyboardControls = ({
       
       // DAS (Delayed Auto Shift) 和 ARR (Auto Repeat Rate) 逻辑
       if (heldTime > gameSettings.das) {
-        const arrInterval = Math.max(gameSettings.arr, 16);
+        const arrInterval = gameSettings.arr === 0 ? 0 : Math.max(gameSettings.arr, 1);
         
-        if (key === controls.moveLeft && timeSinceLastMove >= arrInterval) {
+        if (key === controls.moveLeft && (arrInterval === 0 || timeSinceLastMove >= arrInterval)) {
           onMoveLeft();
           lastMoveTime.current[key] = timestamp;
-        } else if (key === controls.moveRight && timeSinceLastMove >= arrInterval) {
+        } else if (key === controls.moveRight && (arrInterval === 0 || timeSinceLastMove >= arrInterval)) {
           onMoveRight();
           lastMoveTime.current[key] = timestamp;
         } else if (key === controls.softDrop) {
