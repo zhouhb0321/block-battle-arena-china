@@ -134,13 +134,19 @@ export const isValidPosition = (
         const newX = x + j;
         const newY = y + i;
         
-        if (
-          newX < 0 ||
-          newX >= BOARD_WIDTH ||
-          newY < 0 ||
-          newY >= BOARD_HEIGHT ||
-          (newY >= 0 && board[newY][newX] !== 0)
-        ) {
+        // 检查左右边界
+        if (newX < 0 || newX >= BOARD_WIDTH) {
+          return false;
+        }
+        
+        // 检查底部边界
+        if (newY >= BOARD_HEIGHT) {
+          return false;
+        }
+        
+        // 对于游戏区域内的位置，检查是否被占用
+        // 允许方块在Y<0的位置存在（上方2行空间）
+        if (newY >= 0 && board[newY][newX] !== 0) {
           return false;
         }
       }
@@ -488,21 +494,8 @@ export const addGarbageLines = (board: number[][], garbageLines: number[][]): nu
 
 // 创建新方块，确保出现在顶部中央 - 修正位置计算，方块从上方2行生成以支持极限消除
 export const createNewPiece = (type: TetrominoType): GamePiece => {
-  // 计算方块的实际宽度（去除空白列）
-  let minX = type.shape[0].length;
-  let maxX = -1;
-  
-  for (let y = 0; y < type.shape.length; y++) {
-    for (let x = 0; x < type.shape[y].length; x++) {
-      if (type.shape[y][x] !== 0) {
-        minX = Math.min(minX, x);
-        maxX = Math.max(maxX, x);
-      }
-    }
-  }
-  
-  const pieceWidth = maxX - minX + 1;
-  const startX = Math.floor((BOARD_WIDTH - pieceWidth) / 2) - minX;
+  // 方块居中生成，考虑实际形状
+  const startX = Math.floor((BOARD_WIDTH - type.shape[0].length) / 2);
   
   // 固定从游戏区域上方2行开始生成，为极限情况留出足够的空间进行消除
   const startY = -2;

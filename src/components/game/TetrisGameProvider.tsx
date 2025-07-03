@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { calculateDropSpeed } from '@/utils/gravitySystem';
 import type { GameMode, GameSettings } from '@/utils/gameTypes';
 
 interface TetrisGameContextType {
@@ -43,13 +44,6 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
     backgroundMusic: settings.backgroundMusic || '',
     musicVolume: settings.musicVolume || 30,
     ghostOpacity: settings.ghostOpacity || 50
-  };
-
-  const calculateDropSpeed = (lines: number): number => {
-    const baseSpeed = 1000;
-    const level = Math.min(Math.floor(lines / 40), 4);
-    const speedMultiplier = Math.pow(1.5, level);
-    return Math.max(baseSpeed / speedMultiplier, 50);
   };
 
   const gameLogic = useGameLogic(gameMode, gameSettings, calculateDropSpeed);

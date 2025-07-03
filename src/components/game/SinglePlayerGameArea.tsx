@@ -152,7 +152,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   }
 
   return (
-    <div className="flex gap-6 items-center justify-center w-full min-h-screen">
+    <div className="flex gap-6 items-center justify-center w-full min-h-screen bg-background">
       {/* 左侧广告位 */}
       <div className="hidden xl:block">
         <AdSpace position="left" width={240} height={600} />
@@ -177,14 +177,14 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             onClick={onBackToMenu}
             variant="outline"
             size="sm"
-            className="w-full bg-red-50 hover:bg-red-100 border-red-200 text-red-700"
+            className="w-full"
           >
             {t('common.back')}
           </Button>
         </div>
 
         {/* 主游戏区域 - 居中显示 */}
-        <div className="bg-gray-800 p-6 rounded-lg shadow-2xl border border-gray-700 relative">
+        <div className="bg-card p-6 rounded-lg shadow-2xl border border-border relative">
           <GameInfo
             username={username}
             score={gameState.score}
@@ -227,8 +227,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         </div>
 
         {/* 右侧NEXT面板 */}
-        <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
-          <h3 className="text-white text-sm mb-3 text-center font-bold">NEXT</h3>
+        <div className="bg-card p-4 rounded-lg shadow-lg border border-border">
+          <h3 className="text-foreground text-sm mb-3 text-center font-bold">NEXT</h3>
           <div className="space-y-3">
             {gameState.nextPieces.slice(0, 4).map((piece, index) => (
               <PiecePreview 
