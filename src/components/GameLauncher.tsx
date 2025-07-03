@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import TetrisGame from './TetrisGame';
-import SinglePlayerMenu from './menus/SinglePlayerMenu';
+
 
 interface GameLauncherProps {
   onBackToMenu: () => void;
@@ -18,6 +18,15 @@ const GameLauncher: React.FC<GameLauncherProps> = ({ onBackToMenu }) => {
     setGameConfig({ gameType, gameMode });
     setGameStarted(true);
   };
+
+  // Check if a game mode was pre-selected from the home page
+  React.useEffect(() => {
+    const selectedMode = (window as any).selectedGameMode;
+    if (selectedMode) {
+      handleGameStart('singleplayer', selectedMode);
+      (window as any).selectedGameMode = null; // Clear the selection
+    }
+  }, []);
 
   const handleBackToMenu = () => {
     console.log('Back to menu from game');
@@ -41,11 +50,17 @@ const GameLauncher: React.FC<GameLauncherProps> = ({ onBackToMenu }) => {
     );
   }
 
+  // If no game mode was pre-selected, start with endless mode
+  React.useEffect(() => {
+    if (!gameStarted && !gameConfig) {
+      handleGameStart('singleplayer', { id: 'endless', title: 'Endless Mode', description: 'Practice mode' });
+    }
+  }, [gameStarted, gameConfig]);
+
   return (
-    <SinglePlayerMenu 
-      onGameStart={handleGameStart}
-      onBack={handleBackToMenu}
-    />
+    <div className="text-center p-8">
+      <p className="text-muted-foreground">Loading game...</p>
+    </div>
   );
 };
 

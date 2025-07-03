@@ -155,43 +155,46 @@ export const useGameLogic = (
   const rotatePieceClockwise = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || isHardDropping.current) return;
 
-    const rotated = rotatePiece(gameState.currentPiece.type, true);
-    const newRotation = (gameState.currentPiece.rotation + 1) % 4;
+    const currentPiece = gameState.currentPiece;
+    const rotated = rotatePiece(currentPiece.type, true);
+    const newRotation = (currentPiece.rotation + 1) % 4;
     
     // 获取SRS踢墙测试序列
     const kickTests = getKickTests(
-      gameState.currentPiece.type.type, 
-      gameState.currentPiece.rotation, 
+      currentPiece.type.type, 
+      currentPiece.rotation, 
       newRotation
     );
 
-    console.log(`SRS旋转测试 - 方块: ${gameState.currentPiece.type.type}, 从状态${gameState.currentPiece.rotation}到${newRotation}`);
+    console.log(`SRS旋转测试 - 方块: ${currentPiece.type.type}, 从状态${currentPiece.rotation}到${newRotation}, 当前位置: (${currentPiece.x}, ${currentPiece.y})`);
 
     // 按照SRS规则测试每个踢墙位置
     for (let i = 0; i < kickTests.length; i++) {
       const kick = kickTests[i];
       const testPiece: GamePiece = { 
-        ...gameState.currentPiece, 
+        ...currentPiece, 
         type: rotated, 
-        x: gameState.currentPiece.x + kick.x, 
-        y: gameState.currentPiece.y + kick.y,
+        x: currentPiece.x + kick.x, 
+        y: currentPiece.y + kick.y,
         rotation: newRotation
       };
       
-      console.log(`测试踢墙位置 ${i+1}: (${kick.x}, ${kick.y})`);
+      console.log(`测试踢墙位置 ${i+1}: 偏移(${kick.x}, ${kick.y}), 新位置(${testPiece.x}, ${testPiece.y})`);
       
       if (isValidPosition(gameState.board, testPiece)) {
-        console.log(`踢墙成功！位置: (${testPiece.x}, ${testPiece.y})`);
+        console.log(`踢墙成功！最终位置: (${testPiece.x}, ${testPiece.y}), 旋转状态: ${testPiece.rotation}`);
         setGameState(prev => ({
           ...prev,
           currentPiece: testPiece,
-          ghostPiece: createGhostPiece(gameState.board, testPiece)
+          ghostPiece: createGhostPiece(prev.board, testPiece)
         }));
         setLastAction('rotate');
         
         setLockDelay(false);
         lockDelayTime.current = 0;
         return;
+      } else {
+        console.log(`踢墙失败: 位置(${testPiece.x}, ${testPiece.y})无效`);
       }
     }
     console.log('旋转失败 - 所有踢墙位置都无效');

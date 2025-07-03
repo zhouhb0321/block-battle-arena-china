@@ -91,8 +91,8 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
         onShare={() => console.log('Share game')}
         onReset={handleReset}
         onBackToMenu={handleBackToMenu}
-        showCountdown={false}
-        onCountdownEnd={() => {}}
+        showCountdown={!gameStarted}
+        onCountdownEnd={() => setGameStarted(true)}
         onMoveLeft={() => gameLogic.movePiece(-1, 0)}
         onMoveRight={() => gameLogic.movePiece(1, 0)}
         onSoftDrop={() => gameLogic.movePiece(0, 1)}

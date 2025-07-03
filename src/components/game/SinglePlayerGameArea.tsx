@@ -6,10 +6,11 @@ import GameInfo from '../GameInfo';
 import PiecePreview from '../PiecePreview';
 import GameOverlay from '../GameOverlay';
 import GameStatusIndicators from '../GameStatusIndicators';
-import GameCountdown from '../GameCountdown';
+import GameCountdownInArea from '../GameCountdownInArea';
 import AdSpace from '../AdSpace';
 import MobileControls from '../MobileControls';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { GameState, GameSettings } from '@/utils/gameTypes';
 
 interface SinglePlayerGameAreaProps {
@@ -53,6 +54,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 }) => {
   const mainCellSize = 30;
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
   
   // 判断游戏是否已开始 - 基于游戏状态和是否显示倒计时
   const gameStarted = !showCountdown && (gameState.score > 0 || gameState.lines > 0 || gameState.pieces !== undefined);
@@ -110,7 +112,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                   onReset={onReset}
                   onBackToMenu={onBackToMenu}
                 />
-                <GameCountdown show={showCountdown} onCountdownEnd={onCountdownEnd} />
+                <GameCountdownInArea show={showCountdown} onCountdownEnd={onCountdownEnd} />
               </div>
             </div>
 
@@ -175,7 +177,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             size="sm"
             className="w-full bg-red-50 hover:bg-red-100 border-red-200 text-red-700"
           >
-            返回菜单
+            {t('common.back')}
           </Button>
         </div>
 
@@ -218,7 +220,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               onBackToMenu={onBackToMenu}
             />
 
-            <GameCountdown show={showCountdown} onCountdownEnd={onCountdownEnd} />
+            <GameCountdownInArea show={showCountdown} onCountdownEnd={onCountdownEnd} />
           </div>
         </div>
 

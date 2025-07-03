@@ -39,6 +39,13 @@ const Index = () => {
     setCurrentView(view);
   };
 
+  const handleGameModeStart = (gameType: string, gameMode: any) => {
+    console.log('Starting game directly with mode:', gameMode);
+    setCurrentView('game');
+    // Store game mode for TetrisGame component
+    (window as any).selectedGameMode = gameMode;
+  };
+
   const renderCurrentView = () => {
     switch (currentView) {
       case 'game':
@@ -64,7 +71,9 @@ const Index = () => {
         );
       case 'replays':
         return (
-          <ReplaySystem />
+          <div className="max-w-6xl mx-auto">
+            <ReplaySystem />
+          </div>
         );
       case 'profile':
         return (
@@ -131,7 +140,7 @@ const Index = () => {
 
             {/* Game Modes Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('game')}>
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', { id: 'sprint40', title: t('game.sprint40'), description: t('game.singlePlayerDesc') })}>
                 <CardContent className="p-8 text-center space-y-4">
                   <div className="w-20 h-20 mx-auto bg-game-blue/10 rounded-2xl flex items-center justify-center group-hover:bg-game-blue/20 transition-colors">
                     <Play className="w-10 h-10 text-game-blue" />
@@ -143,7 +152,7 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('game')}>
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', { id: 'ultra2min', title: t('game.ultra2min'), description: t('game.singlePlayerDesc') })}>
                 <CardContent className="p-8 text-center space-y-4">
                   <div className="w-20 h-20 mx-auto bg-game-orange/10 rounded-2xl flex items-center justify-center group-hover:bg-game-orange/20 transition-colors">
                     <Trophy className="w-10 h-10 text-game-orange" />
@@ -155,7 +164,7 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('game')}>
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', { id: 'endless', title: t('game.endless'), description: t('game.singlePlayerDesc') })}>
                 <CardContent className="p-8 text-center space-y-4">
                   <div className="w-20 h-20 mx-auto bg-game-green/10 rounded-2xl flex items-center justify-center group-hover:bg-game-green/20 transition-colors">
                     <Settings className="w-10 h-10 text-game-green" />
