@@ -4,13 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+
 interface MainMenuProps {
   onGameStart: () => void;
   onLeaderboard: () => void;
   onSettings: () => void;
+  onRanked: () => void;
 }
 
-const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSettings }) => {
+const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSettings, onRanked }) => {
   const { t } = useLanguage();
 
   const menuItems = [
@@ -21,6 +23,14 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSetti
       icon: '🎯',
       color: 'bg-game-green hover:bg-game-green/80',
       action: onGameStart
+    },
+    {
+      id: 'ranked',
+      title: t('game.ranked'),
+      description: t('game.rankedDesc'),
+      icon: '⚔️',
+      color: 'bg-game-red hover:bg-game-red/80',
+      action: onRanked
     },
     {
       id: 'leaderboard',

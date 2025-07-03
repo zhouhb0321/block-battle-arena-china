@@ -486,7 +486,7 @@ export const addGarbageLines = (board: number[][], garbageLines: number[][]): nu
   return [...newBoard, ...garbageLines];
 };
 
-// 创建新方块，确保出现在顶部中央 - 修正位置计算
+// 创建新方块，确保出现在顶部中央 - 修正位置计算，方块从上方2行生成以支持极限消除
 export const createNewPiece = (type: TetrominoType): GamePiece => {
   // 计算方块的实际宽度（去除空白列）
   let minX = type.shape[0].length;
@@ -504,8 +504,8 @@ export const createNewPiece = (type: TetrominoType): GamePiece => {
   const pieceWidth = maxX - minX + 1;
   const startX = Math.floor((BOARD_WIDTH - pieceWidth) / 2) - minX;
   
-  // 从游戏框正上方开始，部分隐藏在顶部
-  const startY = -Math.floor(type.shape.length / 2);
+  // 固定从游戏区域上方2行开始生成，为极限情况留出足够的空间进行消除
+  const startY = -2;
   
   return {
     type,

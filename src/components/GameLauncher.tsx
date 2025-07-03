@@ -13,19 +13,11 @@ const GameLauncher: React.FC<GameLauncherProps> = ({ onBackToMenu }) => {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameConfig, setGameConfig] = useState<any>(null);
 
-  const handleGameStart = (gameType: string, gameMode: any) => {
-    console.log('Starting game with type:', gameType, 'mode:', gameMode);
-    setGameConfig({ gameType, gameMode });
-    setGameStarted(true);
-  };
-
-  // Check if a game mode was pre-selected from the home page
   React.useEffect(() => {
-    const selectedMode = (window as any).selectedGameMode;
-    if (selectedMode) {
-      handleGameStart('singleplayer', selectedMode);
-      (window as any).selectedGameMode = null; // Clear the selection
-    }
+    // Automatically start with endless mode
+    console.log('Auto-starting endless mode');
+    setGameConfig({ gameType: 'singleplayer', gameMode: { id: 'endless', title: 'Endless Mode', description: 'Practice mode' } });
+    setGameStarted(true);
   }, []);
 
   const handleBackToMenu = () => {
@@ -35,31 +27,27 @@ const GameLauncher: React.FC<GameLauncherProps> = ({ onBackToMenu }) => {
     onBackToMenu();
   };
 
-  const handleBackToModeSelect = () => {
-    console.log('Back to mode selection');
-    setGameStarted(false);
-    setGameConfig(null);
-  };
-
   if (gameStarted && gameConfig) {
     return (
       <TetrisGame 
         gameConfig={gameConfig}
-        onBackToMenu={handleBackToModeSelect}
+        onBackToMenu={handleBackToMenu}
       />
     );
   }
 
-  // If no game mode was pre-selected, start with endless mode
-  React.useEffect(() => {
-    if (!gameStarted && !gameConfig) {
-      handleGameStart('singleplayer', { id: 'endless', title: 'Endless Mode', description: 'Practice mode' });
-    }
-  }, [gameStarted, gameConfig]);
-
   return (
-    <div className="text-center p-8">
-      <p className="text-muted-foreground">Loading game...</p>
+    <div className="text-center p-8 min-h-screen flex flex-col items-center justify-center">
+      <div className="mb-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+      <p className="text-muted-foreground mb-4">Loading game...</p>
+      <button 
+        onClick={handleBackToMenu}
+        className="text-primary hover:underline"
+      >
+        Return to Menu
+      </button>
     </div>
   );
 };

@@ -23,6 +23,7 @@ interface SinglePlayerGameAreaProps {
   onBackToMenu: () => void;
   showCountdown?: boolean;
   onCountdownEnd?: () => void;
+  gameStarted?: boolean;
   onMoveLeft?: () => void;
   onMoveRight?: () => void;
   onSoftDrop?: () => void;
@@ -43,6 +44,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   onBackToMenu,
   showCountdown = false,
   onCountdownEnd = () => {},
+  gameStarted: propGameStarted = false,
   onMoveLeft = () => {},
   onMoveRight = () => {},
   onSoftDrop = () => {},
@@ -56,8 +58,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const isMobile = useIsMobile();
   const { t } = useLanguage();
   
-  // 判断游戏是否已开始 - 基于游戏状态和是否显示倒计时
-  const gameStarted = !showCountdown && (gameState.score > 0 || gameState.lines > 0 || gameState.pieces !== undefined);
+  // 判断游戏是否已开始 - 基于传入的prop或游戏状态
+  const gameStarted = propGameStarted || (!showCountdown && (gameState.score > 0 || gameState.lines > 0 || gameState.pieces !== undefined));
 
   if (isMobile) {
     return (
@@ -85,11 +87,11 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                 pps={gameState.pps || 0}
                 attack={gameState.apm || 0}
                 paused={gameState.paused}
-                onPause={onPause}
-                onShare={onShare}
-                mode="single"
-                combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}
-                gameStarted={gameStarted}
+            onPause={gameStarted ? onPause : undefined}
+            onShare={onShare}
+            mode="single"
+            combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}
+            gameStarted={gameStarted}
               />
               
               <div className="relative">
@@ -192,7 +194,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             pps={gameState.pps || 0}
             attack={gameState.apm || 0}
             paused={gameState.paused}
-            onPause={onPause}
+            onPause={gameStarted ? onPause : undefined}
             onShare={onShare}
             mode="single"
             combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}

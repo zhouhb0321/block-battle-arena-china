@@ -5,6 +5,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import GameLauncher from '@/components/GameLauncher';
 import MultiPlayerMenu from '@/components/menus/MultiPlayerMenu';
 import SettingsMenu from '@/components/menus/SettingsMenu';
+import RankedMatchmakingSystem from '@/components/RankedMatchmakingSystem';
 import AuthModal from '@/components/AuthModal';
 import NavigationBar from '@/components/NavigationBar';
 import ReplaySystem from '@/components/ReplaySystem';
@@ -56,10 +57,8 @@ const Index = () => {
         );
       case 'ranked':
         return (
-          <MultiPlayerMenu 
-            onGameStart={(gameType, gameMode) => {
-              console.log('Multi-player game start:', { gameType, gameMode });
-            }}
+          <RankedMatchmakingSystem 
+            onStartMatch={() => setCurrentView('game')} 
             onBack={handleBackToMenu}
           />
         );

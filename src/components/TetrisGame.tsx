@@ -86,13 +86,14 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       <SinglePlayerGameArea
         gameState={gameLogic.gameState}
         gameSettings={gameSettings}
-        username={user?.email || 'Player'}
+        username={user?.username || 'Player'}
         onPause={gameLogic.pauseGame}
         onShare={() => console.log('Share game')}
         onReset={handleReset}
         onBackToMenu={handleBackToMenu}
         showCountdown={!gameStarted}
         onCountdownEnd={() => setGameStarted(true)}
+        gameStarted={gameStarted}
         onMoveLeft={() => gameLogic.movePiece(-1, 0)}
         onMoveRight={() => gameLogic.movePiece(1, 0)}
         onSoftDrop={() => gameLogic.movePiece(0, 1)}

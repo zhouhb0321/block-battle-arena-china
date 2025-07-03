@@ -27,7 +27,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     e.preventDefault();
 
     if (!email || !password) {
-      toast.error('邮箱和密码不能为空');
+      toast.error(t('auth.missing_credentials'));
       return;
     }
 
@@ -36,27 +36,27 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       if (isLogin) {
         await login(email, password);
-        toast.success('登录成功');
+        toast.success(t('auth.login_success'));
       } else {
         if (!username) {
-          toast.error('用户名不能为空');
+          toast.error(t('auth.missing_username'));
           setLoading(false);
           return;
         }
         await register(email, password, username);
-        toast.success('注册成功！请检查邮箱以激活账户。');
+        toast.success(t('auth.signup_success'));
       }
       onClose();
     } catch (error: any) {
       console.error('Authentication failed:', error);
       if (error.message.includes('Invalid login credentials')) {
-        toast.error('邮箱或密码错误，请检查后重试');
+        toast.error(t('auth.login_failed'));
       } else if (error.message.includes('Email not confirmed')) {
-        toast.error('请先验证您的邮箱地址');
+        toast.error(t('auth.login_failed'));
       } else if (error.message.includes('User already registered')) {
-        toast.error('该邮箱已被注册，请直接登录或使用其他邮箱');
+        toast.error(t('auth.login_failed'));
       } else {
-        toast.error(error.message || '登录失败，请重试');
+        toast.error(error.message || t('auth.login_failed'));
       }
     } finally {
       setLoading(false);
@@ -70,7 +70,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       onClose();
     } catch (error: any) {
       console.error('Guest login failed:', error);
-      toast.error('游客登录失败，请重试');
+      toast.error(t('auth.login_failed'));
     } finally {
       setLoading(false);
     }
@@ -93,51 +93,51 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700 text-white">
+      <DialogContent className="sm:max-w-[425px] bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-white">{isLogin ? "登录" : "注册"}</DialogTitle>
-          <DialogDescription className="text-gray-300">
-            {isLogin ? "登录以继续游戏" : "注册一个新帐户"}
+          <DialogTitle className="text-foreground">{isLogin ? t('auth.login') : t('auth.register')}</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            {isLogin ? t('auth.login_desc') : t('auth.register_desc')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           {!isLogin && (
             <div className="grid gap-2">
-              <label htmlFor="username" className="text-white">用户名</label>
+              <label htmlFor="username" className="text-foreground">{t('auth.username')}</label>
               <Input
                 id="username"
-                placeholder="输入用户名"
+                placeholder={t('auth.username_placeholder')}
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="bg-gray-800 border-gray-600 text-white"
+                className="bg-background border-border text-foreground"
               />
             </div>
           )}
           <div className="grid gap-2">
-            <label htmlFor="email" className="text-white">邮箱</label>
+            <label htmlFor="email" className="text-foreground">{t('auth.email')}</label>
             <Input
               id="email"
-              placeholder="输入邮箱"
+              placeholder={t('auth.email_placeholder')}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-gray-800 border-gray-600 text-white"
+              className="bg-background border-border text-foreground"
             />
           </div>
           <div className="grid gap-2">
-            <label htmlFor="password" className="text-white">密码</label>
+            <label htmlFor="password" className="text-foreground">{t('auth.password')}</label>
             <Input
               id="password"
-              placeholder="输入密码"
+              placeholder={t('auth.password_placeholder')}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="bg-gray-800 border-gray-600 text-white"
+              className="bg-background border-border text-foreground"
             />
           </div>
-          <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-            {loading ? '处理中...' : (isLogin ? "登录" : "注册")}
+          <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            {loading ? t('common.loading') : (isLogin ? t('auth.login_button') : t('auth.register_button'))}
           </Button>
         </form>
         
@@ -145,36 +145,36 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <div className="text-center">
             <button 
               type="button" 
-              className="text-sm text-blue-400 hover:text-blue-300 underline"
+              className="text-sm text-primary hover:text-primary/80 underline"
               onClick={() => setShowPasswordReset(true)}
             >
-              忘记密码？
+              {t('auth.forgot_password')}
             </button>
           </div>
         )}
         
-        <div className="border-t border-gray-700 py-4">
+        <div className="border-t border-border py-4">
           <Button 
             type="button" 
             onClick={handleGuestLogin} 
-            className="w-full bg-green-600 hover:bg-green-700" 
+            className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground" 
             variant="outline"
             disabled={loading}
           >
-            {loading ? '登录中...' : '游客登录'}
+            {loading ? t('common.loading') : t('auth.guest_login')}
           </Button>
-          <p className="text-sm text-gray-400 mt-2 text-center">
-            游客模式可以正常游玩，但设置不会永久保存
+          <p className="text-sm text-muted-foreground mt-2 text-center">
+            {t('auth.guest_login_success')}
           </p>
         </div>
         
         <div className="text-center">
           <button 
             type="button" 
-            className="text-sm text-gray-400 hover:text-gray-300" 
+            className="text-sm text-muted-foreground hover:text-foreground" 
             onClick={() => setIsLogin(!isLogin)}
           >
-            {isLogin ? "需要注册一个帐户？" : "已有帐户？"}
+            {isLogin ? t('auth.need_account') : t('auth.already_have_account')}
           </button>
         </div>
       </DialogContent>

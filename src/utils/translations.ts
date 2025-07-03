@@ -109,6 +109,35 @@ export const translations = {
     // 管理员
     'admin.panel': '管理面板',
     
+    // 排位系统
+    'ranked.title': '排位赛',
+    'ranked.description': '与相近水平的玩家进行排位对战',
+    'ranked.enter_matchmaking': '开始匹配',
+    'ranked.finding_match': '寻找对手',
+    'ranked.cancel_search': '取消匹配',
+    'ranked.queue_info': '排队人数',
+    'ranked.in_game': '游戏中',
+    'ranked.estimated_time': '预计等待时间',
+    'ranked.leaving_penalty': '中途离开将被扣分',
+    'ranked.penalty_warning': '提前离开比赛将扣除排位分数',
+    'ranked.confirm_leave': '确认离开',
+    'ranked.season_stats': '本赛季统计',
+    'ranked.games_played': '游戏场次',
+    'ranked.win_rate': '胜率',
+    'ranked.average_pps': '平均PPS',
+    'ranked.average_apm': '平均APM',
+    'ranked.recent_matches': '最近对战',
+    'ranked.win': '胜',
+    'ranked.loss': '负',
+    'ranked.need_login': '需要登录账户才能进行排位赛',
+    
+    // 游戏状态
+    'game.play': '开始游戏',
+    'game.singlePlayerDesc': '挑战各种单人游戏模式',
+    'game.ranked': '排位赛',
+    'game.rankedDesc': '与相近水平的玩家进行排位对战',
+    'game.description': '经典俄罗斯方块游戏',
+
     // 通用
     'common.start': '开始',
     'common.cancel': '取消',
@@ -120,7 +149,8 @@ export const translations = {
     'common.error': '错误',
     'common.success': '成功',
     'common.yes': '是',
-    'common.no': '否'
+    'common.no': '否',
+    'common.enter': '进入'
   },
   en: {
     // Auth
@@ -231,6 +261,35 @@ export const translations = {
     // Admin
     'admin.panel': 'Admin Panel',
     
+    // Ranked system
+    'ranked.title': 'Ranked',
+    'ranked.description': 'Battle against players of similar skill level',
+    'ranked.enter_matchmaking': 'ENTER MATCHMAKING',
+    'ranked.finding_match': 'FINDING MATCH',
+    'ranked.cancel_search': 'CLICK TO CANCEL',
+    'ranked.queue_info': 'Players in Queue',
+    'ranked.in_game': 'In Game',
+    'ranked.estimated_time': 'Estimated Wait Time',
+    'ranked.leaving_penalty': 'LEAVING EARLY IS PUNISHED',
+    'ranked.penalty_warning': 'Leaving early will result in rating loss',
+    'ranked.confirm_leave': 'Confirm Leave',
+    'ranked.season_stats': 'Season Statistics',
+    'ranked.games_played': 'Games Played',
+    'ranked.win_rate': 'Win Rate',
+    'ranked.average_pps': 'Average PPS',
+    'ranked.average_apm': 'Average APM',
+    'ranked.recent_matches': 'Recent Matches',
+    'ranked.win': 'WIN',
+    'ranked.loss': 'LOSS',
+    'ranked.need_login': 'Login required for ranked matches',
+    
+    // Game states
+    'game.play': 'Play',
+    'game.singlePlayerDesc': 'Challenge various single player modes',
+    'game.ranked': 'Ranked',
+    'game.rankedDesc': 'Battle against players of similar skill level',
+    'game.description': 'Classic Tetris gameplay',
+
     // Common
     'common.start': 'Start',
     'common.cancel': 'Cancel',
@@ -242,7 +301,8 @@ export const translations = {
     'common.error': 'Error',
     'common.success': 'Success',
     'common.yes': 'Yes',
-    'common.no': 'No'
+    'common.no': 'No',
+    'common.enter': 'Enter'
   },
   es: {
     // Auth
