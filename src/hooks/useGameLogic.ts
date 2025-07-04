@@ -25,7 +25,7 @@ export const useGameLogic = (
 ) => {
   // Game state
   const [gameState, setGameState] = useState<GameState>({
-    board: Array(20).fill(null).map(() => Array(10).fill(0)),
+    board: Array(23).fill(null).map(() => Array(10).fill(0)),
     currentPiece: null,
     nextPieces: [],
     holdPiece: null,
@@ -470,7 +470,7 @@ export const useGameLogic = (
     console.log('重置游戏...');
     isHardDropping.current = false;
     setGameState({
-      board: Array(20).fill(null).map(() => Array(10).fill(0)),
+      board: Array(23).fill(null).map(() => Array(10).fill(0)),
       currentPiece: null,
       nextPieces: [],
       holdPiece: null,

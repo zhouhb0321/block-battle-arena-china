@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Play, Users, Settings, LogIn, Shield } from 'lucide-react';
 import UserMenu from './UserMenu';
 import LanguageSelector from './LanguageSelector';
+import ThemeSwitcher from './ThemeSwitcher';
 import type { ViewType } from '@/types/navigation';
 
 interface NavigationBarProps {
@@ -78,8 +79,9 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             )}
           </div>
 
-          {/* User Menu, Language Selector, and Login Button */}
+          {/* User Menu, Theme Switcher, Language Selector, and Login Button */}
           <div className="flex items-center gap-3">
+            <ThemeSwitcher />
             <LanguageSelector />
             {isAuthenticated && user ? (
               <UserMenu 

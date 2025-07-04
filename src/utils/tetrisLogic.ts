@@ -66,7 +66,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
 };
 
 export const BOARD_WIDTH = 10;
-export const BOARD_HEIGHT = 20;
+export const BOARD_HEIGHT = 23; // 23 internal rows, display only bottom 20
 
 export const createEmptyBoard = (): number[][] => {
   return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
@@ -295,45 +295,45 @@ export const checkTSpin = (
     return null;
   }
 
-  // 卡块判定：检查T方块是否无法进行基本移动
+  // 卡块判定：检查T方块是否受到足够限制（不需要完全卡死）
   const canMoveLeft = isValidPosition(board, piece, -1, 0);
   const canMoveRight = isValidPosition(board, piece, 1, 0);
   const canMoveDown = isValidPosition(board, piece, 0, 1);
   
-  // 如果T方块可以自由移动，则不是T-Spin
+  // 如果T方块可以完全自由移动三个方向，则不是T-Spin
   if (canMoveLeft && canMoveRight && canMoveDown) {
     return null;
   }
 
   // 三角判定：检查T方块四个角落的占用情况
-  // T方块的实际形状是3x3，但只有特定位置有方块
+  // T方块3x3网格的四个角落位置，根据旋转状态正确计算
   const rotation = piece.rotation % 4;
   let corners: [number, number][] = [];
   
-  // 根据旋转状态确定四个角落的实际位置
+  // 根据旋转状态确定T方块3x3网格的四个角落的绝对位置
   switch (rotation) {
-    case 0: // T向上 ┴
+    case 0: // T向上 ┴ (标准形状: 0,1,0 / 1,1,1)
       corners = [
-        [piece.x, piece.y], [piece.x + 2, piece.y],     // 上方两角
-        [piece.x, piece.y + 2], [piece.x + 2, piece.y + 2] // 下方两角
+        [piece.x, piece.y], [piece.x + 2, piece.y],         // 上方两角
+        [piece.x, piece.y + 1], [piece.x + 2, piece.y + 1]  // 下方两角
       ];
       break;
-    case 1: // T向右 ├
+    case 1: // T向右 ├ (旋转90度: 1,0 / 1,1 / 1,0)
       corners = [
-        [piece.x, piece.y], [piece.x + 2, piece.y],     // 上方两角
-        [piece.x, piece.y + 2], [piece.x + 2, piece.y + 2] // 下方两角
+        [piece.x, piece.y], [piece.x + 1, piece.y],         // 上方两角
+        [piece.x, piece.y + 2], [piece.x + 1, piece.y + 2]  // 下方两角
       ];
       break;
-    case 2: // T向下 ┬
+    case 2: // T向下 ┬ (旋转180度: 1,1,1 / 0,1,0)
       corners = [
-        [piece.x, piece.y], [piece.x + 2, piece.y],     // 上方两角
-        [piece.x, piece.y + 2], [piece.x + 2, piece.y + 2] // 下方两角
+        [piece.x, piece.y], [piece.x + 2, piece.y],         // 上方两角
+        [piece.x, piece.y + 1], [piece.x + 2, piece.y + 1]  // 下方两角
       ];
       break;
-    case 3: // T向左 ┤
+    case 3: // T向左 ┤ (旋转270度: 0,1 / 1,1 / 0,1)
       corners = [
-        [piece.x, piece.y], [piece.x + 2, piece.y],     // 上方两角
-        [piece.x, piece.y + 2], [piece.x + 2, piece.y + 2] // 下方两角
+        [piece.x, piece.y], [piece.x + 1, piece.y],         // 上方两角
+        [piece.x, piece.y + 2], [piece.x + 1, piece.y + 2]  // 下方两角
       ];
       break;
   }
@@ -581,13 +581,13 @@ export const addGarbageLines = (board: number[][], garbageLines: number[][]): nu
   return [...newBoard, ...garbageLines];
 };
 
-// 创建新方块，确保出现在顶部中央 - 修正位置计算，方块从上方2行生成以支持极限消除
+// 创建新方块，确保出现在顶部中央 - 修正位置计算，方块从上方3行生成以支持极限消除
 export const createNewPiece = (type: TetrominoType): GamePiece => {
   // 方块居中生成，考虑实际形状
   const startX = Math.floor((BOARD_WIDTH - type.shape[0].length) / 2);
   
-  // 固定从游戏区域上方2行开始生成，为极限情况留出足够的空间进行消除
-  const startY = -2;
+  // 固定从游戏区域上方3行开始生成，为极限情况留出足够的空间进行消除
+  const startY = -3;
   
   return {
     type,

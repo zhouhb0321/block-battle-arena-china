@@ -18,8 +18,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
   cellSize = 25,
   clearingLines = []
 }) => {
-  // 只显示游戏区域的20行，隐藏上方2行
-  const extendedBoard: (number | string)[][] = board.map(row => [...row]);
+  // 只显示游戏区域的20行，隐藏上方3行（显示第3-22行，共20行）
+  const visibleBoard = board.slice(3); // 隐藏前3行，显示后20行
+  const extendedBoard: (number | string)[][] = visibleBoard.map(row => [...row]);
 
   // 添加幽灵方块（虚线样式）
   if (enableGhost && ghostPiece && currentPiece) {
@@ -29,10 +30,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
         if (cell) {
           const boardY = ghostPiece.y + rowIndex;
           const boardX = ghostPiece.x + colIndex;
-          // 只在可见区域显示幽灵方块
-          if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
-            if (extendedBoard[boardY][boardX] === 0) {
-              extendedBoard[boardY][boardX] = `ghost-${color}`;
+          // 转换为可见区域坐标（减去隐藏的3行）
+          const visibleY = boardY - 3;
+          if (visibleY >= 0 && visibleY < 20 && boardX >= 0 && boardX < 10) {
+            if (extendedBoard[visibleY][boardX] === 0) {
+              extendedBoard[visibleY][boardX] = `ghost-${color}`;
             }
           }
         }
@@ -48,9 +50,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
         if (cell) {
           const boardY = currentPiece.y + rowIndex;
           const boardX = currentPiece.x + colIndex;
-          // 只在可见区域显示当前方块
-          if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
-            extendedBoard[boardY][boardX] = `solid-${color}`;
+          // 转换为可见区域坐标（减去隐藏的3行）
+          const visibleY = boardY - 3;
+          if (visibleY >= 0 && visibleY < 20 && boardX >= 0 && boardX < 10) {
+            extendedBoard[visibleY][boardX] = `solid-${color}`;
           }
         }
       });

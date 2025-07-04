@@ -58,8 +58,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const isMobile = useIsMobile();
   const { t } = useLanguage();
   
-  // 判断游戏是否已开始 - 基于传入的prop或游戏状态
-  const gameStarted = propGameStarted || (!showCountdown && (gameState.score > 0 || gameState.lines > 0 || gameState.pieces !== undefined));
+  // 判断游戏是否已开始 - 基于当前方块存在与否
+  const gameStarted = propGameStarted || (!showCountdown && gameState.currentPiece !== null);
 
   if (isMobile) {
     return (
