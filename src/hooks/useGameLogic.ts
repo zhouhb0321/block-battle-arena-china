@@ -152,13 +152,15 @@ export const useGameLogic = (
     return false;
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, lockDelay]);
 
-  // 完全重写旋转逻辑，实现标准SRS系统
+  // 修复：完全重写旋转逻辑，实现标准SRS系统并支持边缘旋转
   const rotatePieceClockwise = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || isHardDropping.current) return;
 
     const currentPiece = gameState.currentPiece;
     const rotated = rotatePiece(currentPiece.type, true);
     const newRotation = (currentPiece.rotation + 1) % 4;
+    
+    console.log('尝试顺时针旋转，当前位置:', currentPiece.x, currentPiece.y);
     
     // 获取SRS踢墙测试序列
     const kickTests = getKickTests(
@@ -179,8 +181,12 @@ export const useGameLogic = (
         rotation: newRotation
       };
       
+      console.log(`踢墙测试 ${i}:`, kick, '测试位置:', testPiece.x, testPiece.y);
+      
       if (isValidPosition(gameState.board, testPiece)) {
         wasKicked = i > 0; // 第一个测试不算踢墙
+        console.log('旋转成功，踢墙:', wasKicked);
+        
         setGameState(prev => ({
           ...prev,
           currentPiece: testPiece,
@@ -193,6 +199,8 @@ export const useGameLogic = (
         return;
       }
     }
+    
+    console.log('旋转失败，所有踢墙测试都无效');
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
   const rotatePieceCounterclockwise = useCallback(() => {
