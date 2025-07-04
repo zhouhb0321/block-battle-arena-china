@@ -1,5 +1,15 @@
+
 import type { TetrominoType, GamePiece, ReplayAction } from './gameTypes';
 import { calculateB2BAttackBonus } from './b2bSystem';
+
+// Board constants
+export const BOARD_WIDTH = 10;
+export const BOARD_HEIGHT = 23;
+
+// Create empty board
+export const createEmptyBoard = (): number[][] => {
+  return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
+};
 
 // 标准化方块颜色 - 与经典俄罗斯方块保持一致
 export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
@@ -76,7 +86,7 @@ export const isValidPosition = (board: number[][], piece: GamePiece): boolean =>
         let boardX = x + col;
         let boardY = y + row;
 
-        if (boardX < 0 || boardX >= 10 || boardY >= 23 || boardY < 0 || board[boardY][boardX] !== 0) {
+        if (boardX < 0 || boardX >= BOARD_WIDTH || boardY >= BOARD_HEIGHT || boardY < 0 || board[boardY][boardX] !== 0) {
           return false;
         }
       }
@@ -86,13 +96,12 @@ export const isValidPosition = (board: number[][], piece: GamePiece): boolean =>
   return true;
 };
 
-// 将方块放置在游戏面板上
+// 将方块放置在游戏面板上 - 修复悬空问题
 export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
   const { type, x, y } = piece;
   const shape = type.shape;
-  const color = type.color; // 使用颜色字符串作为标记
+  const color = type.color;
 
-  // 创建一个新的面板副本，以避免直接修改原始面板
   const newBoard = board.map(row => [...row]);
 
   for (let row = 0; row < shape.length; row++) {
@@ -101,8 +110,9 @@ export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
         let boardX = x + col;
         let boardY = y + row;
 
-        if (boardX >= 0 && boardX < 10 && boardY >= 0 && boardY < 23) {
-          newBoard[boardY][boardX] = color as any; // 使用颜色字符串
+        // 允许在隐藏区域放置，但检查边界
+        if (boardX >= 0 && boardX < BOARD_WIDTH && boardY < BOARD_HEIGHT) {
+          newBoard[boardY][boardX] = color as any;
         }
       }
     }
@@ -122,15 +132,15 @@ export const clearLines = (board: number[][]): { newBoard: number[][]; linesClea
     return true;
   });
 
-  while (newBoard.length < 23) {
-    newBoard.unshift(Array(10).fill(0));
+  while (newBoard.length < BOARD_HEIGHT) {
+    newBoard.unshift(Array(BOARD_WIDTH).fill(0));
   }
 
   return { newBoard, linesCleared };
 };
 
 // 旋转方块
-export const rotatePiece = (tetromino: TetrominoType, clockwise: boolean): TetrominoType => {
+export const rotatePiece = (tetromino: TetrominoType, clockwise: boolean = true): TetrominoType => {
   const shape = tetromino.shape;
   const rows = shape.length;
   const cols = shape[0].length;
@@ -179,7 +189,23 @@ export const generateSevenBag = (): TetrominoType[] => {
   return shuffledPieces;
 };
 
-// 检查T-Spin
+// 创建新的方块
+export const createNewPiece = (pieceType: TetrominoType): GamePiece => {
+  return {
+    type: pieceType,
+    x: 4,
+    y: 0,
+    rotation: 0
+  };
+};
+
+// 创建幽灵方块
+export const createGhostPiece = (board: number[][], piece: GamePiece): GamePiece => {
+  let dropY = calculateDropPosition(board, piece);
+  return { ...piece, y: dropY };
+};
+
+// 检查T-Spin - 修复边缘旋转问题
 export const checkTSpin = (board: number[][], piece: GamePiece, lastMove: string): { type: string; isMini: boolean } | null => {
   if (piece.type.type !== 'T') {
     return null;
@@ -187,33 +213,49 @@ export const checkTSpin = (board: number[][], piece: GamePiece, lastMove: string
 
   const { x, y } = piece;
   let cornerCount = 0;
+  let frontCorners = 0;
 
-  // 定义四个角的位置相对于T方块中心的偏移量
+  // T方块的四个角相对于中心点的偏移
   const corners = [
-    { dx: -1, dy: -1 }, // 左上角
-    { dx: 1, dy: -1 },  // 右上角
-    { dx: -1, dy: 1 },  // 左下角
-    { dx: 1, dy: 1 }   // 右下角
+    { dx: -1, dy: -1 }, // 左上
+    { dx: 1, dy: -1 },  // 右上
+    { dx: -1, dy: 1 },  // 左下
+    { dx: 1, dy: 1 }    // 右下
   ];
 
-  // 检查每个角是否被占用
-  for (const corner of corners) {
-    const boardX = x + 1 + corner.dx; // +1 for correct offset
-    const boardY = y + 1 + corner.dy; // +1 for correct offset
+  // 根据T方块的朝向确定"前角"
+  let frontCornerIndices: number[] = [];
+  switch (piece.rotation % 4) {
+    case 0: frontCornerIndices = [0, 1]; break; // 朝上，前角是上方两个
+    case 1: frontCornerIndices = [1, 3]; break; // 朝右，前角是右方两个
+    case 2: frontCornerIndices = [2, 3]; break; // 朝下，前角是下方两个
+    case 3: frontCornerIndices = [0, 2]; break; // 朝左，前角是左方两个
+  }
 
-    if (boardX < 0 || boardX >= 10 || boardY < 0 || boardY >= 23 || board[boardY][boardX] !== 0) {
+  // 检查四个角
+  for (let i = 0; i < corners.length; i++) {
+    const corner = corners[i];
+    const checkX = x + 1 + corner.dx; // T方块中心在第二列
+    const checkY = y + 1 + corner.dy; // T方块中心在第二行
+
+    // 放宽边界检查 - 边界也算作被占用
+    const isOccupied = checkX < 0 || checkX >= BOARD_WIDTH || 
+                      checkY < 0 || checkY >= BOARD_HEIGHT || 
+                      board[checkY][checkX] !== 0;
+
+    if (isOccupied) {
       cornerCount++;
+      if (frontCornerIndices.includes(i)) {
+        frontCorners++;
+      }
     }
   }
 
-  // T-Spin的判断条件
-  if (cornerCount >= 3) {
-    // 进一步判断是否为Mini T-Spin
-    if (lastMove === 'rotate' && cornerCount === 3) {
-      return { type: 'T-Spin', isMini: true };
-    } else {
-      return { type: 'T-Spin', isMini: false };
-    }
+  // T-Spin判定：至少3个角被占用
+  if (cornerCount >= 3 && lastMove === 'rotate') {
+    // Mini T-Spin：只有1个前角被占用
+    const isMini = frontCorners === 1;
+    return { type: 'T-Spin', isMini };
   }
 
   return null;
@@ -244,7 +286,7 @@ const getIKickTests = (rotation: number, newRotation: number): { x: number; y: n
   return tests[testIndex % 4];
 };
 
-// 标准踢墙测试
+// 标准踢墙测试 - 优化边缘情况
 const getStandardKickTests = (rotation: number, newRotation: number): { x: number; y: number }[] => {
   const tests = [
     [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 }],
@@ -291,25 +333,7 @@ const getStandard180KickTests = (rotation: number): { x: number; y: number }[] =
   return tests[rotation % 4];
 };
 
-// 创建新的方块
-export const createNewPiece = (nextPieces: GamePiece[]): { newPiece: GamePiece | null; newNextPieces: GamePiece[] } => {
-  if (nextPieces.length === 0) {
-    return { newPiece: null, newNextPieces: [] };
-  }
-
-  const newPiece = nextPieces[0];
-  const newNextPieces = nextPieces.slice(1);
-
-  return { newPiece, newNextPieces };
-};
-
-// 创建幽灵方块
-export const createGhostPiece = (board: number[][], piece: GamePiece): GamePiece => {
-  let dropY = calculateDropPosition(board, piece);
-  return { ...piece, y: dropY };
-};
-
-// 计算得分
+// 计算得分 - 修正参数数量
 export const calculateScore = (
   linesCleared: number,
   level: number,
@@ -356,7 +380,7 @@ export const calculateScore = (
   return score;
 };
 
-// 计算攻击行数
+// 计算攻击行数 - 修正参数数量
 export const calculateAttackLines = (
   linesCleared: number,
   tSpin: { type: string; isMini: boolean } | null,

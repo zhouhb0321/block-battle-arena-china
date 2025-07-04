@@ -6,7 +6,7 @@ import type { TetrominoType, GamePiece } from '@/utils/gameTypes';
 export const useGameState = () => {
   const [currentPiece, setCurrentPiece] = useState<GamePiece | null>(null);
   const [ghostPiece, setGhostPiece] = useState<GamePiece | null>(null);
-  const [board, setBoard] = useState(() => Array(20).fill(null).map(() => Array(10).fill(0)));
+  const [board, setBoard] = useState(() => createEmptyBoard());
   const [nextPieces, setNextPieces] = useState<GamePiece[]>([]);
   const [holdPiece, setHoldPiece] = useState<GamePiece | null>(null);
   const [canHold, setCanHold] = useState(true);
@@ -27,7 +27,7 @@ export const useGameState = () => {
   const [startTime] = useState(Date.now());
 
   const resetGameState = useCallback(() => {
-    setBoard(Array(20).fill(null).map(() => Array(10).fill(0)));
+    setBoard(createEmptyBoard());
     setNextPieces([]);
     setCurrentPiece(null);
     setGhostPiece(null);

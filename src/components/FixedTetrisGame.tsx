@@ -116,10 +116,10 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     setGameState(prev => ({
       ...prev,
       currentPiece: newPiece,
+      ghostPiece: ghostPiece,
       nextPieces: getUpcomingPieces(),
       canHold: true,
-      pieces: prev.pieces + 1,
-      ghostPiece: ghostPiece
+      pieces: prev.pieces + 1
     }));
   }, [getNextPiece, getUpcomingPieces, gameState.board]);
 
@@ -201,7 +201,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       // 立即放置方块并处理消行
       const tSpinResult = checkTSpin(prev.board, droppedPiece, 'move');
       const newBoard = placePiece(prev.board, droppedPiece);
-      const { newBoard: clearedBoard, linesCleared, clearedLineIndices } = clearLines(newBoard);
+      const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
       
       const newCombo = linesCleared > 0 ? prev.combo + 1 : -1;
       const isSpecialClear = tSpinResult !== null || linesCleared === 4;
@@ -215,7 +215,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       const gravityInfo = getGravityInfo(newTotalLines);
       
       const newScore = calculateScore(linesCleared, gravityInfo.level, tSpinResult, newB2B > 1, newCombo, isPerfectClear);
-      const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 1, newCombo, newB2B);
+      const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 1, newCombo);
       
       const timeElapsed = (Date.now() - prev.startTime) / 1000;
       const newPps = prev.pieces > 0 ? prev.pieces / Math.max(timeElapsed, 1) : 0;
@@ -270,7 +270,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
 
       const tSpinResult = checkTSpin(prev.board, prev.currentPiece, 'move');
       const newBoard = placePiece(prev.board, prev.currentPiece);
-      const { newBoard: clearedBoard, linesCleared, clearedLineIndices } = clearLines(newBoard);
+      const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
       
       if (linesCleared > 0) {
         setTimeout(() => {
@@ -286,7 +286,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
           const gravityInfo = getGravityInfo(newTotalLines);
           
           const newScore = calculateScore(linesCleared, gravityInfo.level, tSpinResult, newB2B > 1, newCombo, isPerfectClear);
-          const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 1, newCombo, newB2B);
+          const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 1, newCombo);
           
           const timeElapsed = (Date.now() - prev.startTime) / 1000;
           const newPps = prev.pieces > 0 ? prev.pieces / Math.max(timeElapsed, 1) : 0;
@@ -331,7 +331,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
 
         return {
           ...prev,
-          clearingLines: clearedLineIndices
+          clearingLines: []
         };
       } else {
         return {
@@ -597,7 +597,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
               <div className="flex gap-2 justify-center">
                 <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
                   重新开始
-                </Button>
+                </Button>  
                 {onBackToMenu && (
                   <Button onClick={onBackToMenu} variant="outline">
                     返回菜单
