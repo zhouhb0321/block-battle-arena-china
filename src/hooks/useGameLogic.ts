@@ -9,6 +9,7 @@ import {
   generateSevenBag,
   checkTSpin,
   getKickTests,
+  get180KickTests,
   createNewPiece,
   createGhostPiece,
   calculateScore,
@@ -166,9 +167,8 @@ export const useGameLogic = (
       newRotation
     );
 
-    console.log(`SRS旋转测试 - 方块: ${currentPiece.type.type}, 从状态${currentPiece.rotation}到${newRotation}, 当前位置: (${currentPiece.x}, ${currentPiece.y})`);
-
     // 按照SRS规则测试每个踢墙位置
+    let wasKicked = false;
     for (let i = 0; i < kickTests.length; i++) {
       const kick = kickTests[i];
       const testPiece: GamePiece = { 
@@ -179,10 +179,8 @@ export const useGameLogic = (
         rotation: newRotation
       };
       
-      console.log(`测试踢墙位置 ${i+1}: 偏移(${kick.x}, ${kick.y}), 新位置(${testPiece.x}, ${testPiece.y})`);
-      
       if (isValidPosition(gameState.board, testPiece)) {
-        console.log(`踢墙成功！最终位置: (${testPiece.x}, ${testPiece.y}), 旋转状态: ${testPiece.rotation}`);
+        wasKicked = i > 0; // 第一个测试不算踢墙
         setGameState(prev => ({
           ...prev,
           currentPiece: testPiece,
@@ -193,11 +191,8 @@ export const useGameLogic = (
         setLockDelay(false);
         lockDelayTime.current = 0;
         return;
-      } else {
-        console.log(`踢墙失败: 位置(${testPiece.x}, ${testPiece.y})无效`);
       }
     }
-    console.log('旋转失败 - 所有踢墙位置都无效');
   }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
 
   const rotatePieceCounterclockwise = useCallback(() => {
@@ -218,6 +213,41 @@ export const useGameLogic = (
         type: rotated, 
         x: gameState.currentPiece.x + kick.x, 
         y: gameState.currentPiece.y + kick.y,
+        rotation: newRotation
+      };
+      
+      if (isValidPosition(gameState.board, testPiece)) {
+        setGameState(prev => ({
+          ...prev,
+          currentPiece: testPiece,
+          ghostPiece: createGhostPiece(gameState.board, testPiece)
+        }));
+        setLastAction('rotate');
+        
+        setLockDelay(false);
+        lockDelayTime.current = 0;
+        return;
+      }
+    }
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver]);
+
+  // 180度旋转功能
+  const rotatePiece180 = useCallback(() => {
+    if (!gameState.currentPiece || gameState.gameOver || isHardDropping.current) return;
+
+    const currentPiece = gameState.currentPiece;
+    const rotated = rotatePiece(rotatePiece(currentPiece.type, true), true); // 旋转两次
+    const newRotation = (currentPiece.rotation + 2) % 4;
+    
+    // 获取180度旋转的踢墙测试序列
+    const kickTests = get180KickTests(currentPiece.type.type, currentPiece.rotation);
+
+    for (const kick of kickTests) {
+      const testPiece: GamePiece = { 
+        ...currentPiece, 
+        type: rotated, 
+        x: currentPiece.x + kick.x, 
+        y: currentPiece.y + kick.y,
         rotation: newRotation
       };
       
@@ -517,6 +547,7 @@ export const useGameLogic = (
     movePiece,
     rotatePieceClockwise,
     rotatePieceCounterclockwise,
+    rotatePiece180,
     hardDrop,
     lockPiece,
     holdCurrentPiece,

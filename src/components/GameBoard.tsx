@@ -18,14 +18,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
   cellSize = 25,
   clearingLines = []
 }) => {
-  // 创建显示用的棋盘，包含上方2行（总共22行）
-  const extendedBoard: (number | string)[][] = [
-    // 上方2行，初始为空
-    Array(10).fill(0),
-    Array(10).fill(0),
-    // 正常游戏区域的20行
-    ...board.map(row => [...row])
-  ];
+  // 只显示游戏区域的20行，隐藏上方2行
+  const extendedBoard: (number | string)[][] = board.map(row => [...row]);
 
   // 添加幽灵方块（虚线样式）
   if (enableGhost && ghostPiece && currentPiece) {
@@ -33,9 +27,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
     shape.forEach((row, rowIndex) => {
       row.forEach((cell, colIndex) => {
         if (cell) {
-          const boardY = ghostPiece.y + rowIndex + 2; // 加2是因为扩展了上方2行
+          const boardY = ghostPiece.y + rowIndex;
           const boardX = ghostPiece.x + colIndex;
-          if (boardY >= 0 && boardY < 22 && boardX >= 0 && boardX < 10) {
+          // 只在可见区域显示幽灵方块
+          if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
             if (extendedBoard[boardY][boardX] === 0) {
               extendedBoard[boardY][boardX] = `ghost-${color}`;
             }
@@ -51,9 +46,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
     shape.forEach((row, rowIndex) => {
       row.forEach((cell, colIndex) => {
         if (cell) {
-          const boardY = currentPiece.y + rowIndex + 2; // 加2是因为扩展了上方2行
+          const boardY = currentPiece.y + rowIndex;
           const boardX = currentPiece.x + colIndex;
-          if (boardY >= 0 && boardY < 22 && boardX >= 0 && boardX < 10) {
+          // 只在可见区域显示当前方块
+          if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
             extendedBoard[boardY][boardX] = `solid-${color}`;
           }
         }
@@ -62,8 +58,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   }
 
   const getCellStyle = (cellValue: number | string, rowIndex: number) => {
-    const isClearing = clearingLines.includes(rowIndex - 2); // 减2因为上方2行
-    const isSpawnArea = rowIndex < 2; // 前2行是生成区域
+    const isClearing = clearingLines.includes(rowIndex);
     const baseStyle = {
       width: `${cellSize}px`,
       height: `${cellSize}px`,
@@ -72,8 +67,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
     if (cellValue === 0) {
       return {
         ...baseStyle,
-        backgroundColor: isSpawnArea ? 'rgba(26, 26, 26, 0.3)' : '#1a1a1a',
-        border: isSpawnArea ? '1px dashed #555' : '1px solid #333',
+        backgroundColor: '#1a1a1a',
+        border: '1px solid #333',
       };
     }
     
@@ -136,7 +131,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         style={{ 
           gridTemplateColumns: `repeat(10, ${cellSize}px)`,
           width: `${cellSize * 10 + 4}px`,
-          height: `${cellSize * 22 + 4}px`
+          height: `${cellSize * 20 + 4}px`
         }}
       >
         {extendedBoard.map((row, rowIndex) =>

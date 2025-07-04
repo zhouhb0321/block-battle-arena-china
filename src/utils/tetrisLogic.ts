@@ -118,6 +118,25 @@ export const rotatePiece = (piece: TetrominoType, clockwise: boolean = true): Te
   };
 };
 
+// 180度旋转函数
+export const rotatePiece180 = (piece: TetrominoType): TetrominoType => {
+  const { shape } = piece;
+  const rows = shape.length;
+  const cols = shape[0].length;
+  const rotated = Array(rows).fill(null).map(() => Array(cols).fill(0));
+  
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      rotated[rows - 1 - i][cols - 1 - j] = shape[i][j];
+    }
+  }
+  
+  return {
+    ...piece,
+    shape: rotated
+  };
+};
+
 export const isValidPosition = (
   board: number[][],
   piece: GamePiece,
@@ -265,62 +284,99 @@ export const createGhostPiece = (
   };
 };
 
-// 改进T-Spin检测 - 包含T-Spin Mini检测
+// 完全重写T-Spin检测 - 符合标准规则：卡块判定+三角判定
 export const checkTSpin = (
   board: number[][],
   piece: GamePiece,
-  lastAction: 'rotate' | 'move'
+  lastAction: 'rotate' | 'move',
+  wasKicked: boolean = false
 ): { type: string; isMini: boolean } | null => {
   if (piece.type.name !== 'T' || lastAction !== 'rotate') {
     return null;
   }
 
-  // T型方块的四个角落位置
-  const corners = [
-    [piece.x, piece.y], // 左上
-    [piece.x + 2, piece.y], // 右上
-    [piece.x, piece.y + 2], // 左下
-    [piece.x + 2, piece.y + 2] // 右下
-  ];
+  // 卡块判定：检查T方块是否无法进行基本移动
+  const canMoveLeft = isValidPosition(board, piece, -1, 0);
+  const canMoveRight = isValidPosition(board, piece, 1, 0);
+  const canMoveDown = isValidPosition(board, piece, 0, 1);
+  
+  // 如果T方块可以自由移动，则不是T-Spin
+  if (canMoveLeft && canMoveRight && canMoveDown) {
+    return null;
+  }
+
+  // 三角判定：检查T方块四个角落的占用情况
+  // T方块的实际形状是3x3，但只有特定位置有方块
+  const rotation = piece.rotation % 4;
+  let corners: [number, number][] = [];
+  
+  // 根据旋转状态确定四个角落的实际位置
+  switch (rotation) {
+    case 0: // T向上 ┴
+      corners = [
+        [piece.x, piece.y], [piece.x + 2, piece.y],     // 上方两角
+        [piece.x, piece.y + 2], [piece.x + 2, piece.y + 2] // 下方两角
+      ];
+      break;
+    case 1: // T向右 ├
+      corners = [
+        [piece.x, piece.y], [piece.x + 2, piece.y],     // 上方两角
+        [piece.x, piece.y + 2], [piece.x + 2, piece.y + 2] // 下方两角
+      ];
+      break;
+    case 2: // T向下 ┬
+      corners = [
+        [piece.x, piece.y], [piece.x + 2, piece.y],     // 上方两角
+        [piece.x, piece.y + 2], [piece.x + 2, piece.y + 2] // 下方两角
+      ];
+      break;
+    case 3: // T向左 ┤
+      corners = [
+        [piece.x, piece.y], [piece.x + 2, piece.y],     // 上方两角
+        [piece.x, piece.y + 2], [piece.x + 2, piece.y + 2] // 下方两角
+      ];
+      break;
+  }
 
   let filledCorners = 0;
   let filledCornerIndices: number[] = [];
   
   corners.forEach(([x, y], index) => {
-    if (x < 0 || x >= BOARD_WIDTH || y < 0 || y >= BOARD_HEIGHT || board[y]?.[x] !== 0) {
+    // 边界外或已占用的格子都算作"被填充"
+    if (x < 0 || x >= BOARD_WIDTH || y >= BOARD_HEIGHT || (y >= 0 && board[y] && board[y][x] !== 0)) {
       filledCorners++;
       filledCornerIndices.push(index);
     }
   });
 
-  if (filledCorners >= 3) {
-    // 判断是否为T-Spin Mini
-    // T-Spin Mini的条件：旋转后T型方块的旋转中心对应的两个角落都被填充
-    const rotation = piece.rotation % 4;
-    let isMini = false;
-    
-    switch (rotation) {
-      case 0: // 正向T
-        isMini = filledCornerIndices.includes(0) && filledCornerIndices.includes(1); // 上方两角
-        break;
-      case 1: // 右向T
-        isMini = filledCornerIndices.includes(1) && filledCornerIndices.includes(3); // 右方两角
-        break;
-      case 2: // 倒向T
-        isMini = filledCornerIndices.includes(2) && filledCornerIndices.includes(3); // 下方两角
-        break;
-      case 3: // 左向T
-        isMini = filledCornerIndices.includes(0) && filledCornerIndices.includes(2); // 左方两角
-        break;
-    }
-    
-    return { type: 'T-Spin', isMini };
+  // 必须至少有3个角落被占用才能构成T-Spin
+  if (filledCorners < 3) {
+    return null;
   }
 
-  return null;
+  // 判断是否为T-Spin Mini
+  // T-Spin Mini的条件：旋转轴对应的两个角落都被占用
+  let isMini = false;
+  
+  switch (rotation) {
+    case 0: // T向上：检查上方两角
+      isMini = filledCornerIndices.includes(0) && filledCornerIndices.includes(1);
+      break;
+    case 1: // T向右：检查右方两角  
+      isMini = filledCornerIndices.includes(1) && filledCornerIndices.includes(3);
+      break;
+    case 2: // T向下：检查下方两角
+      isMini = filledCornerIndices.includes(2) && filledCornerIndices.includes(3);
+      break;
+    case 3: // T向左：检查左方两角
+      isMini = filledCornerIndices.includes(0) && filledCornerIndices.includes(2);
+      break;
+  }
+
+  return { type: 'T-Spin', isMini };
 };
 
-// 标准SRS踢墙数据 - 恢复完整的踢墙系统以支持T-Spin Triple/Double
+// 标准SRS踢墙数据 - 完整实现，支持所有标准T-Spin设置
 export const getKickTests = (
   pieceType: string,
   fromRotation: number,
@@ -348,7 +404,7 @@ export const getKickTests = (
     return [{ x: 0, y: 0 }];
   }
 
-  // 其他方块（T, S, Z, J, L）的标准SRS踢墙数据（完整版本，支持T-Spin Triple/Double）
+  // 其他方块（T, S, Z, J, L）的标准SRS踢墙数据
   const normalKickData: { [key: string]: { x: number; y: number }[] } = {
     '0->1': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 }],
     '1->0': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
@@ -362,6 +418,39 @@ export const getKickTests = (
   
   const key = `${fromRotation}->${toRotation}`;
   return normalKickData[key] || [{ x: 0, y: 0 }];
+};
+
+// 180度旋转的踢墙数据
+export const get180KickTests = (
+  pieceType: string,
+  fromRotation: number
+): { x: number; y: number }[] => {
+  // I型方块的180度旋转踢墙数据
+  if (pieceType === 'I') {
+    const i180KickData: { [key: string]: { x: number; y: number }[] } = {
+      '0': [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: -1, y: 1 }, { x: 1, y: 0 }, { x: -1, y: 0 }],
+      '1': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 2 }, { x: 1, y: 1 }, { x: 0, y: 2 }, { x: 0, y: 1 }],
+      '2': [{ x: 0, y: 0 }, { x: 0, y: -1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 0 }, { x: 1, y: 0 }],
+      '3': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 2 }, { x: -1, y: 1 }, { x: 0, y: 2 }, { x: 0, y: 1 }]
+    };
+    
+    return i180KickData[fromRotation.toString()] || [{ x: 0, y: 0 }];
+  }
+
+  // O型方块180度旋转
+  if (pieceType === 'O') {
+    return [{ x: 0, y: 0 }];
+  }
+
+  // 其他方块的180度旋转踢墙数据
+  const normal180KickData: { [key: string]: { x: number; y: number }[] } = {
+    '0': [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: -1, y: 1 }, { x: 1, y: 0 }, { x: -1, y: 0 }],
+    '1': [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 1, y: 1 }, { x: 0, y: -1 }, { x: 0, y: 1 }],
+    '2': [{ x: 0, y: 0 }, { x: 0, y: -1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 0 }, { x: 1, y: 0 }],
+    '3': [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: -1, y: 1 }, { x: 0, y: -1 }, { x: 0, y: 1 }]
+  };
+  
+  return normal180KickData[fromRotation.toString()] || [{ x: 0, y: 0 }];
 };
 
 // 重写得分计算系统 - 符合标准俄罗斯方块得分表
