@@ -284,7 +284,7 @@ export const createGhostPiece = (
   };
 };
 
-// 完全重写T-Spin检测 - 符合标准规则：卡块判定+三角判定
+// 完全重写T-Spin检测 - 基于实际旋转形状的准确角落计算
 export const checkTSpin = (
   board: number[][],
   piece: GamePiece,
@@ -295,45 +295,57 @@ export const checkTSpin = (
     return null;
   }
 
-  // 卡块判定：检查T方块是否受到足够限制（不需要完全卡死）
+  // 改进的卡块判定：只要有基本的移动限制即可
   const canMoveLeft = isValidPosition(board, piece, -1, 0);
   const canMoveRight = isValidPosition(board, piece, 1, 0);
   const canMoveDown = isValidPosition(board, piece, 0, 1);
   
-  // 如果T方块可以完全自由移动三个方向，则不是T-Spin
-  if (canMoveLeft && canMoveRight && canMoveDown) {
+  // 如果可以同时向左右和下移动，说明没有足够的限制
+  const hasMovementRestriction = !canMoveLeft || !canMoveRight || !canMoveDown;
+  if (!hasMovementRestriction) {
     return null;
   }
 
-  // 三角判定：检查T方块四个角落的占用情况
-  // T方块3x3网格的四个角落位置，根据旋转状态正确计算
+  // 基于实际旋转形状计算角落位置
   const rotation = piece.rotation % 4;
+  const shape = piece.type.shape;
+  const shapeHeight = shape.length;
+  const shapeWidth = shape[0].length;
+  
+  // 计算实际边界框的四个角落
   let corners: [number, number][] = [];
   
-  // 根据旋转状态确定T方块3x3网格的四个角落的绝对位置
   switch (rotation) {
-    case 0: // T向上 ┴ (标准形状: 0,1,0 / 1,1,1)
+    case 0: // T向上 ┴ (3x2: [[0,1,0], [1,1,1]])
       corners = [
-        [piece.x, piece.y], [piece.x + 2, piece.y],         // 上方两角
-        [piece.x, piece.y + 1], [piece.x + 2, piece.y + 1]  // 下方两角
+        [piece.x, piece.y],                           // 左上角
+        [piece.x + shapeWidth - 1, piece.y],          // 右上角  
+        [piece.x, piece.y + shapeHeight - 1],         // 左下角
+        [piece.x + shapeWidth - 1, piece.y + shapeHeight - 1]  // 右下角
       ];
       break;
-    case 1: // T向右 ├ (旋转90度: 1,0 / 1,1 / 1,0)
+    case 1: // T向右 ├ (2x3: [[1,0], [1,1], [1,0]])
       corners = [
-        [piece.x, piece.y], [piece.x + 1, piece.y],         // 上方两角
-        [piece.x, piece.y + 2], [piece.x + 1, piece.y + 2]  // 下方两角
+        [piece.x, piece.y],                           // 左上角
+        [piece.x + shapeWidth - 1, piece.y],          // 右上角
+        [piece.x, piece.y + shapeHeight - 1],         // 左下角
+        [piece.x + shapeWidth - 1, piece.y + shapeHeight - 1]  // 右下角
       ];
       break;
-    case 2: // T向下 ┬ (旋转180度: 1,1,1 / 0,1,0)
+    case 2: // T向下 ┬ (3x2: [[1,1,1], [0,1,0]])
       corners = [
-        [piece.x, piece.y], [piece.x + 2, piece.y],         // 上方两角
-        [piece.x, piece.y + 1], [piece.x + 2, piece.y + 1]  // 下方两角
+        [piece.x, piece.y],                           // 左上角
+        [piece.x + shapeWidth - 1, piece.y],          // 右上角
+        [piece.x, piece.y + shapeHeight - 1],         // 左下角
+        [piece.x + shapeWidth - 1, piece.y + shapeHeight - 1]  // 右下角
       ];
       break;
-    case 3: // T向左 ┤ (旋转270度: 0,1 / 1,1 / 0,1)
+    case 3: // T向左 ┤ (2x3: [[0,1], [1,1], [0,1]])
       corners = [
-        [piece.x, piece.y], [piece.x + 1, piece.y],         // 上方两角
-        [piece.x, piece.y + 2], [piece.x + 1, piece.y + 2]  // 下方两角
+        [piece.x, piece.y],                           // 左上角
+        [piece.x + shapeWidth - 1, piece.y],          // 右上角
+        [piece.x, piece.y + shapeHeight - 1],         // 左下角
+        [piece.x + shapeWidth - 1, piece.y + shapeHeight - 1]  // 右下角
       ];
       break;
   }
@@ -354,21 +366,20 @@ export const checkTSpin = (
     return null;
   }
 
-  // 判断是否为T-Spin Mini
-  // T-Spin Mini的条件：旋转轴对应的两个角落都被占用
+  // 改进的T-Spin Mini判定 - 基于标准规则
   let isMini = false;
   
   switch (rotation) {
-    case 0: // T向上：检查上方两角
+    case 0: // T向上：如果上方两角(0,1)都被占用，则为Mini
       isMini = filledCornerIndices.includes(0) && filledCornerIndices.includes(1);
       break;
-    case 1: // T向右：检查右方两角  
+    case 1: // T向右：如果右侧相关角落被占用，则为Mini  
       isMini = filledCornerIndices.includes(1) && filledCornerIndices.includes(3);
       break;
-    case 2: // T向下：检查下方两角
+    case 2: // T向下：如果下方两角(2,3)都被占用，则为Mini
       isMini = filledCornerIndices.includes(2) && filledCornerIndices.includes(3);
       break;
-    case 3: // T向左：检查左方两角
+    case 3: // T向左：如果左侧相关角落被占用，则为Mini
       isMini = filledCornerIndices.includes(0) && filledCornerIndices.includes(2);
       break;
   }
