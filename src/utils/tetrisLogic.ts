@@ -284,7 +284,7 @@ export const createGhostPiece = (
   };
 };
 
-// 完全重写T-Spin检测 - 基于实际旋转形状的准确角落计算
+// 完全重写T-Spin检测系统 - 基于真实方块占用位置的精确计算
 export const checkTSpin = (
   board: number[][],
   piece: GamePiece,
@@ -295,99 +295,139 @@ export const checkTSpin = (
     return null;
   }
 
-  // 改进的卡块判定：只要有基本的移动限制即可
+  console.log('T-Spin检测开始，方块位置:', piece.x, piece.y, '旋转状态:', piece.rotation);
+
+  // 检查基本的移动限制 - T方块必须被适当限制才能构成T-Spin
   const canMoveLeft = isValidPosition(board, piece, -1, 0);
   const canMoveRight = isValidPosition(board, piece, 1, 0);
   const canMoveDown = isValidPosition(board, piece, 0, 1);
   
-  // 如果可以同时向左右和下移动，说明没有足够的限制
-  const hasMovementRestriction = !canMoveLeft || !canMoveRight || !canMoveDown;
-  if (!hasMovementRestriction) {
+  // 如果T方块可以自由移动，则不是T-Spin
+  const movementRestrictions = [!canMoveLeft, !canMoveRight, !canMoveDown].filter(x => x).length;
+  if (movementRestrictions < 2) {
+    console.log('移动限制不足，无法构成T-Spin');
     return null;
   }
 
-  // 基于实际旋转形状计算角落位置
+  // 基于T方块真实占用位置计算关键角落
   const rotation = piece.rotation % 4;
-  const shape = piece.type.shape;
-  const shapeHeight = shape.length;
-  const shapeWidth = shape[0].length;
+  const { shape } = piece.type;
   
-  // 计算实际边界框的四个角落
+  // 找到T方块的中心位置（旋转轴）
+  let centerX = -1, centerY = -1;
+  for (let i = 0; i < shape.length; i++) {
+    for (let j = 0; j < shape[i].length; j++) {
+      if (shape[i][j] === 1) {
+        // T方块的中心通常是第二个找到的方块位置
+        if (centerX === -1) {
+          centerX = j;
+          centerY = i;
+        } else if (Math.abs(j - centerX) <= 1 && Math.abs(i - centerY) <= 1) {
+          // 找到更接近中心的位置
+          if (rotation === 0 && i > centerY) { // T向上时，中心在下方
+            centerX = j;
+            centerY = i;
+          } else if (rotation === 1 && j < centerX) { // T向右时，中心在左侧
+            centerX = j;
+            centerY = i;
+          } else if (rotation === 2 && i < centerY) { // T向下时，中心在上方
+            centerX = j;
+            centerY = i;
+          } else if (rotation === 3 && j > centerX) { // T向左时，中心在右侧
+            centerX = j;
+            centerY = i;
+          }
+        }
+      }
+    }
+  }
+
+  // 基于旋转状态和中心位置计算四个关键角落
+  const boardCenterX = piece.x + centerX;
+  const boardCenterY = piece.y + centerY;
+  
   let corners: [number, number][] = [];
   
   switch (rotation) {
-    case 0: // T向上 ┴ (3x2: [[0,1,0], [1,1,1]])
+    case 0: // T向上 ┴
       corners = [
-        [piece.x, piece.y],                           // 左上角
-        [piece.x + shapeWidth - 1, piece.y],          // 右上角  
-        [piece.x, piece.y + shapeHeight - 1],         // 左下角
-        [piece.x + shapeWidth - 1, piece.y + shapeHeight - 1]  // 右下角
+        [boardCenterX - 1, boardCenterY - 1], // 左上
+        [boardCenterX + 1, boardCenterY - 1], // 右上
+        [boardCenterX - 1, boardCenterY + 1], // 左下
+        [boardCenterX + 1, boardCenterY + 1]  // 右下
       ];
       break;
-    case 1: // T向右 ├ (2x3: [[1,0], [1,1], [1,0]])
+    case 1: // T向右 ├
       corners = [
-        [piece.x, piece.y],                           // 左上角
-        [piece.x + shapeWidth - 1, piece.y],          // 右上角
-        [piece.x, piece.y + shapeHeight - 1],         // 左下角
-        [piece.x + shapeWidth - 1, piece.y + shapeHeight - 1]  // 右下角
+        [boardCenterX - 1, boardCenterY - 1], // 左上
+        [boardCenterX + 1, boardCenterY - 1], // 右上
+        [boardCenterX - 1, boardCenterY + 1], // 左下
+        [boardCenterX + 1, boardCenterY + 1]  // 右下
       ];
       break;
-    case 2: // T向下 ┬ (3x2: [[1,1,1], [0,1,0]])
+    case 2: // T向下 ┬
       corners = [
-        [piece.x, piece.y],                           // 左上角
-        [piece.x + shapeWidth - 1, piece.y],          // 右上角
-        [piece.x, piece.y + shapeHeight - 1],         // 左下角
-        [piece.x + shapeWidth - 1, piece.y + shapeHeight - 1]  // 右下角
+        [boardCenterX - 1, boardCenterY - 1], // 左上
+        [boardCenterX + 1, boardCenterY - 1], // 右上
+        [boardCenterX - 1, boardCenterY + 1], // 左下
+        [boardCenterX + 1, boardCenterY + 1]  // 右下
       ];
       break;
-    case 3: // T向左 ┤ (2x3: [[0,1], [1,1], [0,1]])
+    case 3: // T向左 ┤
       corners = [
-        [piece.x, piece.y],                           // 左上角
-        [piece.x + shapeWidth - 1, piece.y],          // 右上角
-        [piece.x, piece.y + shapeHeight - 1],         // 左下角
-        [piece.x + shapeWidth - 1, piece.y + shapeHeight - 1]  // 右下角
+        [boardCenterX - 1, boardCenterY - 1], // 左上
+        [boardCenterX + 1, boardCenterY - 1], // 右上
+        [boardCenterX - 1, boardCenterY + 1], // 左下
+        [boardCenterX + 1, boardCenterY + 1]  // 右下
       ];
       break;
   }
 
+  console.log('T-Spin角落位置:', corners);
+
+  // 检查每个角落是否被占用（边界外或有方块）
   let filledCorners = 0;
   let filledCornerIndices: number[] = [];
   
   corners.forEach(([x, y], index) => {
-    // 边界外或已占用的格子都算作"被填充"
-    if (x < 0 || x >= BOARD_WIDTH || y >= BOARD_HEIGHT || (y >= 0 && board[y] && board[y][x] !== 0)) {
+    const isOccupied = x < 0 || x >= BOARD_WIDTH || y >= BOARD_HEIGHT || (y >= 0 && board[y] && board[y][x] !== 0);
+    if (isOccupied) {
       filledCorners++;
       filledCornerIndices.push(index);
     }
   });
 
+  console.log('被占用的角落数量:', filledCorners, '索引:', filledCornerIndices);
+
   // 必须至少有3个角落被占用才能构成T-Spin
   if (filledCorners < 3) {
+    console.log('占用角落不足3个，无法构成T-Spin');
     return null;
   }
 
-  // 改进的T-Spin Mini判定 - 基于标准规则
+  // 精确的T-Spin Mini判定 - 基于标准规则
   let isMini = false;
   
   switch (rotation) {
-    case 0: // T向上：如果上方两角(0,1)都被占用，则为Mini
+    case 0: // T向上：如果前方两角(0,1)都被占用，则为Mini
       isMini = filledCornerIndices.includes(0) && filledCornerIndices.includes(1);
       break;
-    case 1: // T向右：如果右侧相关角落被占用，则为Mini  
+    case 1: // T向右：如果前方两角(1,3)都被占用，则为Mini
       isMini = filledCornerIndices.includes(1) && filledCornerIndices.includes(3);
       break;
-    case 2: // T向下：如果下方两角(2,3)都被占用，则为Mini
+    case 2: // T向下：如果前方两角(2,3)都被占用，则为Mini
       isMini = filledCornerIndices.includes(2) && filledCornerIndices.includes(3);
       break;
-    case 3: // T向左：如果左侧相关角落被占用，则为Mini
+    case 3: // T向左：如果前方两角(0,2)都被占用，则为Mini
       isMini = filledCornerIndices.includes(0) && filledCornerIndices.includes(2);
       break;
   }
 
+  console.log('T-Spin检测结果:', isMini ? 'T-Spin Mini' : 'T-Spin', '旋转状态:', rotation);
+  
   return { type: 'T-Spin', isMini };
 };
 
-// 标准SRS踢墙数据 - 完整实现，支持所有标准T-Spin设置
 export const getKickTests = (
   pieceType: string,
   fromRotation: number,
@@ -464,7 +504,6 @@ export const get180KickTests = (
   return normal180KickData[fromRotation.toString()] || [{ x: 0, y: 0 }];
 };
 
-// 重写得分计算系统 - 符合标准俄罗斯方块得分表
 export const calculateScore = (
   linesCleared: number,
   level: number,

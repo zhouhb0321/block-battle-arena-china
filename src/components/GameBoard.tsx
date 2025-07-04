@@ -1,4 +1,6 @@
+
 import React from 'react';
+import WoodTextureCell from './WoodTextureCell';
 import type { GamePiece } from '@/utils/gameTypes';
 
 interface GameBoardProps {
@@ -60,64 +62,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
     });
   }
 
-  const getCellStyle = (cellValue: number | string, rowIndex: number) => {
-    const isClearing = clearingLines.includes(rowIndex);
-    const baseStyle = {
-      width: `${cellSize}px`,
-      height: `${cellSize}px`,
-    };
-    
-    if (cellValue === 0) {
-      return {
-        ...baseStyle,
-        backgroundColor: '#1a1a1a',
-        border: '1px solid #333',
-      };
-    }
-    
-    // 幽灵方块 - 虚线边框样式
-    if (typeof cellValue === 'string' && cellValue.startsWith('ghost-')) {
-      const color = cellValue.replace('ghost-', '');
-      return {
-        ...baseStyle,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        border: `2px dashed ${color}`,
-        opacity: 0.6,
-        borderRadius: '2px',
-      };
-    }
-    
-    // 实心方块 - 带阴影和渐变的立体效果
-    if (typeof cellValue === 'string' && cellValue.startsWith('solid-')) {
-      const color = cellValue.replace('solid-', '');
-      return {
-        ...baseStyle,
-        backgroundColor: color,
-        border: `1px solid ${color}`,
-        boxShadow: isClearing 
-          ? '0 0 15px #fff, inset 2px 2px 4px rgba(255,255,255,0.4), inset -2px -2px 4px rgba(0,0,0,0.3)' 
-          : 'inset 2px 2px 4px rgba(255,255,255,0.3), inset -2px -2px 4px rgba(0,0,0,0.3)',
-        borderRadius: '1px',
-        animation: isClearing ? 'flash 0.3s ease-in-out' : 'none',
-      };
-    }
-    
-    // 已放置的方块 - 根据数字获取颜色
-    const colors = ['', '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000', '#666666'];
-    const backgroundColor = colors[cellValue as number] || '#666666';
-    
-    return {
-      ...baseStyle,
-      backgroundColor,
-      border: `1px solid ${backgroundColor}`,
-      boxShadow: isClearing 
-        ? '0 0 15px #fff, inset 2px 2px 4px rgba(255,255,255,0.3), inset -2px -2px 4px rgba(0,0,0,0.3)' 
-        : 'inset 2px 2px 4px rgba(255,255,255,0.2), inset -2px -2px 4px rgba(0,0,0,0.3)',
-      borderRadius: '1px',
-      animation: isClearing ? 'flash 0.3s ease-in-out' : 'none',
-    };
-  };
-
   return (
     <div className="relative">
       <style>
@@ -125,6 +69,32 @@ const GameBoard: React.FC<GameBoardProps> = ({
           @keyframes flash {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
+          }
+          
+          .wood-texture-block {
+            transition: all 0.2s ease;
+          }
+          
+          .wood-texture-block.clearing {
+            animation: flash 0.3s ease-in-out;
+            filter: brightness(1.5) saturate(1.3);
+          }
+          
+          .wood-texture-block:hover {
+            filter: brightness(1.1);
+          }
+          
+          .wood-grain-overlay {
+            mix-blend-mode: multiply;
+          }
+          
+          .shimmer-overlay {
+            animation: shimmer 3s ease-in-out infinite;
+          }
+          
+          @keyframes shimmer {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 0.6; }
           }
         `}
       </style>
@@ -139,9 +109,12 @@ const GameBoard: React.FC<GameBoardProps> = ({
       >
         {extendedBoard.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
-            <div
+            <WoodTextureCell
               key={`${rowIndex}-${colIndex}`}
-              style={getCellStyle(cell, rowIndex)}
+              cellValue={cell}
+              rowIndex={rowIndex}
+              cellSize={cellSize}
+              isClearing={clearingLines.includes(rowIndex)}
             />
           ))
         )}
