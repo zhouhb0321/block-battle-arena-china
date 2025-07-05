@@ -6,6 +6,7 @@ import { TetrisGameProvider, useTetrisGame } from './game/TetrisGameProvider';
 import { GameModeHandler } from './game/GameModeHandler';
 import { GameKeyboardHandler } from './game/GameKeyboardHandler';
 import SinglePlayerGameArea from './game/SinglePlayerGameArea';
+import OutOfFocusOverlay from './OutOfFocusOverlay';
 import { GAME_MODES, type GameMode } from '@/utils/gameTypes';
 
 interface TetrisGameProps {
@@ -101,6 +102,11 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
         onRotateCounterclockwise={gameLogic.rotatePieceCounterclockwise}
         onRotate180={rotate180}
         onHold={gameLogic.holdCurrentPiece}
+      />
+      
+      {/* Out of Focus 覆盖层 */}
+      <OutOfFocusOverlay 
+        show={!gameLogic.isWindowFocused && gameStarted && !gameLogic.gameState.gameOver} 
       />
     </div>
   );

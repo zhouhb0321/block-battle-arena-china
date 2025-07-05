@@ -216,9 +216,14 @@ export const createGhostPiece = (board: number[][], piece: GamePiece): GamePiece
   return { ...piece, y: dropY };
 };
 
-// 使用新的T-Spin检测系统
-export const checkTSpin = (board: number[][], piece: GamePiece, lastMove: string): { type: string; isMini: boolean } | null => {
-  const result = detectTSpin(board, piece, lastMove);
+// 使用新的T-Spin检测系统，集成踢墙状态
+export const checkTSpin = (
+  board: number[][], 
+  piece: GamePiece, 
+  lastMove: string, 
+  wasKicked: boolean = false
+): { type: string; isMini: boolean } | null => {
+  const result = detectTSpin(board, piece, lastMove, wasKicked);
   if (result) {
     return {
       type: result.type,
@@ -226,6 +231,102 @@ export const checkTSpin = (board: number[][], piece: GamePiece, lastMove: string
     };
   }
   return null;
+};
+
+// 改进的SRS踢墙测试，返回踢墙状态
+export const performSRSRotation = (
+  board: number[][],
+  piece: GamePiece,
+  clockwise: boolean = true
+): { success: boolean; newPiece: GamePiece | null; wasKicked: boolean } => {
+  const rotated = rotatePiece(piece.type, clockwise);
+  const newRotation = clockwise 
+    ? (piece.rotation + 1) % 4 
+    : (piece.rotation + 3) % 4;
+  
+  // 获取SRS踢墙测试序列
+  const kickTests = getKickTests(
+    piece.type.type,
+    piece.rotation,
+    newRotation
+  );
+  
+  console.log(`SRS旋转测试开始: ${piece.type.type}块 ${piece.rotation}->${newRotation}`);
+  
+  // 按照SRS规则测试每个踢墙位置
+  for (let i = 0; i < kickTests.length; i++) {
+    const kick = kickTests[i];
+    const testPiece: GamePiece = {
+      ...piece,
+      type: rotated,
+      x: piece.x + kick.x,
+      y: piece.y + kick.y,
+      rotation: newRotation
+    };
+    
+    console.log(`踢墙测试 ${i}: 偏移(${kick.x}, ${kick.y}) -> 位置(${testPiece.x}, ${testPiece.y})`);
+    
+    if (isValidPosition(board, testPiece)) {
+      const wasKicked = i > 0;
+      console.log(`✅ 旋转成功! ${wasKicked ? '踢墙成功' : '原地旋转'}`);
+      
+      return {
+        success: true,
+        newPiece: testPiece,
+        wasKicked
+      };
+    }
+  }
+  
+  console.log(`❌ 旋转失败: 所有踢墙测试都无效`);
+  return {
+    success: false,
+    newPiece: null,
+    wasKicked: false
+  };
+};
+
+// 180度旋转的SRS测试
+export const performSRS180Rotation = (
+  board: number[][],
+  piece: GamePiece
+): { success: boolean; newPiece: GamePiece | null; wasKicked: boolean } => {
+  const rotated = rotatePiece(rotatePiece(piece.type, true), true); // 旋转两次
+  const newRotation = (piece.rotation + 2) % 4;
+  
+  // 获取180度旋转的踢墙测试序列
+  const kickTests = get180KickTests(piece.type.type, piece.rotation);
+  
+  console.log(`SRS 180度旋转测试开始: ${piece.type.type}块`);
+  
+  for (let i = 0; i < kickTests.length; i++) {
+    const kick = kickTests[i];
+    const testPiece: GamePiece = {
+      ...piece,
+      type: rotated,
+      x: piece.x + kick.x,
+      y: piece.y + kick.y,
+      rotation: newRotation
+    };
+    
+    if (isValidPosition(board, testPiece)) {
+      const wasKicked = i > 0;
+      console.log(`✅ 180度旋转成功! ${wasKicked ? '踢墙成功' : '原地旋转'}`);
+      
+      return {
+        success: true,
+        newPiece: testPiece,
+        wasKicked
+      };
+    }
+  }
+  
+  console.log(`❌ 180度旋转失败`);
+  return {
+    success: false,
+    newPiece: null,
+    wasKicked: false
+  };
 };
 
 // 获取SRS踢墙测试序列

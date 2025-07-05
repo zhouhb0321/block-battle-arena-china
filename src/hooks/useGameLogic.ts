@@ -9,8 +9,8 @@ import {
   calculateDropPosition,
   generateSevenBag,
   checkTSpin,
-  getKickTests,
-  get180KickTests,
+  performSRSRotation,
+  performSRS180Rotation,
   createNewPiece,
   createGhostPiece,
   calculateScore,
@@ -56,6 +56,7 @@ export const useGameLogic = (
   const lockDelayTime = useRef<number>(0);
   const [lockDelay, setLockDelay] = useState(false);
   const [lastAction, setLastAction] = useState<'rotate' | 'move' | null>(null);
+  const [wasKicked, setWasKicked] = useState(false); // 记录是否发生踢墙
   const isHardDropping = useRef(false);
   const wasPausedBeforeFocusLoss = useRef(false);
 
@@ -140,6 +141,7 @@ export const useGameLogic = (
     
     setLockDelay(false);
     lockDelayTime.current = 0;
+    setWasKicked(false);
     isHardDropping.current = false;
   }, [createGamePieceFromType]);
 
@@ -159,6 +161,7 @@ export const useGameLogic = (
         ghostPiece: createGhostPiece(gameState.board, newPiece)
       }));
       setLastAction('move');
+      setWasKicked(false);
       
       if (dy > 0) {
         setLockDelay(false);
@@ -176,164 +179,101 @@ export const useGameLogic = (
     return false;
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, isWindowFocused, lockDelay]);
 
-  // 修复：完全重写旋转逻辑，实现标准SRS系统并支持边缘旋转
+  // 重写顺时针旋转，使用新的SRS系统
   const rotatePieceClockwise = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return;
 
-    const currentPiece = gameState.currentPiece;
-    const rotated = rotatePiece(currentPiece.type, true);
-    const newRotation = (currentPiece.rotation + 1) % 4;
+    const rotationResult = performSRSRotation(gameState.board, gameState.currentPiece, true);
     
-    console.log('尝试顺时针旋转，当前位置:', currentPiece.x, currentPiece.y);
-    
-    // 获取SRS踢墙测试序列
-    const kickTests = getKickTests(
-      currentPiece.type.type, 
-      currentPiece.rotation, 
-      newRotation
-    );
-
-    // 按照SRS规则测试每个踢墙位置
-    let wasKicked = false;
-    for (let i = 0; i < kickTests.length; i++) {
-      const kick = kickTests[i];
-      const testPiece: GamePiece = { 
-        ...currentPiece, 
-        type: rotated, 
-        x: currentPiece.x + kick.x, 
-        y: currentPiece.y + kick.y,
-        rotation: newRotation
-      };
+    if (rotationResult.success && rotationResult.newPiece) {
+      setGameState(prev => ({
+        ...prev,
+        currentPiece: rotationResult.newPiece!,
+        ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
+      }));
+      setLastAction('rotate');
+      setWasKicked(rotationResult.wasKicked);
       
-      console.log(`踢墙测试 ${i}:`, kick, '测试位置:', testPiece.x, testPiece.y);
+      setLockDelay(false);
+      lockDelayTime.current = 0;
       
-      if (isValidPosition(gameState.board, testPiece)) {
-        wasKicked = i > 0; // 第一个测试不算踢墙
-        console.log('旋转成功，踢墙:', wasKicked);
-        
-        setGameState(prev => ({
-          ...prev,
-          currentPiece: testPiece,
-          ghostPiece: createGhostPiece(prev.board, testPiece)
-        }));
-        setLastAction('rotate');
-        
-        setLockDelay(false);
-        lockDelayTime.current = 0;
-        return;
-      }
+      console.log(`顺时针旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
     }
-    
-    console.log('旋转失败，所有踢墙测试都无效');
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, isWindowFocused]);
 
+  // 重写逆时针旋转，使用新的SRS系统
   const rotatePieceCounterclockwise = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return;
 
-    const rotated = rotatePiece(gameState.currentPiece.type, false);
-    const newRotation = (gameState.currentPiece.rotation + 3) % 4;
+    const rotationResult = performSRSRotation(gameState.board, gameState.currentPiece, false);
     
-    const kickTests = getKickTests(
-      gameState.currentPiece.type.type, 
-      gameState.currentPiece.rotation, 
-      newRotation
-    );
-
-    for (const kick of kickTests) {
-      const testPiece: GamePiece = { 
-        ...gameState.currentPiece, 
-        type: rotated, 
-        x: gameState.currentPiece.x + kick.x, 
-        y: gameState.currentPiece.y + kick.y,
-        rotation: newRotation
-      };
+    if (rotationResult.success && rotationResult.newPiece) {
+      setGameState(prev => ({
+        ...prev,
+        currentPiece: rotationResult.newPiece!,
+        ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
+      }));
+      setLastAction('rotate');
+      setWasKicked(rotationResult.wasKicked);
       
-      if (isValidPosition(gameState.board, testPiece)) {
-        setGameState(prev => ({
-          ...prev,
-          currentPiece: testPiece,
-          ghostPiece: createGhostPiece(gameState.board, testPiece)
-        }));
-        setLastAction('rotate');
-        
-        setLockDelay(false);
-        lockDelayTime.current = 0;
-        return;
-      }
+      setLockDelay(false);
+      lockDelayTime.current = 0;
+      
+      console.log(`逆时针旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
     }
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, isWindowFocused]);
 
-  // 180度旋转功能
+  // 重写180度旋转，使用新的SRS系统
   const rotatePiece180 = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return;
 
-    const currentPiece = gameState.currentPiece;
-    const rotated = rotatePiece(rotatePiece(currentPiece.type, true), true); // 旋转两次
-    const newRotation = (currentPiece.rotation + 2) % 4;
+    const rotationResult = performSRS180Rotation(gameState.board, gameState.currentPiece);
     
-    // 获取180度旋转的踢墙测试序列
-    const kickTests = get180KickTests(currentPiece.type.type, currentPiece.rotation);
-
-    for (const kick of kickTests) {
-      const testPiece: GamePiece = { 
-        ...currentPiece, 
-        type: rotated, 
-        x: currentPiece.x + kick.x, 
-        y: currentPiece.y + kick.y,
-        rotation: newRotation
-      };
+    if (rotationResult.success && rotationResult.newPiece) {
+      setGameState(prev => ({
+        ...prev,
+        currentPiece: rotationResult.newPiece!,
+        ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
+      }));
+      setLastAction('rotate');
+      setWasKicked(rotationResult.wasKicked);
       
-      if (isValidPosition(gameState.board, testPiece)) {
-        setGameState(prev => ({
-          ...prev,
-          currentPiece: testPiece,
-          ghostPiece: createGhostPiece(gameState.board, testPiece)
-        }));
-        setLastAction('rotate');
-        
-        setLockDelay(false);
-        lockDelayTime.current = 0;
-        return;
-      }
+      setLockDelay(false);
+      lockDelayTime.current = 0;
+      
+      console.log(`180度旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
     }
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, isWindowFocused]);
 
-  // 完全重写硬降功能 - 立即执行，无延迟
+  // 更新硬降和锁定函数，传递踢墙状态给T-Spin检测
   const hardDrop = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return;
 
     console.log('硬降开始 - 当前方块位置:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
     
-    // 立即设置硬降状态
     isHardDropping.current = true;
     
-    // 计算最终位置 - 使用优化的算法
     const dropY = calculateDropPosition(gameState.board, gameState.currentPiece);
     const dropDistance = dropY - gameState.currentPiece.y;
     
     console.log('硬降距离:', dropDistance, '最终位置:', dropY);
     
     if (dropDistance <= 0) {
-      // 如果已经在底部，直接锁定
       isHardDropping.current = false;
       lockPiece();
       return;
     }
     
-    // 创建最终位置的方块
     const finalPiece = { ...gameState.currentPiece, y: dropY };
     
-    // 检查T-Spin - 使用新的检测系统
-    const tSpinResult = checkTSpin(gameState.board, finalPiece, lastAction || 'rotate');
+    // 检查T-Spin - 传递踢墙状态
+    const tSpinResult = checkTSpin(gameState.board, finalPiece, lastAction || 'rotate', wasKicked);
     
-    // 立即放置方块并消除行
     const newBoard = placePiece(gameState.board, finalPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     
-    // 检查是否为全清
     const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
     
-    // 计算得分和连击
     const newCombo = linesCleared > 0 ? gameState.combo! + 1 : -1;
     const isSpecialClear = tSpinResult !== null || linesCleared === 4;
     const newB2B = isSpecialClear ? gameState.b2b! + 1 : (linesCleared > 0 ? 0 : gameState.b2b!);
@@ -341,7 +281,6 @@ export const useGameLogic = (
     const lineScore = calculateScore(linesCleared, gameState.level, tSpinResult, gameState.b2b! > 0, newCombo, isPerfectClear);
     const attackValue = calculateAttackLines(linesCleared, tSpinResult, gameState.b2b! > 0, newCombo);
     
-    // 立即更新游戏状态
     setGameState(prev => ({
       ...prev,
       board: clearedBoard,
@@ -350,7 +289,7 @@ export const useGameLogic = (
       lines: prev.lines + linesCleared,
       combo: newCombo,
       b2b: newB2B,
-      score: prev.score + lineScore + (dropDistance * 2), // 硬降得分
+      score: prev.score + lineScore + (dropDistance * 2),
       attack: prev.attack! + attackValue,
       level: Math.floor((prev.lines + linesCleared) / 40) + 1,
       clearingLines: []
@@ -373,29 +312,29 @@ export const useGameLogic = (
       toast.success(`${newCombo + 1} 连击! +${attackValue} 攻击`, { duration: 1500 });
     }
     
-    // 重置状态
     setLastAction(null);
+    setWasKicked(false);
     setLockDelay(false);
     lockDelayTime.current = 0;
     
-    // 立即生成新方块
     setTimeout(() => {
       isHardDropping.current = false;
       spawnNewPiece();
-    }, 10); // 极短延迟确保状态更新完成
+    }, 10);
     
     console.log('硬降完成 - 方块已锁定');
-  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, gameState.gameOver, gameState.paused, isWindowFocused, lastAction, gameState.combo, gameState.b2b, spawnNewPiece]);
+  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, gameState.gameOver, gameState.paused, isWindowFocused, lastAction, wasKicked, gameState.combo, gameState.b2b, spawnNewPiece]);
 
   const lockPiece = useCallback(() => {
     if (!gameState.currentPiece || isHardDropping.current) return;
 
     console.log('锁定方块位置:', gameState.currentPiece.x, gameState.currentPiece.y);
-    const tSpinResult = checkTSpin(gameState.board, gameState.currentPiece, lastAction || 'move');
+    
+    // 检查T-Spin - 传递踢墙状态
+    const tSpinResult = checkTSpin(gameState.board, gameState.currentPiece, lastAction || 'move', wasKicked);
     const newBoard = placePiece(gameState.board, gameState.currentPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     
-    // 检查是否为全清
     const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
     
     const newCombo = linesCleared > 0 ? gameState.combo! + 1 : -1;
@@ -437,8 +376,9 @@ export const useGameLogic = (
     }
     
     setLastAction(null);
+    setWasKicked(false);
     setTimeout(() => spawnNewPiece(), 100);
-  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, lastAction, gameState.combo, gameState.b2b, spawnNewPiece]);
+  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, lastAction, wasKicked, gameState.combo, gameState.b2b, spawnNewPiece]);
 
   const holdCurrentPiece = useCallback(() => {
     if (!gameState.currentPiece || !gameState.canHold || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return;
@@ -465,12 +405,14 @@ export const useGameLogic = (
     
     setLockDelay(false);
     lockDelayTime.current = 0;
+    setWasKicked(false);
   }, [gameState.currentPiece, gameState.holdPiece, gameState.canHold, gameState.gameOver, gameState.paused, isWindowFocused, gameState.board, spawnNewPiece, createGamePieceFromType]);
 
   const startGame = useCallback(() => {
     console.log('开始游戏...');
     isHardDropping.current = false;
     wasPausedBeforeFocusLoss.current = false;
+    setWasKicked(false);
     setGameState(prev => ({
       ...prev,
       paused: false,
@@ -504,6 +446,7 @@ export const useGameLogic = (
     console.log('重置游戏...');
     isHardDropping.current = false;
     wasPausedBeforeFocusLoss.current = false;
+    setWasKicked(false);
     setGameState({
       board: Array(23).fill(null).map(() => Array(10).fill(0)),
       currentPiece: null,
