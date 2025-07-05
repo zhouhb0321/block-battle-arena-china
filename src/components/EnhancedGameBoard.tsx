@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock } from '@/utils/blockSkins';
+import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import type { GamePiece } from '@/utils/gameTypes';
 
@@ -30,7 +30,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   const createExtendedBoard = () => {
     const fullBoard: (number | string)[][] = board.map(row => [...row]);
     
-    // 添加幽灵方块
+    // 添加幽灵方块 - 优先级较低
     if (enableGhost && ghostPiece && currentPiece) {
       const { shape, color } = ghostPiece.type;
       shape.forEach((row, rowIndex) => {
@@ -48,7 +48,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       });
     }
 
-    // 添加当前方块
+    // 添加当前方块 - 优先级最高
     if (currentPiece) {
       const { shape, color } = currentPiece.type;
       shape.forEach((row, rowIndex) => {
@@ -99,9 +99,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         };
         cellClass = 'garbage-block';
       } else {
-        // 已堆积的方块保持原始颜色 - 修复类型转换问题
-        const colors = ['', '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000'];
-        const color = colors[cellValue as number] || '#666666';
+        // 已堆积的方块保持原始颜色 - 使用方块类型编号获取颜色
+        const color = getColorByTypeId(cellValue as number);
         cellStyle = currentSkin.getBlockStyle(color, false);
         cellClass = currentSkin.getBlockClass(color, false);
       }
@@ -114,7 +113,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       cellClass = 'empty-block';
     }
 
-    // 隐藏行的半透明效果 - 修复算术运算问题
+    // 隐藏行的半透明效果
     if (isHidden) {
       const currentOpacity = typeof cellStyle.opacity === 'number' ? cellStyle.opacity : 1;
       cellStyle.opacity = currentOpacity * 0.4;
@@ -176,6 +175,24 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
           @keyframes neon-pulse {
             0%, 100% { filter: brightness(1); }
             50% { filter: brightness(1.2); }
+          }
+          
+          .wood-texture-block {
+            background-image: linear-gradient(45deg, rgba(139,69,19,0.2) 25%, transparent 25%, transparent 75%, rgba(139,69,19,0.2) 75%);
+            background-size: 6px 6px;
+          }
+          
+          .3d-block {
+            transform: perspective(100px) rotateX(5deg) rotateY(5deg);
+          }
+          
+          .colorful-block {
+            animation: colorful-shimmer 3s ease-in-out infinite;
+          }
+          
+          @keyframes colorful-shimmer {
+            0%, 100% { filter: hue-rotate(0deg); }
+            50% { filter: hue-rotate(15deg); }
           }
         `}
       </style>

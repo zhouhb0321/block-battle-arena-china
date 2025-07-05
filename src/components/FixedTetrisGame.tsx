@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import EnhancedGameBoard from './EnhancedGameBoard';
 import GameAreaCountdown from './GameAreaCountdown';
+import OutOfFocusOverlay from './OutOfFocusOverlay';
 import PiecePreview from './PiecePreview';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useWindowFocus } from '@/hooks/useWindowFocus';
 import {
   TETROMINO_TYPES,
   generateSevenBag,
@@ -33,11 +35,13 @@ interface FixedTetrisGameProps {
 
 const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
   const { user } = useAuth();
+  const isWindowFocused = useWindowFocus();
   const [gameStarted, setGameStarted] = useState(false);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
   const [sevenBag, setSevenBag] = useState<TetrominoType[]>(() => generateSevenBag());
   const [nextBag, setNextBag] = useState<TetrominoType[]>(() => generateSevenBag());
   const [bagIndex, setBagIndex] = useState(0);
+  const wasPausedBeforeFocusLoss = useRef(false);
   
   const [gameState, setGameState] = useState<GameState>({
     board: createEmptyBoard(),
@@ -62,6 +66,24 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     pps: 0,
     apm: 0
   });
+
+  // 处理窗口焦点变化
+  useEffect(() => {
+    if (!isWindowFocused && !gameState.gameOver && gameStarted) {
+      if (!gameState.paused) {
+        wasPausedBeforeFocusLoss.current = false;
+        setGameState(prev => ({ ...prev, paused: true }));
+        console.log('窗口失焦，游戏自动暂停');
+      } else {
+        wasPausedBeforeFocusLoss.current = true;
+      }
+    } else if (isWindowFocused && gameState.paused && !wasPausedBeforeFocusLoss.current && gameStarted) {
+      setTimeout(() => {
+        setGameState(prev => ({ ...prev, paused: false }));
+        console.log('窗口重获焦点，游戏自动恢复');
+      }, 100);
+    }
+  }, [isWindowFocused, gameState.paused, gameState.gameOver, gameStarted]);
 
   // 获取下一个方块（7-bag系统）
   const getNextPiece = useCallback((): TetrominoType => {
@@ -201,7 +223,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       };
 
       // 立即放置方块并处理消行
-      const tSpinResult = checkTSpin(prev.board, droppedPiece, 'move');
+      const tSpinResult = checkTSpin(prev.board, droppedPiece, 'rotate');
       const newBoard = placePiece(prev.board, droppedPiece);
       const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
       
@@ -382,7 +404,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
 
   // 键盘控制
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
-    if (gameState.paused || gameState.gameOver) return;
+    if (gameState.paused || gameState.gameOver || !isWindowFocused) return;
 
     switch (event.key) {
       case 'ArrowLeft':
@@ -415,6 +437,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       case 'p':
       case 'P':
         event.preventDefault();
+        wasPausedBeforeFocusLoss.current = true;
         setGameState(prev => ({ ...prev, paused: !prev.paused }));
         break;
       case 'b':
@@ -425,11 +448,11 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
         }
         break;
     }
-  }, [movePiece, hardDrop, rotatePieceClockwise, holdPiece, gameState.paused, gameState.gameOver, onBackToMenu]);
+  }, [movePiece, hardDrop, rotatePieceClockwise, holdPiece, gameState.paused, gameState.gameOver, isWindowFocused, onBackToMenu]);
 
   // 游戏循环 - 使用新的重力系统
   useEffect(() => {
-    if (gameState.paused || gameState.gameOver) {
+    if (gameState.paused || gameState.gameOver || !isWindowFocused) {
       if (gameLoopRef.current) {
         clearInterval(gameLoopRef.current);
         gameLoopRef.current = null;
@@ -468,7 +491,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
         gameLoopRef.current = null;
       }
     };
-  }, [gameState.lines, gameState.paused, gameState.gameOver, placePieceOnBoard]);
+  }, [gameState.lines, gameState.paused, gameState.gameOver, isWindowFocused, placePieceOnBoard]);
 
   // 检查是否需要生成新方块
   useEffect(() => {
@@ -498,6 +521,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
 
   const startGame = () => {
     setGameStarted(true);
+    wasPausedBeforeFocusLoss.current = false;
   };
 
   const handleCountdownEnd = () => {
@@ -509,6 +533,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     setSevenBag(generateSevenBag());
     setNextBag(generateSevenBag());
     setBagIndex(0);
+    wasPausedBeforeFocusLoss.current = false;
     
     setGameState({
       board: createEmptyBoard(),
@@ -553,6 +578,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
   return (
     <div className="flex flex-col items-center p-4 bg-gray-900 min-h-screen">
       <div className="flex gap-6 max-w-6xl w-full justify-center">
+        
         {/* 左侧信息栏 */}
         <div className="flex flex-col gap-4 w-48">
           <PiecePreview 
@@ -642,7 +668,10 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             ) : (
               <>
                 <Button
-                  onClick={() => setGameState(prev => ({ ...prev, paused: !prev.paused }))}
+                  onClick={() => {
+                    wasPausedBeforeFocusLoss.current = true;
+                    setGameState(prev => ({ ...prev, paused: !prev.paused }));
+                  }}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-blue-400"
                   disabled={gameState.gameOver}
                 >
@@ -666,7 +695,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             )}
           </div>
 
-          {/* 游戏板容器 - 相对定位以支持倒计时覆盖 */}
+          {/* 游戏板容器 - 相对定位以支持倒计时和失焦覆盖 */}
           <div className="relative">
             <EnhancedGameBoard
               board={gameState.board}
@@ -682,6 +711,11 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             <GameAreaCountdown
               show={gameStarted && !gameState.gameOver}
               onCountdownEnd={handleCountdownEnd}
+            />
+            
+            {/* 失焦覆盖层 */}
+            <OutOfFocusOverlay 
+              show={!isWindowFocused && gameStarted && !gameState.gameOver}
             />
           </div>
         </div>

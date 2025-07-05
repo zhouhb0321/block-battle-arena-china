@@ -18,57 +18,78 @@ export const BLOCK_SKINS: BlockSkin[] = [
       backgroundColor: isGhost ? 'transparent' : color,
       border: isGhost ? `2px dashed ${color}` : `1px solid ${adjustBrightness(color, -20)}`,
       opacity: isGhost ? 0.3 : 1,
+      backgroundImage: isGhost ? 'none' : 'linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.1) 75%)',
+      backgroundSize: '6px 6px'
     }),
     getBlockClass: (color: string, isGhost = false) => 
       isGhost ? 'ghost-block' : 'wood-texture-block'
   },
   {
-    id: 'solid',
-    name: '纯色方块',
-    description: '简洁的纯色填充效果',
+    id: 'flat',
+    name: '纯平风格',
+    description: '简洁的纯平设计，无装饰',
     getBlockStyle: (color: string, isGhost = false) => ({
       backgroundColor: isGhost ? 'transparent' : color,
-      border: isGhost ? `2px dashed ${color}` : `2px solid ${adjustBrightness(color, -30)}`,
+      border: isGhost ? `2px dashed ${color}` : 'none',
       opacity: isGhost ? 0.4 : 1,
-      borderRadius: '2px',
+      borderRadius: '0px',
     }),
-    getBlockClass: () => 'solid-block'
+    getBlockClass: () => 'flat-block'
   },
   {
-    id: 'outline',
-    name: '边框模式',
-    description: '只显示方块边框轮廓',
-    getBlockStyle: (color: string, isGhost = false) => ({
-      backgroundColor: 'transparent',
-      border: `3px solid ${color}`,
-      opacity: isGhost ? 0.5 : 1,
-      borderRadius: '1px',
-    }),
-    getBlockClass: () => 'outline-block'
-  },
-  {
-    id: 'mono',
-    name: '单色模式',
-    description: '所有方块使用统一颜色',
-    getBlockStyle: (color: string, isGhost = false) => ({
-      backgroundColor: isGhost ? 'transparent' : '#ffffff',
-      border: isGhost ? '2px dashed #ffffff' : '1px solid #cccccc',
-      opacity: isGhost ? 0.3 : 1,
-    }),
-    getBlockClass: () => 'mono-block'
-  },
-  {
-    id: 'neon',
-    name: '霓虹效果',
-    description: '发光的霓虹色彩效果',
+    id: '3d',
+    name: '立体风格',
+    description: '3D效果的立体方块',
     getBlockStyle: (color: string, isGhost = false) => ({
       backgroundColor: isGhost ? 'transparent' : color,
-      border: `1px solid ${color}`,
-      boxShadow: isGhost ? 'none' : `0 0 8px ${color}, inset 0 0 8px rgba(255,255,255,0.2)`,
+      border: isGhost ? `2px dashed ${color}` : `2px outset ${color}`,
       opacity: isGhost ? 0.4 : 1,
       borderRadius: '2px',
+      boxShadow: isGhost ? 'none' : `2px 2px 4px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,255,255,0.3)`,
+      background: isGhost ? 'transparent' : `linear-gradient(135deg, ${adjustBrightness(color, 30)} 0%, ${color} 50%, ${adjustBrightness(color, -30)} 100%)`
     }),
-    getBlockClass: () => 'neon-block'
+    getBlockClass: () => '3d-block'
+  },
+  {
+    id: 'colorful',
+    name: '彩色风格',
+    description: '多彩渐变的彩虹方案',
+    getBlockStyle: (color: string, isGhost = false) => ({
+      backgroundColor: isGhost ? 'transparent' : color,
+      border: isGhost ? `2px dashed ${color}` : `1px solid ${adjustBrightness(color, -40)}`,
+      opacity: isGhost ? 0.4 : 1,
+      borderRadius: '3px',
+      background: isGhost ? 'transparent' : `radial-gradient(circle, ${adjustBrightness(color, 50)} 0%, ${color} 70%, ${adjustBrightness(color, -20)} 100%)`,
+      boxShadow: isGhost ? 'none' : `0 0 6px ${color}60`
+    }),
+    getBlockClass: () => 'colorful-block'
+  },
+  {
+    id: 'classic',
+    name: '经典风格',
+    description: '传统俄罗斯方块的经典样式',
+    getBlockStyle: (color: string, isGhost = false) => {
+      // 经典俄罗斯方块颜色映射
+      const classicColors: { [key: string]: string } = {
+        '#00f0f0': '#00FFFF', // I - 青色
+        '#f0f000': '#FFFF00', // O - 黄色  
+        '#a000f0': '#FF00FF', // T - 紫色
+        '#00f000': '#00FF00', // S - 绿色
+        '#f00000': '#FF0000', // Z - 红色
+        '#0000f0': '#0000FF', // J - 蓝色
+        '#f0a000': '#FFA500'  // L - 橙色
+      };
+      
+      const classicColor = classicColors[color] || color;
+      
+      return {
+        backgroundColor: isGhost ? 'transparent' : classicColor,
+        border: isGhost ? `2px dashed ${classicColor}` : `2px solid ${adjustBrightness(classicColor, -50)}`,
+        opacity: isGhost ? 0.3 : 1,
+        borderRadius: '1px',
+      };
+    },
+    getBlockClass: () => 'classic-block'
   }
 ];
 
@@ -92,4 +113,10 @@ export const getCurrentSkin = (skinId: string): BlockSkin => {
 export const GARBAGE_COLOR = '#666666';
 export const isGarbageBlock = (cellValue: number | string): boolean => {
   return cellValue === 8 || cellValue === GARBAGE_COLOR;
+};
+
+// 根据方块类型编号获取颜色
+export const getColorByTypeId = (typeId: number): string => {
+  const colors = ['', '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000'];
+  return colors[typeId] || '#666666';
 };

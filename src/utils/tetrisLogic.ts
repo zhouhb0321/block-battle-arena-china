@@ -75,6 +75,17 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
   }
 };
 
+// 方块类型编号映射（用于存储在棋盘上）
+export const TETROMINO_TYPE_IDS: { [key: string]: number } = {
+  I: 1,
+  O: 2, 
+  T: 3,
+  S: 4,
+  Z: 5,
+  J: 6,
+  L: 7
+};
+
 // 检查给定的方块位置是否有效
 export const isValidPosition = (board: number[][], piece: GamePiece): boolean => {
   const { type, x, y, rotation } = piece;
@@ -96,11 +107,11 @@ export const isValidPosition = (board: number[][], piece: GamePiece): boolean =>
   return true;
 };
 
-// 将方块放置在游戏面板上 - 修复悬空问题
+// 将方块放置在游戏面板上 - 修复为存储方块类型编号
 export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
   const { type, x, y } = piece;
   const shape = type.shape;
-  const color = type.color;
+  const typeId = TETROMINO_TYPE_IDS[type.type]; // 使用方块类型编号而不是颜色
 
   const newBoard = board.map(row => [...row]);
 
@@ -112,7 +123,7 @@ export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
 
         // 允许在隐藏区域放置，但检查边界
         if (boardX >= 0 && boardX < BOARD_WIDTH && boardY < BOARD_HEIGHT) {
-          newBoard[boardY][boardX] = color as any;
+          newBoard[boardY][boardX] = typeId; // 存储方块类型编号
         }
       }
     }
