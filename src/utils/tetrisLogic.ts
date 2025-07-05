@@ -1,6 +1,6 @@
-
 import type { TetrominoType, GamePiece, ReplayAction } from './gameTypes';
 import { calculateB2BAttackBonus } from './b2bSystem';
+import { detectTSpin } from './tspinDetection';
 
 // Board constants
 export const BOARD_WIDTH = 10;
@@ -205,59 +205,15 @@ export const createGhostPiece = (board: number[][], piece: GamePiece): GamePiece
   return { ...piece, y: dropY };
 };
 
-// 检查T-Spin - 修复边缘旋转问题
+// 使用新的T-Spin检测系统
 export const checkTSpin = (board: number[][], piece: GamePiece, lastMove: string): { type: string; isMini: boolean } | null => {
-  if (piece.type.type !== 'T') {
-    return null;
+  const result = detectTSpin(board, piece, lastMove);
+  if (result) {
+    return {
+      type: result.type,
+      isMini: result.isMini
+    };
   }
-
-  const { x, y } = piece;
-  let cornerCount = 0;
-  let frontCorners = 0;
-
-  // T方块的四个角相对于中心点的偏移
-  const corners = [
-    { dx: -1, dy: -1 }, // 左上
-    { dx: 1, dy: -1 },  // 右上
-    { dx: -1, dy: 1 },  // 左下
-    { dx: 1, dy: 1 }    // 右下
-  ];
-
-  // 根据T方块的朝向确定"前角"
-  let frontCornerIndices: number[] = [];
-  switch (piece.rotation % 4) {
-    case 0: frontCornerIndices = [0, 1]; break; // 朝上，前角是上方两个
-    case 1: frontCornerIndices = [1, 3]; break; // 朝右，前角是右方两个
-    case 2: frontCornerIndices = [2, 3]; break; // 朝下，前角是下方两个
-    case 3: frontCornerIndices = [0, 2]; break; // 朝左，前角是左方两个
-  }
-
-  // 检查四个角
-  for (let i = 0; i < corners.length; i++) {
-    const corner = corners[i];
-    const checkX = x + 1 + corner.dx; // T方块中心在第二列
-    const checkY = y + 1 + corner.dy; // T方块中心在第二行
-
-    // 放宽边界检查 - 边界也算作被占用
-    const isOccupied = checkX < 0 || checkX >= BOARD_WIDTH || 
-                      checkY < 0 || checkY >= BOARD_HEIGHT || 
-                      board[checkY][checkX] !== 0;
-
-    if (isOccupied) {
-      cornerCount++;
-      if (frontCornerIndices.includes(i)) {
-        frontCorners++;
-      }
-    }
-  }
-
-  // T-Spin判定：至少3个角被占用
-  if (cornerCount >= 3 && lastMove === 'rotate') {
-    // Mini T-Spin：只有1个前角被占用
-    const isMini = frontCorners === 1;
-    return { type: 'T-Spin', isMini };
-  }
-
   return null;
 };
 

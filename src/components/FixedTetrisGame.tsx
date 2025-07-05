@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import GameBoard from './GameBoard';
+import EnhancedGameBoard from './EnhancedGameBoard';
+import GameAreaCountdown from './GameAreaCountdown';
 import PiecePreview from './PiecePreview';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ interface FixedTetrisGameProps {
 
 const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
   const { user } = useAuth();
+  const [gameStarted, setGameStarted] = useState(false);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
   const [sevenBag, setSevenBag] = useState<TetrominoType[]>(() => generateSevenBag());
   const [nextBag, setNextBag] = useState<TetrominoType[]>(() => generateSevenBag());
@@ -494,6 +496,15 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
 
+  const startGame = () => {
+    setGameStarted(true);
+  };
+
+  const handleCountdownEnd = () => {
+    console.log('倒计时结束，游戏开始');
+    // 游戏逻辑在倒计时结束后才真正开始
+  };
+
   const restartGame = () => {
     setSevenBag(generateSevenBag());
     setNextBag(generateSevenBag());
@@ -619,39 +630,60 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             </div>
           )}
 
-          {/* 游戏中不显示设置按钮 - 只在暂停或游戏结束时显示控制按钮 */}
+          {/* 控制按钮 */}
           <div className="flex gap-3 mb-4">
-            <Button
-              onClick={() => setGameState(prev => ({ ...prev, paused: !prev.paused }))}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-blue-400"
-              disabled={gameState.gameOver}
-            >
-              {gameState.paused ? '继续' : '暂停'}
-            </Button>
-            <Button
-              onClick={() => window.location.reload()}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-green-400"
-            >
-              重新开始
-            </Button>
-            {onBackToMenu && (
+            {!gameStarted ? (
               <Button
-                onClick={onBackToMenu}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-red-400"
+                onClick={startGame}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-green-400"
               >
-                返回菜单
+                开始游戏
               </Button>
+            ) : (
+              <>
+                <Button
+                  onClick={() => setGameState(prev => ({ ...prev, paused: !prev.paused }))}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-blue-400"
+                  disabled={gameState.gameOver}
+                >
+                  {gameState.paused ? '继续' : '暂停'}
+                </Button>
+                <Button
+                  onClick={() => window.location.reload()}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-green-400"
+                >
+                  重新开始
+                </Button>
+                {onBackToMenu && (
+                  <Button
+                    onClick={onBackToMenu}
+                    className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 shadow-lg border-2 border-red-400"
+                  >
+                    返回菜单
+                  </Button>
+                )}
+              </>
             )}
           </div>
 
-          <GameBoard
-            board={gameState.board}
-            currentPiece={gameState.currentPiece}
-            ghostPiece={gameState.ghostPiece}
-            enableGhost={true}
-            cellSize={30}
-            clearingLines={gameState.clearingLines}
-          />
+          {/* 游戏板容器 - 相对定位以支持倒计时覆盖 */}
+          <div className="relative">
+            <EnhancedGameBoard
+              board={gameState.board}
+              currentPiece={gameState.currentPiece}
+              ghostPiece={gameState.ghostPiece}
+              enableGhost={true}
+              cellSize={30}
+              clearingLines={gameState.clearingLines}
+              showHiddenRows={true}
+            />
+            
+            {/* 倒计时只在游戏区域显示 */}
+            <GameAreaCountdown
+              show={gameStarted && !gameState.gameOver}
+              onCountdownEnd={handleCountdownEnd}
+            />
+          </div>
         </div>
 
         {/* 右侧信息栏 */}
