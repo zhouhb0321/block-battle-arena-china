@@ -17,12 +17,27 @@ const GameContext = createContext<GameContextType | null>(null);
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { settings, saveSettings, reloadSettings } = useUserSettings();
-  const [gameSettings, setGameSettings] = useState<GameSettings>(settings);
+  
+  // Convert UserSettings to GameSettings
+  const convertToGameSettings = (userSettings: typeof settings): GameSettings => ({
+    enableGhost: userSettings.enableGhost,
+    enableSound: userSettings.enableSound,
+    masterVolume: userSettings.masterVolume,
+    musicVolume: userSettings.musicVolume,
+    backgroundMusic: userSettings.backgroundMusic,
+    arr: userSettings.arr,
+    das: userSettings.das,
+    sdf: userSettings.sdf,
+    controls: userSettings.controls,
+    ghostOpacity: userSettings.ghostOpacity,
+  });
+
+  const [gameSettings, setGameSettings] = useState<GameSettings>(() => convertToGameSettings(settings));
 
   // 同步用户设置到游戏设置
   useEffect(() => {
     console.log('同步用户设置到游戏设置:', settings);
-    setGameSettings(settings);
+    setGameSettings(convertToGameSettings(settings));
   }, [settings]);
 
   const updateSettings = async (newSettings: Partial<GameSettings>) => {

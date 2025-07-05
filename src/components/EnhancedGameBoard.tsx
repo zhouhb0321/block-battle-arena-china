@@ -99,8 +99,9 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         };
         cellClass = 'garbage-block';
       } else {
-        // 已堆积的方块保持原始颜色
-        const color = cellValue as string;
+        // 已堆积的方块保持原始颜色 - 修复类型转换问题
+        const colors = ['', '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000'];
+        const color = colors[cellValue as number] || '#666666';
         cellStyle = currentSkin.getBlockStyle(color, false);
         cellClass = currentSkin.getBlockClass(color, false);
       }
@@ -113,9 +114,10 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       cellClass = 'empty-block';
     }
 
-    // 隐藏行的半透明效果
+    // 隐藏行的半透明效果 - 修复算术运算问题
     if (isHidden) {
-      cellStyle.opacity = (cellStyle.opacity || 1) * 0.4;
+      const currentOpacity = typeof cellStyle.opacity === 'number' ? cellStyle.opacity : 1;
+      cellStyle.opacity = currentOpacity * 0.4;
       cellClass += ' hidden-row';
     }
 

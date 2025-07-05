@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 
 export interface UserSettings {
@@ -16,7 +17,10 @@ export interface UserSettings {
     hardDrop: string;
     rotateClockwise: string;
     rotateCounterclockwise: string;
-    holdPiece: string;
+    rotate180: string;
+    hold: string;
+    pause: string;
+    backToMenu: string;
   };
   ghostOpacity: number;
   blockSkin?: string;
@@ -35,10 +39,13 @@ const DEFAULT_GUEST_SETTINGS: UserSettings = {
     moveLeft: 'ArrowLeft',
     moveRight: 'ArrowRight',
     softDrop: 'ArrowDown',
-    hardDrop: ' ',
-    rotateClockwise: 'z',
-    rotateCounterclockwise: 'x',
-    holdPiece: 'c',
+    hardDrop: 'Space',
+    rotateClockwise: 'ArrowUp',
+    rotateCounterclockwise: 'KeyZ',
+    rotate180: 'KeyA',
+    hold: 'KeyC',
+    pause: 'Escape',
+    backToMenu: 'KeyB',
   },
   ghostOpacity: 50,
   blockSkin: 'wood'
@@ -71,7 +78,27 @@ export const useUserSettings = () => {
 
   const updateSettings = useCallback((newSettings: Partial<UserSettings>) => {
     setSettings(prevSettings => ({ ...prevSettings, ...newSettings }));
-  }, []);
+  }, [setSettings]);
 
-  return { settings, updateSettings };
+  const saveSettings = useCallback(async (newSettings: Partial<UserSettings>) => {
+    updateSettings(newSettings);
+  }, [updateSettings]);
+
+  const reloadSettings = useCallback(async () => {
+    try {
+      const item = window.localStorage.getItem('userSettings');
+      if (item) {
+        setSettings(JSON.parse(item));
+      }
+    } catch (error) {
+      console.error("Error reloading settings:", error);
+    }
+  }, [setSettings]);
+
+  return { 
+    settings, 
+    updateSettings,
+    saveSettings,
+    reloadSettings
+  };
 };

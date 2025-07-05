@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useState } from 'react';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { toast } from 'sonner';
@@ -13,16 +14,32 @@ interface SettingsHint {
 }
 
 export const useSettingsBinding = () => {
-  const { settings, saveSettings, loading } = useUserSettings();
-  const [tempSettings, setTempSettings] = useState<GameSettings>(settings);
+  const { settings, saveSettings } = useUserSettings();
+  
+  // Convert UserSettings to GameSettings
+  const convertToGameSettings = (userSettings: typeof settings): GameSettings => ({
+    enableGhost: userSettings.enableGhost,
+    enableSound: userSettings.enableSound,
+    masterVolume: userSettings.masterVolume,
+    musicVolume: userSettings.musicVolume,
+    backgroundMusic: userSettings.backgroundMusic,
+    arr: userSettings.arr,
+    das: userSettings.das,
+    sdf: userSettings.sdf,
+    controls: userSettings.controls,
+    ghostOpacity: userSettings.ghostOpacity,
+  });
+
+  const [tempSettings, setTempSettings] = useState<GameSettings>(() => convertToGameSettings(settings));
   const [hasChanges, setHasChanges] = useState(false);
   const [hints, setHints] = useState<SettingsHint[]>([]);
 
   // 同步设置到临时状态
   useEffect(() => {
-    setTempSettings(settings);
+    const gameSettings = convertToGameSettings(settings);
+    setTempSettings(gameSettings);
     setHasChanges(false);
-    generateHints(settings);
+    generateHints(gameSettings);
   }, [settings]);
 
   // 生成智能提示
@@ -110,9 +127,10 @@ export const useSettingsBinding = () => {
 
   // 重置设置
   const resetSettings = useCallback(() => {
-    setTempSettings(settings);
+    const gameSettings = convertToGameSettings(settings);
+    setTempSettings(gameSettings);
     setHasChanges(false);
-    generateHints(settings);
+    generateHints(gameSettings);
     toast.info('设置已重置');
   }, [settings]);
 
@@ -136,7 +154,7 @@ export const useSettingsBinding = () => {
   return {
     settings: tempSettings,
     hasChanges,
-    loading,
+    loading: false,
     hints,
     updateSetting,
     commitSettings,
