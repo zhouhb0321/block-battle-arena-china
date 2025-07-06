@@ -1,15 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 
 interface GameCountdownInAreaProps {
   onCountdownEnd: () => void;
   show: boolean;
-  gameAreaRef?: React.RefObject<HTMLDivElement>;
 }
 
 const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({ 
   onCountdownEnd, 
-  show, 
-  gameAreaRef 
+  show
 }) => {
   const [count, setCount] = useState(3);
   const [isVisible, setIsVisible] = useState(false);
@@ -40,11 +39,14 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
   if (!isVisible) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
-      <div className="relative">
+    <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+      {/* 只覆盖游戏板区域的半透明背景 */}
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm rounded-lg" />
+      
+      <div className="relative z-50">
         <div 
           className={`text-white font-bold transition-all duration-300 ${
-            count > 0 ? 'text-6xl animate-bounce' : 'text-7xl animate-pulse'
+            count > 0 ? 'text-5xl animate-bounce' : 'text-6xl animate-pulse'
           }`}
           style={{
             textShadow: '0 0 20px hsl(var(--game-purple)), 0 0 40px hsl(var(--game-purple) / 0.6), 0 4px 8px rgba(0,0,0,0.8)',
@@ -58,7 +60,7 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
         {/* Pulse effect with game theme colors */}
         <div 
           className={`absolute inset-0 text-white font-bold opacity-30 ${
-            count > 0 ? 'text-6xl animate-ping' : 'text-7xl animate-ping'
+            count > 0 ? 'text-5xl animate-ping' : 'text-6xl animate-ping'
           }`}
           style={{
             textShadow: '0 0 20px hsl(var(--game-cyan))',
@@ -67,16 +69,6 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
         >
           {count > 0 ? count : 'GO!'}
         </div>
-        
-        {/* Flashing background effect */}
-        <div 
-          className={`absolute -inset-8 rounded-full opacity-20 ${
-            count > 0 ? 'bg-game-purple animate-pulse' : 'bg-game-cyan animate-pulse'
-          }`}
-          style={{
-            filter: 'blur(20px)',
-          }}
-        />
       </div>
     </div>
   );

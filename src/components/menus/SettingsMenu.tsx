@@ -10,10 +10,10 @@ import ControlsTab from '@/components/settings/ControlsTab';
 import AudioTab from '@/components/settings/AudioTab';
 import VisualTab from '@/components/settings/VisualTab';
 import MusicTab from '@/components/settings/MusicTab';
+import BlockSkinTab from '@/components/settings/BlockSkinTab';
 import SettingsHints from '@/components/settings/SettingsHints';
 import { useKeyRecording } from '@/components/settings/useKeyRecording';
 import { useSettingsBinding } from '@/hooks/useSettingsBinding';
-import type { GameSettings } from '@/utils/gameTypes';
 
 interface SettingsMenuProps {
   onBackToMenu: () => void;
@@ -73,10 +73,11 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
       />
 
       <Tabs defaultValue="timing" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="timing">手感</TabsTrigger>
           <TabsTrigger value="controls">键位</TabsTrigger>
           <TabsTrigger value="visual">视觉</TabsTrigger>
+          <TabsTrigger value="blocks">方块</TabsTrigger>
           <TabsTrigger value="audio">音效</TabsTrigger>
           <TabsTrigger value="music">音乐</TabsTrigger>
         </TabsList>
@@ -99,6 +100,13 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
 
         <TabsContent value="visual" className="space-y-4">
           <VisualTab 
+            settings={settings}
+            onSettingChange={updateSetting}
+          />
+        </TabsContent>
+
+        <TabsContent value="blocks" className="space-y-4">
+          <BlockSkinTab 
             settings={settings}
             onSettingChange={updateSetting}
           />

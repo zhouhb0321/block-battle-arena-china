@@ -104,9 +104,9 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
         onHold={gameLogic.holdCurrentPiece}
       />
       
-      {/* Out of Focus 覆盖层 */}
+      {/* 简化的失焦覆盖层 - 只有在暂停且游戏进行中时显示 */}
       <OutOfFocusOverlay 
-        show={!gameLogic.isWindowFocused && gameStarted && !gameLogic.gameState.gameOver} 
+        show={gameLogic.gameState.paused && gameStarted && !gameLogic.gameState.gameOver} 
       />
     </div>
   );

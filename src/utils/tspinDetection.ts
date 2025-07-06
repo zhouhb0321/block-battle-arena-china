@@ -7,53 +7,27 @@ export interface TSpin {
   isMini: boolean;
 }
 
-// T块在SRS标准下的旋转中心和角落检测
-// T块形状在不同旋转状态下的标准定义
-const T_PIECE_SRS_DATA = {
-  // 0度 (North) - T块朝上 ┴
+// T块在SRS标准下的旋转状态和角落定义
+const T_PIECE_CORNERS = {
+  // 0度 (North) - T块朝上
   0: {
-    // T块占用: [[0,1,0], [1,1,1]] 中心在(1,1)
-    center: { x: 1, y: 1 },
-    corners: [
-      { x: 0, y: 0 }, // 左上角
-      { x: 2, y: 0 }, // 右上角
-      { x: 0, y: 2 }, // 左下角
-      { x: 2, y: 2 }  // 右下角
-    ],
-    frontCorners: [0, 1] // 朝向方向的角落索引 (上方)
+    frontCorners: [0, 1], // 上方两个角落
+    backCorners: [2, 3]   // 下方两个角落
   },
-  // 90度 (East) - T块朝右 ├
+  // 90度 (East) - T块朝右  
   1: {
-    center: { x: 1, y: 1 },
-    corners: [
-      { x: 0, y: 0 }, // 左上角
-      { x: 2, y: 0 }, // 右上角
-      { x: 0, y: 2 }, // 左下角
-      { x: 2, y: 2 }  // 右下角
-    ],
-    frontCorners: [1, 3] // 朝向方向的角落索引 (右方)
+    frontCorners: [1, 3], // 右方两个角落
+    backCorners: [0, 2]   // 左方两个角落
   },
-  // 180度 (South) - T块朝下 ┬
+  // 180度 (South) - T块朝下
   2: {
-    center: { x: 1, y: 1 },
-    corners: [
-      { x: 0, y: 0 }, // 左上角
-      { x: 2, y: 0 }, // 右上角
-      { x: 0, y: 2 }, // 左下角
-      { x: 2, y: 2 }  // 右下角
-    ],
-    frontCorners: [2, 3] // 朝向方向的角落索引 (下方)
+    frontCorners: [2, 3], // 下方两个角落
+    backCorners: [0, 1]   // 上方两个角落
   },
-  // 270度 (West) - T块朝左 ┤
+  // 270度 (West) - T块朝左
   3: {
-    center: { x: 1, y: 1 },
-    corners: [
-      { x: 0, y: 0 }, // 左上角
-      { x: 2, y: 0 }, // 右上角
-      { x: 0, y: 2 }, // 左下角
-      { x: 2, y: 2 }  // 右下角
-    ],
-    frontCorners: [0, 2] // 朝向方向的角落索引 (左方)
+    frontCorners: [0, 2], // 左方两个角落
+    backCorners: [1, 3]   // 右方两个角落
   }
 };
 
@@ -65,6 +39,19 @@ const isPositionOccupied = (board: number[][], x: number, y: number): boolean =>
   }
   // 检查board位置是否有方块
   return board[y][x] !== 0;
+};
+
+// 获取T块中心位置的四个角落坐标
+const getTCorners = (piece: GamePiece): { x: number; y: number }[] => {
+  const centerX = piece.x + 1; // T块的中心在形状的(1,1)位置
+  const centerY = piece.y + 1;
+  
+  return [
+    { x: centerX - 1, y: centerY - 1 }, // 左上角 (0)
+    { x: centerX + 1, y: centerY - 1 }, // 右上角 (1)
+    { x: centerX - 1, y: centerY + 1 }, // 左下角 (2)
+    { x: centerX + 1, y: centerY + 1 }  // 右下角 (3)
+  ];
 };
 
 // 标准SRS T-Spin检测函数
@@ -85,47 +72,40 @@ export const detectTSpin = (
   }
 
   const rotation = piece.rotation % 4;
-  const tData = T_PIECE_SRS_DATA[rotation as keyof typeof T_PIECE_SRS_DATA];
-  
-  // 计算T块的实际中心位置（基于piece位置和SRS中心偏移）
-  const actualCenterX = piece.x + tData.center.x;
-  const actualCenterY = piece.y + tData.center.y;
+  const corners = getTCorners(piece);
+  const cornerData = T_PIECE_CORNERS[rotation as keyof typeof T_PIECE_CORNERS];
   
   console.log(`=== T-Spin检测开始 ===`);
   console.log(`T块位置: (${piece.x}, ${piece.y}), 旋转: ${rotation * 90}度`);
-  console.log(`实际中心: (${actualCenterX}, ${actualCenterY})`);
-  console.log(`最后动作: ${lastMove}, 是否踢墙: ${wasKicked}`);
+  console.log(`是否踢墙: ${wasKicked}`);
   
   let occupiedCorners = 0;
   let frontCornersOccupied = 0;
   const cornerStatus: boolean[] = [];
   
   // 检查四个角落
-  tData.corners.forEach((corner, index) => {
-    const checkX = actualCenterX + corner.x - 1; // 减1因为corner是相对于3x3网格的
-    const checkY = actualCenterY + corner.y - 1;
-    
-    const isOccupied = isPositionOccupied(board, checkX, checkY);
+  corners.forEach((corner, index) => {
+    const isOccupied = isPositionOccupied(board, corner.x, corner.y);
     cornerStatus.push(isOccupied);
     
-    console.log(`角落${index} (${checkX}, ${checkY}): ${isOccupied ? '占用' : '空闲'}`);
+    console.log(`角落${index} (${corner.x}, ${corner.y}): ${isOccupied ? '占用' : '空闲'}`);
     
     if (isOccupied) {
       occupiedCorners++;
       // 检查是否为前角
-      if (tData.frontCorners.includes(index)) {
+      if (cornerData.frontCorners.includes(index)) {
         frontCornersOccupied++;
       }
     }
   });
   
   console.log(`占用角落总数: ${occupiedCorners}/4`);
-  console.log(`前角占用数: ${frontCornersOccupied}/${tData.frontCorners.length}`);
+  console.log(`前角占用数: ${frontCornersOccupied}/${cornerData.frontCorners.length}`);
   
   // T-Spin判定：至少3个角被占用
   if (occupiedCorners >= 3) {
-    // Mini T-Spin判定：前角占用数量少于等于1个
-    const isMini = frontCornersOccupied <= 1;
+    // Mini T-Spin判定：前角占用数为0或1个，且必须有踢墙
+    const isMini = frontCornersOccupied <= 1 && wasKicked;
     
     const result: TSpin = {
       type: isMini ? 'Mini T-Spin' : 'T-Spin',
@@ -149,30 +129,11 @@ export const debugTSpinSetup = (board: number[][], piece: GamePiece): void => {
   if (piece.type.type !== 'T') return;
   
   console.log('=== T-Spin调试信息 ===');
-  console.log('当前棋盘状态（T块周围）:');
+  console.log('当前T块周围状态:');
   
-  const rotation = piece.rotation % 4;
-  const tData = T_PIECE_SRS_DATA[rotation as keyof typeof T_PIECE_SRS_DATA];
-  const actualCenterX = piece.x + tData.center.x;
-  const actualCenterY = piece.y + tData.center.y;
-  
-  // 显示3x3区域的状态
-  for (let dy = -1; dy <= 1; dy++) {
-    let row = '';
-    for (let dx = -1; dx <= 1; dx++) {
-      const x = actualCenterX + dx;
-      const y = actualCenterY + dy;
-      const isOccupied = isPositionOccupied(board, x, y);
-      row += isOccupied ? '■' : '□';
-    }
-    console.log(row);
-  }
-  
-  console.log('角落位置标记：');
-  tData.corners.forEach((corner, index) => {
-    const checkX = actualCenterX + corner.x - 1;
-    const checkY = actualCenterY + corner.y - 1;
-    const isFront = tData.frontCorners.includes(index);
-    console.log(`角落${index} (${checkX}, ${checkY}): ${isFront ? '前角' : '后角'}`);
+  const corners = getTCorners(piece);
+  corners.forEach((corner, index) => {
+    const isOccupied = isPositionOccupied(board, corner.x, corner.y);
+    console.log(`角落${index} (${corner.x}, ${corner.y}): ${isOccupied ? '占用' : '空闲'}`);
   });
 };

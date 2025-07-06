@@ -663,6 +663,7 @@ export type Database = {
           arr: number
           back_to_menu: string | null
           background_music: string | null
+          block_skin: string | null
           controls: Json
           created_at: string
           das: number
@@ -680,6 +681,7 @@ export type Database = {
           arr?: number
           back_to_menu?: string | null
           background_music?: string | null
+          block_skin?: string | null
           controls?: Json
           created_at?: string
           das?: number
@@ -697,6 +699,7 @@ export type Database = {
           arr?: number
           back_to_menu?: string | null
           background_music?: string | null
+          block_skin?: string | null
           controls?: Json
           created_at?: string
           das?: number

@@ -56,29 +56,14 @@ export const useGameLogic = (
   const lockDelayTime = useRef<number>(0);
   const [lockDelay, setLockDelay] = useState(false);
   const [lastAction, setLastAction] = useState<'rotate' | 'move' | null>(null);
-  const [wasKicked, setWasKicked] = useState(false); // 记录是否发生踢墙
+  const [wasKicked, setWasKicked] = useState(false);
   const isHardDropping = useRef(false);
-  const wasPausedBeforeFocusLoss = useRef(false);
 
-  // 处理窗口焦点变化
+  // 简化窗口焦点处理 - 移除自动暂停逻辑
   useEffect(() => {
-    if (!isWindowFocused && !gameState.gameOver) {
-      // 失去焦点时暂停游戏
-      if (!gameState.paused) {
-        wasPausedBeforeFocusLoss.current = false;
-        setGameState(prev => ({ ...prev, paused: true }));
-        console.log('窗口失焦，游戏自动暂停');
-      } else {
-        wasPausedBeforeFocusLoss.current = true;
-      }
-    } else if (isWindowFocused && gameState.paused && !wasPausedBeforeFocusLoss.current) {
-      // 重新获得焦点且之前不是手动暂停时恢复游戏
-      setTimeout(() => {
-        setGameState(prev => ({ ...prev, paused: false }));
-        console.log('窗口重获焦点，游戏自动恢复');
-      }, 100);
-    }
-  }, [isWindowFocused, gameState.paused, gameState.gameOver]);
+    // 只在调试时输出焦点状态
+    console.log('窗口焦点状态:', isWindowFocused ? '获得焦点' : '失去焦点');
+  }, [isWindowFocused]);
 
   // Helper function to create GamePiece from TetrominoType
   const createGamePieceFromType = useCallback((pieceType: TetrominoType, x: number = 4, y: number = 0): GamePiece => {
@@ -146,7 +131,8 @@ export const useGameLogic = (
   }, [createGamePieceFromType]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return false;
+    // 简化条件检查，移除窗口焦点限制
+    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return false;
 
     const newPiece = {
       ...gameState.currentPiece,
@@ -177,11 +163,11 @@ export const useGameLogic = (
       return false;
     }
     return false;
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, isWindowFocused, lockDelay]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, lockDelay]);
 
-  // 重写顺时针旋转，使用新的SRS系统
+  // 修复旋转函数，确保正确传递踢墙状态
   const rotatePieceClockwise = useCallback(() => {
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return;
+    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
     const rotationResult = performSRSRotation(gameState.board, gameState.currentPiece, true);
     
@@ -199,11 +185,10 @@ export const useGameLogic = (
       
       console.log(`顺时针旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
     }
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, isWindowFocused]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
 
-  // 重写逆时针旋转，使用新的SRS系统
   const rotatePieceCounterclockwise = useCallback(() => {
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return;
+    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
     const rotationResult = performSRSRotation(gameState.board, gameState.currentPiece, false);
     
@@ -221,11 +206,10 @@ export const useGameLogic = (
       
       console.log(`逆时针旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
     }
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, isWindowFocused]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
 
-  // 重写180度旋转，使用新的SRS系统
   const rotatePiece180 = useCallback(() => {
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return;
+    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
     const rotationResult = performSRS180Rotation(gameState.board, gameState.currentPiece);
     
@@ -243,11 +227,10 @@ export const useGameLogic = (
       
       console.log(`180度旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
     }
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, isWindowFocused]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
 
-  // 更新硬降和锁定函数，传递踢墙状态给T-Spin检测
   const hardDrop = useCallback(() => {
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return;
+    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
     console.log('硬降开始 - 当前方块位置:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
     
@@ -323,7 +306,7 @@ export const useGameLogic = (
     }, 10);
     
     console.log('硬降完成 - 方块已锁定');
-  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, gameState.gameOver, gameState.paused, isWindowFocused, lastAction, wasKicked, gameState.combo, gameState.b2b, spawnNewPiece]);
+  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, gameState.gameOver, gameState.paused, lastAction, wasKicked, gameState.combo, gameState.b2b, spawnNewPiece]);
 
   const lockPiece = useCallback(() => {
     if (!gameState.currentPiece || isHardDropping.current) return;
@@ -381,7 +364,7 @@ export const useGameLogic = (
   }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, lastAction, wasKicked, gameState.combo, gameState.b2b, spawnNewPiece]);
 
   const holdCurrentPiece = useCallback(() => {
-    if (!gameState.currentPiece || !gameState.canHold || gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) return;
+    if (!gameState.currentPiece || !gameState.canHold || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
     if (gameState.holdPiece) {
       const newPiece = createGamePieceFromType(gameState.holdPiece.type);
@@ -406,12 +389,11 @@ export const useGameLogic = (
     setLockDelay(false);
     lockDelayTime.current = 0;
     setWasKicked(false);
-  }, [gameState.currentPiece, gameState.holdPiece, gameState.canHold, gameState.gameOver, gameState.paused, isWindowFocused, gameState.board, spawnNewPiece, createGamePieceFromType]);
+  }, [gameState.currentPiece, gameState.holdPiece, gameState.canHold, gameState.gameOver, gameState.paused, gameState.board, spawnNewPiece, createGamePieceFromType]);
 
   const startGame = useCallback(() => {
     console.log('开始游戏...');
     isHardDropping.current = false;
-    wasPausedBeforeFocusLoss.current = false;
     setWasKicked(false);
     setGameState(prev => ({
       ...prev,
@@ -438,14 +420,13 @@ export const useGameLogic = (
   }, [spawnNewPiece, createGamePieceFromType]);
 
   const pauseGame = useCallback(() => {
-    wasPausedBeforeFocusLoss.current = true;
-    setGameState(prev => ({ ...prev, paused: true }));
+    setGameState(prev => ({ ...prev, paused: !prev.paused }));
+    console.log('游戏暂停状态切换');
   }, []);
 
   const resetGame = useCallback(() => {
     console.log('重置游戏...');
     isHardDropping.current = false;
-    wasPausedBeforeFocusLoss.current = false;
     setWasKicked(false);
     setGameState({
       board: Array(23).fill(null).map(() => Array(10).fill(0)),
@@ -479,10 +460,10 @@ export const useGameLogic = (
     toast.success('游戏分享功能即将推出！');
   }, []);
 
-  // Game loop
+  // Game loop - 简化条件检查
   useEffect(() => {
     const gameLoop = (timestamp: number) => {
-      if (gameState.gameOver || gameState.paused || !isWindowFocused || isHardDropping.current) {
+      if (gameState.gameOver || gameState.paused || isHardDropping.current) {
         gameLoopRef.current = requestAnimationFrame(gameLoop);
         return;
       }
@@ -513,7 +494,7 @@ export const useGameLogic = (
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [gameState.gameOver, gameState.paused, isWindowFocused, gameState.lines, lockDelay, calculateDropSpeed, movePiece, lockPiece]);
+  }, [gameState.gameOver, gameState.paused, gameState.lines, lockDelay, calculateDropSpeed, movePiece, lockPiece]);
 
   return {
     gameState,
