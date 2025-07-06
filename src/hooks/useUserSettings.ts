@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -134,36 +133,40 @@ export const useUserSettings = () => {
     }
 
     setSettings(prevSettings => {
-      // 安全地合并设置，避免展开运算符的类型错误
-      const merged = Object.assign({}, prevSettings);
-      
-      // 手动合并每个有效的设置项
-      Object.keys(newSettings).forEach(key => {
-        const typedKey = key as keyof UserSettings;
-        if (newSettings[typedKey] !== undefined) {
-          (merged as any)[typedKey] = newSettings[typedKey];
-        }
-      });
+      // 创建新的设置对象，避免类型错误
+      const mergedSettings: UserSettings = {
+        enableGhost: newSettings.enableGhost !== undefined ? newSettings.enableGhost : prevSettings.enableGhost,
+        enableSound: newSettings.enableSound !== undefined ? newSettings.enableSound : prevSettings.enableSound,
+        masterVolume: newSettings.masterVolume !== undefined ? newSettings.masterVolume : prevSettings.masterVolume,
+        musicVolume: newSettings.musicVolume !== undefined ? newSettings.musicVolume : prevSettings.musicVolume,
+        backgroundMusic: newSettings.backgroundMusic !== undefined ? newSettings.backgroundMusic : prevSettings.backgroundMusic,
+        arr: newSettings.arr !== undefined ? newSettings.arr : prevSettings.arr,
+        das: newSettings.das !== undefined ? newSettings.das : prevSettings.das,
+        sdf: newSettings.sdf !== undefined ? newSettings.sdf : prevSettings.sdf,
+        controls: newSettings.controls !== undefined ? newSettings.controls : prevSettings.controls,
+        ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
+        blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
+      };
       
       // 游客只存本地
       if (!user || user.isGuest || !user.id) {
-        window.localStorage.setItem('userSettings', JSON.stringify(merged));
-        return merged;
+        window.localStorage.setItem('userSettings', JSON.stringify(mergedSettings));
+        return mergedSettings;
       }
       // 登录用户同步到云端
       const dbSettings: any = {
-        enable_ghost: merged.enableGhost,
-        enable_sound: merged.enableSound,
-        master_volume: merged.masterVolume,
-        music_volume: merged.musicVolume,
-        background_music: merged.backgroundMusic,
-        arr: merged.arr,
-        das: merged.das,
-        sdf: merged.sdf,
-        controls: merged.controls,
-        ghost_opacity: merged.ghostOpacity,
-        back_to_menu: merged.controls.backToMenu,
-        block_skin: merged.blockSkin ?? 'wood',
+        enable_ghost: mergedSettings.enableGhost,
+        enable_sound: mergedSettings.enableSound,
+        master_volume: mergedSettings.masterVolume,
+        music_volume: mergedSettings.musicVolume,
+        background_music: mergedSettings.backgroundMusic,
+        arr: mergedSettings.arr,
+        das: mergedSettings.das,
+        sdf: mergedSettings.sdf,
+        controls: mergedSettings.controls,
+        ghost_opacity: mergedSettings.ghostOpacity,
+        back_to_menu: mergedSettings.controls.backToMenu,
+        block_skin: mergedSettings.blockSkin ?? 'wood',
       };
       supabase
         .from('user_settings')
@@ -174,8 +177,8 @@ export const useUserSettings = () => {
             console.error('云端设置保存失败:', error);
           }
         });
-      window.localStorage.setItem('userSettings', JSON.stringify(merged));
-      return merged;
+      window.localStorage.setItem('userSettings', JSON.stringify(mergedSettings));
+      return mergedSettings;
     });
   }, [setSettings, user]);
 
@@ -188,16 +191,20 @@ export const useUserSettings = () => {
     }
 
     setSettings(prevSettings => {
-      // 安全地合并设置，避免展开运算符的类型错误
-      const updatedSettings = Object.assign({}, prevSettings);
-      
-      // 手动合并每个有效的设置项
-      Object.keys(newSettings).forEach(key => {
-        const typedKey = key as keyof UserSettings;
-        if (newSettings[typedKey] !== undefined) {
-          (updatedSettings as any)[typedKey] = newSettings[typedKey];
-        }
-      });
+      // 创建新的设置对象，避免类型错误
+      const updatedSettings: UserSettings = {
+        enableGhost: newSettings.enableGhost !== undefined ? newSettings.enableGhost : prevSettings.enableGhost,
+        enableSound: newSettings.enableSound !== undefined ? newSettings.enableSound : prevSettings.enableSound,
+        masterVolume: newSettings.masterVolume !== undefined ? newSettings.masterVolume : prevSettings.masterVolume,
+        musicVolume: newSettings.musicVolume !== undefined ? newSettings.musicVolume : prevSettings.musicVolume,
+        backgroundMusic: newSettings.backgroundMusic !== undefined ? newSettings.backgroundMusic : prevSettings.backgroundMusic,
+        arr: newSettings.arr !== undefined ? newSettings.arr : prevSettings.arr,
+        das: newSettings.das !== undefined ? newSettings.das : prevSettings.das,
+        sdf: newSettings.sdf !== undefined ? newSettings.sdf : prevSettings.sdf,
+        controls: newSettings.controls !== undefined ? newSettings.controls : prevSettings.controls,
+        ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
+        blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
+      };
       
       // 游客自动存本地
       if (!user || user.isGuest || !user.id) {
