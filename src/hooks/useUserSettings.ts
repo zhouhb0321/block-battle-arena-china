@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -164,12 +165,15 @@ export const useUserSettings = () => {
 
   // 只更新本地（如游客）
   const updateSettings = useCallback((newSettings: Partial<UserSettings>) => {
-    setSettings(prevSettings => ({ ...prevSettings, ...newSettings }));
-    // 游客自动存本地
-    if (!user || user.isGuest || !user.id) {
-      window.localStorage.setItem('userSettings', JSON.stringify({ ...settings, ...newSettings }));
-    }
-  }, [setSettings, user, settings]);
+    setSettings(prevSettings => {
+      const updatedSettings = { ...prevSettings, ...newSettings };
+      // 游客自动存本地
+      if (!user || user.isGuest || !user.id) {
+        window.localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
+      }
+      return updatedSettings;
+    });
+  }, [setSettings, user]);
 
   // 强制从云端刷新
   const reloadSettings = useCallback(async () => {
