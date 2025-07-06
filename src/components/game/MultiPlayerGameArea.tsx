@@ -47,18 +47,18 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
       <div className="flex gap-8 items-start">
         {/* 主玩家游戏区域（加 relative 以便倒计时 absolute 定位） */}
         <div className="relative">
-        <PlayerGameSection
-          gameState={gameState}
-          gameSettings={gameSettings}
-          username={username}
-          onPause={onPause}
-          onShare={onShare}
-          onReset={onReset}
-          onBackToMenu={onBackToMenu}
-          gameStarted={gameStarted}
-          cellSize={mainCellSize}
-          showOverlay={true}
-        />
+          <PlayerGameSection
+            gameState={gameState}
+            gameSettings={gameSettings}
+            username={username}
+            onPause={onPause}
+            onShare={onShare}
+            onReset={onReset}
+            onBackToMenu={onBackToMenu}
+            gameStarted={gameStarted}
+            cellSize={mainCellSize}
+            showOverlay={true}
+          />
           {/* 只在主玩家区显示倒计时 */}
           {showCountdown && (
             <GameCountdown show={showCountdown} onCountdownEnd={onCountdownEnd} />
