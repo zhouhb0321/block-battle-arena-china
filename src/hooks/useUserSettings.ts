@@ -132,8 +132,11 @@ export const useUserSettings = () => {
       return;
     }
 
+    // Create a properly typed settings object
+    const validSettings = newSettings as Record<string, any>;
+
     setSettings(prevSettings => {
-      const merged = { ...prevSettings, ...newSettings };
+      const merged = { ...prevSettings, ...validSettings };
       // 游客只存本地
       if (!user || user.isGuest || !user.id) {
         window.localStorage.setItem('userSettings', JSON.stringify(merged));
@@ -175,8 +178,11 @@ export const useUserSettings = () => {
       return;
     }
 
+    // Create a properly typed settings object
+    const validSettings = newSettings as Record<string, any>;
+
     setSettings(prevSettings => {
-      const updatedSettings = { ...prevSettings, ...newSettings };
+      const updatedSettings = { ...prevSettings, ...validSettings };
       // 游客自动存本地
       if (!user || user.isGuest || !user.id) {
         window.localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
