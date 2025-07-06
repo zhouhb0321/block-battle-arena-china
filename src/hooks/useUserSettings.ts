@@ -127,6 +127,11 @@ export const useUserSettings = () => {
 
   // 保存设置到云端
   const saveSettings = useCallback(async (newSettings: Partial<UserSettings>) => {
+    if (!newSettings || typeof newSettings !== 'object') {
+      console.error('Invalid settings provided');
+      return;
+    }
+
     setSettings(prevSettings => {
       const merged = { ...prevSettings, ...newSettings };
       // 游客只存本地
@@ -165,6 +170,11 @@ export const useUserSettings = () => {
 
   // 只更新本地（如游客）
   const updateSettings = useCallback((newSettings: Partial<UserSettings>) => {
+    if (!newSettings || typeof newSettings !== 'object') {
+      console.error('Invalid settings provided');
+      return;
+    }
+
     setSettings(prevSettings => {
       const updatedSettings = { ...prevSettings, ...newSettings };
       // 游客自动存本地
