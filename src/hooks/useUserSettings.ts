@@ -133,7 +133,10 @@ export const useUserSettings = () => {
     }
 
     setSettings(prevSettings => {
-      const merged = { ...prevSettings, ...newSettings };
+      // Ensure we have a valid object to spread by using Object.assign as a fallback
+      const settingsToMerge = { ...newSettings } as Partial<UserSettings>;
+      const merged = Object.assign({}, prevSettings, settingsToMerge);
+      
       // 游客只存本地
       if (!user || user.isGuest || !user.id) {
         window.localStorage.setItem('userSettings', JSON.stringify(merged));
@@ -176,7 +179,10 @@ export const useUserSettings = () => {
     }
 
     setSettings(prevSettings => {
-      const updatedSettings = { ...prevSettings, ...newSettings };
+      // Ensure we have a valid object to spread by using Object.assign as a fallback
+      const settingsToMerge = { ...newSettings } as Partial<UserSettings>;
+      const updatedSettings = Object.assign({}, prevSettings, settingsToMerge);
+      
       // 游客自动存本地
       if (!user || user.isGuest || !user.id) {
         window.localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
