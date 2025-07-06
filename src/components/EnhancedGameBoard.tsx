@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
@@ -116,7 +115,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
     // 隐藏行的半透明效果
     if (isHidden) {
       const currentOpacity = typeof cellStyle.opacity === 'number' ? cellStyle.opacity : 1;
-      cellStyle.opacity = currentOpacity * 0.4;
+      cellStyle.opacity = currentOpacity * 0.25;
       cellClass += ' hidden-row';
     }
 
@@ -164,7 +163,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+            background: linear-gradient(45deg, transparent 10%, rgba(255,255,255,0.18) 50%, transparent 90%);
             pointer-events: none;
           }
           

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 
 interface GameCountdownInAreaProps {
@@ -49,6 +48,7 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
             count > 0 ? 'text-5xl animate-bounce' : 'text-6xl animate-pulse'
           }`}
           style={{
+            opacity: 0.7,
             textShadow: '0 0 20px hsl(var(--game-purple)), 0 0 40px hsl(var(--game-purple) / 0.6), 0 4px 8px rgba(0,0,0,0.8)',
             filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.8))',
             transform: count > 0 ? 'scale(1.1)' : 'scale(1.2)',
