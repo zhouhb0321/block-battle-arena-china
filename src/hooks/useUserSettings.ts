@@ -125,17 +125,25 @@ export const useUserSettings = () => {
     }
   }, [user, fetchCloudSettings]);
 
-  // 保存设置到云端
+  // 保存设置到云端 - 修复TypeScript错误
   const saveSettings = useCallback(async (newSettings: Partial<UserSettings>) => {
-    if (!newSettings || typeof newSettings !== 'object') {
+    // 验证输入参数
+    if (!newSettings || typeof newSettings !== 'object' || Array.isArray(newSettings)) {
       console.error('Invalid settings provided');
       return;
     }
 
     setSettings(prevSettings => {
-      // Ensure we have a valid object to spread by using Object.assign as a fallback
-      const settingsToMerge = { ...newSettings } as Partial<UserSettings>;
-      const merged = Object.assign({}, prevSettings, settingsToMerge);
+      // 安全地合并设置，避免展开运算符的类型错误
+      const merged = Object.assign({}, prevSettings);
+      
+      // 手动合并每个有效的设置项
+      Object.keys(newSettings).forEach(key => {
+        const typedKey = key as keyof UserSettings;
+        if (newSettings[typedKey] !== undefined) {
+          (merged as any)[typedKey] = newSettings[typedKey];
+        }
+      });
       
       // 游客只存本地
       if (!user || user.isGuest || !user.id) {
@@ -171,17 +179,25 @@ export const useUserSettings = () => {
     });
   }, [setSettings, user]);
 
-  // 只更新本地（如游客）
+  // 只更新本地（如游客）- 修复TypeScript错误
   const updateSettings = useCallback((newSettings: Partial<UserSettings>) => {
-    if (!newSettings || typeof newSettings !== 'object') {
+    // 验证输入参数
+    if (!newSettings || typeof newSettings !== 'object' || Array.isArray(newSettings)) {
       console.error('Invalid settings provided');
       return;
     }
 
     setSettings(prevSettings => {
-      // Ensure we have a valid object to spread by using Object.assign as a fallback
-      const settingsToMerge = { ...newSettings } as Partial<UserSettings>;
-      const updatedSettings = Object.assign({}, prevSettings, settingsToMerge);
+      // 安全地合并设置，避免展开运算符的类型错误
+      const updatedSettings = Object.assign({}, prevSettings);
+      
+      // 手动合并每个有效的设置项
+      Object.keys(newSettings).forEach(key => {
+        const typedKey = key as keyof UserSettings;
+        if (newSettings[typedKey] !== undefined) {
+          (updatedSettings as any)[typedKey] = newSettings[typedKey];
+        }
+      });
       
       // 游客自动存本地
       if (!user || user.isGuest || !user.id) {
