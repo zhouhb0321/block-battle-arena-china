@@ -69,7 +69,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   const extendedBoard = createExtendedBoard();
   
   // 分离隐藏行和可见行
-  const hiddenRows = showHiddenRows ? extendedBoard.slice(0, 3) : [];
+  const hiddenRows = extendedBoard.slice(0, 3);
   const visibleRows = extendedBoard.slice(3);
 
   const renderCell = (cellValue: number | string, rowIndex: number, colIndex: number, isHidden = false) => {
@@ -153,6 +153,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
           }
           
           .hidden-row {
+            opacity: 0.25;
             position: relative;
           }
           
@@ -196,30 +197,17 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         `}
       </style>
       
-      {/* 隐藏行区域 */}
-      {hiddenRows.length > 0 && (
-        <div 
-          className="grid gap-0 border-2 border-red-500/30 bg-black/20 mb-1"
-          style={{ 
-            gridTemplateColumns: `repeat(10, ${cellSize}px)`,
-            width: `${cellSize * 10 + 4}px`,
-          }}
-        >
-          {hiddenRows.map((row, rowIndex) =>
-            row.map((cell, colIndex) => renderCell(cell, rowIndex, colIndex, true))
-          )}
-        </div>
-      )}
-      
-      {/* 主游戏区域 */}
       <div 
         className="grid gap-0 border-2 border-border bg-background shadow-2xl"
         style={{ 
           gridTemplateColumns: `repeat(10, ${cellSize}px)`,
           width: `${cellSize * 10 + 4}px`,
-          height: `${cellSize * 20 + 4}px`
+          height: `${cellSize * 23 + 4}px`
         }}
       >
+        {hiddenRows.map((row, rowIndex) =>
+          row.map((cell, colIndex) => renderCell(cell, rowIndex, colIndex, true))
+        )}
         {visibleRows.map((row, rowIndex) =>
           row.map((cell, colIndex) => renderCell(cell, rowIndex + 3, colIndex, false))
         )}

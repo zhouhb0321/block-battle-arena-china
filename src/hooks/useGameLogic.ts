@@ -165,11 +165,32 @@ export const useGameLogic = (
     return false;
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, lockDelay]);
 
+  // 工具函数：移除当前方块后的board
+  function getBoardWithoutCurrentPiece(board, piece) {
+    if (!piece) return board;
+    const { type, x, y } = piece;
+    const shape = type.shape;
+    const newBoard = board.map(row => [...row]);
+    for (let row = 0; row < shape.length; row++) {
+      for (let col = 0; col < shape[row].length; col++) {
+        if (shape[row][col] !== 0) {
+          const boardX = x + col;
+          const boardY = y + row;
+          if (boardX >= 0 && boardX < newBoard[0].length && boardY >= 0 && boardY < newBoard.length) {
+            newBoard[boardY][boardX] = 0;
+          }
+        }
+      }
+    }
+    return newBoard;
+  }
+
   // 修复旋转函数，确保正确传递踢墙状态
   const rotatePieceClockwise = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
-    const rotationResult = performSRSRotation(gameState.board, gameState.currentPiece, true);
+    const cleanBoard = getBoardWithoutCurrentPiece(gameState.board, gameState.currentPiece);
+    const rotationResult = performSRSRotation(cleanBoard, gameState.currentPiece, true);
     
     if (rotationResult.success && rotationResult.newPiece) {
       setGameState(prev => ({
@@ -188,7 +209,8 @@ export const useGameLogic = (
   const rotatePieceCounterclockwise = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
-    const rotationResult = performSRSRotation(gameState.board, gameState.currentPiece, false);
+    const cleanBoard = getBoardWithoutCurrentPiece(gameState.board, gameState.currentPiece);
+    const rotationResult = performSRSRotation(cleanBoard, gameState.currentPiece, false);
     
     if (rotationResult.success && rotationResult.newPiece) {
       setGameState(prev => ({
@@ -207,7 +229,8 @@ export const useGameLogic = (
   const rotatePiece180 = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
-    const rotationResult = performSRS180Rotation(gameState.board, gameState.currentPiece);
+    const cleanBoard = getBoardWithoutCurrentPiece(gameState.board, gameState.currentPiece);
+    const rotationResult = performSRS180Rotation(cleanBoard, gameState.currentPiece);
     
     if (rotationResult.success && rotationResult.newPiece) {
       setGameState(prev => ({

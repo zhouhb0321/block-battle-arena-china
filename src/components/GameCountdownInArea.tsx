@@ -38,9 +38,9 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
   if (!isVisible) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+    <div className="absolute left-0 top-0 w-full h-full flex items-center justify-center z-40 pointer-events-none">
       {/* 只覆盖游戏板区域的半透明背景 */}
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm rounded-lg" />
+      <div className="absolute left-0 top-0 w-full h-full bg-black/30 backdrop-blur-sm rounded-lg" />
       
       <div className="relative z-50">
         <div 
