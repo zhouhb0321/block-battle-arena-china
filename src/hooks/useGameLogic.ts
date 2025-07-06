@@ -172,24 +172,11 @@ export const useGameLogic = (
     const rotationResult = performSRSRotation(gameState.board, gameState.currentPiece, true);
     
     if (rotationResult.success && rotationResult.newPiece) {
-      // 新增：旋转后立即消行
-      const tempBoard = placePiece(gameState.board, rotationResult.newPiece);
-      const { newBoard: clearedBoard, linesCleared } = clearLines(tempBoard);
-      if (linesCleared > 0) {
-        // 有消行，T块上移
-        setGameState(prev => ({
-          ...prev,
-          board: clearedBoard,
-          currentPiece: { ...rotationResult.newPiece!, y: rotationResult.newPiece!.y - linesCleared },
-          ghostPiece: createGhostPiece(clearedBoard, { ...rotationResult.newPiece!, y: rotationResult.newPiece!.y - linesCleared })
-        }));
-      } else {
-        setGameState(prev => ({
-          ...prev,
-          currentPiece: rotationResult.newPiece!,
-          ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
-        }));
-      }
+      setGameState(prev => ({
+        ...prev,
+        currentPiece: rotationResult.newPiece!,
+        ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
+      }));
       setLastAction('rotate');
       setWasKicked(rotationResult.wasKicked);
       setLockDelay(false);
@@ -204,23 +191,11 @@ export const useGameLogic = (
     const rotationResult = performSRSRotation(gameState.board, gameState.currentPiece, false);
     
     if (rotationResult.success && rotationResult.newPiece) {
-      // 新增：旋转后立即消行
-      const tempBoard = placePiece(gameState.board, rotationResult.newPiece);
-      const { newBoard: clearedBoard, linesCleared } = clearLines(tempBoard);
-      if (linesCleared > 0) {
-        setGameState(prev => ({
-          ...prev,
-          board: clearedBoard,
-          currentPiece: { ...rotationResult.newPiece!, y: rotationResult.newPiece!.y - linesCleared },
-          ghostPiece: createGhostPiece(clearedBoard, { ...rotationResult.newPiece!, y: rotationResult.newPiece!.y - linesCleared })
-        }));
-      } else {
-        setGameState(prev => ({
-          ...prev,
-          currentPiece: rotationResult.newPiece!,
-          ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
-        }));
-      }
+      setGameState(prev => ({
+        ...prev,
+        currentPiece: rotationResult.newPiece!,
+        ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
+      }));
       setLastAction('rotate');
       setWasKicked(rotationResult.wasKicked);
       setLockDelay(false);
@@ -235,23 +210,11 @@ export const useGameLogic = (
     const rotationResult = performSRS180Rotation(gameState.board, gameState.currentPiece);
     
     if (rotationResult.success && rotationResult.newPiece) {
-      // 新增：旋转后立即消行
-      const tempBoard = placePiece(gameState.board, rotationResult.newPiece);
-      const { newBoard: clearedBoard, linesCleared } = clearLines(tempBoard);
-      if (linesCleared > 0) {
-        setGameState(prev => ({
-          ...prev,
-          board: clearedBoard,
-          currentPiece: { ...rotationResult.newPiece!, y: rotationResult.newPiece!.y - linesCleared },
-          ghostPiece: createGhostPiece(clearedBoard, { ...rotationResult.newPiece!, y: rotationResult.newPiece!.y - linesCleared })
-        }));
-      } else {
-        setGameState(prev => ({
-          ...prev,
-          currentPiece: rotationResult.newPiece!,
-          ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
-        }));
-      }
+      setGameState(prev => ({
+        ...prev,
+        currentPiece: rotationResult.newPiece!,
+        ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
+      }));
       setLastAction('rotate');
       setWasKicked(rotationResult.wasKicked);
       setLockDelay(false);

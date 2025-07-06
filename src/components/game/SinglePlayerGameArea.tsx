@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import GameBoard from '../GameBoard';
@@ -102,7 +101,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                   enableGhost={gameSettings.enableGhost}
                   cellSize={25}
                 />
-                
+                {/* 只在堆叠区显示倒计时 */}
+                <GameCountdownInArea show={showCountdown} onCountdownEnd={onCountdownEnd} />
                 <GameOverlay
                   paused={gameState.paused}
                   gameOver={gameState.gameOver}
@@ -114,7 +114,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                   onReset={onReset}
                   onBackToMenu={onBackToMenu}
                 />
-                <GameCountdownInArea show={showCountdown} onCountdownEnd={onCountdownEnd} />
               </div>
             </div>
 
@@ -184,7 +183,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         </div>
 
         {/* 主游戏区域 - 居中显示 */}
-        <div className="bg-card p-6 rounded-lg shadow-2xl border border-border relative">
+        <div className="bg-card p-6 rounded-lg shadow-2xl border border-border flex flex-col items-center relative" style={{width: mainCellSize * 10 + 4, height: mainCellSize * 23 + 4}}>
           <GameInfo
             username={username}
             score={gameState.score}
@@ -200,8 +199,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}
             gameStarted={gameStarted}
           />
-          
-          <div className="relative">
+          <div className="relative" style={{width: mainCellSize * 10 + 4, height: mainCellSize * 23 + 4}}>
             <GameBoard
               board={gameState.board}
               currentPiece={gameState.currentPiece}
@@ -209,7 +207,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               enableGhost={gameSettings.enableGhost}
               cellSize={mainCellSize}
             />
-            
+            {/* 只在堆叠区（含隐藏区）显示倒计时 */}
+            <GameCountdownInArea show={showCountdown} onCountdownEnd={onCountdownEnd} />
             <GameOverlay
               paused={gameState.paused}
               gameOver={gameState.gameOver}
@@ -221,8 +220,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               onReset={onReset}
               onBackToMenu={onBackToMenu}
             />
-
-            <GameCountdownInArea show={showCountdown} onCountdownEnd={onCountdownEnd} />
           </div>
         </div>
 
