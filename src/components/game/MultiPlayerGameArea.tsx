@@ -1,4 +1,3 @@
-
 import React from 'react';
 import PlayerGameSection from './PlayerGameSection';
 import GameControlsPanel from './GameControlsPanel';
@@ -46,7 +45,8 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
       </div>
 
       <div className="flex gap-8 items-start">
-        {/* 玩家1游戏区域 */}
+        {/* 主玩家游戏区域（加 relative 以便倒计时 absolute 定位） */}
+        <div className="relative">
         <PlayerGameSection
           gameState={gameState}
           gameSettings={gameSettings}
@@ -59,8 +59,13 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
           cellSize={mainCellSize}
           showOverlay={true}
         />
+          {/* 只在主玩家区显示倒计时 */}
+          {showCountdown && (
+            <GameCountdown show={showCountdown} onCountdownEnd={onCountdownEnd} />
+          )}
+        </div>
 
-        {/* 玩家2游戏区域 */}
+        {/* 对手游戏区域 */}
         <PlayerGameSection
           gameState={opponentState}
           gameSettings={gameSettings}
@@ -80,13 +85,6 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
 
       {/* 控制按钮 */}
       <GameControlsPanel onBackToMenu={onBackToMenu} />
-
-      {/* 倒计时覆盖层 */}
-      {showCountdown && (
-        <div className="fixed inset-0 z-50">
-          <GameCountdown show={showCountdown} onCountdownEnd={onCountdownEnd} />
-        </div>
-      )}
     </div>
   );
 };
