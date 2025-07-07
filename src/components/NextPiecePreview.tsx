@@ -1,19 +1,19 @@
 
 import React from 'react';
 import PiecePreview from './PiecePreview';
-import type { TetrominoType } from '@/utils/gameTypes';
+import type { GamePiece } from '@/utils/gameTypes';
 
 interface NextPiecePreviewProps {
-  nextPieces: TetrominoType[];
-  compact?: boolean; // 新增：紧凑模式
+  nextPieces: GamePiece[];
+  compact?: boolean;
 }
 
 const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({ 
   nextPieces, 
   compact = false 
 }) => {
-  const displayCount = compact ? 3 : 4; // 紧凑模式显示3个，正常模式显示4个
-  const pieceSize = compact ? 20 : 24; // 紧凑模式使用更小的尺寸
+  const displayCount = compact ? 3 : 4;
+  const pieceSize = compact ? 20 : 24;
 
   return (
     <div className={`bg-gray-900 p-3 rounded-lg border border-gray-700 ${compact ? 'w-20' : 'w-24'}`}>
@@ -27,7 +27,7 @@ const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({
             }`}
           >
             <PiecePreview 
-              tetromino={piece} 
+              tetromino={piece.type} 
               size={pieceSize}
               opacity={index === 0 ? 1 : 0.7}
             />

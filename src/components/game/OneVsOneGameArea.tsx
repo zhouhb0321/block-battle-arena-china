@@ -25,7 +25,7 @@ const OneVsOneGameArea: React.FC<OneVsOneGameAreaProps> = ({
   showCountdown = false,
   onCountdownEnd = () => {}
 }) => {
-  const cellSize = 24; // 稍小的方块尺寸以适应1v1布局
+  const cellSize = 24;
 
   const formatTime = (startTime: number | undefined) => {
     if (!startTime) return '00:00';
