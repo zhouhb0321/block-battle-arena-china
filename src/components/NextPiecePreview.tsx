@@ -27,9 +27,9 @@ const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({
             }`}
           >
             <PiecePreview 
-              tetromino={piece.type} 
-              size={pieceSize}
-              opacity={index === 0 ? 1 : 0.7}
+              piece={piece.type} 
+              title=""
+              cellSize={pieceSize}
             />
           </div>
         ))}
