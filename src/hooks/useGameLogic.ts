@@ -20,6 +20,21 @@ import {
 } from '@/utils/tetrisLogic';
 import type { GameMode, GameSettings, GameState, GamePiece, TetrominoType } from '@/utils/gameTypes';
 
+// Define history state type
+interface GameStateHistory {
+  board: number[][];
+  currentPiece: GamePiece | null;
+  nextPieces: GamePiece[];
+  holdPiece: GamePiece | null;
+  score: number;
+  lines: number;
+  level: number;
+  canHold: boolean;
+  combo: number;
+  b2b: number;
+  pieces: number;
+}
+
 export const useGameLogic = (
   gameMode: GameMode,
   gameSettings: GameSettings,
@@ -57,6 +72,11 @@ export const useGameLogic = (
     clearingLines: []
   });
 
+  // History for undo/redo functionality
+  const [history, setHistory] = useState<GameStateHistory[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const maxHistorySize = 10;
+
   const gameLoopRef = useRef<number>();
   const lastDropTime = useRef<number>(0);
   const lockDelayTime = useRef<number>(0);
@@ -69,7 +89,89 @@ export const useGameLogic = (
   useEffect(() => {
     // 只在调试时输出焦点状态
     console.log('窗口焦点状态:', isWindowFocused ? '获得焦点' : '失去焦点');
-  }, [isWindowFocused]);
+  }, [isWindowFocus]);
+
+  // Save state to history
+  const saveStateToHistory = useCallback(() => {
+    const stateToSave: GameStateHistory = {
+      board: gameState.board.map(row => [...row]),
+      currentPiece: gameState.currentPiece ? { ...gameState.currentPiece } : null,
+      nextPieces: [...gameState.nextPieces],
+      holdPiece: gameState.holdPiece ? { ...gameState.holdPiece } : null,
+      score: gameState.score,
+      lines: gameState.lines,
+      level: gameState.level,
+      canHold: gameState.canHold,
+      combo: gameState.combo || -1,
+      b2b: gameState.b2b || 0,
+      pieces: gameState.pieces || 0
+    };
+
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(stateToSave);
+      return newHistory.slice(-maxHistorySize);
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, maxHistorySize - 1));
+  }, [gameState, historyIndex]);
+
+  // Undo function
+  const undoMove = useCallback(() => {
+    if (gameState.gameOver || gameState.paused || historyIndex <= 0) return;
+    
+    const prevState = history[historyIndex - 1];
+    if (!prevState) return;
+
+    setGameState(prev => ({
+      ...prev,
+      board: prevState.board.map(row => [...row]),
+      currentPiece: prevState.currentPiece ? { ...prevState.currentPiece } : null,
+      nextPieces: [...prevState.nextPieces],
+      holdPiece: prevState.holdPiece ? { ...prevState.holdPiece } : null,
+      score: prevState.score,
+      lines: prevState.lines,
+      level: prevState.level,
+      canHold: prevState.canHold,
+      combo: prevState.combo,
+      b2b: prevState.b2b,
+      pieces: prevState.pieces,
+      ghostPiece: prevState.currentPiece ? createGhostPiece(prevState.board, prevState.currentPiece) : null
+    }));
+
+    setHistoryIndex(prev => prev - 1);
+    setLockDelay(false);
+    lockDelayTime.current = 0;
+    toast.success('撤销操作', { duration: 1000 });
+  }, [history, historyIndex, gameState.gameOver, gameState.paused]);
+
+  // Redo function
+  const redoMove = useCallback(() => {
+    if (gameState.gameOver || gameState.paused || historyIndex >= history.length - 1) return;
+    
+    const nextState = history[historyIndex + 1];
+    if (!nextState) return;
+
+    setGameState(prev => ({
+      ...prev,
+      board: nextState.board.map(row => [...row]),
+      currentPiece: nextState.currentPiece ? { ...nextState.currentPiece } : null,
+      nextPieces: [...nextState.nextPieces],
+      holdPiece: nextState.holdPiece ? { ...nextState.holdPiece } : null,
+      score: nextState.score,
+      lines: nextState.lines,
+      level: nextState.level,
+      canHold: nextState.canHold,
+      combo: nextState.combo,
+      b2b: nextState.b2b,
+      pieces: nextState.pieces,
+      ghostPiece: nextState.currentPiece ? createGhostPiece(nextState.board, nextState.currentPiece) : null
+    }));
+
+    setHistoryIndex(prev => prev + 1);
+    setLockDelay(false);
+    lockDelayTime.current = 0;
+    toast.success('重做操作', { duration: 1000 });
+  }, [history, historyIndex, gameState.gameOver, gameState.paused]);
 
   // Helper function to create GamePiece from TetrominoType
   const createGamePieceFromType = useCallback((pieceType: TetrominoType, x: number = 4, y: number = 0): GamePiece => {
@@ -83,6 +185,9 @@ export const useGameLogic = (
 
   const spawnNewPiece = useCallback(() => {
     console.log('Spawning new piece, nextPieces length:', gameState.nextPieces.length);
+    
+    // Save state before spawning new piece
+    saveStateToHistory();
     
     setGameState(prev => {
       if (prev.nextPieces.length === 0) {
@@ -138,7 +243,13 @@ export const useGameLogic = (
     lockDelayTime.current = 0;
     setWasKicked(false);
     isHardDropping.current = false;
-  }, [createGamePieceFromType]);
+  }, [createGamePieceFromType, saveStateToHistory]);
+
+  // Check if piece is at bottom
+  const isPieceAtBottom = useCallback((board: number[][], piece: GamePiece): boolean => {
+    const testPiece = { ...piece, y: piece.y + 1 };
+    return !isValidPosition(board, testPiece);
+  }, []);
 
   const movePiece = useCallback((dx: number, dy: number) => {
     // 简化条件检查，移除窗口焦点限制
@@ -161,21 +272,30 @@ export const useGameLogic = (
       setLastAction('move');
       setWasKicked(false);
       
-      if (dy > 0) {
+      // Reset lock delay on any movement
+      if (lockDelay) {
         setLockDelay(false);
         lockDelayTime.current = 0;
       }
       
+      // Check if piece is at bottom after movement
+      if (dy > 0 && isPieceAtBottom(gameState.board, newPiece)) {
+        setLockDelay(true);
+        lockDelayTime.current = Date.now();
+      }
+      
       return true;
     } else if (dy > 0) {
+      // Piece can't move down, start lock delay
       if (!lockDelay) {
         setLockDelay(true);
         lockDelayTime.current = Date.now();
+        console.log('Lock delay started - piece at bottom');
       }
       return false;
     }
     return false;
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, lockDelay]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, lockDelay, isPieceAtBottom]);
 
   // 工具函数：移除当前方块后的board
   function getBoardWithoutCurrentPiece(board, piece) {
@@ -197,10 +317,12 @@ export const useGameLogic = (
     return newBoard;
   }
 
-  // 修复旋转函数，确保正确传递踢墙状态
+  // 修复旋转函数，确保正确传递踢墙状态和改进高速旋转
   const rotatePieceClockwise = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
+    console.log('尝试顺时针旋转，当前速度等级:', gameState.level);
+    
     const cleanBoard = getBoardWithoutCurrentPiece(gameState.board, gameState.currentPiece);
     const rotationResult = performSRSRotation(cleanBoard, gameState.currentPiece, true);
     
@@ -214,15 +336,32 @@ export const useGameLogic = (
       }));
       setLastAction('rotate');
       setWasKicked(rotationResult.wasKicked);
-      setLockDelay(false);
-      lockDelayTime.current = 0;
+      
+      // Reset lock delay on successful rotation
+      if (lockDelay) {
+        setLockDelay(false);
+        lockDelayTime.current = 0;
+        console.log('Lock delay reset after rotation');
+      }
+      
+      // Check if rotated piece is at bottom
+      if (isPieceAtBottom(gameState.board, rotationResult.newPiece)) {
+        setLockDelay(true);
+        lockDelayTime.current = Date.now();
+        console.log('Lock delay started after rotation - piece at bottom');
+      }
+      
       console.log(`顺时针旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
+    } else {
+      console.log('顺时针旋转失败，可能原因：边界限制或碰撞检测');
     }
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, gameState.level, lockDelay, isPieceAtBottom]);
 
   const rotatePieceCounterclockwise = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
+    console.log('尝试逆时针旋转，当前速度等级:', gameState.level);
+    
     const cleanBoard = getBoardWithoutCurrentPiece(gameState.board, gameState.currentPiece);
     const rotationResult = performSRSRotation(cleanBoard, gameState.currentPiece, false);
     
@@ -236,15 +375,32 @@ export const useGameLogic = (
       }));
       setLastAction('rotate');
       setWasKicked(rotationResult.wasKicked);
-      setLockDelay(false);
-      lockDelayTime.current = 0;
+      
+      // Reset lock delay on successful rotation
+      if (lockDelay) {
+        setLockDelay(false);
+        lockDelayTime.current = 0;
+        console.log('Lock delay reset after rotation');
+      }
+      
+      // Check if rotated piece is at bottom
+      if (isPieceAtBottom(gameState.board, rotationResult.newPiece)) {
+        setLockDelay(true);
+        lockDelayTime.current = Date.now();
+        console.log('Lock delay started after rotation - piece at bottom');
+      }
+      
       console.log(`逆时针旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
+    } else {
+      console.log('逆时针旋转失败，可能原因：边界限制或碰撞检测');
     }
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, gameState.level, lockDelay, isPieceAtBottom]);
 
   const rotatePiece180 = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
+    console.log('尝试180度旋转，当前速度等级:', gameState.level);
+    
     const cleanBoard = getBoardWithoutCurrentPiece(gameState.board, gameState.currentPiece);
     const rotationResult = performSRS180Rotation(cleanBoard, gameState.currentPiece);
     
@@ -258,11 +414,26 @@ export const useGameLogic = (
       }));
       setLastAction('rotate');
       setWasKicked(rotationResult.wasKicked);
-      setLockDelay(false);
-      lockDelayTime.current = 0;
+      
+      // Reset lock delay on successful rotation
+      if (lockDelay) {
+        setLockDelay(false);
+        lockDelayTime.current = 0;
+        console.log('Lock delay reset after rotation');
+      }
+      
+      // Check if rotated piece is at bottom
+      if (isPieceAtBottom(gameState.board, rotationResult.newPiece)) {
+        setLockDelay(true);
+        lockDelayTime.current = Date.now();
+        console.log('Lock delay started after rotation - piece at bottom');
+      }
+      
       console.log(`180度旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
+    } else {
+      console.log('180度旋转失败，可能原因：边界限制或碰撞检测');
     }
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, gameState.level, lockDelay, isPieceAtBottom]);
 
   const hardDrop = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
@@ -432,6 +603,8 @@ export const useGameLogic = (
     console.log('开始游戏...');
     isHardDropping.current = false;
     setWasKicked(false);
+    setHistory([]);
+    setHistoryIndex(-1);
     setGameState(prev => ({
       ...prev,
       paused: false,
@@ -465,6 +638,8 @@ export const useGameLogic = (
     console.log('重置游戏...');
     isHardDropping.current = false;
     setWasKicked(false);
+    setHistory([]);
+    setHistoryIndex(-1);
     setGameState({
       board: Array(23).fill(null).map(() => Array(10).fill(0)),
       currentPiece: null,
@@ -497,7 +672,7 @@ export const useGameLogic = (
     toast.success('游戏分享功能即将推出！');
   }, []);
 
-  // Game loop - 使用重力系统的降落速度计算
+  // Game loop - 优化锁定延迟为100ms
   useEffect(() => {
     const gameLoop = (timestamp: number) => {
       if (gameState.gameOver || gameState.paused || isHardDropping.current) {
@@ -510,13 +685,17 @@ export const useGameLogic = (
       if (timestamp - lastDropTime.current > dropSpeed) {
         const moved = movePiece(0, 1);
         if (!moved && lockDelay) {
-          if (timestamp - lockDelayTime.current > 500) {
+          // 优化锁定延迟为100ms
+          if (timestamp - lockDelayTime.current > 100) {
+            console.log('Lock delay timeout (100ms) - locking piece');
             lockPiece();
           }
         }
         lastDropTime.current = timestamp;
       } else if (lockDelay) {
-        if (timestamp - lockDelayTime.current > 500) {
+        // 优化锁定延迟为100ms
+        if (timestamp - lockDelayTime.current > 100) {
+          console.log('Lock delay timeout (100ms) - locking piece');
           lockPiece();
         }
       }
@@ -548,6 +727,11 @@ export const useGameLogic = (
     hardDrop,
     lockPiece,
     holdCurrentPiece,
-    lockDelayTime: lockDelayTime.current
+    lockDelayTime: lockDelayTime.current,
+    // Undo/Redo functions
+    undoMove,
+    redoMove,
+    canUndo: historyIndex > 0,
+    canRedo: historyIndex < history.length - 1
   };
 };

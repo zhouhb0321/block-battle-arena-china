@@ -68,7 +68,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         <div className="flex-1 flex items-center justify-center p-2">
           <div className="flex gap-2 items-start max-w-full">
             {/* HOLD 区域 - 左侧 */}
-            <div className="bg-gray-800 p-2 rounded">
+            <div className="game-panel-light p-2 rounded">
               <PiecePreview 
                 piece={gameState.holdPiece?.type || null} 
                 title="HOLD" 
@@ -77,7 +77,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             </div>
 
             {/* 主游戏区域 */}
-            <div className="bg-gray-800 p-3 rounded-lg shadow-2xl border border-gray-700 relative">
+            <div className="game-board-light p-3 rounded-lg shadow-2xl border border-gray-300 dark:border-gray-700 relative">
               <GameInfo
                 username={username}
                 score={gameState.score}
@@ -121,8 +121,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             </div>
 
             {/* NEXT 区域 - 右侧 */}
-            <div className="bg-gray-800 p-2 rounded">
-              <h3 className="text-white text-xs mb-2 text-center font-bold">NEXT</h3>
+            <div className="game-panel-light p-2 rounded">
+              <h3 className="text-foreground text-xs mb-2 text-center font-bold">NEXT</h3>
               <div className="space-y-1">
                 {gameState.nextPieces.slice(0, 3).map((piece, index) => (
                   <PiecePreview 
@@ -163,17 +163,21 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       <div className="flex gap-6 items-start">
         {/* 左侧HOLD面板 */}
         <div className="flex flex-col gap-4">
-          <PiecePreview 
-            piece={gameState.holdPiece?.type || null} 
-            title="HOLD" 
-            cellSize={mainCellSize}
-          />
+          <div className="game-panel-light p-4 rounded-lg shadow-lg">
+            <PiecePreview 
+              piece={gameState.holdPiece?.type || null} 
+              title="HOLD" 
+              cellSize={mainCellSize}
+            />
+          </div>
           
-          <GameStatusIndicators 
-            combo={gameState.combo || -1}
-            b2b={gameState.b2b || 0}
-            totalAttack={gameState.attack || 0}
-          />
+          <div className="game-panel-light p-3 rounded-lg shadow-lg">
+            <GameStatusIndicators 
+              combo={gameState.combo || -1}
+              b2b={gameState.b2b || 0}
+              totalAttack={gameState.attack || 0}
+            />
+          </div>
 
           <Button 
             onClick={onBackToMenu}
@@ -186,7 +190,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         </div>
 
         {/* 主游戏区域 - 居中显示 */}
-        <div className="bg-card p-6 rounded-lg shadow-2xl border border-border flex flex-col items-center">
+        <div className="game-board-light p-6 rounded-lg shadow-2xl border border-gray-300 dark:border-gray-700 flex flex-col items-center">
           <GameInfo
             username={username}
             score={gameState.score}
@@ -229,7 +233,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         </div>
 
         {/* 右侧NEXT面板 */}
-        <div className="bg-card p-4 rounded-lg shadow-lg border border-border">
+        <div className="game-panel-light p-4 rounded-lg shadow-lg">
           <h3 className="text-foreground text-sm mb-3 text-center font-bold">NEXT</h3>
           <div className="space-y-3">
             {gameState.nextPieces.slice(0, 4).map((piece, index) => (

@@ -15,6 +15,10 @@ interface UseKeyboardControlsProps {
   onHold: () => void;
   onPause: () => void;
   onBackToMenu?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 export const useKeyboardControls = ({
@@ -29,7 +33,11 @@ export const useKeyboardControls = ({
   onRotateCounterclockwise,
   onHold,
   onPause,
-  onBackToMenu
+  onBackToMenu,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false
 }: UseKeyboardControlsProps) => {
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const keyPressedTime = useRef<{[key: string]: number}>({});
@@ -39,6 +47,20 @@ export const useKeyboardControls = ({
     // 防止页面滚动等默认行为
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(event.code)) {
       event.preventDefault();
+    }
+
+    // Handle Ctrl+Z (Undo) and Ctrl+Y (Redo) for single player practice
+    if (event.ctrlKey && !gameOver) {
+      if (event.code === 'KeyZ' && onUndo && canUndo) {
+        event.preventDefault();
+        onUndo();
+        return;
+      }
+      if (event.code === 'KeyY' && onRedo && canRedo) {
+        event.preventDefault();
+        onRedo();
+        return;
+      }
     }
 
     const { controls } = gameSettings;
@@ -83,7 +105,7 @@ export const useKeyboardControls = ({
     }
     
     setKeys(prev => new Set(prev).add(event.code));
-  }, [gameSettings, gameOver, paused, onRotateClockwise, onRotateCounterclockwise, onHardDrop, onHold, onPause, onBackToMenu, onMoveLeft, onMoveRight, onSoftDrop]);
+  }, [gameSettings, gameOver, paused, onRotateClockwise, onRotateCounterclockwise, onHardDrop, onHold, onPause, onBackToMenu, onMoveLeft, onMoveRight, onSoftDrop, onUndo, onRedo, canUndo, canRedo]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     delete keyPressedTime.current[event.code];
