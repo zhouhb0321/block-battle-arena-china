@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import GameBoard from '../GameBoard';
+import EnhancedGameBoard from '../EnhancedGameBoard';
 import GameInfo from '../GameInfo';
 import PiecePreview from '../PiecePreview';
 import GameOverlay from '../GameOverlay';
@@ -86,20 +87,22 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                 pps={gameState.pps || 0}
                 attack={gameState.apm || 0}
                 paused={gameState.paused}
-            onPause={gameStarted ? onPause : undefined}
-            onShare={onShare}
-            mode="single"
-            combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}
-            gameStarted={gameStarted}
+                onPause={gameStarted ? onPause : undefined}
+                onShare={onShare}
+                mode="single"
+                combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}
+                gameStarted={gameStarted}
               />
               
               <div className="relative">
-                <GameBoard
+                <EnhancedGameBoard
                   board={gameState.board}
                   currentPiece={gameState.currentPiece}
                   ghostPiece={gameState.ghostPiece}
                   enableGhost={gameSettings.enableGhost}
                   cellSize={25}
+                  clearingLines={gameState.clearingLines}
+                  showHiddenRows={true}
                 />
                 {/* 只在堆叠区显示倒计时 */}
                 <GameCountdownInArea show={showCountdown} onCountdownEnd={onCountdownEnd} />
@@ -183,7 +186,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         </div>
 
         {/* 主游戏区域 - 居中显示 */}
-        <div className="bg-card p-6 rounded-lg shadow-2xl border border-border flex flex-col items-center relative" style={{width: mainCellSize * 10 + 4, height: mainCellSize * 23 + 4}}>
+        <div className="bg-card p-6 rounded-lg shadow-2xl border border-border flex flex-col items-center">
           <GameInfo
             username={username}
             score={gameState.score}
@@ -199,13 +202,15 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             combo={gameState.combo && gameState.combo >= 0 ? gameState.combo : undefined}
             gameStarted={gameStarted}
           />
-          <div className="relative" style={{width: mainCellSize * 10 + 4, height: mainCellSize * 23 + 4}}>
-            <GameBoard
+          <div className="relative">
+            <EnhancedGameBoard
               board={gameState.board}
               currentPiece={gameState.currentPiece}
               ghostPiece={gameState.ghostPiece}
               enableGhost={gameSettings.enableGhost}
               cellSize={mainCellSize}
+              clearingLines={gameState.clearingLines}
+              showHiddenRows={true}
             />
             {/* 只在堆叠区（含隐藏区）显示倒计时 */}
             <GameCountdownInArea show={showCountdown} onCountdownEnd={onCountdownEnd} />

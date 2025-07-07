@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useWindowFocus } from '@/hooks/useWindowFocus';
+import { calculateDropSpeed } from '@/utils/gravitySystem';
 import {
   isValidPosition,
   placePiece,
@@ -22,9 +23,14 @@ import type { GameMode, GameSettings, GameState, GamePiece, TetrominoType } from
 export const useGameLogic = (
   gameMode: GameMode,
   gameSettings: GameSettings,
-  calculateDropSpeed: (lines: number) => number
+  customCalculateDropSpeed?: (lines: number) => number
 ) => {
   const isWindowFocused = useWindowFocus();
+  
+  // Use the gravity system's drop speed calculation
+  const getDropSpeed = useCallback((lines: number) => {
+    return customCalculateDropSpeed ? customCalculateDropSpeed(lines) : calculateDropSpeed(lines);
+  }, [customCalculateDropSpeed]);
   
   // Game state
   const [gameState, setGameState] = useState<GameState>({
@@ -91,10 +97,12 @@ export const useGameLogic = (
           return { ...prev, gameOver: true };
         }
 
+        const ghostPiece = createGhostPiece(prev.board, newPiece);
+        
         return {
           ...prev,
           currentPiece: newPiece,
-          ghostPiece: createGhostPiece(prev.board, newPiece),
+          ghostPiece: ghostPiece,
           nextPieces: newNextPieces,
           canHold: true,
           pieces: prev.pieces! + 1
@@ -113,10 +121,12 @@ export const useGameLogic = (
           return { ...prev, gameOver: true };
         }
 
+        const ghostPiece = createGhostPiece(prev.board, newPiece);
+
         return {
           ...prev,
           currentPiece: newPiece,
-          ghostPiece: createGhostPiece(prev.board, newPiece),
+          ghostPiece: ghostPiece,
           nextPieces: newNextPieces,
           canHold: true,
           pieces: prev.pieces! + 1
@@ -141,10 +151,12 @@ export const useGameLogic = (
     };
 
     if (isValidPosition(gameState.board, newPiece)) {
+      const ghostPiece = createGhostPiece(gameState.board, newPiece);
+      
       setGameState(prev => ({
         ...prev,
         currentPiece: newPiece,
-        ghostPiece: createGhostPiece(gameState.board, newPiece)
+        ghostPiece: ghostPiece
       }));
       setLastAction('move');
       setWasKicked(false);
@@ -193,10 +205,12 @@ export const useGameLogic = (
     const rotationResult = performSRSRotation(cleanBoard, gameState.currentPiece, true);
     
     if (rotationResult.success && rotationResult.newPiece) {
+      const ghostPiece = createGhostPiece(gameState.board, rotationResult.newPiece);
+      
       setGameState(prev => ({
         ...prev,
         currentPiece: rotationResult.newPiece!,
-        ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
+        ghostPiece: ghostPiece
       }));
       setLastAction('rotate');
       setWasKicked(rotationResult.wasKicked);
@@ -213,10 +227,12 @@ export const useGameLogic = (
     const rotationResult = performSRSRotation(cleanBoard, gameState.currentPiece, false);
     
     if (rotationResult.success && rotationResult.newPiece) {
+      const ghostPiece = createGhostPiece(gameState.board, rotationResult.newPiece);
+      
       setGameState(prev => ({
         ...prev,
         currentPiece: rotationResult.newPiece!,
-        ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
+        ghostPiece: ghostPiece
       }));
       setLastAction('rotate');
       setWasKicked(rotationResult.wasKicked);
@@ -233,10 +249,12 @@ export const useGameLogic = (
     const rotationResult = performSRS180Rotation(cleanBoard, gameState.currentPiece);
     
     if (rotationResult.success && rotationResult.newPiece) {
+      const ghostPiece = createGhostPiece(gameState.board, rotationResult.newPiece);
+      
       setGameState(prev => ({
         ...prev,
         currentPiece: rotationResult.newPiece!,
-        ghostPiece: createGhostPiece(prev.board, rotationResult.newPiece!)
+        ghostPiece: ghostPiece
       }));
       setLastAction('rotate');
       setWasKicked(rotationResult.wasKicked);
@@ -385,11 +403,13 @@ export const useGameLogic = (
 
     if (gameState.holdPiece) {
       const newPiece = createGamePieceFromType(gameState.holdPiece.type);
+      const ghostPiece = createGhostPiece(gameState.board, newPiece);
+      
       setGameState(prev => ({
         ...prev,
         holdPiece: gameState.currentPiece,
         currentPiece: newPiece,
-        ghostPiece: createGhostPiece(gameState.board, newPiece),
+        ghostPiece: ghostPiece,
         canHold: false
       }));
     } else {
@@ -477,7 +497,7 @@ export const useGameLogic = (
     toast.success('游戏分享功能即将推出！');
   }, []);
 
-  // Game loop - 简化条件检查
+  // Game loop - 使用重力系统的降落速度计算
   useEffect(() => {
     const gameLoop = (timestamp: number) => {
       if (gameState.gameOver || gameState.paused || isHardDropping.current) {
@@ -485,7 +505,7 @@ export const useGameLogic = (
         return;
       }
 
-      const dropSpeed = calculateDropSpeed(gameState.lines);
+      const dropSpeed = getDropSpeed(gameState.lines);
       
       if (timestamp - lastDropTime.current > dropSpeed) {
         const moved = movePiece(0, 1);
@@ -511,7 +531,7 @@ export const useGameLogic = (
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [gameState.gameOver, gameState.paused, gameState.lines, lockDelay, calculateDropSpeed, movePiece, lockPiece]);
+  }, [gameState.gameOver, gameState.paused, gameState.lines, lockDelay, getDropSpeed, movePiece, lockPiece]);
 
   return {
     gameState,

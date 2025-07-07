@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
@@ -30,7 +31,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
     const fullBoard: (number | string)[][] = board.map(row => [...row]);
     
     // 添加幽灵方块 - 优先级较低
-    if (enableGhost && ghostPiece && currentPiece) {
+    if (enableGhost && ghostPiece && currentPiece && settings.ghostOpacity > 0) {
       const { shape, color } = ghostPiece.type;
       shape.forEach((row, rowIndex) => {
         row.forEach((cell, colIndex) => {
@@ -84,6 +85,10 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         const color = cellValue.replace('ghost-', '');
         cellStyle = currentSkin.getBlockStyle(color, true);
         cellClass = currentSkin.getBlockClass(color, true);
+        
+        // 应用用户设置的幽灵方块透明度
+        const baseOpacity = typeof cellStyle.opacity === 'number' ? cellStyle.opacity : 0.5;
+        cellStyle.opacity = baseOpacity * (settings.ghostOpacity / 100);
       } else if (cellValue.startsWith('solid-')) {
         const color = cellValue.replace('solid-', '');
         cellStyle = currentSkin.getBlockStyle(color, false);
@@ -104,19 +109,29 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         cellClass = currentSkin.getBlockClass(color, false);
       }
     } else {
-      // 空方块
-      cellStyle = {
-        backgroundColor: 'transparent',
-        border: '1px solid rgba(255,255,255,0.1)',
-      };
+      // 空方块 - 隐藏行完全透明，可见行显示边框
+      if (isHidden) {
+        cellStyle = {
+          backgroundColor: 'transparent',
+          border: 'none',
+        };
+      } else {
+        cellStyle = {
+          backgroundColor: 'transparent',
+          border: '1px solid rgba(255,255,255,0.1)',
+        };
+      }
       cellClass = 'empty-block';
     }
 
-    // 隐藏行的半透明效果
+    // 隐藏行的特殊处理
     if (isHidden) {
-      const currentOpacity = typeof cellStyle.opacity === 'number' ? cellStyle.opacity : 1;
-      cellStyle.opacity = currentOpacity * 0.25;
-      cellClass += ' hidden-row';
+      // 对于非空方块，应用半透明效果
+      if (cellValue !== 0) {
+        const currentOpacity = typeof cellStyle.opacity === 'number' ? cellStyle.opacity : 1;
+        cellStyle.opacity = currentOpacity * 0.3;
+        cellClass += ' hidden-row';
+      }
     }
 
     // 消行动画
@@ -153,19 +168,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
           }
           
           .hidden-row {
-            opacity: 0.25;
             position: relative;
-          }
-          
-          .hidden-row::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, transparent 10%, rgba(255,255,255,0.18) 50%, transparent 90%);
-            pointer-events: none;
           }
           
           .neon-block {

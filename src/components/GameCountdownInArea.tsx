@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 interface GameCountdownInAreaProps {
@@ -38,9 +39,9 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
   if (!isVisible) return null;
 
   return (
-    <div className="absolute left-0 top-0 w-full h-full flex items-center justify-center z-40 pointer-events-none">
-      {/* 只覆盖游戏板区域的半透明背景 */}
-      <div className="absolute left-0 top-0 w-full h-full bg-black/30 backdrop-blur-sm rounded-lg" />
+    <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+      {/* 只覆盖游戏板区域的半透明背景 - 使用相对定位确保不超出容器 */}
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm rounded-lg" />
       
       <div className="relative z-50">
         <div 
@@ -48,7 +49,7 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
             count > 0 ? 'text-5xl animate-bounce' : 'text-6xl animate-pulse'
           }`}
           style={{
-            opacity: 0.7,
+            opacity: 0.9,
             textShadow: '0 0 20px hsl(var(--game-purple)), 0 0 40px hsl(var(--game-purple) / 0.6), 0 4px 8px rgba(0,0,0,0.8)',
             filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.8))',
             transform: count > 0 ? 'scale(1.1)' : 'scale(1.2)',

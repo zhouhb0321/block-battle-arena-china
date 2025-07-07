@@ -102,8 +102,16 @@ export const useUserSettings = () => {
           das: data.das,
           sdf: data.sdf,
           controls: {
-            ...data.controls,
-            backToMenu: data.back_to_menu ?? 'KeyB',
+            moveLeft: data.controls.moveLeft || 'ArrowLeft',
+            moveRight: data.controls.moveRight || 'ArrowRight',
+            softDrop: data.controls.softDrop || 'ArrowDown',
+            hardDrop: data.controls.hardDrop || 'Space',
+            rotateClockwise: data.controls.rotateClockwise || 'ArrowUp',
+            rotateCounterclockwise: data.controls.rotateCounterclockwise || 'KeyZ',
+            rotate180: data.controls.rotate180 || 'KeyA',
+            hold: data.controls.hold || 'KeyC',
+            pause: data.controls.pause || 'Escape',
+            backToMenu: data.controls.backToMenu || data.back_to_menu || 'KeyB',
           },
           ghostOpacity: data.ghost_opacity ?? 50,
           blockSkin: data.block_skin ?? 'wood',
@@ -125,30 +133,27 @@ export const useUserSettings = () => {
     }
   }, [user, fetchCloudSettings]);
 
-  // 保存设置到云端 - 完全重写避免spread运算符
+  // 保存设置到云端 - 使用完全类型安全的方法
   const saveSettings = useCallback(async (newSettings: Partial<UserSettings>) => {
-    // 验证输入参数
     if (!newSettings || typeof newSettings !== 'object' || Array.isArray(newSettings)) {
       console.error('Invalid settings provided');
       return;
     }
 
     setSettings(prevSettings => {
-      // 使用Object.assign创建新对象，完全避免spread操作
-      const mergedSettings = Object.assign({}, prevSettings);
-      
-      // 逐个检查并更新属性
-      if (newSettings.enableGhost !== undefined) mergedSettings.enableGhost = newSettings.enableGhost;
-      if (newSettings.enableSound !== undefined) mergedSettings.enableSound = newSettings.enableSound;
-      if (newSettings.masterVolume !== undefined) mergedSettings.masterVolume = newSettings.masterVolume;
-      if (newSettings.musicVolume !== undefined) mergedSettings.musicVolume = newSettings.musicVolume;
-      if (newSettings.backgroundMusic !== undefined) mergedSettings.backgroundMusic = newSettings.backgroundMusic;
-      if (newSettings.arr !== undefined) mergedSettings.arr = newSettings.arr;
-      if (newSettings.das !== undefined) mergedSettings.das = newSettings.das;
-      if (newSettings.sdf !== undefined) mergedSettings.sdf = newSettings.sdf;
-      if (newSettings.controls !== undefined) mergedSettings.controls = newSettings.controls;
-      if (newSettings.ghostOpacity !== undefined) mergedSettings.ghostOpacity = newSettings.ghostOpacity;
-      if (newSettings.blockSkin !== undefined) mergedSettings.blockSkin = newSettings.blockSkin;
+      const mergedSettings: UserSettings = {
+        enableGhost: newSettings.enableGhost !== undefined ? newSettings.enableGhost : prevSettings.enableGhost,
+        enableSound: newSettings.enableSound !== undefined ? newSettings.enableSound : prevSettings.enableSound,
+        masterVolume: newSettings.masterVolume !== undefined ? newSettings.masterVolume : prevSettings.masterVolume,
+        musicVolume: newSettings.musicVolume !== undefined ? newSettings.musicVolume : prevSettings.musicVolume,
+        backgroundMusic: newSettings.backgroundMusic !== undefined ? newSettings.backgroundMusic : prevSettings.backgroundMusic,
+        arr: newSettings.arr !== undefined ? newSettings.arr : prevSettings.arr,
+        das: newSettings.das !== undefined ? newSettings.das : prevSettings.das,
+        sdf: newSettings.sdf !== undefined ? newSettings.sdf : prevSettings.sdf,
+        controls: newSettings.controls !== undefined ? newSettings.controls : prevSettings.controls,
+        ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
+        blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
+      };
       
       // 游客只存本地
       if (!user || user.isGuest || !user.id) {
@@ -157,7 +162,7 @@ export const useUserSettings = () => {
       }
       
       // 登录用户同步到云端
-      const dbSettings: any = {
+      const dbSettings = {
         enable_ghost: mergedSettings.enableGhost,
         enable_sound: mergedSettings.enableSound,
         master_volume: mergedSettings.masterVolume,
@@ -169,7 +174,7 @@ export const useUserSettings = () => {
         controls: mergedSettings.controls,
         ghost_opacity: mergedSettings.ghostOpacity,
         back_to_menu: mergedSettings.controls.backToMenu,
-        block_skin: mergedSettings.blockSkin ?? 'wood',
+        block_skin: mergedSettings.blockSkin || 'wood',
       };
       
       supabase
@@ -187,30 +192,27 @@ export const useUserSettings = () => {
     });
   }, [setSettings, user]);
 
-  // 只更新本地（如游客）- 完全重写避免spread运算符
+  // 只更新本地（如游客）- 使用完全类型安全的方法
   const updateSettings = useCallback((newSettings: Partial<UserSettings>) => {
-    // 验证输入参数
     if (!newSettings || typeof newSettings !== 'object' || Array.isArray(newSettings)) {
       console.error('Invalid settings provided');
       return;
     }
 
     setSettings(prevSettings => {
-      // 使用Object.assign创建新对象，完全避免spread操作
-      const updatedSettings = Object.assign({}, prevSettings);
-      
-      // 逐个检查并更新属性
-      if (newSettings.enableGhost !== undefined) updatedSettings.enableGhost = newSettings.enableGhost;
-      if (newSettings.enableSound !== undefined) updatedSettings.enableSound = newSettings.enableSound;
-      if (newSettings.masterVolume !== undefined) updatedSettings.masterVolume = newSettings.masterVolume;
-      if (newSettings.musicVolume !== undefined) updatedSettings.musicVolume = newSettings.musicVolume;
-      if (newSettings.backgroundMusic !== undefined) updatedSettings.backgroundMusic = newSettings.backgroundMusic;
-      if (newSettings.arr !== undefined) updatedSettings.arr = newSettings.arr;
-      if (newSettings.das !== undefined) updatedSettings.das = newSettings.das;
-      if (newSettings.sdf !== undefined) updatedSettings.sdf = newSettings.sdf;
-      if (newSettings.controls !== undefined) updatedSettings.controls = newSettings.controls;
-      if (newSettings.ghostOpacity !== undefined) updatedSettings.ghostOpacity = newSettings.ghostOpacity;
-      if (newSettings.blockSkin !== undefined) updatedSettings.blockSkin = newSettings.blockSkin;
+      const updatedSettings: UserSettings = {
+        enableGhost: newSettings.enableGhost !== undefined ? newSettings.enableGhost : prevSettings.enableGhost,
+        enableSound: newSettings.enableSound !== undefined ? newSettings.enableSound : prevSettings.enableSound,
+        masterVolume: newSettings.masterVolume !== undefined ? newSettings.masterVolume : prevSettings.masterVolume,
+        musicVolume: newSettings.musicVolume !== undefined ? newSettings.musicVolume : prevSettings.musicVolume,
+        backgroundMusic: newSettings.backgroundMusic !== undefined ? newSettings.backgroundMusic : prevSettings.backgroundMusic,
+        arr: newSettings.arr !== undefined ? newSettings.arr : prevSettings.arr,
+        das: newSettings.das !== undefined ? newSettings.das : prevSettings.das,
+        sdf: newSettings.sdf !== undefined ? newSettings.sdf : prevSettings.sdf,
+        controls: newSettings.controls !== undefined ? newSettings.controls : prevSettings.controls,
+        ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
+        blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
+      };
       
       // 游客自动存本地
       if (!user || user.isGuest || !user.id) {
