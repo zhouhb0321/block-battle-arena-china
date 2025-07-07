@@ -108,111 +108,113 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>游戏设置</DialogTitle>
-        </DialogHeader>
-        
-        <Tabs defaultValue="controls" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="controls">控制设置</TabsTrigger>
-            <TabsTrigger value="timing">时间设置</TabsTrigger>
-          </TabsList>
+    <div className="min-h-screen bg-[#18192a] text-white" style={{ background: 'linear-gradient(135deg, #18192a 60%, #2d225a 100%)' }}>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>游戏设置</DialogTitle>
+          </DialogHeader>
           
-          <TabsContent value="controls" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>键盘控制</CardTitle>
-                <CardDescription>点击按钮来重新设置键位</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  {Object.entries(tempSettings.controls).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between p-2 border rounded">
-                      <Label className="font-medium">{controlLabels[key as keyof typeof controlLabels]}</Label>
-                      <Button
-                        variant={recordingKey === key ? "destructive" : "outline"}
-                        size="sm"
-                        onClick={() => handleKeyRecord(key)}
-                        className="min-w-20"
-                      >
-                        {recordingKey === key ? '按键...' : formatKeyName(value)}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button onClick={handleReset} variant="outline">
-                    恢复默认
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <Tabs defaultValue="controls" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="controls">控制设置</TabsTrigger>
+              <TabsTrigger value="timing">时间设置</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="controls" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>键盘控制</CardTitle>
+                  <CardDescription>点击按钮来重新设置键位</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    {Object.entries(tempSettings.controls).map(([key, value]) => (
+                      <div key={key} className="flex items-center justify-between p-2 border rounded">
+                        <Label className="font-medium">{controlLabels[key as keyof typeof controlLabels]}</Label>
+                        <Button
+                          variant={recordingKey === key ? "destructive" : "outline"}
+                          size="sm"
+                          onClick={() => handleKeyRecord(key)}
+                          className="min-w-20"
+                        >
+                          {recordingKey === key ? '按键...' : formatKeyName(value)}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Button onClick={handleReset} variant="outline">
+                      恢复默认
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="timing" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>时间控制设置</CardTitle>
+                  <CardDescription>调整游戏响应速度和手感</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <Label>DAS (Delayed Auto Shift) - 键盘重复延迟: {tempSettings.das}ms</Label>
+                    <Slider
+                      value={[tempSettings.das]}
+                      onValueChange={(value) => setTempSettings(prev => ({ ...prev, das: value[0] }))}
+                      max={200}
+                      min={0}
+                      step={10}
+                      className="mt-2"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      按住方向键后，开始重复移动前的延迟时间
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label>ARR (Auto Repeat Rate) - 键盘重复速率: {tempSettings.arr}ms</Label>
+                    <Slider
+                      value={[tempSettings.arr]}
+                      onValueChange={(value) => setTempSettings(prev => ({ ...prev, arr: value[0] }))}
+                      max={50}
+                      min={0}
+                      step={1}
+                      className="mt-2"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      重复移动时每次移动的间隔时间（0为无限快）
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label>SDF (Soft Drop Factor) - 软降速度: {tempSettings.sdf}x</Label>
+                    <Slider
+                      value={[tempSettings.sdf]}
+                      onValueChange={(value) => setTempSettings(prev => ({ ...prev, sdf: value[0] }))}
+                      max={50}
+                      min={1}
+                      step={1}
+                      className="mt-2"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      软降时的下落速度倍数
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
           
-          <TabsContent value="timing" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>时间控制设置</CardTitle>
-                <CardDescription>调整游戏响应速度和手感</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <Label>DAS (Delayed Auto Shift) - 键盘重复延迟: {tempSettings.das}ms</Label>
-                  <Slider
-                    value={[tempSettings.das]}
-                    onValueChange={(value) => setTempSettings(prev => ({ ...prev, das: value[0] }))}
-                    max={200}
-                    min={0}
-                    step={10}
-                    className="mt-2"
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    按住方向键后，开始重复移动前的延迟时间
-                  </p>
-                </div>
-                
-                <div>
-                  <Label>ARR (Auto Repeat Rate) - 键盘重复速率: {tempSettings.arr}ms</Label>
-                  <Slider
-                    value={[tempSettings.arr]}
-                    onValueChange={(value) => setTempSettings(prev => ({ ...prev, arr: value[0] }))}
-                    max={50}
-                    min={0}
-                    step={1}
-                    className="mt-2"
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    重复移动时每次移动的间隔时间（0为无限快）
-                  </p>
-                </div>
-                
-                <div>
-                  <Label>SDF (Soft Drop Factor) - 软降速度: {tempSettings.sdf}x</Label>
-                  <Slider
-                    value={[tempSettings.sdf]}
-                    onValueChange={(value) => setTempSettings(prev => ({ ...prev, sdf: value[0] }))}
-                    max={50}
-                    min={1}
-                    step={1}
-                    className="mt-2"
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    软降时的下落速度倍数
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-        
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>取消</Button>
-          <Button onClick={handleSave}>保存设置</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>取消</Button>
+            <Button onClick={handleSave}>保存设置</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

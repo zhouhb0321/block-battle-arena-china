@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useWindowFocus } from '@/hooks/useWindowFocus';
 import { calculateDropSpeed } from '@/utils/gravitySystem';
@@ -64,6 +64,16 @@ export const useGameLogic = (
   const [lastAction, setLastAction] = useState<'rotate' | 'move' | null>(null);
   const [wasKicked, setWasKicked] = useState(false);
   const isHardDropping = useRef(false);
+
+  // 自动重力、软降、硬降实现
+  // 新增：自动重力、软降、硬降、ARE锁定
+  const [softDrop, setSoftDrop] = useState(false);
+  const [areDelay, setAreDelay] = useState(false);
+  const gravityInterval = useRef<NodeJS.Timeout | null>(null);
+  const areTimeout = useRef<NodeJS.Timeout | null>(null);
+  const GRAVITY_NORMAL = 1000; // 普通重力间隔（ms）
+  const GRAVITY_SOFT = 50;    // 软降重力间隔（ms）
+  const ARE_DELAY = 300;      // ARE锁定延迟（ms）
 
   // 简化窗口焦点处理 - 移除自动暂停逻辑
   useEffect(() => {
@@ -266,82 +276,15 @@ export const useGameLogic = (
 
   const hardDrop = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
-
-    console.log('硬降开始 - 当前方块位置:', { x: gameState.currentPiece.x, y: gameState.currentPiece.y });
-    
     isHardDropping.current = true;
-    
     const dropY = calculateDropPosition(gameState.board, gameState.currentPiece);
-    const dropDistance = dropY - gameState.currentPiece.y;
-    
-    console.log('硬降距离:', dropDistance, '最终位置:', dropY);
-    
-    if (dropDistance <= 0) {
-      isHardDropping.current = false;
-      lockPiece();
-      return;
-    }
-    
     const finalPiece = { ...gameState.currentPiece, y: dropY };
-    
-    // 检查T-Spin - 传递踢墙状态
-    const tSpinResult = checkTSpin(gameState.board, finalPiece, lastAction || 'rotate', wasKicked);
-    
-    const newBoard = placePiece(gameState.board, finalPiece);
-    const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
-    
-    const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
-    
-    const newCombo = linesCleared > 0 ? gameState.combo! + 1 : -1;
-    const isSpecialClear = tSpinResult !== null || linesCleared === 4;
-    const newB2B = isSpecialClear ? gameState.b2b! + 1 : (linesCleared > 0 ? 0 : gameState.b2b!);
-    
-    const lineScore = calculateScore(linesCleared, gameState.level, tSpinResult, gameState.b2b! > 0, newCombo, isPerfectClear);
-    const attackValue = calculateAttackLines(linesCleared, tSpinResult, gameState.b2b! > 0, newCombo);
-    
-    setGameState(prev => ({
-      ...prev,
-      board: clearedBoard,
-      currentPiece: null,
-      ghostPiece: null,
-      lines: prev.lines + linesCleared,
-      combo: newCombo,
-      b2b: newB2B,
-      score: prev.score + lineScore + (dropDistance * 2),
-      attack: prev.attack! + attackValue,
-      level: Math.floor((prev.lines + linesCleared) / 40) + 1,
-      clearingLines: []
-    }));
-    
-    // 显示特殊消除提示
-    if (isPerfectClear) {
-      toast.success('全清！+3500分！', { duration: 3000 });
-    }
-    
-    if (tSpinResult) {
-      const miniText = tSpinResult.isMini ? ' Mini' : '';
-      const b2bText = gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : '';
-      toast.success(`${tSpinResult.type}${miniText}!${b2bText}`, { duration: 2000 });
-    } else if (linesCleared === 4) {
-      toast.success(`Tetris!${gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : ''}`, { duration: 2000 });
-    }
-    
-    if (newCombo > 0) {
-      toast.success(`${newCombo + 1} 连击! +${attackValue} 攻击`, { duration: 1500 });
-    }
-    
-    setLastAction(null);
-    setWasKicked(false);
-    setLockDelay(false);
-    lockDelayTime.current = 0;
-    
+    setGameState(prev => ({ ...prev, currentPiece: finalPiece }));
     setTimeout(() => {
+      lockPiece();
       isHardDropping.current = false;
-      spawnNewPiece();
-    }, 10);
-    
-    console.log('硬降完成 - 方块已锁定');
-  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, gameState.gameOver, gameState.paused, lastAction, wasKicked, gameState.combo, gameState.b2b, spawnNewPiece]);
+    }, 0);
+  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
 
   const lockPiece = useCallback(() => {
     if (!gameState.currentPiece || isHardDropping.current) return;
@@ -532,6 +475,68 @@ export const useGameLogic = (
       }
     };
   }, [gameState.gameOver, gameState.paused, gameState.lines, lockDelay, getDropSpeed, movePiece, lockPiece]);
+
+  // 自动重力下落
+  useEffect(() => {
+    if (gameState.gameOver || gameState.paused || areDelay) return;
+    if (!gameState.currentPiece) return;
+    if (gravityInterval.current) clearInterval(gravityInterval.current);
+    gravityInterval.current = setInterval(() => {
+      if (softDrop) {
+        movePiece(0, 1); // 软降
+      } else {
+        movePiece(0, 1); // 普通重力
+      }
+    }, softDrop ? GRAVITY_SOFT : GRAVITY_NORMAL);
+    return () => clearInterval(gravityInterval.current!);
+  }, [gameState.currentPiece, gameState.paused, gameState.gameOver, softDrop, areDelay]);
+
+  // 软降按键监听
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 's' || e.key === 'ArrowDown') setSoftDrop(true);
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 's' || e.key === 'ArrowDown') setSoftDrop(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // 到底部自动锁定
+  useEffect(() => {
+    if (!gameState.currentPiece || gameState.gameOver || gameState.paused) return;
+    const { x, y, type } = gameState.currentPiece;
+    const shape = type.shape;
+    let atBottom = false;
+    for (let row = 0; row < shape.length; row++) {
+      for (let col = 0; col < shape[row].length; col++) {
+        if (shape[row][col]) {
+          const boardY = y + row;
+          if (boardY + 1 >= 23 || gameState.board[boardY + 1][x + col] !== 0) {
+            atBottom = true;
+          }
+        }
+      }
+    }
+    if (atBottom) {
+      // ARE锁定延迟
+      if (!areDelay) {
+        setAreDelay(true);
+        areTimeout.current = setTimeout(() => {
+          lockPiece();
+          setAreDelay(false);
+        }, ARE_DELAY);
+      }
+    } else {
+      if (areTimeout.current) clearTimeout(areTimeout.current);
+      setAreDelay(false);
+    }
+  }, [gameState.currentPiece, gameState.board, gameState.paused, gameState.gameOver]);
 
   return {
     gameState,
