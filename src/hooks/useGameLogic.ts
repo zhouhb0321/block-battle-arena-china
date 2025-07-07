@@ -81,7 +81,7 @@ export const useGameLogic = (
   const lastDropTime = useRef<number>(0);
   const lockDelayTime = useRef<number>(0);
   const [lockDelay, setLockDelay] = useState(false);
-  const [lastAction, setLastAction] = useState<'rotate' | 'move' | null>(null);
+  const [lastAction, setLastAction< 'rotate' | 'move' | null >(null);
   const [wasKicked, setWasKicked] = useState(false);
   const isHardDropping = useRef(false);
 

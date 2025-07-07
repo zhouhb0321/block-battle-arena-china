@@ -24,9 +24,8 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
 
   // 180度旋转功能
   const rotate180 = useCallback(() => {
-    if (gameLogic.rotatePieceClockwise) {
-      gameLogic.rotatePieceClockwise();
-      setTimeout(() => gameLogic.rotatePieceClockwise(), 50);
+    if (gameLogic.rotatePiece180) {
+      gameLogic.rotatePiece180();
     }
   }, [gameLogic]);
 
