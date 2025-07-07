@@ -6,23 +6,26 @@ interface WoodTextureCellProps {
   rowIndex: number;
   cellSize: number;
   isClearing?: boolean;
+  className?: string;
 }
 
 const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
   cellValue,
   rowIndex,
   cellSize,
-  isClearing = false
+  isClearing = false,
+  className = ''
 }) => {
   const baseStyle = {
     width: `${cellSize}px`,
     height: `${cellSize}px`,
   };
   
-  // 空方块样式
+  // Empty cell styles
   if (cellValue === 0) {
     return (
       <div
+        className={className}
         style={{
           ...baseStyle,
           backgroundColor: '#1a1a1a',
@@ -32,11 +35,12 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
     );
   }
   
-  // 幽灵方块样式
+  // Ghost piece styles
   if (typeof cellValue === 'string' && cellValue.startsWith('ghost-')) {
     const color = cellValue.replace('ghost-', '');
     return (
       <div
+        className={className}
         style={{
           ...baseStyle,
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -48,12 +52,12 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
     );
   }
   
-  // 活动方块样式（实心方块）
+  // Active piece styles (solid pieces)
   if (typeof cellValue === 'string' && cellValue.startsWith('solid-')) {
     const color = cellValue.replace('solid-', '');
     return (
       <div
-        className={`wood-texture-block ${isClearing ? 'clearing' : ''}`}
+        className={`wood-texture-block ${isClearing ? 'clearing' : ''} ${className}`}
         style={{
           ...baseStyle,
           backgroundColor: color,
@@ -63,7 +67,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
           overflow: 'hidden',
         }}
       >
-        {/* 木纹纹理叠加层 */}
+        {/* Wood grain texture overlay */}
         <div
           className="wood-grain-overlay"
           style={{
@@ -92,7 +96,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
           }}
         />
         
-        {/* 高光效果 */}
+        {/* Highlight effect */}
         <div
           className="highlight-overlay"
           style={{
@@ -106,7 +110,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
           }}
         />
         
-        {/* 阴影效果 */}
+        {/* Shadow effect */}
         <div
           className="shadow-overlay"
           style={{
@@ -123,13 +127,13 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
     );
   }
   
-  // 已放置的方块样式（带木纹效果）
+  // Placed pieces styles (with wood texture effect)
   const colors = ['', '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000', '#666666'];
   const backgroundColor = colors[cellValue as number] || '#666666';
   
   return (
     <div
-      className={`wood-texture-block placed ${isClearing ? 'clearing' : ''}`}
+      className={`wood-texture-block placed ${isClearing ? 'clearing' : ''} ${className}`}
       style={{
         ...baseStyle,
         backgroundColor,
@@ -139,7 +143,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         overflow: 'hidden',
       }}
     >
-      {/* 木纹纹理效果 */}
+      {/* Wood grain texture effect */}
       <div
         className="wood-grain-overlay"
         style={{
@@ -171,7 +175,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         }}
       />
       
-      {/* 立体高光效果 */}
+      {/* Bevel highlight effect */}
       <div
         className="bevel-highlight"
         style={{
@@ -188,7 +192,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         }}
       />
       
-      {/* 立体阴影效果 */}
+      {/* Bevel shadow effect */}
       <div
         className="bevel-shadow"
         style={{
@@ -205,7 +209,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         }}
       />
       
-      {/* 微光效果 */}
+      {/* Shimmer effect */}
       <div
         className="shimmer-overlay"
         style={{

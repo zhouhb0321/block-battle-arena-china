@@ -80,7 +80,7 @@ export const useUserSettings = () => {
   const [settings, setSettings] = useLocalStorage<UserSettings>('userSettings', DEFAULT_GUEST_SETTINGS);
   const [loading, setLoading] = useState(false);
 
-  // 拉取云端设置
+  // Fetch cloud settings
   const fetchCloudSettings = useCallback(async (uid: string) => {
     setLoading(true);
     try {
@@ -91,7 +91,8 @@ export const useUserSettings = () => {
         .single();
       if (error) throw error;
       if (data) {
-        // 转换数据库字段为 UserSettings
+        // Type-safe conversion from database to UserSettings
+        const controlsData = data.controls as any;
         const cloudSettings: UserSettings = {
           enableGhost: data.enable_ghost,
           enableSound: data.enable_sound,
@@ -102,16 +103,16 @@ export const useUserSettings = () => {
           das: data.das,
           sdf: data.sdf,
           controls: {
-            moveLeft: data.controls.moveLeft || 'ArrowLeft',
-            moveRight: data.controls.moveRight || 'ArrowRight',
-            softDrop: data.controls.softDrop || 'ArrowDown',
-            hardDrop: data.controls.hardDrop || 'Space',
-            rotateClockwise: data.controls.rotateClockwise || 'ArrowUp',
-            rotateCounterclockwise: data.controls.rotateCounterclockwise || 'KeyZ',
-            rotate180: data.controls.rotate180 || 'KeyA',
-            hold: data.controls.hold || 'KeyC',
-            pause: data.controls.pause || 'Escape',
-            backToMenu: data.controls.backToMenu || data.back_to_menu || 'KeyB',
+            moveLeft: controlsData?.moveLeft || 'ArrowLeft',
+            moveRight: controlsData?.moveRight || 'ArrowRight',
+            softDrop: controlsData?.softDrop || 'ArrowDown',
+            hardDrop: controlsData?.hardDrop || 'Space',
+            rotateClockwise: controlsData?.rotateClockwise || 'ArrowUp',
+            rotateCounterclockwise: controlsData?.rotateCounterclockwise || 'KeyZ',
+            rotate180: controlsData?.rotate180 || 'KeyA',
+            hold: controlsData?.hold || 'KeyC',
+            pause: controlsData?.pause || 'Escape',
+            backToMenu: controlsData?.backToMenu || data.back_to_menu || 'KeyB',
           },
           ghostOpacity: data.ghost_opacity ?? 50,
           blockSkin: data.block_skin ?? 'wood',
@@ -120,20 +121,20 @@ export const useUserSettings = () => {
         window.localStorage.setItem('userSettings', JSON.stringify(cloudSettings));
       }
     } catch (error) {
-      console.error('拉取云端设置失败:', error);
+      console.error('Failed to fetch cloud settings:', error);
     } finally {
       setLoading(false);
     }
   }, [setSettings]);
 
-  // 登录后自动拉取云端设置
+  // Auto-fetch cloud settings after login
   useEffect(() => {
     if (user && !user.isGuest && user.id) {
       fetchCloudSettings(user.id);
     }
   }, [user, fetchCloudSettings]);
 
-  // 保存设置到云端 - 使用完全类型安全的方法
+  // Save settings to cloud - using completely type-safe approach
   const saveSettings = useCallback(async (newSettings: Partial<UserSettings>) => {
     if (!newSettings || typeof newSettings !== 'object' || Array.isArray(newSettings)) {
       console.error('Invalid settings provided');
@@ -155,13 +156,13 @@ export const useUserSettings = () => {
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
       };
       
-      // 游客只存本地
+      // Guests only save locally
       if (!user || user.isGuest || !user.id) {
         window.localStorage.setItem('userSettings', JSON.stringify(mergedSettings));
         return mergedSettings;
       }
       
-      // 登录用户同步到云端
+      // Logged in users sync to cloud
       const dbSettings = {
         enable_ghost: mergedSettings.enableGhost,
         enable_sound: mergedSettings.enableSound,
@@ -183,7 +184,7 @@ export const useUserSettings = () => {
         .eq('user_id', user.id)
         .then(({ error }) => {
           if (error) {
-            console.error('云端设置保存失败:', error);
+            console.error('Failed to save cloud settings:', error);
           }
         });
       
@@ -192,7 +193,7 @@ export const useUserSettings = () => {
     });
   }, [setSettings, user]);
 
-  // 只更新本地（如游客）- 使用完全类型安全的方法
+  // Update settings locally only (like for guests) - using completely type-safe approach
   const updateSettings = useCallback((newSettings: Partial<UserSettings>) => {
     if (!newSettings || typeof newSettings !== 'object' || Array.isArray(newSettings)) {
       console.error('Invalid settings provided');
@@ -214,7 +215,7 @@ export const useUserSettings = () => {
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
       };
       
-      // 游客自动存本地
+      // Guests auto-save locally
       if (!user || user.isGuest || !user.id) {
         window.localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
       }
@@ -222,12 +223,12 @@ export const useUserSettings = () => {
     });
   }, [setSettings, user]);
 
-  // 强制从云端刷新
+  // Force refresh from cloud
   const reloadSettings = useCallback(async () => {
     if (user && !user.isGuest && user.id) {
       await fetchCloudSettings(user.id);
     } else {
-      // 游客只刷新本地
+      // Guests only refresh locally
       try {
         const item = window.localStorage.getItem('userSettings');
         if (item) {
