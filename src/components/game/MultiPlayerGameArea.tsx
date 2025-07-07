@@ -1,7 +1,9 @@
+
 import React from 'react';
 import PlayerGameSection from './PlayerGameSection';
 import GameControlsPanel from './GameControlsPanel';
 import GameCountdown from '../GameCountdown';
+import OneVsOneGameArea from './OneVsOneGameArea';
 import AdSpace from '../AdSpace';
 import type { GameState, GameSettings } from '@/utils/gameTypes';
 
@@ -17,6 +19,7 @@ interface MultiPlayerGameAreaProps {
   onBackToMenu: () => void;
   showCountdown?: boolean;
   onCountdownEnd?: () => void;
+  battleMode?: '1v1' | 'multi'; // 新增：指定对战模式
 }
 
 const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
@@ -30,13 +33,28 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
   onReset,
   onBackToMenu,
   showCountdown = false,
-  onCountdownEnd = () => {}
+  onCountdownEnd = () => {},
+  battleMode = 'multi'
 }) => {
-  const mainCellSize = 30; // 主游戏板的方块大小
-  
-  // 判断游戏是否已开始
+  const mainCellSize = 30;
   const gameStarted = !showCountdown && (gameState.score > 0 || gameState.lines > 0 || gameState.pieces !== undefined);
 
+  // 如果是1v1模式，使用专门的1v1界面
+  if (battleMode === '1v1') {
+    return (
+      <OneVsOneGameArea
+        player1State={gameState}
+        player1Username={username}
+        player2State={opponentState}
+        player2Username={opponentUsername}
+        gameSettings={gameSettings}
+        showCountdown={showCountdown}
+        onCountdownEnd={onCountdownEnd}
+      />
+    );
+  }
+
+  // 原有的多人游戏界面
   return (
     <div className="flex gap-6 items-center justify-center w-full min-h-screen">
       {/* 左侧广告位 */}
