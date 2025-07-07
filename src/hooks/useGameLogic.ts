@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useWindowFocus } from '@/hooks/useWindowFocus';
-import { calculateDropSpeed } from '@/utils/gravitySystem';
+import { calculateDropSpeed, getGravityInfo } from '@/utils/gravitySystem';
 import {
   isValidPosition,
   placePiece,
@@ -615,6 +615,17 @@ export const useGameLogic = (
     toast.success('游戏分享功能即将推出！');
   }, []);
 
+  // 动态锁定延迟（对战重力1级=500ms，10级=50ms，线性插值）
+  const getDynamicLockDelay = (lines: number) => {
+    const gravityInfo = getGravityInfo(lines);
+    const level = Math.max(1, Math.min(gravityInfo.level, 10));
+    const minDelay = 50;
+    const maxDelay = 500;
+    // 线性插值
+    const delay = maxDelay - ((level - 1) / 9) * (maxDelay - minDelay);
+    return Math.round(delay);
+  };
+
   // Game loop - 优化锁定延迟为100ms
   useEffect(() => {
     const gameLoop = (timestamp: number) => {
@@ -622,32 +633,24 @@ export const useGameLogic = (
         gameLoopRef.current = requestAnimationFrame(gameLoop);
         return;
       }
-
       const dropSpeed = getDropSpeed(gameState.lines);
-      
+      const dynamicLockDelay = getDynamicLockDelay(gameState.lines);
       if (timestamp - lastDropTime.current > dropSpeed) {
         const moved = movePiece(0, 1);
         if (!moved && lockDelay) {
-          // 优化锁定延迟为100ms
-          if (timestamp - lockDelayTime.current > 100) {
-            console.log('Lock delay timeout (100ms) - locking piece');
+          if (timestamp - lockDelayTime.current > dynamicLockDelay) {
             lockPiece();
           }
         }
         lastDropTime.current = timestamp;
       } else if (lockDelay) {
-        // 优化锁定延迟为100ms
-        if (timestamp - lockDelayTime.current > 100) {
-          console.log('Lock delay timeout (100ms) - locking piece');
+        if (timestamp - lockDelayTime.current > dynamicLockDelay) {
           lockPiece();
         }
       }
-
       gameLoopRef.current = requestAnimationFrame(gameLoop);
     };
-
     gameLoopRef.current = requestAnimationFrame(gameLoop);
-
     return () => {
       if (gameLoopRef.current) {
         cancelAnimationFrame(gameLoopRef.current);
