@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,7 +10,7 @@
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
-    --card: 0 0% 100%;
+    --card: 0 0% 98%;
     --card-foreground: 222.2 84% 4.9%;
 
     --popover: 0 0% 100%;
@@ -47,6 +48,10 @@
     --game-gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(217 91% 60%));
     --game-gradient-secondary: linear-gradient(135deg, hsl(25 95% 53%), hsl(142 76% 36%));
     --game-gradient-bg: linear-gradient(135deg, hsl(262 83% 58% / 0.1), hsl(217 91% 60% / 0.1));
+
+    /* Light theme game area optimizations */
+    --game-board-bg: 0 0% 97%;
+    --game-panel-bg: 0 0% 95%;
 
     --sidebar-background: 0 0% 98%;
 
@@ -102,6 +107,11 @@
     --game-gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(217 91% 60%));
     --game-gradient-secondary: linear-gradient(135deg, hsl(25 95% 53%), hsl(142 76% 36%));
     --game-gradient-bg: linear-gradient(135deg, hsl(262 83% 58% / 0.2), hsl(217 91% 60% / 0.1));
+
+    /* Dark theme game area */
+    --game-board-bg: 224 71% 4%;
+    --game-panel-bg: 215 28% 17%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -120,5 +130,26 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Game board specific styles for light theme optimization */
+@layer components {
+  .game-board-light {
+    background-color: hsl(var(--game-board-bg));
+  }
+  
+  .game-panel-light {
+    background-color: hsl(var(--game-panel-bg));
+    border: 1px solid hsl(var(--border));
+  }
+  
+  .dark .game-board-light {
+    background-color: hsl(var(--game-board-bg));
+  }
+  
+  .dark .game-panel-light {
+    background-color: hsl(var(--game-panel-bg));
+    border: 1px solid hsl(var(--border));
   }
 }

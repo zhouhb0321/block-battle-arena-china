@@ -81,6 +81,10 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       <GameKeyboardHandler
         gameStarted={gameStarted}
         onBackToMenu={handleBackToMenu}
+        onUndo={gameLogic.undoMove}
+        onRedo={gameLogic.redoMove}
+        canUndo={gameLogic.canUndo}
+        canRedo={gameLogic.canRedo}
       />
       
       <SinglePlayerGameArea

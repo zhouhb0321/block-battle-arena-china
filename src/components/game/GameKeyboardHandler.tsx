@@ -6,11 +6,19 @@ import { useTetrisGame } from './TetrisGameProvider';
 interface GameKeyboardHandlerProps {
   gameStarted: boolean;
   onBackToMenu: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
   gameStarted,
-  onBackToMenu
+  onBackToMenu,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false
 }) => {
   const { gameLogic, gameSettings, keyboardLoopRef } = useTetrisGame();
 
@@ -39,7 +47,11 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
     onRotateCounterclockwise: gameLogic.rotatePieceCounterclockwise,
     onHold: gameLogic.holdCurrentPiece,
     onPause: gameLogic.pauseGame,
-    onBackToMenu: onBackToMenu
+    onBackToMenu: onBackToMenu,
+    onUndo,
+    onRedo,
+    canUndo,
+    canRedo
   });
 
   // 添加键盘控制循环
