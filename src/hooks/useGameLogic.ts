@@ -89,7 +89,7 @@ export const useGameLogic = (
   useEffect(() => {
     // 只在调试时输出焦点状态
     console.log('窗口焦点状态:', isWindowFocused ? '获得焦点' : '失去焦点');
-  }, [isWindowFocus]);
+  }, [isWindowFocused]);
 
   // Save state to history
   const saveStateToHistory = useCallback(() => {
