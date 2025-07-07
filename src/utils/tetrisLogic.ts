@@ -155,25 +155,38 @@ export const rotatePiece = (tetromino: TetrominoType, clockwise: boolean = true)
   const shape = tetromino.shape;
   const rows = shape.length;
   const cols = shape[0].length;
-
   let newShape: number[][];
-
-  if (clockwise) {
-    newShape = Array(cols).fill(null).map(() => Array(rows).fill(0));
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        newShape[col][rows - 1 - row] = shape[row][col];
+  // 以SRS中心点为基准旋转
+  if (tetromino.type === 'I') {
+    // I块特殊：4x4矩阵，中心点(1.5,0.5)
+    const N = 4;
+    newShape = Array(N).fill(null).map(() => Array(N).fill(0));
+    for (let row = 0; row < N; row++) {
+      for (let col = 0; col < N; col++) {
+        if (clockwise) {
+          newShape[col][N - 1 - row] = (shape[row] && shape[row][col]) || 0;
+        } else {
+          newShape[N - 1 - col][row] = (shape[row] && shape[row][col]) || 0;
+        }
       }
     }
+  } else if (tetromino.type === 'O') {
+    // O块特殊：2x2，中心点(0.5,0.5)，旋转不变
+    newShape = shape.map(row => [...row]);
   } else {
-    newShape = Array(cols).fill(null).map(() => Array(rows).fill(0));
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        newShape[cols - 1 - col][row] = shape[row][col];
+    // 其它块：3x3，中心点(1,1)
+    const N = 3;
+    newShape = Array(N).fill(null).map(() => Array(N).fill(0));
+    for (let row = 0; row < N; row++) {
+      for (let col = 0; col < N; col++) {
+        if (clockwise) {
+          newShape[col][N - 1 - row] = (shape[row] && shape[row][col]) || 0;
+        } else {
+          newShape[N - 1 - col][row] = (shape[row] && shape[row][col]) || 0;
+        }
       }
     }
   }
-
   return { ...tetromino, shape: newShape };
 };
 
@@ -329,43 +342,46 @@ export const performSRS180Rotation = (
   };
 };
 
-// 获取SRS踢墙测试序列
+// SRS标准旋转中心点（以左上角为(0,0)）
+// I: (1.5, 0.5)  O: (0.5, 0.5)  其它: (1,1)
+// rotatePiece需以此为基准旋转
 export const getKickTests = (pieceType: string, rotation: number, newRotation: number): { x: number; y: number }[] => {
-  switch (pieceType) {
-    case 'I':
-      return getIKickTests(rotation, newRotation);
-    case 'O':
-      return [{ x: 0, y: 0 }]; // O方块没有踢墙
-    default:
-      return getStandardKickTests(rotation, newRotation);
+  // SRS规定：0->R(1), R->2(2), 2->L(3), L->0(0)
+  const from = rotation % 4;
+  const to = newRotation % 4;
+  let idx = 0;
+  if (from === 0 && to === 1) idx = 0;
+  else if (from === 1 && to === 2) idx = 1;
+  else if (from === 2 && to === 3) idx = 2;
+  else if (from === 3 && to === 0) idx = 3;
+  else if (from === 1 && to === 0) idx = 1;
+  else if (from === 2 && to === 1) idx = 2;
+  else if (from === 3 && to === 2) idx = 3;
+  else if (from === 0 && to === 3) idx = 0;
+  if (pieceType === 'I') {
+    return SRS_I_KICK_TABLE[idx];
+  } else if (pieceType === 'O') {
+    return [{ x: 0, y: 0 }];
+  } else {
+    return SRS_KICK_TABLE[idx];
   }
 };
 
-// I方块的踢墙测试
-const getIKickTests = (rotation: number, newRotation: number): { x: number; y: number }[] => {
-  const tests = [
-    [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: -2 }, { x: 2, y: 1 }],
-    [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 2 }, { x: -2, y: -1 }],
-    [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: -1 }, { x: -1, y: 2 }],
-    [{ x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: 1 }, { x: 1, y: -2 }]
-  ];
-
-  const testIndex = rotation * 4 + newRotation;
-  return tests[testIndex % 4];
-};
-
-// 标准踢墙测试 - 优化边缘情况
-const getStandardKickTests = (rotation: number, newRotation: number): { x: number; y: number }[] => {
-  const tests = [
-    [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 }],
-    [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: -2 }, { x: 1, y: -2 }],
-    [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
-    [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: 2 }, { x: -1, y: 2 }]
-  ];
-
-  const testIndex = rotation * 4 + newRotation;
-  return tests[testIndex % 4];
-};
+// SRS标准踢墙表（严格对齐Hard Drop Wiki）
+const SRS_KICK_TABLE = [
+  // 0->R, R->2, 2->L, L->0
+  [ { x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: -2 }, { x: -1, y: -2 } ],
+  [ { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: 2 }, { x: 1, y: 2 } ],
+  [ { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: -2 }, { x: 1, y: -2 } ],
+  [ { x: 0, y: 0 }, { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: 2 }, { x: -1, y: 2 } ]
+];
+const SRS_I_KICK_TABLE = [
+  // 0->R, R->2, 2->L, L->0
+  [ { x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 2 } ],
+  [ { x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 1 }, { x: -1, y: -2 } ],
+  [ { x: 0, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }, { x: 2, y: 1 }, { x: -1, y: -2 } ],
+  [ { x: 0, y: 0 }, { x: -2, y: 0 }, { x: 1, y: 0 }, { x: -2, y: -1 }, { x: 1, y: 2 } ]
+];
 
 // 获取180度旋转的踢墙测试序列
 export const get180KickTests = (pieceType: string, rotation: number): { x: number; y: number }[] => {
