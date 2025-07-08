@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionLogger } from '@/hooks/useSessionLogger';
@@ -95,7 +94,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             paused={gameLogic.isPaused}
             onPause={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
             onShare={() => console.log('Share game')}
-            gameMode={gameMode}
           />
           
           {/* Animation positioned below Hold area */}
