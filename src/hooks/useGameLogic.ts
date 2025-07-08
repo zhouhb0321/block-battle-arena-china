@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useKeyboardControls } from './useKeyboardControls';
 import { useUserSettings } from './useUserSettings';
@@ -12,7 +11,8 @@ import {
   calculateDropPosition,
   generateRandomPiece,
   checkTSpin,
-  placePiece
+  placePiece,
+  resetSevenBag
 } from '@/utils/tetrisLogic';
 import type { 
   Board, 
@@ -63,13 +63,19 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     rotation: 0
   });
 
-  // Initialize game
-  useEffect(() => {
+  // Initialize game pieces
+  const initializePieces = useCallback(() => {
+    resetSevenBag(); // 重置7-bag系统
     const initialPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
     setNextPieces(initialPieces);
     setCurrentPiece(initialPieces[0]);
     setNextPieces(prev => prev.slice(1));
   }, []);
+
+  // Initialize game
+  useEffect(() => {
+    initializePieces();
+  }, [initializePieces]);
 
   // Game timer
   useEffect(() => {
@@ -112,6 +118,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     const newPiece = nextPieces[0];
     const newNextPieces = nextPieces.slice(1);
     
+    // 如果下一个方块队列少于3个，添加更多方块
     if (newNextPieces.length < 3) {
       newNextPieces.push(...Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece())));
     }
@@ -289,6 +296,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   }, [currentPiece, holdPiece, canHold, gameOver, isPaused, isHardDropping, spawnNewPiece, gameStarted]);
 
   const startGame = useCallback(() => {
+    console.log('Starting game...');
     setGameStarted(true);
     gameStartTime.current = Date.now();
   }, []);
@@ -313,12 +321,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     totalActions.current = 0;
     gameStartTime.current = Date.now();
     
-    // Reinitialize pieces
-    const initialPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
-    setNextPieces(initialPieces);
-    setCurrentPiece(initialPieces[0]);
-    setNextPieces(prev => prev.slice(1));
-  }, []);
+    // 重新初始化方块
+    initializePieces();
+  }, [initializePieces]);
 
   const pauseGame = useCallback(() => {
     setIsPaused(true);

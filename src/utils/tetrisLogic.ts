@@ -86,6 +86,44 @@ export const TETROMINO_TYPE_IDS: { [key: string]: number } = {
   L: 7
 };
 
+// 全局7-bag状态
+let currentBag: TetrominoType[] = [];
+let bagIndex = 0;
+
+// 生成一个包含所有七种方块的随机序列（7-bag系统）
+export const generateSevenBag = (): TetrominoType[] => {
+  const pieceTypes = Object.values(TETROMINO_TYPES);
+  let shuffledPieces = [...pieceTypes];
+
+  // Fisher-Yates shuffle算法
+  for (let i = shuffledPieces.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledPieces[i], shuffledPieces[j]] = [shuffledPieces[j], shuffledPieces[i]];
+  }
+
+  return shuffledPieces;
+};
+
+// 使用7-bag系统生成随机方块
+export const generateRandomPiece = (): TetrominoType => {
+  // 如果当前bag为空或已经用完，生成新的bag
+  if (currentBag.length === 0 || bagIndex >= currentBag.length) {
+    currentBag = generateSevenBag();
+    bagIndex = 0;
+  }
+  
+  const piece = currentBag[bagIndex];
+  bagIndex++;
+  
+  return piece;
+};
+
+// 重置7-bag系统（游戏重新开始时调用）
+export const resetSevenBag = (): void => {
+  currentBag = [];
+  bagIndex = 0;
+};
+
 // 检查给定的方块位置是否有效
 export const isValidPosition = (board: number[][], piece: GamePiece): boolean => {
   const { type, x, y, rotation } = piece;
@@ -197,20 +235,6 @@ export const calculateDropPosition = (board: number[][], piece: GamePiece): numb
     dropY++;
   }
   return dropY;
-};
-
-// 生成一个包含所有七种方块的随机序列
-export const generateSevenBag = (): TetrominoType[] => {
-  const pieceTypes = Object.values(TETROMINO_TYPES);
-  let shuffledPieces = [...pieceTypes];
-
-  // Fisher-Yates shuffle
-  for (let i = shuffledPieces.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffledPieces[i], shuffledPieces[j]] = [shuffledPieces[j], shuffledPieces[i]];
-  }
-
-  return shuffledPieces;
 };
 
 // 创建新的方块
