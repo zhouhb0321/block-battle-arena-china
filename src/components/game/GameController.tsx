@@ -10,7 +10,6 @@ interface GameControllerProps {
   mode: 'single' | 'multi';
   gameMode: GameMode;
   children: (props: {
-    gameState: ReturnType<typeof useGameState>;
     gameLogic: ReturnType<typeof useGameLogic>;
     onTogglePause: () => void;
     onReset: () => void;
@@ -35,27 +34,25 @@ const GameController: React.FC<GameControllerProps> = ({
   const lastDropTime = useRef<number>(0);
   const LOCK_DELAY_TIME = 500;
   
-  const gameState = useGameState();
-  
-  const gameLogic = useGameLogic(gameMode, gameSettings, (lines: number) => {
-    const baseSpeed = 1000;
-    const level = Math.min(Math.floor(lines / 40), 4);
-    const speedMultiplier = Math.pow(1.5, level);
-    return Math.max(baseSpeed / speedMultiplier, 50);
+  const gameLogic = useGameLogic({
+    gameMode,
+    onGameEnd: (stats) => {
+      console.log('Game ended:', stats);
+    }
   });
 
   const togglePause = useCallback(() => {
-    if (gameState.paused) {
-      gameState.setPaused(false);
+    if (gameLogic.isPaused) {
+      gameLogic.resumeGame();
       resumeGame();
     } else {
-      gameState.setPaused(true);
+      gameLogic.pauseGame();
       pauseGame();
     }
-  }, [gameState.paused, gameState.setPaused, pauseGame, resumeGame]);
+  }, [gameLogic.isPaused, gameLogic.pauseGame, gameLogic.resumeGame, pauseGame, resumeGame]);
 
   const handleReset = () => {
-    gameState.resetGameState();
+    gameLogic.resetGame();
     lastDropTime.current = 0;
     setTimeout(() => gameLogic.spawnNewPiece(), 100);
     resetGame();
@@ -70,13 +67,15 @@ const GameController: React.FC<GameControllerProps> = ({
 
   const keyboardControls = useKeyboardControls({
     gameSettings,
-    gameOver: gameLogic.gameState.gameOver,
-    paused: gameLogic.gameState.paused,
+    gameOver: gameLogic.gameOver,
+    paused: gameLogic.isPaused,
     onMoveLeft: () => gameLogic.movePiece(-1, 0),
     onMoveRight: () => gameLogic.movePiece(1, 0),
     onSoftDrop: () => {
       const moved = gameLogic.movePiece(0, 1);
-      if (moved) gameState.setScore(prev => prev + 1);
+      if (moved) {
+        // Add soft drop score if needed
+      }
     },
     onHardDrop: gameLogic.hardDrop,
     onRotateClockwise: gameLogic.rotatePieceClockwise,
@@ -87,35 +86,26 @@ const GameController: React.FC<GameControllerProps> = ({
   });
 
   const gameLoop = useCallback((timestamp: number) => {
-    if (gameLogic.gameState.gameOver) return;
+    if (gameLogic.gameOver) return;
 
-    if (!gameLogic.gameState.paused) {
+    if (!gameLogic.isPaused) {
       keyboardControls.processHeldKeys(timestamp);
 
-      const dropSpeed = Math.max(50, 1000 - (gameLogic.gameState.level - 1) * 50);
+      const dropSpeed = Math.max(50, 1000 - (gameLogic.level - 1) * 50);
       if (timestamp - lastDropTime.current > dropSpeed) {
         const moved = gameLogic.movePiece(0, 1);
-        if (!moved && gameState.lockDelay) {
-          if (timestamp - gameLogic.lockDelayTime > LOCK_DELAY_TIME) {
-            gameLogic.lockPiece();
-          }
-        }
         lastDropTime.current = timestamp;
-      } else if (gameState.lockDelay) {
-        if (timestamp - gameLogic.lockDelayTime > LOCK_DELAY_TIME) {
-          gameLogic.lockPiece();
-        }
       }
     }
 
     gameLoopRef.current = requestAnimationFrame(gameLoop);
   }, [
-    gameLogic.gameState.gameOver, gameLogic.gameState.paused, gameLogic.gameState.level, gameState.lockDelay,
-    keyboardControls.processHeldKeys, gameLogic.movePiece, gameLogic.lockPiece, gameLogic.lockDelayTime
+    gameLogic.gameOver, gameLogic.isPaused, gameLogic.level,
+    keyboardControls.processHeldKeys, gameLogic.movePiece
   ]);
 
   useEffect(() => {
-    if (!gameLogic.gameState.currentPiece && gameLogic.gameState.nextPieces.length > 0) {
+    if (!gameLogic.currentPiece && gameLogic.nextPieces.length > 0) {
       setTimeout(() => gameLogic.spawnNewPiece(), 100);
     }
 
@@ -126,12 +116,11 @@ const GameController: React.FC<GameControllerProps> = ({
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [gameLoop, gameLogic.gameState.currentPiece, gameLogic.gameState.nextPieces, gameLogic.spawnNewPiece]);
+  }, [gameLoop, gameLogic.currentPiece, gameLogic.nextPieces, gameLogic.spawnNewPiece]);
 
   return (
     <>
       {children({
-        gameState,
         gameLogic,
         onTogglePause: togglePause,
         onReset: handleReset

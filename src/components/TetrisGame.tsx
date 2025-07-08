@@ -48,13 +48,6 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
     gameLogic.pauseGame();
   };
 
-  // 180度旋转功能
-  const rotate180 = () => {
-    if (gameLogic.rotatePiece180) {
-      gameLogic.rotatePiece180();
-    }
-  };
-
   useEffect(() => {
     if (gameContainerRef.current && gameStarted) {
       gameContainerRef.current.focus();
@@ -88,24 +81,11 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       />
       
       <SinglePlayerGameArea
-        gameState={gameLogic.gameState}
-        gameSettings={gameSettings}
-        username={user?.username || 'Player'}
-        onPause={gameLogic.pauseGame}
-        onShare={() => console.log('Share game')}
-        onReset={handleReset}
-        onBackToMenu={handleBackToMenu}
-        showCountdown={!gameStarted}
-        onCountdownEnd={() => setGameStarted(true)}
-        gameStarted={gameStarted}
-        onMoveLeft={() => gameLogic.movePiece(-1, 0)}
-        onMoveRight={() => gameLogic.movePiece(1, 0)}
-        onSoftDrop={() => gameLogic.movePiece(0, 1)}
-        onHardDrop={gameLogic.hardDrop}
-        onRotateClockwise={gameLogic.rotatePieceClockwise}
-        onRotateCounterclockwise={gameLogic.rotatePieceCounterclockwise}
-        onRotate180={rotate180}
-        onHold={gameLogic.holdCurrentPiece}
+        gameMode={gameMode}
+        onGameEnd={(stats) => {
+          console.log('Game ended with stats:', stats);
+          handleBackToMenu();
+        }}
       />
       
       {/* 简化的失焦覆盖层 - 只有在暂停且游戏进行中时显示 */}

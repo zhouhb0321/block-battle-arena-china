@@ -11,7 +11,8 @@ import {
   clearLines,
   calculateDropPosition,
   generateRandomPiece,
-  checkTSpin
+  checkTSpin,
+  placePiece
 } from '@/utils/tetrisLogic';
 import type { 
   Board, 
@@ -42,6 +43,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const [pps, setPps] = useState(0);
   const [apm, setApm] = useState(0);
   const [isHardDropping, setIsHardDropping] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
 
   const { settings } = useUserSettings();
   const isWindowFocused = useWindowFocus();
@@ -62,7 +64,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
 
   // Game timer
   useEffect(() => {
-    if (gameOver || isPaused || !isWindowFocused) return;
+    if (gameOver || isPaused || !isWindowFocused || !gameStarted) return;
 
     const timer = setInterval(() => {
       setTime(prev => prev + 1);
@@ -76,16 +78,16 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameOver, isPaused, isWindowFocused]);
+  }, [gameOver, isPaused, isWindowFocused, gameStarted]);
 
   // Auto drop logic
   useEffect(() => {
-    if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping) return;
+    if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
 
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
     
     dropTimer.current = setTimeout(() => {
-      movePiece('down');
+      movePiece(0, 1);
     }, dropInterval);
 
     return () => {
@@ -93,7 +95,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
         clearTimeout(dropTimer.current);
       }
     };
-  }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping]);
+  }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted]);
 
   const spawnNewPiece = useCallback(() => {
     if (nextPieces.length === 0) return;
@@ -128,27 +130,14 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const lockPiece = useCallback(() => {
     if (!currentPiece) return;
 
-    const newBoard = board.map(row => [...row]);
-    
-    // Place piece on board
-    currentPiece.shape.forEach((row, y) => {
-      row.forEach((cell, x) => {
-        if (cell) {
-          const boardY = currentPiece.position.y + y;
-          const boardX = currentPiece.position.x + x;
-          if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
-            newBoard[boardY][boardX] = currentPiece.type;
-          }
-        }
-      });
-    });
+    const newBoard = placePiece(board, currentPiece);
 
     // Check for T-Spin before clearing lines
     const isTSpin = currentPiece.type === 'T' && lastTSpinCheck.current && 
                    checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece);
 
     // Clear lines
-    const { clearedBoard, linesCleared, clearedRows } = clearLines(newBoard);
+    const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     
     setBoard(clearedBoard);
     
@@ -186,35 +175,28 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     spawnNewPiece();
   }, [currentPiece, board, lines, level, spawnNewPiece, onSpecialClear]);
 
-  const movePiece = useCallback((direction: 'left' | 'right' | 'down') => {
-    if (!currentPiece || gameOver || isPaused || isHardDropping) return;
+  const movePiece = useCallback((dx: number, dy: number) => {
+    if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return false;
 
-    const newPosition: Position = { ...currentPiece.position };
+    const newPosition: Position = { 
+      x: currentPiece.position.x + dx, 
+      y: currentPiece.position.y + dy 
+    };
     
-    switch (direction) {
-      case 'left':
-        newPosition.x -= 1;
-        totalActions.current++;
-        break;
-      case 'right':
-        newPosition.x += 1;
-        totalActions.current++;
-        break;
-      case 'down':
-        newPosition.y += 1;
-        break;
-    }
-
     if (isValidPosition(board, currentPiece, newPosition)) {
       setCurrentPiece(prev => prev ? { ...prev, position: newPosition } : null);
-    } else if (direction === 'down') {
+      if (dx !== 0) totalActions.current++;
+      return true;
+    } else if (dy > 0) {
       // Piece can't move down, lock it
       lockPiece();
+      return false;
     }
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, lockPiece]);
+    return false;
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, lockPiece, gameStarted]);
 
   const hardDrop = useCallback(() => {
-    if (!currentPiece || gameOver || isPaused || isHardDropping) return;
+    if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
     setIsHardDropping(true);
     
@@ -233,10 +215,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
       lockPiece();
       setIsHardDropping(false);
     }, 50);
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, lockPiece]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, lockPiece, gameStarted]);
 
   const rotatePieceClockwise = useCallback(() => {
-    if (!currentPiece || gameOver || isPaused || isHardDropping) return;
+    if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
     // Store current state for T-Spin detection
     lastTSpinCheck.current = {
@@ -252,10 +234,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     } else {
       lastTSpinCheck.current = null;
     }
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted]);
 
   const rotatePieceCounterclockwise = useCallback(() => {
-    if (!currentPiece || gameOver || isPaused || isHardDropping) return;
+    if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
     // Store current state for T-Spin detection
     lastTSpinCheck.current = {
@@ -271,10 +253,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     } else {
       lastTSpinCheck.current = null;
     }
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted]);
 
   const holdCurrentPiece = useCallback(() => {
-    if (!currentPiece || !canHold || gameOver || isPaused || isHardDropping) return;
+    if (!currentPiece || !canHold || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
     if (holdPiece === null) {
       setHoldPiece(currentPiece);
@@ -290,7 +272,47 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     
     setCanHold(false);
     totalActions.current++;
-  }, [currentPiece, holdPiece, canHold, gameOver, isPaused, isHardDropping, spawnNewPiece]);
+  }, [currentPiece, holdPiece, canHold, gameOver, isPaused, isHardDropping, spawnNewPiece, gameStarted]);
+
+  const startGame = useCallback(() => {
+    setGameStarted(true);
+    gameStartTime.current = Date.now();
+  }, []);
+
+  const resetGame = useCallback(() => {
+    setBoard(createEmptyBoard());
+    setCurrentPiece(null);
+    setNextPieces([]);
+    setHoldPiece(null);
+    setCanHold(true);
+    setScore(0);
+    setLines(0);
+    setLevel(1);
+    setGameOver(false);
+    setIsPaused(false);
+    setTime(0);
+    setPps(0);
+    setApm(0);
+    setIsHardDropping(false);
+    setGameStarted(false);
+    totalPieces.current = 0;
+    totalActions.current = 0;
+    gameStartTime.current = Date.now();
+    
+    // Reinitialize pieces
+    const initialPieces = Array.from({ length: 7 }, () => generateRandomPiece());
+    setNextPieces(initialPieces);
+    setCurrentPiece(initialPieces[0]);
+    setNextPieces(prev => prev.slice(1));
+  }, []);
+
+  const pauseGame = useCallback(() => {
+    setIsPaused(true);
+  }, []);
+
+  const resumeGame = useCallback(() => {
+    setIsPaused(false);
+  }, []);
 
   // Calculate ghost piece
   const ghostPiece = currentPiece ? {
@@ -298,20 +320,25 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     position: calculateDropPosition(board, currentPiece)
   } : null;
 
-  // Keyboard controls
-  useKeyboardControls({
-    onMoveLeft: () => movePiece('left'),
-    onMoveRight: () => movePiece('right'),
-    onSoftDrop: () => movePiece('down'),
-    onHardDrop: hardDrop,
-    onRotateClockwise: rotatePieceClockwise,
-    onRotateCounterclockwise: rotatePieceCounterclockwise,
-    onHold: holdCurrentPiece,
-    onPause: () => setIsPaused(prev => !prev),
-    isEnabled: !gameOver && !isPaused && !!currentPiece && !isHardDropping
-  });
+  // Game state object for compatibility
+  const gameState = {
+    board,
+    currentPiece,
+    nextPieces,
+    holdPiece,
+    canHold,
+    score,
+    lines,
+    level,
+    gameOver,
+    paused: isPaused,
+    time,
+    pps,
+    apm
+  };
 
   return {
+    // State properties
     board,
     currentPiece,
     nextPieces,
@@ -326,6 +353,25 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     pps,
     apm,
     ghostPiece,
-    isHardDropping
+    isHardDropping,
+    gameState,
+    // Action methods
+    startGame,
+    resetGame,
+    pauseGame,
+    resumeGame,
+    movePiece,
+    hardDrop,
+    rotatePieceClockwise,
+    rotatePieceCounterclockwise,
+    rotatePiece180: rotatePieceClockwise, // Placeholder for 180 rotation
+    holdCurrentPiece,
+    spawnNewPiece,
+    lockPiece,
+    // Placeholder methods for compatibility
+    undoMove: () => {},
+    redoMove: () => {},
+    canUndo: false,
+    canRedo: false
   };
 };
