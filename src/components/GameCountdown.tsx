@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 
 interface GameCountdownProps {
@@ -36,8 +35,8 @@ const GameCountdown: React.FC<GameCountdownProps> = ({ onCountdownEnd, show }) =
   if (!isVisible) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
-      <div className="relative">
+    <div className="flex items-center justify-center z-50 pointer-events-none h-20 w-full absolute top-1/2 left-0 -translate-y-1/2">
+      <div className="relative w-full flex items-center justify-center">
         <div 
           className={`text-white font-bold transition-all duration-300 ${
             count > 0 ? 'text-6xl animate-bounce' : 'text-7xl animate-pulse'
