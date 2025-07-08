@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionLogger } from '@/hooks/useSessionLogger';
@@ -85,11 +86,15 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         {/* Game Info moved below Hold area */}
         <div className="relative">
           <GameInfo 
+            username={user?.username || 'Player'}
             score={gameLogic.score}
             lines={gameLogic.lines}
             level={gameLogic.level}
             pps={gameLogic.pps}
-            apm={gameLogic.apm}
+            attack={gameLogic.apm}
+            paused={gameLogic.isPaused}
+            onPause={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
+            onShare={() => console.log('Share game')}
             gameMode={gameMode}
           />
           
@@ -108,7 +113,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           board={gameLogic.board}
           currentPiece={gameLogic.currentPiece}
           ghostPiece={gameLogic.ghostPiece}
-          gameStarted={gameStarted}
         />
         
         {/* Countdown overlay */}
