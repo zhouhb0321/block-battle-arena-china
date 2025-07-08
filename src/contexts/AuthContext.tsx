@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -22,6 +21,7 @@ type AuthContextType = {
   register: (email: string, password: string, username: string) => Promise<any>;
   logout: () => Promise<void>;
   loginAsGuest: () => Promise<void>;
+  logUserSession: (sessionType: string, gameMode?: string, additionalData?: any) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,7 +31,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 优化登录状态检查
+  const logUserSession = async (sessionType: string, gameMode?: string, additionalData?: any) => {
+    if (!user || user.isGuest) return;
+
+    try {
+      const sessionData = {
+        user_agent: navigator.userAgent,
+        timestamp: new Date().toISOString(),
+        ...additionalData
+      };
+
+      await supabase
+        .from('user_session_logs')
+        .insert({
+          user_id: user.id,
+          username: user.username,
+          session_type: sessionType,
+          game_mode: gameMode || null,
+          session_data: sessionData,
+          ip_address: null,
+          user_agent: navigator.userAgent
+        });
+
+      console.log(`User session logged: ${sessionType} for ${user.username}`);
+    } catch (error) {
+      console.error('Failed to log user session:', error);
+    }
+  };
+
+  // Optimized login status check
   useEffect(() => {
     let mounted = true;
     
@@ -67,8 +95,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (event === 'SIGNED_IN' && session?.user) {
           await loadUserProfile(session.user.id);
+          // Log login session
+          if (session.user.email) {
+            await logUserSession('login');
+          }
         } else if (event === 'SIGNED_OUT') {
           console.log('用户已登出');
+          // Log logout session before clearing user
+          if (user && !user.isGuest) {
+            await logUserSession('logout');
+          }
           setUser(null);
           setIsAuthenticated(false);
           setLoading(false);
@@ -182,6 +218,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       console.log('尝试登出...');
       
+      // Log logout session before signing out
+      if (user && !user.isGuest) {
+        await logUserSession('logout');
+      }
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -270,7 +311,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     register,
     logout,
-    loginAsGuest
+    loginAsGuest,
+    logUserSession
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

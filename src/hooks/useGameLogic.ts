@@ -1,755 +1,331 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { toast } from 'sonner';
-import { useWindowFocus } from '@/hooks/useWindowFocus';
-import { calculateDropSpeed, getGravityInfo } from '@/utils/gravitySystem';
-import {
-  isValidPosition,
-  placePiece,
-  clearLines,
-  rotatePiece,
-  calculateDropPosition,
-  generateSevenBag,
-  checkTSpin,
-  performSRSRotation,
-  performSRS180Rotation,
-  createNewPiece,
-  createGhostPiece,
-  calculateScore,
-  calculateAttackLines,
-  TETROMINO_TYPES
-} from '@/utils/tetrisLogic';
-import type { GameMode, GameSettings, GameState, GamePiece, TetrominoType } from '@/utils/gameTypes';
 
-// Define history state type
-interface GameStateHistory {
-  board: number[][];
-  currentPiece: GamePiece | null;
-  nextPieces: GamePiece[];
-  holdPiece: GamePiece | null;
-  score: number;
-  lines: number;
-  level: number;
-  canHold: boolean;
-  combo: number;
-  b2b: number;
-  pieces: number;
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useKeyboardControls } from './useKeyboardControls';
+import { useUserSettings } from './useUserSettings';
+import { useWindowFocus } from './useWindowFocus';
+import { 
+  createEmptyBoard, 
+  TETROMINO_TYPES, 
+  rotatePiece, 
+  isValidPosition,
+  clearLines,
+  calculateDropPosition,
+  generateRandomPiece,
+  checkTSpin
+} from '@/utils/tetrisLogic';
+import type { 
+  Board, 
+  TetrominoType, 
+  GameMode, 
+  Position,
+  GameStats 
+} from '@/utils/gameTypes';
+
+interface UseGameLogicProps {
+  gameMode: GameMode;
+  onGameEnd: (stats: GameStats) => void;
+  onSpecialClear?: (clearType: string, lines: number) => void;
 }
 
-export const useGameLogic = (
-  gameMode: GameMode,
-  gameSettings: GameSettings,
-  customCalculateDropSpeed?: (lines: number) => number
-) => {
+export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLogicProps) => {
+  const [board, setBoard] = useState<Board>(createEmptyBoard());
+  const [currentPiece, setCurrentPiece] = useState<TetrominoType | null>(null);
+  const [nextPieces, setNextPieces] = useState<TetrominoType[]>([]);
+  const [holdPiece, setHoldPiece] = useState<TetrominoType | null>(null);
+  const [canHold, setCanHold] = useState(true);
+  const [score, setScore] = useState(0);
+  const [lines, setLines] = useState(0);
+  const [level, setLevel] = useState(1);
+  const [gameOver, setGameOver] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [time, setTime] = useState(0);
+  const [pps, setPps] = useState(0);
+  const [apm, setApm] = useState(0);
+  const [isHardDropping, setIsHardDropping] = useState(false);
+
+  const { settings } = useUserSettings();
   const isWindowFocused = useWindowFocus();
   
-  // Use the gravity system's drop speed calculation
-  const getDropSpeed = useCallback((lines: number) => {
-    return customCalculateDropSpeed ? customCalculateDropSpeed(lines) : calculateDropSpeed(lines);
-  }, [customCalculateDropSpeed]);
-  
-  // Game state
-  const [gameState, setGameState] = useState<GameState>({
-    board: Array(23).fill(null).map(() => Array(10).fill(0)),
-    currentPiece: null,
-    nextPieces: [],
-    holdPiece: null,
-    score: 0,
-    lines: 0,
-    level: 1,
-    gameOver: false,
-    paused: false,
-    canHold: true,
-    isHolding: false,
-    combo: -1,
-    b2b: 0,
-    pieces: 0,
-    startTime: Date.now(),
-    endTime: null,
-    attack: 0,
-    pps: 0,
-    apm: 0,
-    ghostPiece: null,
-    clearingLines: []
-  });
+  const gameStartTime = useRef<number>(Date.now());
+  const totalPieces = useRef<number>(0);
+  const totalActions = useRef<number>(0);
+  const dropTimer = useRef<NodeJS.Timeout | null>(null);
+  const lastTSpinCheck = useRef<{ piece: TetrominoType; board: Board } | null>(null);
 
-  // History for undo/redo functionality
-  const [history, setHistory] = useState<GameStateHistory[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const maxHistorySize = 10;
-
-  const gameLoopRef = useRef<number>();
-  const lastDropTime = useRef<number>(0);
-  const lockDelayTime = useRef<number>(0);
-  const [lockDelay, setLockDelay] = useState(false);
-  const [lastAction, setLastAction] = useState<'rotate' | 'move' | null>(null);
-  const [wasKicked, setWasKicked] = useState(false);
-  const isHardDropping = useRef(false);
-
-  // 自动重力、软降、硬降实现
-  // 新增：自动重力、软降、硬降、ARE锁定
-  const [softDrop, setSoftDrop] = useState(false);
-  const [areDelay, setAreDelay] = useState(false);
-  const gravityInterval = useRef<NodeJS.Timeout | null>(null);
-  const areTimeout = useRef<NodeJS.Timeout | null>(null);
-  const GRAVITY_NORMAL = 1000; // 普通重力间隔（ms）
-  const GRAVITY_SOFT = 50;    // 软降重力间隔（ms）
-  const ARE_DELAY = 300;      // ARE锁定延迟（ms）
-
-  // 简化窗口焦点处理 - 移除自动暂停逻辑
+  // Initialize game
   useEffect(() => {
-    // 只在调试时输出焦点状态
-    console.log('窗口焦点状态:', isWindowFocused ? '获得焦点' : '失去焦点');
-  }, [isWindowFocused]);
-
-  // Save state to history
-  const saveStateToHistory = useCallback(() => {
-    const stateToSave: GameStateHistory = {
-      board: gameState.board.map(row => [...row]),
-      currentPiece: gameState.currentPiece ? { ...gameState.currentPiece } : null,
-      nextPieces: [...gameState.nextPieces],
-      holdPiece: gameState.holdPiece ? { ...gameState.holdPiece } : null,
-      score: gameState.score,
-      lines: gameState.lines,
-      level: gameState.level,
-      canHold: gameState.canHold,
-      combo: gameState.combo || -1,
-      b2b: gameState.b2b || 0,
-      pieces: gameState.pieces || 0
-    };
-
-    setHistory(prev => {
-      const newHistory = prev.slice(0, historyIndex + 1);
-      newHistory.push(stateToSave);
-      return newHistory.slice(-maxHistorySize);
-    });
-    setHistoryIndex(prev => Math.min(prev + 1, maxHistorySize - 1));
-  }, [gameState, historyIndex]);
-
-  // Undo function
-  const undoMove = useCallback(() => {
-    if (gameState.gameOver || gameState.paused || historyIndex <= 0) return;
-    
-    const prevState = history[historyIndex - 1];
-    if (!prevState) return;
-
-    setGameState(prev => ({
-      ...prev,
-      board: prevState.board.map(row => [...row]),
-      currentPiece: prevState.currentPiece ? { ...prevState.currentPiece } : null,
-      nextPieces: [...prevState.nextPieces],
-      holdPiece: prevState.holdPiece ? { ...prevState.holdPiece } : null,
-      score: prevState.score,
-      lines: prevState.lines,
-      level: prevState.level,
-      canHold: prevState.canHold,
-      combo: prevState.combo,
-      b2b: prevState.b2b,
-      pieces: prevState.pieces,
-      ghostPiece: prevState.currentPiece ? createGhostPiece(prevState.board, prevState.currentPiece) : null
-    }));
-
-    setHistoryIndex(prev => prev - 1);
-    setLockDelay(false);
-    lockDelayTime.current = 0;
-    toast.success('撤销操作', { duration: 1000 });
-  }, [history, historyIndex, gameState.gameOver, gameState.paused]);
-
-  // Redo function
-  const redoMove = useCallback(() => {
-    if (gameState.gameOver || gameState.paused || historyIndex >= history.length - 1) return;
-    
-    const nextState = history[historyIndex + 1];
-    if (!nextState) return;
-
-    setGameState(prev => ({
-      ...prev,
-      board: nextState.board.map(row => [...row]),
-      currentPiece: nextState.currentPiece ? { ...nextState.currentPiece } : null,
-      nextPieces: [...nextState.nextPieces],
-      holdPiece: nextState.holdPiece ? { ...nextState.holdPiece } : null,
-      score: nextState.score,
-      lines: nextState.lines,
-      level: nextState.level,
-      canHold: nextState.canHold,
-      combo: nextState.combo,
-      b2b: nextState.b2b,
-      pieces: nextState.pieces,
-      ghostPiece: nextState.currentPiece ? createGhostPiece(nextState.board, nextState.currentPiece) : null
-    }));
-
-    setHistoryIndex(prev => prev + 1);
-    setLockDelay(false);
-    lockDelayTime.current = 0;
-    toast.success('重做操作', { duration: 1000 });
-  }, [history, historyIndex, gameState.gameOver, gameState.paused]);
-
-  // Helper function to create GamePiece from TetrominoType
-  const createGamePieceFromType = useCallback((pieceType: TetrominoType, x: number = 4, y: number = 0): GamePiece => {
-    return {
-      type: pieceType,
-      x,
-      y,
-      rotation: 0
-    };
+    const initialPieces = Array.from({ length: 7 }, () => generateRandomPiece());
+    setNextPieces(initialPieces);
+    setCurrentPiece(initialPieces[0]);
+    setNextPieces(prev => prev.slice(1));
   }, []);
+
+  // Game timer
+  useEffect(() => {
+    if (gameOver || isPaused || !isWindowFocused) return;
+
+    const timer = setInterval(() => {
+      setTime(prev => prev + 1);
+      
+      // Calculate PPS and APM
+      const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
+      if (elapsedTime > 0) {
+        setPps(totalPieces.current / elapsedTime);
+        setApm((totalActions.current / elapsedTime) * 60);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameOver, isPaused, isWindowFocused]);
+
+  // Auto drop logic
+  useEffect(() => {
+    if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping) return;
+
+    const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+    
+    dropTimer.current = setTimeout(() => {
+      movePiece('down');
+    }, dropInterval);
+
+    return () => {
+      if (dropTimer.current) {
+        clearTimeout(dropTimer.current);
+      }
+    };
+  }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping]);
 
   const spawnNewPiece = useCallback(() => {
-    console.log('Spawning new piece, nextPieces length:', gameState.nextPieces.length);
+    if (nextPieces.length === 0) return;
+
+    const newPiece = nextPieces[0];
+    const newNextPieces = nextPieces.slice(1);
     
-    // Save state before spawning new piece
-    saveStateToHistory();
-    
-    setGameState(prev => {
-      if (prev.nextPieces.length === 0) {
-        const sevenBag = generateSevenBag();
-        const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
-        console.log('Generated new seven bag:', gamePieces.map(p => p.type.name));
-        
-        const newPiece = createGamePieceFromType(gamePieces[0].type);
-        const newNextPieces = gamePieces.slice(1);
-        
-        if (!isValidPosition(prev.board, newPiece)) {
-          return { ...prev, gameOver: true };
-        }
-
-        const ghostPiece = createGhostPiece(prev.board, newPiece);
-        
-        return {
-          ...prev,
-          currentPiece: newPiece,
-          ghostPiece: ghostPiece,
-          nextPieces: newNextPieces,
-          canHold: true,
-          pieces: prev.pieces! + 1
-        };
-      } else {
-        const newPiece = createGamePieceFromType(prev.nextPieces[0].type);
-        let newNextPieces = [...prev.nextPieces.slice(1)];
-        
-        if (newNextPieces.length < 6) {
-          const sevenBag = generateSevenBag();
-          const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
-          newNextPieces.push(...gamePieces);
-        }
-
-        if (!isValidPosition(prev.board, newPiece)) {
-          return { ...prev, gameOver: true };
-        }
-
-        const ghostPiece = createGhostPiece(prev.board, newPiece);
-
-        return {
-          ...prev,
-          currentPiece: newPiece,
-          ghostPiece: ghostPiece,
-          nextPieces: newNextPieces,
-          canHold: true,
-          pieces: prev.pieces! + 1
-        };
-      }
-    });
-    
-    setLockDelay(false);
-    lockDelayTime.current = 0;
-    setWasKicked(false);
-    isHardDropping.current = false;
-  }, [createGamePieceFromType, saveStateToHistory]);
-
-  // Check if piece is at bottom
-  const isPieceAtBottom = useCallback((board: number[][], piece: GamePiece): boolean => {
-    const testPiece = { ...piece, y: piece.y + 1 };
-    return !isValidPosition(board, testPiece);
-  }, []);
-
-  const movePiece = useCallback((dx: number, dy: number) => {
-    // 硬降期间不允许移动
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return false;
-
-    const newPiece = {
-      ...gameState.currentPiece,
-      x: gameState.currentPiece.x + dx,
-      y: gameState.currentPiece.y + dy
-    };
-
-    if (isValidPosition(gameState.board, newPiece)) {
-      const ghostPiece = createGhostPiece(gameState.board, newPiece);
-      
-      setGameState(prev => ({
-        ...prev,
-        currentPiece: newPiece,
-        ghostPiece: ghostPiece
-      }));
-      setLastAction('move');
-      setWasKicked(false);
-      
-      // Reset lock delay on any movement
-      if (lockDelay) {
-        setLockDelay(false);
-        lockDelayTime.current = 0;
-      }
-      
-      // Check if piece is at bottom after movement
-      if (dy > 0 && isPieceAtBottom(gameState.board, newPiece)) {
-        setLockDelay(true);
-        lockDelayTime.current = Date.now();
-      }
-      
-      return true;
-    } else if (dy > 0) {
-      // Piece can't move down, start lock delay
-      if (!lockDelay) {
-        setLockDelay(true);
-        lockDelayTime.current = Date.now();
-        console.log('Lock delay started - piece at bottom');
-      }
-      return false;
+    if (newNextPieces.length < 3) {
+      newNextPieces.push(...Array.from({ length: 7 }, () => generateRandomPiece()));
     }
-    return false;
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, lockDelay, isPieceAtBottom]);
 
-  // 工具函数：移除当前方块后的board
-  function getBoardWithoutCurrentPiece(board, piece) {
-    if (!piece) return board;
-    const { type, x, y } = piece;
-    const shape = type.shape;
-    const newBoard = board.map(row => [...row]);
-    for (let row = 0; row < shape.length; row++) {
-      for (let col = 0; col < shape[row].length; col++) {
-        if (shape[row][col] !== 0) {
-          const boardX = x + col;
-          const boardY = y + row;
-          if (boardX >= 0 && boardX < newBoard[0].length && boardY >= 0 && boardY < newBoard.length) {
-            newBoard[boardY][boardX] = 0;
-          }
-        }
-      }
+    setCurrentPiece(newPiece);
+    setNextPieces(newNextPieces);
+    setCanHold(true);
+    totalPieces.current++;
+
+    // Check for game over
+    if (!isValidPosition(board, newPiece, newPiece.position)) {
+      setGameOver(true);
+      onGameEnd({
+        score,
+        lines,
+        level,
+        time,
+        pps,
+        apm,
+        gameMode: gameMode.id
+      });
     }
-    return newBoard;
-  }
-
-  // 修复旋转函数，确保正确传递踢墙状态和改进高速旋转
-  const rotatePieceClockwise = useCallback(() => {
-    // 硬降期间不允许旋转
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
-
-    console.log('尝试顺时针旋转，当前速度等级:', gameState.level);
-    
-    const cleanBoard = getBoardWithoutCurrentPiece(gameState.board, gameState.currentPiece);
-    const rotationResult = performSRSRotation(cleanBoard, gameState.currentPiece, true);
-    
-    if (rotationResult.success && rotationResult.newPiece) {
-      const ghostPiece = createGhostPiece(gameState.board, rotationResult.newPiece);
-      
-      setGameState(prev => ({
-        ...prev,
-        currentPiece: rotationResult.newPiece!,
-        ghostPiece: ghostPiece
-      }));
-      setLastAction('rotate');
-      setWasKicked(rotationResult.wasKicked);
-      
-      // Reset lock delay on successful rotation
-      if (lockDelay) {
-        setLockDelay(false);
-        lockDelayTime.current = 0;
-        console.log('Lock delay reset after rotation');
-      }
-      
-      // Check if rotated piece is at bottom
-      if (isPieceAtBottom(gameState.board, rotationResult.newPiece)) {
-        setLockDelay(true);
-        lockDelayTime.current = Date.now();
-        console.log('Lock delay started after rotation - piece at bottom');
-      }
-      
-      console.log(`顺时针旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
-    } else {
-      console.log('顺时针旋转失败，可能原因：边界限制或碰撞检测');
-    }
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, gameState.level, lockDelay, isPieceAtBottom]);
-
-  const rotatePieceCounterclockwise = useCallback(() => {
-    // 硬降期间不允许旋转
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
-
-    console.log('尝试逆时针旋转，当前速度等级:', gameState.level);
-    
-    const cleanBoard = getBoardWithoutCurrentPiece(gameState.board, gameState.currentPiece);
-    const rotationResult = performSRSRotation(cleanBoard, gameState.currentPiece, false);
-    
-    if (rotationResult.success && rotationResult.newPiece) {
-      const ghostPiece = createGhostPiece(gameState.board, rotationResult.newPiece);
-      
-      setGameState(prev => ({
-        ...prev,
-        currentPiece: rotationResult.newPiece!,
-        ghostPiece: ghostPiece
-      }));
-      setLastAction('rotate');
-      setWasKicked(rotationResult.wasKicked);
-      
-      // Reset lock delay on successful rotation
-      if (lockDelay) {
-        setLockDelay(false);
-        lockDelayTime.current = 0;
-        console.log('Lock delay reset after rotation');
-      }
-      
-      // Check if rotated piece is at bottom
-      if (isPieceAtBottom(gameState.board, rotationResult.newPiece)) {
-        setLockDelay(true);
-        lockDelayTime.current = Date.now();
-        console.log('Lock delay started after rotation - piece at bottom');
-      }
-      
-      console.log(`逆时针旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
-    } else {
-      console.log('逆时针旋转失败，可能原因：边界限制或碰撞检测');
-    }
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, gameState.level, lockDelay, isPieceAtBottom]);
-
-  const rotatePiece180 = useCallback(() => {
-    // 硬降期间不允许旋转
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
-
-    console.log('尝试180度旋转，当前速度等级:', gameState.level);
-    
-    const cleanBoard = getBoardWithoutCurrentPiece(gameState.board, gameState.currentPiece);
-    const rotationResult = performSRS180Rotation(cleanBoard, gameState.currentPiece);
-    
-    if (rotationResult.success && rotationResult.newPiece) {
-      const ghostPiece = createGhostPiece(gameState.board, rotationResult.newPiece);
-      
-      setGameState(prev => ({
-        ...prev,
-        currentPiece: rotationResult.newPiece!,
-        ghostPiece: ghostPiece
-      }));
-      setLastAction('rotate');
-      setWasKicked(rotationResult.wasKicked);
-      
-      // Reset lock delay on successful rotation
-      if (lockDelay) {
-        setLockDelay(false);
-        lockDelayTime.current = 0;
-        console.log('Lock delay reset after rotation');
-      }
-      
-      // Check if rotated piece is at bottom
-      if (isPieceAtBottom(gameState.board, rotationResult.newPiece)) {
-        setLockDelay(true);
-        lockDelayTime.current = Date.now();
-        console.log('Lock delay started after rotation - piece at bottom');
-      }
-      
-      console.log(`180度旋转成功, 踢墙状态: ${rotationResult.wasKicked}`);
-    } else {
-      console.log('180度旋转失败，可能原因：边界限制或碰撞检测');
-    }
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, gameState.level, lockDelay, isPieceAtBottom]);
-
-  const hardDrop = useCallback(() => {
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
-    
-    console.log('硬降开始');
-    isHardDropping.current = true;
-    
-    const dropY = calculateDropPosition(gameState.board, gameState.currentPiece);
-    const finalPiece = { ...gameState.currentPiece, y: dropY };
-    
-    setGameState(prev => ({ ...prev, currentPiece: finalPiece }));
-    
-    // 硬降后立即锁定，不允许任何操作
-    setTimeout(() => {
-      lockPiece();
-    }, 0);
-  }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
+  }, [nextPieces, board, score, lines, level, time, pps, apm, gameMode, onGameEnd]);
 
   const lockPiece = useCallback(() => {
-    if (!gameState.currentPiece) return;
+    if (!currentPiece) return;
 
-    console.log('锁定方块位置:', gameState.currentPiece.x, gameState.currentPiece.y);
+    const newBoard = board.map(row => [...row]);
     
-    // 检查T-Spin - 传递踢墙状态
-    const tSpinResult = checkTSpin(gameState.board, gameState.currentPiece, lastAction || 'move', wasKicked);
-    const newBoard = placePiece(gameState.board, gameState.currentPiece);
-    const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
+    // Place piece on board
+    currentPiece.shape.forEach((row, y) => {
+      row.forEach((cell, x) => {
+        if (cell) {
+          const boardY = currentPiece.position.y + y;
+          const boardX = currentPiece.position.x + x;
+          if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
+            newBoard[boardY][boardX] = currentPiece.type;
+          }
+        }
+      });
+    });
+
+    // Check for T-Spin before clearing lines
+    const isTSpin = currentPiece.type === 'T' && lastTSpinCheck.current && 
+                   checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece);
+
+    // Clear lines
+    const { clearedBoard, linesCleared, clearedRows } = clearLines(newBoard);
     
-    const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
+    setBoard(clearedBoard);
     
-    const newCombo = linesCleared > 0 ? gameState.combo! + 1 : -1;
-    const isSpecialClear = tSpinResult !== null || linesCleared === 4;
-    const newB2B = isSpecialClear ? gameState.b2b! + 1 : (linesCleared > 0 ? 0 : gameState.b2b!);
-    
-    const lineScore = calculateScore(linesCleared, gameState.level, tSpinResult, gameState.b2b! > 0, newCombo, isPerfectClear);
-    const attackValue = calculateAttackLines(linesCleared, tSpinResult, gameState.b2b! > 0, newCombo);
-    
-    setGameState(prev => ({
-      ...prev,
-      board: clearedBoard,
-      lines: prev.lines + linesCleared,
-      combo: newCombo,
-      b2b: newB2B,
-      score: prev.score + lineScore,
-      attack: prev.attack! + attackValue,
-      level: Math.floor((prev.lines + linesCleared) / 40) + 1,
-      currentPiece: null,
-      ghostPiece: null,
-      clearingLines: []
-    }));
-    
-    // 显示特殊消除提示
-    if (isPerfectClear) {
-      toast.success('全清！+3500分！', { duration: 3000 });
+    if (linesCleared > 0) {
+      const newLines = lines + linesCleared;
+      const newLevel = Math.floor(newLines / 10) + 1;
+      let lineScore = 0;
+      
+      // Calculate score based on clear type
+      let clearType = '';
+      if (isTSpin) {
+        clearType = `tspin_${linesCleared === 3 ? 'triple' : linesCleared === 2 ? 'double' : 'single'}`;
+        lineScore = [800, 1200, 1600][linesCleared - 1] * level;
+      } else if (linesCleared === 4) {
+        clearType = 'tetris';
+        lineScore = 800 * level;
+      } else {
+        lineScore = [100, 300, 500][linesCleared - 1] * level;
+      }
+      
+      setLines(newLines);
+      setLevel(newLevel);
+      setScore(prev => prev + lineScore);
+      
+      // Trigger special clear animation
+      if (onSpecialClear && (clearType || linesCleared >= 4)) {
+        onSpecialClear(clearType || 'tetris', linesCleared);
+      }
     }
+
+    // Reset T-Spin check
+    lastTSpinCheck.current = null;
     
-    if (tSpinResult) {
-      const miniText = tSpinResult.isMini ? ' Mini' : '';
-      const b2bText = gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : '';
-      toast.success(`${tSpinResult.type}${miniText}!${b2bText}`, { duration: 2000 });
-    } else if (linesCleared === 4) {
-      toast.success(`Tetris!${gameState.b2b! > 1 ? ` B2B x${gameState.b2b}` : ''}`, { duration: 2000 });
+    // Spawn new piece
+    spawnNewPiece();
+  }, [currentPiece, board, lines, level, spawnNewPiece, onSpecialClear]);
+
+  const movePiece = useCallback((direction: 'left' | 'right' | 'down') => {
+    if (!currentPiece || gameOver || isPaused || isHardDropping) return;
+
+    const newPosition: Position = { ...currentPiece.position };
+    
+    switch (direction) {
+      case 'left':
+        newPosition.x -= 1;
+        totalActions.current++;
+        break;
+      case 'right':
+        newPosition.x += 1;
+        totalActions.current++;
+        break;
+      case 'down':
+        newPosition.y += 1;
+        break;
     }
-    
-    if (newCombo > 0) {
-      toast.success(`${newCombo + 1} 连击! +${attackValue} 攻击`, { duration: 1500 });
+
+    if (isValidPosition(board, currentPiece, newPosition)) {
+      setCurrentPiece(prev => prev ? { ...prev, position: newPosition } : null);
+    } else if (direction === 'down') {
+      // Piece can't move down, lock it
+      lockPiece();
     }
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, lockPiece]);
+
+  const hardDrop = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused || isHardDropping) return;
+
+    setIsHardDropping(true);
     
-    setLastAction(null);
-    setWasKicked(false);
-    isHardDropping.current = false;
+    const dropPosition = calculateDropPosition(board, currentPiece);
+    const dropDistance = dropPosition.y - currentPiece.position.y;
     
-    setTimeout(() => spawnNewPiece(), 100);
-  }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, lastAction, wasKicked, gameState.combo, gameState.b2b, spawnNewPiece]);
+    // Add hard drop score
+    setScore(prev => prev + dropDistance * 2);
+    totalActions.current++;
+    
+    // Move piece to drop position
+    setCurrentPiece(prev => prev ? { ...prev, position: dropPosition } : null);
+    
+    // Lock immediately after hard drop
+    setTimeout(() => {
+      lockPiece();
+      setIsHardDropping(false);
+    }, 50);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, lockPiece]);
+
+  const rotatePieceClockwise = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused || isHardDropping) return;
+
+    // Store current state for T-Spin detection
+    lastTSpinCheck.current = {
+      piece: { ...currentPiece },
+      board: board.map(row => [...row])
+    };
+
+    const rotatedPiece = rotatePiece(currentPiece, 'clockwise');
+    
+    if (isValidPosition(board, rotatedPiece, rotatedPiece.position)) {
+      setCurrentPiece(rotatedPiece);
+      totalActions.current++;
+    } else {
+      lastTSpinCheck.current = null;
+    }
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping]);
+
+  const rotatePieceCounterclockwise = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused || isHardDropping) return;
+
+    // Store current state for T-Spin detection
+    lastTSpinCheck.current = {
+      piece: { ...currentPiece },
+      board: board.map(row => [...row])
+    };
+
+    const rotatedPiece = rotatePiece(currentPiece, 'counterclockwise');
+    
+    if (isValidPosition(board, rotatedPiece, rotatedPiece.position)) {
+      setCurrentPiece(rotatedPiece);
+      totalActions.current++;
+    } else {
+      lastTSpinCheck.current = null;
+    }
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping]);
 
   const holdCurrentPiece = useCallback(() => {
-    // 硬降期间不允许暂存
-    if (!gameState.currentPiece || !gameState.canHold || gameState.gameOver || gameState.paused || isHardDropping.current) return;
+    if (!currentPiece || !canHold || gameOver || isPaused || isHardDropping) return;
 
-    if (gameState.holdPiece) {
-      const newPiece = createGamePieceFromType(gameState.holdPiece.type);
-      const ghostPiece = createGhostPiece(gameState.board, newPiece);
-      
-      setGameState(prev => ({
-        ...prev,
-        holdPiece: gameState.currentPiece,
-        currentPiece: newPiece,
-        ghostPiece: ghostPiece,
-        canHold: false
-      }));
+    if (holdPiece === null) {
+      setHoldPiece(currentPiece);
+      spawnNewPiece();
     } else {
-      setGameState(prev => ({
-        ...prev,
-        holdPiece: gameState.currentPiece,
-        currentPiece: null,
-        ghostPiece: null,
-        canHold: false
-      }));
-      setTimeout(() => spawnNewPiece(), 100);
-    }
-    
-    setLockDelay(false);
-    lockDelayTime.current = 0;
-    setWasKicked(false);
-  }, [gameState.currentPiece, gameState.holdPiece, gameState.canHold, gameState.gameOver, gameState.paused, gameState.board, spawnNewPiece, createGamePieceFromType]);
-
-  const startGame = useCallback(() => {
-    console.log('开始游戏...');
-    isHardDropping.current = false;
-    setWasKicked(false);
-    setHistory([]);
-    setHistoryIndex(-1);
-    setGameState(prev => ({
-      ...prev,
-      paused: false,
-      gameOver: false,
-      startTime: Date.now()
-    }));
-    
-    // Initialize the first seven bag if needed
-    setTimeout(() => {
-      setGameState(prev => {
-        if (prev.nextPieces.length === 0) {
-          const sevenBag = generateSevenBag();
-          const gamePieces = sevenBag.map(pieceType => createGamePieceFromType(pieceType));
-          console.log('初始化七袋系统:', gamePieces.map(p => p.type.name));
-          return { ...prev, nextPieces: gamePieces };
-        }
-        return prev;
+      const tempPiece = holdPiece;
+      setHoldPiece(currentPiece);
+      setCurrentPiece({
+        ...tempPiece,
+        position: { x: 4, y: 0 }
       });
-      
-      // Spawn the first piece
-      setTimeout(() => spawnNewPiece(), 100);
-    }, 100);
-  }, [spawnNewPiece, createGamePieceFromType]);
-
-  const pauseGame = useCallback(() => {
-    setGameState(prev => ({ ...prev, paused: !prev.paused }));
-    console.log('游戏暂停状态切换');
-  }, []);
-
-  const resetGame = useCallback(() => {
-    console.log('重置游戏...');
-    isHardDropping.current = false;
-    setWasKicked(false);
-    setHistory([]);
-    setHistoryIndex(-1);
-    setGameState({
-      board: Array(23).fill(null).map(() => Array(10).fill(0)),
-      currentPiece: null,
-      nextPieces: [],
-      holdPiece: null,
-      score: 0,
-      lines: 0,
-      level: 1,
-      gameOver: false,
-      paused: false,
-      canHold: true,
-      isHolding: false,
-      combo: -1,
-      b2b: 0,
-      pieces: 0,
-      startTime: Date.now(),
-      endTime: null,
-      attack: 0,
-      pps: 0,
-      apm: 0,
-      ghostPiece: null,
-      clearingLines: []
-    });
-    setLockDelay(false);
-    lockDelayTime.current = 0;
-  }, []);
-
-  const shareGame = useCallback(() => {
-    console.log('分享游戏...');
-    toast.success('游戏分享功能即将推出！');
-  }, []);
-
-  // 动态锁定延迟（对战重力1级=500ms，10级=50ms，线性插值）
-  const getDynamicLockDelay = (lines: number) => {
-    const gravityInfo = getGravityInfo(lines);
-    const level = Math.max(1, Math.min(gravityInfo.level, 10));
-    const minDelay = 50;
-    const maxDelay = 500;
-    // 线性插值
-    const delay = maxDelay - ((level - 1) / 9) * (maxDelay - minDelay);
-    return Math.round(delay);
-  };
-
-  // Game loop - 优化锁定延迟为100ms
-  useEffect(() => {
-    const gameLoop = (timestamp: number) => {
-      if (gameState.gameOver || gameState.paused || isHardDropping.current) {
-        gameLoopRef.current = requestAnimationFrame(gameLoop);
-        return;
-      }
-      const dropSpeed = getDropSpeed(gameState.lines);
-      const dynamicLockDelay = getDynamicLockDelay(gameState.lines);
-      if (timestamp - lastDropTime.current > dropSpeed) {
-        const moved = movePiece(0, 1);
-        if (!moved && lockDelay) {
-          if (timestamp - lockDelayTime.current > dynamicLockDelay) {
-            lockPiece();
-          }
-        }
-        lastDropTime.current = timestamp;
-      } else if (lockDelay) {
-        if (timestamp - lockDelayTime.current > dynamicLockDelay) {
-          lockPiece();
-        }
-      }
-      gameLoopRef.current = requestAnimationFrame(gameLoop);
-    };
-    gameLoopRef.current = requestAnimationFrame(gameLoop);
-    return () => {
-      if (gameLoopRef.current) {
-        cancelAnimationFrame(gameLoopRef.current);
-      }
-    };
-  }, [gameState.gameOver, gameState.paused, gameState.lines, lockDelay, getDropSpeed, movePiece, lockPiece]);
-
-  useEffect(() => {
-    if (gameState.gameOver || gameState.paused || areDelay) return;
-    if (!gameState.currentPiece) return;
-    if (gravityInterval.current) clearInterval(gravityInterval.current);
-    gravityInterval.current = setInterval(() => {
-      if (softDrop) {
-        movePiece(0, 1); // 软降
-      } else {
-        movePiece(0, 1); // 普通重力
-      }
-    }, softDrop ? GRAVITY_SOFT : GRAVITY_NORMAL);
-    return () => clearInterval(gravityInterval.current!);
-  }, [gameState.currentPiece, gameState.paused, gameState.gameOver, softDrop, areDelay]);
-
-  // 软降按键监听
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 's' || e.key === 'ArrowDown') setSoftDrop(true);
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 's' || e.key === 'ArrowDown') setSoftDrop(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
-
-  // 到底部自动锁定
-  useEffect(() => {
-    if (!gameState.currentPiece || gameState.gameOver || gameState.paused) return;
-    const { x, y, type } = gameState.currentPiece;
-    const shape = type.shape;
-    let atBottom = false;
-    for (let row = 0; row < shape.length; row++) {
-      for (let col = 0; col < shape[row].length; col++) {
-        if (shape[row][col]) {
-          const boardY = y + row;
-          if (boardY + 1 >= 23 || gameState.board[boardY + 1][x + col] !== 0) {
-            atBottom = true;
-          }
-        }
-      }
     }
-    if (atBottom) {
-      // ARE锁定延迟
-      if (!areDelay) {
-        setAreDelay(true);
-        areTimeout.current = setTimeout(() => {
-          lockPiece();
-          setAreDelay(false);
-        }, ARE_DELAY);
-      }
-    } else {
-      if (areTimeout.current) clearTimeout(areTimeout.current);
-      setAreDelay(false);
-    }
-  }, [gameState.currentPiece, gameState.board, gameState.paused, gameState.gameOver]);
+    
+    setCanHold(false);
+    totalActions.current++;
+  }, [currentPiece, holdPiece, canHold, gameOver, isPaused, isHardDropping, spawnNewPiece]);
+
+  // Calculate ghost piece
+  const ghostPiece = currentPiece ? {
+    ...currentPiece,
+    position: calculateDropPosition(board, currentPiece)
+  } : null;
+
+  // Keyboard controls
+  useKeyboardControls({
+    onMoveLeft: () => movePiece('left'),
+    onMoveRight: () => movePiece('right'),
+    onSoftDrop: () => movePiece('down'),
+    onHardDrop: hardDrop,
+    onRotateClockwise: rotatePieceClockwise,
+    onRotateCounterclockwise: rotatePieceCounterclockwise,
+    onHold: holdCurrentPiece,
+    onPause: () => setIsPaused(prev => !prev),
+    isEnabled: !gameOver && !isPaused && !!currentPiece && !isHardDropping
+  });
 
   return {
-    gameState,
-    isWindowFocused,
-    startGame,
-    pauseGame,
-    resetGame,
-    shareGame,
-    spawnNewPiece,
-    movePiece,
-    rotatePieceClockwise,
-    rotatePieceCounterclockwise,
-    rotatePiece180,
-    hardDrop,
-    lockPiece,
-    holdCurrentPiece,
-    lockDelayTime: lockDelayTime.current,
-    // Undo/Redo functions
-    undoMove,
-    redoMove,
-    canUndo: historyIndex > 0,
-    canRedo: historyIndex < history.length - 1
+    board,
+    currentPiece,
+    nextPieces,
+    holdPiece,
+    canHold,
+    score,
+    lines,
+    level,
+    gameOver,
+    isPaused,
+    time,
+    pps,
+    apm,
+    ghostPiece,
+    isHardDropping
   };
 };

@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          action_type: string
+          admin_user_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_user_id: string | null
+          target_username: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_user_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_user_id?: string | null
+          target_username?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_user_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_user_id?: string | null
+          target_username?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       advertisements: {
         Row: {
           clicks: number
@@ -660,6 +696,42 @@ export type Database = {
           username?: string
           username_changes_count?: number | null
           username_last_changed_at?: string | null
+        }
+        Relationships: []
+      }
+      user_session_logs: {
+        Row: {
+          created_at: string
+          game_mode: string | null
+          id: string
+          ip_address: string | null
+          session_data: Json | null
+          session_type: string
+          user_agent: string | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          game_mode?: string | null
+          id?: string
+          ip_address?: string | null
+          session_data?: Json | null
+          session_type: string
+          user_agent?: string | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          game_mode?: string | null
+          id?: string
+          ip_address?: string | null
+          session_data?: Json | null
+          session_type?: string
+          user_agent?: string | null
+          user_id?: string
+          username?: string
         }
         Relationships: []
       }
