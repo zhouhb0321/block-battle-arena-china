@@ -4,7 +4,6 @@ import { useUserSettings } from './useUserSettings';
 import { useWindowFocus } from './useWindowFocus';
 import { 
   createEmptyBoard, 
-  TETROMINO_TYPES, 
   rotatePiece, 
   isValidPosition,
   clearLines,
@@ -12,7 +11,8 @@ import {
   generateRandomPiece,
   checkTSpin,
   placePiece,
-  resetSevenBag
+  resetSevenBag,
+  createNewPiece
 } from '@/utils/tetrisLogic';
 import type { 
   Board, 
@@ -55,13 +55,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const dropTimer = useRef<NodeJS.Timeout | null>(null);
   const lastTSpinCheck = useRef<{ piece: GamePiece; board: Board } | null>(null);
 
-  // Helper function to create a GamePiece from TetrominoType
-  const createGamePiece = (pieceType: TetrominoType): GamePiece => ({
-    type: pieceType,
-    x: 4,
-    y: 0,
-    rotation: 0
-  });
+  // Helper function to create a GamePiece from TetrominoType - updated to use new function
+  const createGamePiece = useCallback((pieceType: TetrominoType): GamePiece => {
+    return createNewPiece(pieceType);
+  }, []);
 
   // Initialize game pieces
   const initializePieces = useCallback(() => {
@@ -70,7 +67,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     setNextPieces(initialPieces);
     setCurrentPiece(initialPieces[0]);
     setNextPieces(prev => prev.slice(1));
-  }, []);
+  }, [createGamePiece]);
 
   // Initialize game
   useEffect(() => {
@@ -110,7 +107,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
         clearTimeout(dropTimer.current);
       }
     };
-  }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted]);
+  }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted, movePiece]);
 
   const spawnNewPiece = useCallback(() => {
     if (nextPieces.length === 0) return;
@@ -141,7 +138,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
         gameMode: gameMode.id
       });
     }
-  }, [nextPieces, board, score, lines, level, time, pps, apm, gameMode, onGameEnd]);
+  }, [nextPieces, board, score, lines, level, time, pps, apm, gameMode, onGameEnd, createGamePiece]);
 
   const lockPiece = useCallback(() => {
     if (!currentPiece) return;
