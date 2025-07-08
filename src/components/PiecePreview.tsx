@@ -42,14 +42,15 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
     }
 
     const shape = TETROMINO_TYPES[piece.type]?.shape || piece.shape;
+    // 使用柔和的颜色
     const pieceColors = {
-      I: '#00f0f0',
-      O: '#f0f000',
-      T: '#a000f0',
-      S: '#00f000',
-      Z: '#f00000',
-      J: '#0000f0',
-      L: '#f0a000'
+      I: '#4a9d9c', // 柔和的青色
+      O: '#c4a661', // 柔和的黄色
+      T: '#8b6bb1', // 柔和的紫色
+      S: '#6b9b6b', // 柔和的绿色
+      Z: '#b87575', // 柔和的红色  
+      J: '#5d7fb8', // 柔和的蓝色
+      L: '#c4906b'  // 柔和的橙色
     };
 
     return (

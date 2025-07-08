@@ -1,3 +1,4 @@
+
 import type { TetrominoType, GamePiece, ReplayAction } from './gameTypes';
 import { calculateB2BAttackBonus } from './b2bSystem';
 import { detectTSpin } from './tspinDetection';
@@ -11,11 +12,11 @@ export const createEmptyBoard = (): number[][] => {
   return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
 };
 
-// 标准化方块颜色 - 与经典俄罗斯方块保持一致
+// 柔和的方块颜色 - 降低亮度和饱和度，减少视觉刺激
 export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
   I: {
     shape: [[1, 1, 1, 1]],
-    color: '#00f0f0', // 青色
+    color: '#4a9d9c', // 柔和的青色
     name: 'I',
     type: 'I'
   },
@@ -24,7 +25,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 1],
       [1, 1]
     ],
-    color: '#f0f000', // 黄色
+    color: '#c4a661', // 柔和的黄色
     name: 'O',
     type: 'O'
   },
@@ -33,7 +34,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [0, 1, 0],
       [1, 1, 1]
     ],
-    color: '#a000f0', // 紫色
+    color: '#8b6bb1', // 柔和的紫色
     name: 'T',
     type: 'T'
   },
@@ -42,7 +43,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [0, 1, 1],
       [1, 1, 0]
     ],
-    color: '#00f000', // 绿色
+    color: '#6b9b6b', // 柔和的绿色
     name: 'S',
     type: 'S'
   },
@@ -51,7 +52,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 1, 0],
       [0, 1, 1]
     ],
-    color: '#f00000', // 红色
+    color: '#b87575', // 柔和的红色
     name: 'Z',
     type: 'Z'
   },
@@ -60,7 +61,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 0, 0],
       [1, 1, 1]
     ],
-    color: '#0000f0', // 蓝色
+    color: '#5d7fb8', // 柔和的蓝色
     name: 'J',
     type: 'J'
   },
@@ -69,7 +70,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [0, 0, 1],
       [1, 1, 1]
     ],
-    color: '#f0a000', // 橙色
+    color: '#c4906b', // 柔和的橙色
     name: 'L',
     type: 'L'
   }

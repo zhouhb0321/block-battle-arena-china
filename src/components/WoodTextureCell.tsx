@@ -127,8 +127,8 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
     );
   }
   
-  // Placed pieces styles (with wood texture effect)
-  const colors = ['', '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000', '#666666'];
+  // Placed pieces styles (with wood texture effect) - 使用柔和的颜色
+  const colors = ['', '#4a9d9c', '#c4a661', '#8b6bb1', '#6b9b6b', '#b87575', '#5d7fb8', '#c4906b', '#666666'];
   const backgroundColor = colors[cellValue as number] || '#666666';
   
   return (

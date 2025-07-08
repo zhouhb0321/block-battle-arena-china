@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useWindowFocus } from '@/hooks/useWindowFocus';
@@ -263,7 +262,7 @@ export const useGameLogic = (
   }, []);
 
   const movePiece = useCallback((dx: number, dy: number) => {
-    // 简化条件检查，移除窗口焦点限制
+    // 硬降期间不允许移动
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return false;
 
     const newPiece = {
@@ -330,6 +329,7 @@ export const useGameLogic = (
 
   // 修复旋转函数，确保正确传递踢墙状态和改进高速旋转
   const rotatePieceClockwise = useCallback(() => {
+    // 硬降期间不允许旋转
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
     console.log('尝试顺时针旋转，当前速度等级:', gameState.level);
@@ -369,6 +369,7 @@ export const useGameLogic = (
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, gameState.level, lockDelay, isPieceAtBottom]);
 
   const rotatePieceCounterclockwise = useCallback(() => {
+    // 硬降期间不允许旋转
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
     console.log('尝试逆时针旋转，当前速度等级:', gameState.level);
@@ -408,6 +409,7 @@ export const useGameLogic = (
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused, gameState.level, lockDelay, isPieceAtBottom]);
 
   const rotatePiece180 = useCallback(() => {
+    // 硬降期间不允许旋转
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
     console.log('尝试180度旋转，当前速度等级:', gameState.level);
@@ -448,18 +450,23 @@ export const useGameLogic = (
 
   const hardDrop = useCallback(() => {
     if (!gameState.currentPiece || gameState.gameOver || gameState.paused || isHardDropping.current) return;
+    
+    console.log('硬降开始');
     isHardDropping.current = true;
+    
     const dropY = calculateDropPosition(gameState.board, gameState.currentPiece);
     const finalPiece = { ...gameState.currentPiece, y: dropY };
+    
     setGameState(prev => ({ ...prev, currentPiece: finalPiece }));
+    
+    // 硬降后立即锁定，不允许任何操作
     setTimeout(() => {
       lockPiece();
-      isHardDropping.current = false;
     }, 0);
   }, [gameState.currentPiece, gameState.board, gameState.gameOver, gameState.paused]);
 
   const lockPiece = useCallback(() => {
-    if (!gameState.currentPiece || isHardDropping.current) return;
+    if (!gameState.currentPiece) return;
 
     console.log('锁定方块位置:', gameState.currentPiece.x, gameState.currentPiece.y);
     
@@ -510,10 +517,13 @@ export const useGameLogic = (
     
     setLastAction(null);
     setWasKicked(false);
+    isHardDropping.current = false;
+    
     setTimeout(() => spawnNewPiece(), 100);
   }, [gameState.currentPiece, gameState.board, gameState.level, gameState.lines, lastAction, wasKicked, gameState.combo, gameState.b2b, spawnNewPiece]);
 
   const holdCurrentPiece = useCallback(() => {
+    // 硬降期间不允许暂存
     if (!gameState.currentPiece || !gameState.canHold || gameState.gameOver || gameState.paused || isHardDropping.current) return;
 
     if (gameState.holdPiece) {
@@ -659,7 +669,6 @@ export const useGameLogic = (
     };
   }, [gameState.gameOver, gameState.paused, gameState.lines, lockDelay, getDropSpeed, movePiece, lockPiece]);
 
-  // 自动重力下落
   useEffect(() => {
     if (gameState.gameOver || gameState.paused || areDelay) return;
     if (!gameState.currentPiece) return;
