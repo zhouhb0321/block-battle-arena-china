@@ -1,4 +1,3 @@
-
 import type { TetrominoType, GamePiece, ReplayAction } from './gameTypes';
 import { calculateB2BAttackBonus } from './b2bSystem';
 import { detectTSpin } from './tspinDetection';
@@ -508,3 +507,10 @@ export const calculateAttackLines = (
 
 // 连击奖励矩阵
 const comboMatrix = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5];
+
+// Generate a random piece from the available types
+export const generateRandomPiece = (): TetrominoType => {
+  const pieceTypes = Object.values(TETROMINO_TYPES);
+  const randomIndex = Math.floor(Math.random() * pieceTypes.length);
+  return pieceTypes[randomIndex];
+};

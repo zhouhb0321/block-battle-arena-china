@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useUserSettings } from '@/hooks/useUserSettings';
-import { calculateDropSpeed } from '@/utils/gravitySystem';
 import type { GameMode, GameSettings } from '@/utils/gameTypes';
 
 interface TetrisGameContextType {
@@ -46,7 +45,12 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
     ghostOpacity: settings.ghostOpacity || 50
   };
 
-  const gameLogic = useGameLogic(gameMode, gameSettings, calculateDropSpeed);
+  const gameLogic = useGameLogic({
+    gameMode,
+    onGameEnd: (stats) => {
+      console.log('Game ended:', stats);
+    }
+  });
 
   const contextValue: TetrisGameContextType = {
     gameLogic,

@@ -1,5 +1,3 @@
-
-
 export interface GameState {
   board: number[][];
   currentPiece: GamePiece | null;
@@ -127,6 +125,23 @@ export interface ReplayAction {
   data?: any;
 }
 
+export type Board = number[][];
+
+export interface Position {
+  x: number;
+  y: number;
+}
+
+export interface GameStats {
+  score: number;
+  lines: number;
+  level: number;
+  time: number;
+  pps: number;
+  apm: number;
+  gameMode: string;
+}
+
 export const GAME_MODES: GameMode[] = [
   {
     id: 'endless',
@@ -171,4 +186,3 @@ export const GAME_MODES: GameMode[] = [
 ];
 
 export type View = 'start' | 'game' | 'settings' | 'profile';
-

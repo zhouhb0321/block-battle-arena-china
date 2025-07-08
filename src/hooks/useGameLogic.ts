@@ -19,7 +19,8 @@ import type {
   TetrominoType, 
   GameMode, 
   Position,
-  GameStats 
+  GameStats,
+  GamePiece
 } from '@/utils/gameTypes';
 
 interface UseGameLogicProps {
@@ -30,9 +31,9 @@ interface UseGameLogicProps {
 
 export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLogicProps) => {
   const [board, setBoard] = useState<Board>(createEmptyBoard());
-  const [currentPiece, setCurrentPiece] = useState<TetrominoType | null>(null);
-  const [nextPieces, setNextPieces] = useState<TetrominoType[]>([]);
-  const [holdPiece, setHoldPiece] = useState<TetrominoType | null>(null);
+  const [currentPiece, setCurrentPiece] = useState<GamePiece | null>(null);
+  const [nextPieces, setNextPieces] = useState<GamePiece[]>([]);
+  const [holdPiece, setHoldPiece] = useState<GamePiece | null>(null);
   const [canHold, setCanHold] = useState(true);
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
@@ -52,11 +53,19 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const totalPieces = useRef<number>(0);
   const totalActions = useRef<number>(0);
   const dropTimer = useRef<NodeJS.Timeout | null>(null);
-  const lastTSpinCheck = useRef<{ piece: TetrominoType; board: Board } | null>(null);
+  const lastTSpinCheck = useRef<{ piece: GamePiece; board: Board } | null>(null);
+
+  // Helper function to create a GamePiece from TetrominoType
+  const createGamePiece = (pieceType: TetrominoType): GamePiece => ({
+    type: pieceType,
+    x: 4,
+    y: 0,
+    rotation: 0
+  });
 
   // Initialize game
   useEffect(() => {
-    const initialPieces = Array.from({ length: 7 }, () => generateRandomPiece());
+    const initialPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
     setNextPieces(initialPieces);
     setCurrentPiece(initialPieces[0]);
     setNextPieces(prev => prev.slice(1));
@@ -104,7 +113,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     const newNextPieces = nextPieces.slice(1);
     
     if (newNextPieces.length < 3) {
-      newNextPieces.push(...Array.from({ length: 7 }, () => generateRandomPiece()));
+      newNextPieces.push(...Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece())));
     }
 
     setCurrentPiece(newPiece);
@@ -113,7 +122,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     totalPieces.current++;
 
     // Check for game over
-    if (!isValidPosition(board, newPiece, newPiece.position)) {
+    if (!isValidPosition(board, newPiece)) {
       setGameOver(true);
       onGameEnd({
         score,
@@ -133,8 +142,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     const newBoard = placePiece(board, currentPiece);
 
     // Check for T-Spin before clearing lines
-    const isTSpin = currentPiece.type === 'T' && lastTSpinCheck.current && 
-                   checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece);
+    const isTSpin = currentPiece.type.type === 'T' && lastTSpinCheck.current && 
+                   checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate');
 
     // Clear lines
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
@@ -179,12 +188,14 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return false;
 
     const newPosition: Position = { 
-      x: currentPiece.position.x + dx, 
-      y: currentPiece.position.y + dy 
+      x: currentPiece.x + dx, 
+      y: currentPiece.y + dy 
     };
     
-    if (isValidPosition(board, currentPiece, newPosition)) {
-      setCurrentPiece(prev => prev ? { ...prev, position: newPosition } : null);
+    const newPiece = { ...currentPiece, x: newPosition.x, y: newPosition.y };
+    
+    if (isValidPosition(board, newPiece)) {
+      setCurrentPiece(newPiece);
       if (dx !== 0) totalActions.current++;
       return true;
     } else if (dy > 0) {
@@ -200,15 +211,15 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
 
     setIsHardDropping(true);
     
-    const dropPosition = calculateDropPosition(board, currentPiece);
-    const dropDistance = dropPosition.y - currentPiece.position.y;
+    const dropY = calculateDropPosition(board, currentPiece);
+    const dropDistance = dropY - currentPiece.y;
     
     // Add hard drop score
     setScore(prev => prev + dropDistance * 2);
     totalActions.current++;
     
     // Move piece to drop position
-    setCurrentPiece(prev => prev ? { ...prev, position: dropPosition } : null);
+    setCurrentPiece(prev => prev ? { ...prev, y: dropY } : null);
     
     // Lock immediately after hard drop
     setTimeout(() => {
@@ -226,9 +237,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
       board: board.map(row => [...row])
     };
 
-    const rotatedPiece = rotatePiece(currentPiece, 'clockwise');
+    const rotatedType = rotatePiece(currentPiece.type, true);
+    const rotatedPiece = { ...currentPiece, type: rotatedType, rotation: (currentPiece.rotation + 1) % 4 };
     
-    if (isValidPosition(board, rotatedPiece, rotatedPiece.position)) {
+    if (isValidPosition(board, rotatedPiece)) {
       setCurrentPiece(rotatedPiece);
       totalActions.current++;
     } else {
@@ -245,9 +257,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
       board: board.map(row => [...row])
     };
 
-    const rotatedPiece = rotatePiece(currentPiece, 'counterclockwise');
+    const rotatedType = rotatePiece(currentPiece.type, false);
+    const rotatedPiece = { ...currentPiece, type: rotatedType, rotation: (currentPiece.rotation + 3) % 4 };
     
-    if (isValidPosition(board, rotatedPiece, rotatedPiece.position)) {
+    if (isValidPosition(board, rotatedPiece)) {
       setCurrentPiece(rotatedPiece);
       totalActions.current++;
     } else {
@@ -266,7 +279,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
       setHoldPiece(currentPiece);
       setCurrentPiece({
         ...tempPiece,
-        position: { x: 4, y: 0 }
+        x: 4,
+        y: 0
       });
     }
     
@@ -300,7 +314,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     gameStartTime.current = Date.now();
     
     // Reinitialize pieces
-    const initialPieces = Array.from({ length: 7 }, () => generateRandomPiece());
+    const initialPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
     setNextPieces(initialPieces);
     setCurrentPiece(initialPieces[0]);
     setNextPieces(prev => prev.slice(1));
@@ -317,7 +331,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   // Calculate ghost piece
   const ghostPiece = currentPiece ? {
     ...currentPiece,
-    position: calculateDropPosition(board, currentPiece)
+    y: calculateDropPosition(board, currentPiece)
   } : null;
 
   // Game state object for compatibility

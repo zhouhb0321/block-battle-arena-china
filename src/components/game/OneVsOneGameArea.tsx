@@ -1,4 +1,3 @@
-
 import React from 'react';
 import GameBoard from '../GameBoard';
 import NextPiecePreview from '../NextPiecePreview';
@@ -103,7 +102,11 @@ const OneVsOneGameArea: React.FC<OneVsOneGameAreaProps> = ({
               
               {/* 倒计时只在玩家1区域显示 */}
               {showCountdown && (
-                <GameCountdownInArea show={showCountdown} onCountdownEnd={onCountdownEnd} />
+                <GameCountdownInArea
+                  initialCount={3}
+                  onComplete={onCountdownEnd}
+                  isVisible={showCountdown}
+                />
               )}
             </div>
 
@@ -125,7 +128,7 @@ const OneVsOneGameArea: React.FC<OneVsOneGameAreaProps> = ({
               compact={true}
             />
 
-            {/* 玩家2游戏板 */}
+            {/* 玩家 2游戏板 */}
             <div className="relative">
               <GameBoard
                 board={player2State.board}

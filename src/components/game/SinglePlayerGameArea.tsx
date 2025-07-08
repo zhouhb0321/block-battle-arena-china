@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionLogger } from '@/hooks/useSessionLogger';
@@ -79,7 +78,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       {/* Left side: Hold area and Game Info */}
       <div className="flex flex-col gap-4 lg:w-48">
         <HoldPieceDisplay 
-          piece={gameLogic.holdPiece} 
+          holdPiece={gameLogic.holdPiece} 
           canHold={gameLogic.canHold}
         />
         
@@ -89,7 +88,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             score={gameLogic.score}
             lines={gameLogic.lines}
             level={gameLogic.level}
-            time={gameLogic.time}
             pps={gameLogic.pps}
             apm={gameLogic.apm}
             gameMode={gameMode}
@@ -123,7 +121,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
       {/* Right side: Next pieces */}
       <div className="lg:w-48">
-        <NextPiecePreview pieces={gameLogic.nextPieces} />
+        <NextPiecePreview nextPieces={gameLogic.nextPieces} />
       </div>
     </div>
   );
