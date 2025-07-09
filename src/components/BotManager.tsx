@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +21,22 @@ interface BotManagerProps {
   roomId?: string;
   onBotJoin?: (botId: string) => void;
   onBotLeave?: (botId: string) => void;
+}
+
+// Add explicit type for battle participants
+interface BattleParticipant {
+  id: string;
+  room_id: string;
+  user_id: string;
+  username: string;
+  position: number;
+  is_bot?: boolean;
+  status: string;
+  score: number;
+  wins: number;
+  losses: number;
+  joined_at: string;
+  eliminated_at: string | null;
 }
 
 const BotManager: React.FC<BotManagerProps> = ({
@@ -94,11 +109,13 @@ const BotManager: React.FC<BotManagerProps> = ({
     if (!roomId) return;
 
     try {
-      const { data: participants, error } = await supabase
+      // Use a simpler query with explicit typing to avoid deep type instantiation
+      const query = supabase
         .from('battle_participants')
-        .select('*')
-        .eq('room_id', roomId)
-        .eq('is_bot', true);
+        .select('user_id, username, is_bot')
+        .eq('room_id', roomId);
+      
+      const { data: participants, error } = await query;
 
       if (error) {
         console.error('Error loading room bots:', error);
@@ -106,10 +123,13 @@ const BotManager: React.FC<BotManagerProps> = ({
       }
 
       if (participants) {
-        const roomBots = participants.map(p => {
-          const botProfile = defaultBots.find(bot => bot.id === p.user_id);
-          return botProfile ? { ...botProfile, isActive: true } : null;
-        }).filter(Boolean) as BotProfile[];
+        const roomBots = participants
+          .filter((p: any) => p.is_bot === true)
+          .map((p: any) => {
+            const botProfile = defaultBots.find(bot => bot.id === p.user_id);
+            return botProfile ? { ...botProfile, isActive: true } : null;
+          })
+          .filter(Boolean) as BotProfile[];
         
         setActiveBots(roomBots);
       }
