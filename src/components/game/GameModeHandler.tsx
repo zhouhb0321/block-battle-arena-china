@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import GameModeSelector from '../GameModeSelector';
-import GameCountdown from '../GameCountdown';
 import { GAME_MODES, type GameMode } from '@/utils/gameTypes';
 
 interface GameModeHandlerProps {
@@ -16,61 +15,40 @@ export const GameModeHandler: React.FC<GameModeHandlerProps> = ({
   onBackToMenu
 }) => {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
-  const [showModeSelector, setShowModeSelector] = useState(!gameConfig);
-  const [showCountdown, setShowCountdown] = useState(false);
 
-  // Use gameConfig if provided, otherwise show mode selector
+  // 使用配置的游戏模式或显示选择器
   useEffect(() => {
     if (gameConfig && gameConfig.gameMode) {
       console.log('Setting game mode from config:', gameConfig.gameMode);
-      setGameMode(gameConfig.gameMode);
-      setShowModeSelector(false);
-      setShowCountdown(true);
+      const mode = gameConfig.gameMode;
+      setGameMode(mode);
+      // 直接回调，不需要倒计时
+      onModeReady(mode);
     }
-  }, [gameConfig]);
+  }, [gameConfig, onModeReady]);
 
   const handleModeSelect = (mode: GameMode) => {
     console.log('Mode selected:', mode);
     setGameMode(mode);
-    setShowModeSelector(false);
-    setShowCountdown(true);
-  };
-
-  const handleCountdownEnd = () => {
-    console.log('Countdown ended, starting game...');
-    setShowCountdown(false);
-    if (gameMode) {
-      onModeReady(gameMode);
-    }
+    // 直接回调，不需要倒计时
+    onModeReady(mode);
   };
 
   const handleBackToModeSelector = () => {
     console.log('Back to mode selector');
     setGameMode(null);
-    setShowCountdown(false);
-    setShowModeSelector(true);
     onBackToMenu();
   };
 
-  if (showModeSelector) {
-    return (
-      <GameModeSelector
-        onModeSelect={handleModeSelect}
-        onBack={handleBackToModeSelector}
-      />
-    );
+  // 如果已经有配置的模式，不显示选择器
+  if (gameConfig && gameConfig.gameMode) {
+    return null;
   }
 
-  if (showCountdown) {
-    return (
-      <div className="fixed inset-0 z-50">
-        <GameCountdown
-          show={showCountdown}
-          onCountdownEnd={handleCountdownEnd}
-        />
-      </div>
-    );
-  }
-
-  return null;
+  return (
+    <GameModeSelector
+      onModeSelect={handleModeSelect}
+      onBack={handleBackToModeSelector}
+    />
+  );
 };

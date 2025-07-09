@@ -16,12 +16,14 @@ import type { GameMode } from '@/utils/gameTypes';
 
 interface SinglePlayerGameAreaProps {
   gameMode: GameMode;
+  gameStarted?: boolean;
   onGameEnd: (finalStats: any) => void;
   onBackToMenu?: () => void;
 }
 
 const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   gameMode,
+  gameStarted = false,
   onGameEnd,
   onBackToMenu
 }) => {
@@ -29,7 +31,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { logUserSession } = useSessionLogger();
   const { actualTheme } = useTheme();
   const [showCountdown, setShowCountdown] = useState(true);
-  const [gameStarted, setGameStarted] = useState(false);
+  const [gameReallyStarted, setGameReallyStarted] = useState(false);
   const [animationText, setAnimationText] = useState('');
   const [showAnimation, setShowAnimation] = useState(false);
 
@@ -45,7 +47,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       onGameEnd(stats);
     },
     onSpecialClear: (clearType: string, lines: number) => {
-      // Handle special clear animations
       let text = '';
       if (clearType === 'tetris') {
         text = 'TETRIS!';
@@ -66,9 +67,9 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const handleCountdownComplete = () => {
     console.log('Countdown completed, starting game...');
     setShowCountdown(false);
-    setGameStarted(true);
+    setGameReallyStarted(true);
     
-    // 调用游戏逻辑的开始函数
+    // 启动游戏逻辑
     gameLogic.startGame();
     
     if (user && !user.isGuest) {
@@ -84,7 +85,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     setAnimationText('');
   };
 
-  // 获取主题相关的背景色
+  // 当组件挂载且gameStarted为true时，开始倒计时
+  useEffect(() => {
+    if (gameStarted && showCountdown) {
+      console.log('Game area ready, starting countdown...');
+    }
+  }, [gameStarted, showCountdown]);
+
   const getThemeClasses = () => {
     return actualTheme === 'light' 
       ? 'bg-gray-50 text-gray-900' 
@@ -105,7 +112,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
   return (
     <div className={`min-h-screen p-4 ${getThemeClasses()}`}>
-      {/* 返回按钮 */}
       {onBackToMenu && (
         <div className="mb-4">
           <Button
@@ -121,7 +127,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       )}
 
       <div className="flex flex-col lg:flex-row gap-4 items-start justify-center">
-        {/* Left side: Hold area and Game Info */}
         <div className="flex flex-col gap-4 lg:w-48">
           <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
             <HoldPieceDisplay 
@@ -130,7 +135,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             />
           </div>
           
-          {/* Game Info moved below Hold area */}
           <div className="relative">
             <GameInfo 
               username={user?.username || 'Player'}
@@ -140,12 +144,11 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               pps={gameLogic.pps}
               attack={gameLogic.apm}
               paused={gameLogic.isPaused}
-              gameStarted={gameStarted}
+              gameStarted={gameReallyStarted}
               onPause={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
               onShare={() => console.log('Share game')}
             />
             
-            {/* Animation positioned below Hold area */}
             <LineCleanAnimation
               isVisible={showAnimation}
               text={animationText}
@@ -154,7 +157,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           </div>
         </div>
 
-        {/* Center: Game Board */}
         <div className="relative">
           <div className={`p-4 rounded-lg border ${getBoardThemeClasses()}`}>
             <EnhancedGameBoard
@@ -164,15 +166,15 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             />
           </div>
           
-          {/* Countdown overlay */}
-          <GameCountdownInArea
-            initialCount={3}
-            onComplete={handleCountdownComplete}
-            isVisible={showCountdown}
-          />
+          {gameStarted && showCountdown && (
+            <GameCountdownInArea
+              initialCount={3}
+              onComplete={handleCountdownComplete}
+              isVisible={true}
+            />
+          )}
         </div>
 
-        {/* Right side: Next pieces */}
         <div className="lg:w-40">
           <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
             <NextPiecePreview nextPieces={gameLogic.nextPieces} />

@@ -55,24 +55,20 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const dropTimer = useRef<NodeJS.Timeout | null>(null);
   const lastTSpinCheck = useRef<{ piece: GamePiece; board: Board } | null>(null);
 
-  // Helper function to create a GamePiece from TetrominoType - updated to use new function
+  // Helper function to create a GamePiece from TetrominoType
   const createGamePiece = useCallback((pieceType: TetrominoType): GamePiece => {
     return createNewPiece(pieceType);
   }, []);
 
-  // Initialize game pieces
+  // Initialize game pieces - 延迟到游戏开始时调用
   const initializePieces = useCallback(() => {
-    resetSevenBag(); // 重置7-bag系统
+    console.log('Initializing pieces...');
+    resetSevenBag();
     const initialPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
     setNextPieces(initialPieces);
     setCurrentPiece(initialPieces[0]);
     setNextPieces(prev => prev.slice(1));
   }, [createGamePiece]);
-
-  // Initialize game
-  useEffect(() => {
-    initializePieces();
-  }, [initializePieces]);
 
   // Game timer
   useEffect(() => {
@@ -81,7 +77,6 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     const timer = setInterval(() => {
       setTime(prev => prev + 1);
       
-      // Calculate PPS and APM
       const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
       if (elapsedTime > 0) {
         setPps(totalPieces.current / elapsedTime);
@@ -293,12 +288,16 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   }, [currentPiece, holdPiece, canHold, gameOver, isPaused, isHardDropping, spawnNewPiece, gameStarted]);
 
   const startGame = useCallback(() => {
-    console.log('Starting game...');
+    console.log('Starting game logic...');
     setGameStarted(true);
     gameStartTime.current = Date.now();
-  }, []);
+    
+    // 初始化方块
+    initializePieces();
+  }, [initializePieces]);
 
   const resetGame = useCallback(() => {
+    console.log('Resetting game...');
     setBoard(createEmptyBoard());
     setCurrentPiece(null);
     setNextPieces([]);
@@ -317,10 +316,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     totalPieces.current = 0;
     totalActions.current = 0;
     gameStartTime.current = Date.now();
-    
-    // 重新初始化方块
-    initializePieces();
-  }, [initializePieces]);
+  }, []);
 
   const pauseGame = useCallback(() => {
     setIsPaused(true);
@@ -330,13 +326,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     setIsPaused(false);
   }, []);
 
-  // Calculate ghost piece
   const ghostPiece = currentPiece ? {
     ...currentPiece,
     y: calculateDropPosition(board, currentPiece)
   } : null;
 
-  // Game state object for compatibility
   const gameState = {
     board,
     currentPiece,

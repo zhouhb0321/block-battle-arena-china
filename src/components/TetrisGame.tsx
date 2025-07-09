@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -24,8 +25,7 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
   const handleModeReady = (mode: GameMode) => {
     console.log('Game mode ready:', mode);
     setGameMode(mode);
-    // setGameStarted(true); // 不提前开始
-    // gameLogic.startGame(); // 不提前开始
+    setGameStarted(true); // 直接开始游戏
   };
 
   const handleBackToMenu = () => {
@@ -53,7 +53,8 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
     }
   }, [gameStarted]);
 
-  if (!gameMode || !gameStarted) {
+  // 如果还没选择模式，显示模式选择器
+  if (!gameMode) {
     return (
       <GameModeHandler
         gameConfig={gameConfig}
@@ -81,13 +82,13 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       
       <SinglePlayerGameArea
         gameMode={gameMode}
+        gameStarted={gameStarted}
         onGameEnd={(stats) => {
           console.log('Game ended with stats:', stats);
           handleBackToMenu();
         }}
       />
       
-      {/* 简化的失焦覆盖层 - 只有在暂停且游戏进行中时显示 */}
       <OutOfFocusOverlay 
         show={gameLogic.gameState.paused && gameStarted && !gameLogic.gameState.gameOver} 
       />
@@ -96,7 +97,6 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
 };
 
 const TetrisGame: React.FC<TetrisGameProps> = (props) => {
-  // Find the default game mode or use the first one
   const defaultGameMode = GAME_MODES.find(mode => mode.id === 'endless') || GAME_MODES[0];
 
   return (
