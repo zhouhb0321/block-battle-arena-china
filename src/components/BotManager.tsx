@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Users, Settings, Play } from 'lucide-react';
+import { Bot, Users, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -94,11 +94,16 @@ const BotManager: React.FC<BotManagerProps> = ({
     if (!roomId) return;
 
     try {
-      const { data: participants } = await supabase
+      const { data: participants, error } = await supabase
         .from('battle_participants')
         .select('*')
         .eq('room_id', roomId)
         .eq('is_bot', true);
+
+      if (error) {
+        console.error('Error loading room bots:', error);
+        return;
+      }
 
       if (participants) {
         const roomBots = participants.map(p => {

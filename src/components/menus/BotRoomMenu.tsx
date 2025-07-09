@@ -154,7 +154,7 @@ const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
   const handleBackToMenu = () => {
     if (roomStatus === 'room') {
       setRoomStatus('selecting');
-      setCurrentRootId(null);
+      setCurrentRoomId(null);
     } else {
       onBack();
     }
