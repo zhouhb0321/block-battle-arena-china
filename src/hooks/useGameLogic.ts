@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useKeyboardControls } from './useKeyboardControls';
 import { useUserSettings } from './useUserSettings';
@@ -69,40 +70,6 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     setCurrentPiece(initialPieces[0]);
     setNextPieces(prev => prev.slice(1));
   }, [createGamePiece]);
-
-  // Game timer
-  useEffect(() => {
-    if (gameOver || isPaused || !isWindowFocused || !gameStarted) return;
-
-    const timer = setInterval(() => {
-      setTime(prev => prev + 1);
-      
-      const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
-      if (elapsedTime > 0) {
-        setPps(totalPieces.current / elapsedTime);
-        setApm((totalActions.current / elapsedTime) * 60);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [gameOver, isPaused, isWindowFocused, gameStarted]);
-
-  // Auto drop logic
-  useEffect(() => {
-    if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
-
-    const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
-    
-    dropTimer.current = setTimeout(() => {
-      movePiece(0, 1);
-    }, dropInterval);
-
-    return () => {
-      if (dropTimer.current) {
-        clearTimeout(dropTimer.current);
-      }
-    };
-  }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted, movePiece]);
 
   const spawnNewPiece = useCallback(() => {
     if (nextPieces.length === 0) return;
@@ -183,6 +150,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     spawnNewPiece();
   }, [currentPiece, board, lines, level, spawnNewPiece, onSpecialClear]);
 
+  // Define movePiece before using it in useEffect
   const movePiece = useCallback((dx: number, dy: number) => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return false;
 
@@ -204,6 +172,40 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     }
     return false;
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, lockPiece, gameStarted]);
+
+  // Game timer
+  useEffect(() => {
+    if (gameOver || isPaused || !isWindowFocused || !gameStarted) return;
+
+    const timer = setInterval(() => {
+      setTime(prev => prev + 1);
+      
+      const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
+      if (elapsedTime > 0) {
+        setPps(totalPieces.current / elapsedTime);
+        setApm((totalActions.current / elapsedTime) * 60);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameOver, isPaused, isWindowFocused, gameStarted]);
+
+  // Auto drop logic
+  useEffect(() => {
+    if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
+
+    const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+    
+    dropTimer.current = setTimeout(() => {
+      movePiece(0, 1);
+    }, dropInterval);
+
+    return () => {
+      if (dropTimer.current) {
+        clearTimeout(dropTimer.current);
+      }
+    };
+  }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted, movePiece]);
 
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;

@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Bot } from 'lucide-react';
 import BattleRoomManager from '@/components/BattleRoomManager';
+import BotRoomMenu from '@/components/menus/BotRoomMenu';
 import { useBattleWebSocket } from '@/hooks/useBattleWebSocket';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -13,7 +14,7 @@ interface MultiPlayerMenuProps {
 }
 
 const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onGameStart, onBack }) => {
-  const [view, setView] = useState<'modes' | 'rooms' | 'battle'>('modes');
+  const [view, setView] = useState<'modes' | 'rooms' | 'battle' | 'botRoom'>('modes');
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const { connect, isConnected, lastMessage } = useBattleWebSocket();
   const { t } = useLanguage();
@@ -42,6 +43,14 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onGameStart, onBack }
       icon: '🏠',
       color: 'bg-game-blue hover:bg-game-blue/80',
       action: () => setView('rooms')
+    },
+    {
+      id: 'botRoom',
+      title: 'Bot房间',
+      description: '与AI机器人对战练习',
+      icon: '🤖',
+      color: 'bg-red-500 hover:bg-red-600',
+      action: () => setView('botRoom')
     }
   ];
 
@@ -58,6 +67,14 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onGameStart, onBack }
 
   const renderView = () => {
     switch (view) {
+      case 'botRoom':
+        return (
+          <BotRoomMenu
+            onGameStart={onGameStart}
+            onBack={handleBackToModes}
+          />
+        );
+
       case 'rooms':
         return (
           <div>
@@ -108,7 +125,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onGameStart, onBack }
 
       default:
         return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {multiPlayerModes.map((mode) => (
               <Card key={mode.id} className="cursor-pointer hover:shadow-lg transition-shadow">
                 <CardHeader className="text-center">
@@ -121,7 +138,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onGameStart, onBack }
                     className={`w-full text-white ${mode.color}`}
                     onClick={mode.action}
                   >
-                    {t('multiplayer.enter_game')}
+                    {mode.id === 'botRoom' ? '进入Bot房间' : t('multiplayer.enter_game')}
                   </Button>
                 </CardContent>
               </Card>
@@ -130,6 +147,10 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onGameStart, onBack }
         );
     }
   };
+
+  if (view === 'botRoom') {
+    return renderView();
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -152,6 +173,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onGameStart, onBack }
             <li>• <strong>{t('multiplayer.quick_game')}</strong>: Join or leave anytime, challenge higher-level players</li>
             <li>• <strong>{t('multiplayer.league')}</strong>: Official matches, best of 5, affects league score</li>
             <li>• <strong>{t('multiplayer.custom_room')}</strong>: Supports practice mode (with undo) and battle mode</li>
+            <li>• <strong>Bot房间</strong>: 与AI机器人对战，提升技巧的最佳选择</li>
           </ul>
         </div>
       )}
