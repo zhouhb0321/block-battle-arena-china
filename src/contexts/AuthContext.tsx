@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -39,7 +40,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // 加载用户配置文件 - 使用延迟执行避免认证死锁
   const loadUserProfile = async (userId: string) => {
     try {
-      debugLog.auth('Loading user profile', { userId: '[REDACTED]' });
+      debugLog.auth('加载用户档案，用户ID: [REDACTED]');
       
       const { data: profile, error } = await supabase
         .from('user_profiles')
@@ -48,27 +49,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .single();
 
       if (error) {
-        debugLog.error('Error loading user profile', error);
+        debugLog.error('用户档案加载错误', error);
         return null;
       }
 
-      debugLog.auth('User profile loaded successfully');
+      debugLog.auth('用户档案加载成功', profile);
       return profile;
     } catch (error) {
-      debugLog.error('Exception loading user profile', error);
+      debugLog.error('用户档案加载异常', error);
       return null;
     }
   };
 
   useEffect(() => {
-    debugLog.auth('AuthProvider initializing...');
+    debugLog.auth('初始化认证状态...');
     
     // 获取当前会话
     supabase.auth.getSession().then(({ data: { session } }) => {
-      debugLog.auth('Initial session check', { hasSession: !!session });
-      setSession(session);
-      
       if (session?.user) {
+        debugLog.auth('找到有效会话，加载用户档案');
+        setSession(session);
+        
         // 延迟执行用户配置文件加载，避免认证死锁
         setTimeout(async () => {
           const profile = await loadUserProfile(session.user.id);
@@ -80,14 +81,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setLoading(false);
         }, 0);
       } else {
+        debugLog.auth('无有效会话');
         setUser(null);
+        setSession(null);
         setLoading(false);
       }
     });
 
     // 监听认证状态变化 - 移除异步操作防止死锁
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      debugLog.auth('Auth state changed', { event, hasSession: !!session });
+      debugLog.auth('认证状态变化', { event, hasSession: !!session });
       
       // 同步更新会话状态
       setSession(session);
@@ -95,12 +98,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (session?.user) {
         // 延迟执行数据库查询，避免认证状态更新死锁
         setTimeout(async () => {
-          const profile = await loadUserProfile(session.user.id);
-          setUser({
-            ...session.user,
-            profile: profile || undefined,
-            username: profile?.username || session.user.email?.split('@')[0] || 'User'
-          });
+          try {
+            const profile = await loadUserProfile(session.user.id);
+            setUser({
+              ...session.user,
+              profile: profile || undefined,
+              username: profile?.username || session.user.email?.split('@')[0] || 'User'
+            });
+          } catch (error) {
+            debugLog.error('延迟加载用户档案失败', error);
+            setUser({
+              ...session.user,
+              username: session.user.email?.split('@')[0] || 'User'
+            });
+          }
         }, 0);
       } else {
         setUser(null);
@@ -117,7 +128,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = async (email: string, password: string, username: string) => {
     try {
-      debugLog.auth('Attempting sign up', { email: '[REDACTED]', username });
+      debugLog.auth('尝试注册', { email: '[REDACTED]', username });
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -130,40 +141,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (error) {
-        debugLog.error('Sign up error', error);
+        debugLog.error('注册错误', error);
         return { error };
       }
 
-      if (data.user) {
-        // 创建用户配置文件
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert([
-            {
-              id: data.user.id,
-              email: email,
-              username: username,
-            }
-          ]);
-
-        if (profileError) {
-          debugLog.error('Error creating user profile', profileError);
-        } else {
-          debugLog.auth('User profile created successfully');
-        }
-      }
-
-      debugLog.auth('Sign up successful');
+      debugLog.auth('注册成功');
       return { error: null };
     } catch (error) {
-      debugLog.error('Sign up exception', error);
+      debugLog.error('注册异常', error);
       return { error };
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      debugLog.auth('Attempting sign in', { email: '[REDACTED]' });
+      debugLog.auth('尝试登录', { email: '[REDACTED]' });
       
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -171,38 +163,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (error) {
-        debugLog.error('Sign in error', error);
+        debugLog.error('登录错误', error);
         return { error };
       }
 
-      debugLog.auth('Sign in successful');
+      debugLog.auth('登录成功');
       return { error: null };
     } catch (error) {
-      debugLog.error('Sign in exception', error);
+      debugLog.error('登录异常', error);
       return { error };
     }
   };
 
   const signOut = async () => {
     try {
-      debugLog.auth('Signing out...');
+      debugLog.auth('注销中...');
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
-      debugLog.auth('Sign out successful');
+      debugLog.auth('注销成功');
     } catch (error) {
-      debugLog.error('Sign out error', error);
+      debugLog.error('注销错误', error);
     }
   };
 
   const playAsGuest = () => {
-    debugLog.auth('Playing as guest');
+    debugLog.auth('以访客身份游戏');
     setUser({
       id: 'guest-' + Date.now(),
       email: 'guest@example.com',
       isGuest: true,
       username: 'Guest',
-    } as any);
+      aud: 'authenticated',
+      role: 'authenticated',
+      email_confirmed_at: null,
+      phone: '',
+      confirmation_sent_at: null,
+      confirmed_at: null,
+      last_sign_in_at: null,
+      app_metadata: {},
+      user_metadata: {},
+      identities: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_anonymous: false
+    });
     setLoading(false);
   };
 
@@ -212,7 +217,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     try {
-      debugLog.auth('Updating user profile', { updates });
+      debugLog.auth('更新用户档案', { updates });
       
       const { error } = await supabase
         .from('user_profiles')
@@ -220,7 +225,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .eq('id', user.id);
 
       if (error) {
-        debugLog.error('Error updating profile', error);
+        debugLog.error('更新档案错误', error);
         return { error };
       }
 
@@ -234,10 +239,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
       }
 
-      debugLog.auth('Profile updated successfully');
+      debugLog.auth('档案更新成功');
       return { error: null };
     } catch (error) {
-      debugLog.error('Update profile exception', error);
+      debugLog.error('更新档案异常', error);
       return { error };
     }
   };
