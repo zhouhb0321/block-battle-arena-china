@@ -1,322 +1,23 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { User, Session } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
+import { debugLog } from '@/utils/debugLogger';
 
-type User = {
-  id: string;
-  username: string;
-  email: string;
-  isGuest: boolean;
-  isPremium: boolean;
-  rating: number;
-  avatar: string | null;
-  isAdmin?: boolean;
-};
+type UserProfile = Database['public']['Tables']['user_profiles']['Row'];
 
-type AuthContextType = {
-  user: User | null;
-  isAuthenticated: boolean;
+interface AuthContextType {
+  user: (User & { profile?: UserProfile; isGuest?: boolean; username?: string }) | null;
+  session: Session | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<any>;
-  register: (email: string, password: string, username: string) => Promise<any>;
-  logout: () => Promise<void>;
-  loginAsGuest: () => Promise<void>;
-  logUserSession: (sessionType: string, gameMode?: string, additionalData?: any) => Promise<void>;
-};
+  signUp: (email: string, password: string, username: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
+  playAsGuest: () => void;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const logUserSession = async (sessionType: string, gameMode?: string, additionalData?: any) => {
-    if (!user || user.isGuest) return;
-
-    try {
-      const sessionData = {
-        user_agent: navigator.userAgent,
-        timestamp: new Date().toISOString(),
-        ...additionalData
-      };
-
-      await supabase
-        .from('user_session_logs')
-        .insert({
-          user_id: user.id,
-          username: user.username,
-          session_type: sessionType,
-          game_mode: gameMode || null,
-          session_data: sessionData,
-          ip_address: null,
-          user_agent: navigator.userAgent
-        });
-
-      console.log(`User session logged: ${sessionType} for ${user.username}`);
-    } catch (error) {
-      console.error('Failed to log user session:', error);
-    }
-  };
-
-  // Optimized login status check
-  useEffect(() => {
-    let mounted = true;
-    
-    const initializeAuth = async () => {
-      try {
-        console.log('初始化认证状态...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (mounted) {
-          if (session?.user && !error) {
-            console.log('找到有效会话，加载用户档案');
-            await loadUserProfile(session.user.id);
-          } else {
-            console.log('无有效会话');
-            setLoading(false);
-          }
-        }
-      } catch (error) {
-        console.error('初始化认证失败:', error);
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-        
-        console.log('认证状态变化:', event, session?.user?.id);
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          await loadUserProfile(session.user.id);
-          // Log login session
-          if (session.user.email) {
-            await logUserSession('login');
-          }
-        } else if (event === 'SIGNED_OUT') {
-          console.log('用户已登出');
-          // Log logout session before clearing user
-          if (user && !user.isGuest) {
-            await logUserSession('logout');
-          }
-          setUser(null);
-          setIsAuthenticated(false);
-          setLoading(false);
-        }
-      }
-    );
-
-    return () => {
-      console.log('清理认证监听器');
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const loadUserProfile = async (userId: string) => {
-    try {
-      console.log('加载用户档案，用户ID:', userId);
-      const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('加载用户档案失败:', error);
-        // 获取认证用户信息作为备用
-        const { data: authUser } = await supabase.auth.getUser();
-        if (authUser.user) {
-          console.log('使用认证用户信息创建临时档案');
-          const tempProfile = {
-            id: authUser.user.id,
-            username: authUser.user.email?.split('@')[0] || 'Player',
-            email: authUser.user.email || '',
-            isGuest: false,
-            isPremium: false,
-            rating: 1000,
-            avatar: null,
-            isAdmin: authUser.user.email === 'admin@tetris.com'
-          };
-          setUser(tempProfile);
-          setIsAuthenticated(true);
-        }
-      } else if (profile) {
-        console.log('用户档案加载成功:', profile);
-        const userData: User = {
-          id: profile.id,
-          username: profile.username,
-          email: profile.email,
-          isGuest: false,
-          isPremium: profile.user_type === 'premium',
-          rating: profile.rating,
-          avatar: profile.avatar_url,
-          isAdmin: profile.email === 'admin@tetris.com'
-        };
-        setUser(userData);
-        setIsAuthenticated(true);
-      } else {
-        console.log('用户档案不存在，使用认证信息');
-        const { data: authUser } = await supabase.auth.getUser();
-        if (authUser.user) {
-          const tempProfile = {
-            id: authUser.user.id,
-            username: authUser.user.email?.split('@')[0] || 'Player',
-            email: authUser.user.email || '',
-            isGuest: false,
-            isPremium: false,
-            rating: 1000,
-            avatar: null,
-            isAdmin: authUser.user.email === 'admin@tetris.com'
-          };
-          setUser(tempProfile);
-          setIsAuthenticated(true);
-        }
-      }
-    } catch (error) {
-      console.error('加载用户档案时出错:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      console.log('尝试登录，邮箱:', email);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password
-      });
-
-      if (error) {
-        console.error('登录失败:', error);
-        throw new Error(error.message);
-      }
-
-      if (data.user) {
-        console.log('登录成功，用户ID:', data.user.id);
-        await loadUserProfile(data.user.id);
-        return data;
-      }
-    } catch (error) {
-      console.error('登录过程出错:', error);
-      setLoading(false);
-      throw error;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      setLoading(true);
-      console.log('尝试登出...');
-      
-      // Log logout session before signing out
-      if (user && !user.isGuest) {
-        await logUserSession('logout');
-      }
-      
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error('登出失败:', error);
-        throw error;
-      }
-      
-      console.log('登出成功');
-      setUser(null);
-      setIsAuthenticated(false);
-      toast.success('已成功退出登录');
-    } catch (error) {
-      console.error('登出过程出错:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (email: string, password: string, username: string) => {
-    try {
-      setLoading(true);
-      console.log('尝试注册，邮箱:', email, '用户名:', username);
-      
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            username: username.trim(),
-          },
-          emailRedirectTo: `${window.location.origin}/`
-        },
-      });
-  
-      if (error) {
-        console.error('注册失败:', error);
-        throw new Error(error.message);
-      }
-  
-      if (data.user) {
-        console.log('注册成功，用户ID:', data.user.id);
-        return data;
-      }
-    } catch (error) {
-      console.error('注册过程出错:', error);
-      setLoading(false);
-      throw error;
-    }
-  };
-
-  const loginAsGuest = async () => {
-    try {
-      setLoading(true);
-      console.log('尝试游客登录...');
-      
-      const guestId = 'guest_' + Math.random().toString(36).substring(2, 15);
-      const guestUsername = 'Guest-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-      
-      const guestUser: User = {
-        id: guestId,
-        username: guestUsername,
-        email: '',
-        isGuest: true,
-        isPremium: false,
-        rating: 1000,
-        avatar: null
-      };
-      
-      console.log('游客用户已创建:', guestUser);
-      setUser(guestUser);
-      setIsAuthenticated(true);
-      toast.success(`欢迎，${guestUsername}！以游客身份登录`);
-    } catch (error) {
-      console.error('游客登录失败:', error);
-      toast.error('游客登录失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const value: AuthContextType = {
-    user,
-    isAuthenticated,
-    loading,
-    login,
-    register,
-    logout,
-    loginAsGuest,
-    logUserSession
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -324,4 +25,237 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<(User & { profile?: UserProfile; isGuest?: boolean; username?: string }) | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // 加载用户配置文件 - 使用延迟执行避免认证死锁
+  const loadUserProfile = async (userId: string) => {
+    try {
+      debugLog.auth('Loading user profile', { userId: '[REDACTED]' });
+      
+      const { data: profile, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        debugLog.error('Error loading user profile', error);
+        return null;
+      }
+
+      debugLog.auth('User profile loaded successfully');
+      return profile;
+    } catch (error) {
+      debugLog.error('Exception loading user profile', error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    debugLog.auth('AuthProvider initializing...');
+    
+    // 获取当前会话
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      debugLog.auth('Initial session check', { hasSession: !!session });
+      setSession(session);
+      
+      if (session?.user) {
+        // 延迟执行用户配置文件加载，避免认证死锁
+        setTimeout(async () => {
+          const profile = await loadUserProfile(session.user.id);
+          setUser({
+            ...session.user,
+            profile: profile || undefined,
+            username: profile?.username || session.user.email?.split('@')[0] || 'User'
+          });
+          setLoading(false);
+        }, 0);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    // 监听认证状态变化 - 移除异步操作防止死锁
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      debugLog.auth('Auth state changed', { event, hasSession: !!session });
+      
+      // 同步更新会话状态
+      setSession(session);
+      
+      if (session?.user) {
+        // 延迟执行数据库查询，避免认证状态更新死锁
+        setTimeout(async () => {
+          const profile = await loadUserProfile(session.user.id);
+          setUser({
+            ...session.user,
+            profile: profile || undefined,
+            username: profile?.username || session.user.email?.split('@')[0] || 'User'
+          });
+        }, 0);
+      } else {
+        setUser(null);
+      }
+      
+      // 认证状态变化时，loading状态应该立即更新
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const signUp = async (email: string, password: string, username: string) => {
+    try {
+      debugLog.auth('Attempting sign up', { email: '[REDACTED]', username });
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+          }
+        }
+      });
+
+      if (error) {
+        debugLog.error('Sign up error', error);
+        return { error };
+      }
+
+      if (data.user) {
+        // 创建用户配置文件
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert([
+            {
+              id: data.user.id,
+              email: email,
+              username: username,
+            }
+          ]);
+
+        if (profileError) {
+          debugLog.error('Error creating user profile', profileError);
+        } else {
+          debugLog.auth('User profile created successfully');
+        }
+      }
+
+      debugLog.auth('Sign up successful');
+      return { error: null };
+    } catch (error) {
+      debugLog.error('Sign up exception', error);
+      return { error };
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      debugLog.auth('Attempting sign in', { email: '[REDACTED]' });
+      
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        debugLog.error('Sign in error', error);
+        return { error };
+      }
+
+      debugLog.auth('Sign in successful');
+      return { error: null };
+    } catch (error) {
+      debugLog.error('Sign in exception', error);
+      return { error };
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      debugLog.auth('Signing out...');
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      debugLog.auth('Sign out successful');
+    } catch (error) {
+      debugLog.error('Sign out error', error);
+    }
+  };
+
+  const playAsGuest = () => {
+    debugLog.auth('Playing as guest');
+    setUser({
+      id: 'guest-' + Date.now(),
+      email: 'guest@example.com',
+      isGuest: true,
+      username: 'Guest',
+    } as any);
+    setLoading(false);
+  };
+
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user || user.isGuest) {
+      return { error: new Error('No authenticated user') };
+    }
+
+    try {
+      debugLog.auth('Updating user profile', { updates });
+      
+      const { error } = await supabase
+        .from('user_profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) {
+        debugLog.error('Error updating profile', error);
+        return { error };
+      }
+
+      // 重新加载用户配置文件
+      const profile = await loadUserProfile(user.id);
+      if (profile) {
+        setUser({
+          ...user,
+          profile,
+          username: profile.username
+        });
+      }
+
+      debugLog.auth('Profile updated successfully');
+      return { error: null };
+    } catch (error) {
+      debugLog.error('Update profile exception', error);
+      return { error };
+    }
+  };
+
+  const value = {
+    user,
+    session,
+    loading,
+    signUp,
+    signIn,
+    signOut,
+    playAsGuest,
+    updateProfile,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };

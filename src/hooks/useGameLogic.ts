@@ -1,8 +1,8 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useKeyboardControls } from './useKeyboardControls';
 import { useUserSettings } from './useUserSettings';
 import { useWindowFocus } from './useWindowFocus';
+import { debugLog } from '@/utils/debugLogger';
 import { 
   createEmptyBoard, 
   rotatePiece, 
@@ -46,6 +46,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const [apm, setApm] = useState(0);
   const [isHardDropping, setIsHardDropping] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [gameInitialized, setGameInitialized] = useState(false);
 
   const { settings } = useUserSettings();
   const isWindowFocused = useWindowFocus();
@@ -61,25 +62,37 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     return createNewPiece(pieceType);
   }, []);
 
-  // Initialize game pieces - 延迟到游戏开始时调用
+  // 立即初始化方块队列 - 在倒计时开始时调用
   const initializePieces = useCallback(() => {
-    console.log('Initializing pieces...');
+    debugLog.game('Initializing pieces for countdown start');
     resetSevenBag();
-    const initialPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
-    setNextPieces(initialPieces);
-    setCurrentPiece(initialPieces[0]);
-    setNextPieces(prev => prev.slice(1));
+    
+    // 生成7个方块：1个当前方块 + 6个NEXT方块
+    const allPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
+    
+    setCurrentPiece(allPieces[0]);
+    setNextPieces(allPieces.slice(1));
+    setGameInitialized(true);
+    
+    debugLog.game('Pieces initialized', {
+      currentPiece: allPieces[0].type.type,
+      nextPieces: allPieces.slice(1).map(p => p.type.type)
+    });
   }, [createGamePiece]);
 
   const spawnNewPiece = useCallback(() => {
-    if (nextPieces.length === 0) return;
+    if (nextPieces.length === 0) {
+      debugLog.warn('No next pieces available for spawning');
+      return;
+    }
 
     const newPiece = nextPieces[0];
     const newNextPieces = nextPieces.slice(1);
     
-    // 如果下一个方块队列少于3个，添加更多方块
-    if (newNextPieces.length < 3) {
-      newNextPieces.push(...Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece())));
+    // 如果下一个方块队列少于4个，添加更多方块
+    if (newNextPieces.length < 4) {
+      const additionalPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
+      newNextPieces.push(...additionalPieces);
     }
 
     setCurrentPiece(newPiece);
@@ -87,8 +100,14 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     setCanHold(true);
     totalPieces.current++;
 
+    debugLog.game('New piece spawned', {
+      piece: newPiece.type.type,
+      totalPieces: totalPieces.current
+    });
+
     // Check for game over
     if (!isValidPosition(board, newPiece)) {
+      debugLog.game('Game over - no valid position for new piece');
       setGameOver(true);
       onGameEnd({
         score,
@@ -104,6 +123,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
 
   const lockPiece = useCallback(() => {
     if (!currentPiece) return;
+
+    debugLog.game('Locking piece', { piece: currentPiece.type.type });
 
     const newBoard = placePiece(board, currentPiece);
 
@@ -136,6 +157,14 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
       setLines(newLines);
       setLevel(newLevel);
       setScore(prev => prev + lineScore);
+      
+      debugLog.game('Lines cleared', {
+        linesCleared,
+        clearType,
+        newLines,
+        newLevel,
+        lineScore
+      });
       
       // Trigger special clear animation
       if (onSpecialClear && (clearType || linesCleared >= 4)) {
@@ -190,11 +219,13 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     return () => clearInterval(timer);
   }, [gameOver, isPaused, isWindowFocused, gameStarted]);
 
-  // Auto drop logic
+  // Auto drop logic - 只有在游戏真正开始后才激活
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
 
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+    
+    debugLog.debug('Setting drop timer', { dropInterval, level });
     
     dropTimer.current = setTimeout(() => {
       movePiece(0, 1);
@@ -290,16 +321,24 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   }, [currentPiece, holdPiece, canHold, gameOver, isPaused, isHardDropping, spawnNewPiece, gameStarted]);
 
   const startGame = useCallback(() => {
-    console.log('Starting game logic...');
+    debugLog.game('Starting game logic...');
     setGameStarted(true);
     gameStartTime.current = Date.now();
     
-    // 初始化方块
+    // 如果还没有初始化方块，现在初始化
+    if (!gameInitialized) {
+      initializePieces();
+    }
+  }, [initializePieces, gameInitialized]);
+
+  // 倒计时开始时就初始化方块 - 新增的函数
+  const initializeForCountdown = useCallback(() => {
+    debugLog.game('Initializing for countdown start');
     initializePieces();
   }, [initializePieces]);
 
   const resetGame = useCallback(() => {
-    console.log('Resetting game...');
+    debugLog.game('Resetting game...');
     setBoard(createEmptyBoard());
     setCurrentPiece(null);
     setNextPieces([]);
@@ -315,6 +354,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     setApm(0);
     setIsHardDropping(false);
     setGameStarted(false);
+    setGameInitialized(false);
     totalPieces.current = 0;
     totalActions.current = 0;
     gameStartTime.current = Date.now();
@@ -367,6 +407,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     ghostPiece,
     isHardDropping,
     gameState,
+    gameInitialized,
     // Action methods
     startGame,
     resetGame,
@@ -380,6 +421,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     holdCurrentPiece,
     spawnNewPiece,
     lockPiece,
+    initializeForCountdown, // 新增：倒计时开始时初始化
     // Placeholder methods for compatibility
     undoMove: () => {},
     redoMove: () => {},
