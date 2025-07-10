@@ -49,6 +49,9 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
     gameMode,
     onGameEnd: (stats) => {
       console.log('Game ended:', stats);
+    },
+    onSpecialClear: (clearType: string, lines: number) => {
+      console.log('Special clear:', clearType, lines);
     }
   });
 

@@ -219,7 +219,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     return () => clearInterval(timer);
   }, [gameOver, isPaused, isWindowFocused, gameStarted]);
 
-  // Auto drop logic - 只有在游戏真正开始后才激活
+  // Auto drop logic - 修复自动下落
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
 
@@ -228,6 +228,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     debugLog.debug('Setting drop timer', { dropInterval, level });
     
     dropTimer.current = setTimeout(() => {
+      debugLog.debug('Auto drop triggered');
       movePiece(0, 1);
     }, dropInterval);
 

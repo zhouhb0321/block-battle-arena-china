@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionLogger } from '@/hooks/useSessionLogger';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -8,11 +8,10 @@ import GameCountdownInArea from '@/components/GameCountdownInArea';
 import EnhancedGameBoard from '@/components/EnhancedGameBoard';
 import HoldPieceDisplay from '@/components/HoldPieceDisplay';
 import NextPiecePreview from '@/components/NextPiecePreview';
-import GameInfo from '@/components/GameInfo';
 import LineCleanAnimation from '@/components/LineCleanAnimation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import { useGameLogic } from '@/hooks/useGameLogic';
+import { ArrowLeft, Pause, Play } from 'lucide-react';
+import { useTetrisGame } from './TetrisGameProvider';
 import type { GameMode } from '@/utils/gameTypes';
 
 interface SinglePlayerGameAreaProps {
@@ -31,40 +30,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { user } = useAuth();
   const { logUserSession } = useSessionLogger();
   const { actualTheme } = useTheme();
+  const { gameLogic, gameSettings } = useTetrisGame();
+  
   const [showCountdown, setShowCountdown] = useState(true);
   const [gameReallyStarted, setGameReallyStarted] = useState(false);
   const [animationText, setAnimationText] = useState('');
   const [showAnimation, setShowAnimation] = useState(false);
-
-  const gameLogic = useGameLogic({
-    gameMode,
-    onGameEnd: (stats) => {
-      debugLog.game('Game ended', { stats, gameMode: gameMode.id });
-      if (user && !user.isGuest) {
-        logUserSession('game_end', gameMode.id, { 
-          finalStats: stats,
-          gameMode: gameMode.id
-        });
-      }
-      onGameEnd(stats);
-    },
-    onSpecialClear: (clearType: string, lines: number) => {
-      let text = '';
-      if (clearType === 'tetris') {
-        text = 'TETRIS!';
-      } else if (clearType.includes('tspin')) {
-        text = clearType.includes('triple') ? 'T-SPIN TRIPLE!' : 
-               clearType.includes('double') ? 'T-SPIN DOUBLE!' : 'T-SPIN!';
-      } else if (lines >= 4) {
-        text = 'TETRIS!';
-      }
-      
-      if (text) {
-        setAnimationText(text);
-        setShowAnimation(true);
-      }
-    }
-  });
+  const gameContainerRef = useRef<HTMLDivElement>(null);
 
   const handleCountdownComplete = () => {
     debugLog.game('Countdown completed, starting game...');
@@ -80,6 +52,11 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         startTime: new Date().toISOString()
       });
     }
+
+    // 确保游戏容器获得焦点以接收键盘事件
+    if (gameContainerRef.current) {
+      gameContainerRef.current.focus();
+    }
   };
 
   const handleAnimationComplete = () => {
@@ -94,6 +71,39 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       gameLogic.initializeForCountdown();
     }
   }, [gameStarted, showCountdown, gameLogic]);
+
+  // 确保游戏容器在游戏开始后保持焦点
+  useEffect(() => {
+    if (gameReallyStarted && gameContainerRef.current) {
+      gameContainerRef.current.focus();
+    }
+  }, [gameReallyStarted]);
+
+  // 处理游戏结束
+  useEffect(() => {
+    if (gameLogic.gameOver) {
+      const finalStats = {
+        score: gameLogic.score,
+        lines: gameLogic.lines,
+        level: gameLogic.level,
+        time: gameLogic.time,
+        pps: gameLogic.pps,
+        apm: gameLogic.apm,
+        gameMode: gameMode.id
+      };
+      
+      debugLog.game('Game ended', { stats: finalStats, gameMode: gameMode.id });
+      
+      if (user && !user.isGuest) {
+        logUserSession('game_end', gameMode.id, { 
+          finalStats,
+          gameMode: gameMode.id
+        });
+      }
+      
+      onGameEnd(finalStats);
+    }
+  }, [gameLogic.gameOver, gameLogic.score, gameLogic.lines, gameLogic.level, gameLogic.time, gameLogic.pps, gameLogic.apm, gameMode.id, user, logUserSession, onGameEnd]);
 
   const getThemeClasses = () => {
     return actualTheme === 'light' 
@@ -113,21 +123,44 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       : 'bg-gray-900 border-gray-700';
   };
 
+  const currentTime = Date.now();
+  const elapsedTime = gameLogic.time;
+
   return (
-    <div className={`min-h-screen p-4 ${getThemeClasses()}`}>
-      {/* 返回菜单按钮 - 放在顶部 */}
+    <div 
+      ref={gameContainerRef}
+      className={`min-h-screen p-4 ${getThemeClasses()}`}
+      tabIndex={0}
+      style={{ outline: 'none' }}
+    >
+      {/* 顶部控制栏 */}
       <div className="mb-4 flex justify-between items-center">
-        {onBackToMenu && (
-          <Button
-            onClick={onBackToMenu}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            返回菜单
-          </Button>
-        )}
+        <div className="flex items-center gap-4">
+          {onBackToMenu && (
+            <Button
+              onClick={onBackToMenu}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              返回菜单
+            </Button>
+          )}
+          
+          {gameReallyStarted && (
+            <Button
+              onClick={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+              disabled={gameLogic.gameOver}
+            >
+              {gameLogic.isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+              {gameLogic.isPaused ? '继续' : '暂停'}
+            </Button>
+          )}
+        </div>
         
         {/* 游戏模式信息 */}
         <div className="text-lg font-semibold">
@@ -135,7 +168,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         </div>
       </div>
 
-      {/* 游戏区域 - 重新布局 */}
+      {/* 游戏区域 - 重新设计布局 */}
       <div className="flex flex-col lg:flex-row gap-6 items-start justify-center">
         {/* 左侧面板 - Hold区域 */}
         <div className="flex flex-col gap-4 lg:w-48">
@@ -148,19 +181,45 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           
           {/* 游戏信息面板 - 与游戏板底部对齐 */}
           <div className="flex-1 flex flex-col justify-end">
-            <div className="relative">
-              <GameInfo 
-                username={user?.username || 'Player'}
-                score={gameLogic.score}
-                lines={gameLogic.lines}
-                level={gameLogic.level}
-                pps={gameLogic.pps}
-                attack={gameLogic.apm}
-                paused={gameLogic.isPaused}
-                gameStarted={gameReallyStarted}
-                onPause={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
-                onShare={() => debugLog.info('Share game functionality')}
-              />
+            <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
+              <div className="space-y-3">
+                <div className="text-center border-b pb-2 mb-3">
+                  <div className="font-bold text-lg">
+                    {user?.username || user?.email?.split('@')[0] || 'Player'}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>得分:</div>
+                  <div className="font-mono text-right">{gameLogic.score.toLocaleString()}</div>
+                  
+                  <div>行数:</div>
+                  <div className="font-mono text-right">{gameLogic.lines}</div>
+                  
+                  <div>等级:</div>
+                  <div className="font-mono text-right">{gameLogic.level}</div>
+                  
+                  <div>PPS:</div>
+                  <div className="font-mono text-right">{gameLogic.pps.toFixed(2)}</div>
+                  
+                  <div>攻击:</div>
+                  <div className="font-mono text-right">{gameLogic.apm.toFixed(1)}</div>
+                  
+                  <div>时间:</div>
+                  <div className="font-mono text-right">
+                    {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
+                  </div>
+                </div>
+
+                {gameLogic.isPaused && (
+                  <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <Pause className="w-8 h-8 mx-auto mb-2" />
+                      <div className="text-sm">游戏暂停</div>
+                    </div>
+                  </div>
+                )}
+              </div>
               
               <LineCleanAnimation
                 isVisible={showAnimation}
@@ -198,6 +257,19 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               nextPieces={gameLogic.nextPieces} 
               compact={false}
             />
+          </div>
+          
+          {/* 操作提示 */}
+          <div className={`mt-4 p-3 rounded-lg border ${getPanelThemeClasses()}`}>
+            <h3 className="text-sm font-bold mb-2 text-center">操作提示</h3>
+            <div className="text-xs space-y-1">
+              <div>← → 移动</div>
+              <div>↓ 软降</div>
+              <div>空格 硬降</div>
+              <div>↑ 旋转</div>
+              <div>C 暂存</div>
+              <div>P 暂停</div>
+            </div>
           </div>
         </div>
       </div>

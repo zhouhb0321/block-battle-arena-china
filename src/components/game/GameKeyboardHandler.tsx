@@ -2,6 +2,7 @@
 import React, { useEffect, useCallback } from 'react';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useTetrisGame } from './TetrisGameProvider';
+import { debugLog } from '@/utils/debugLogger';
 
 interface GameKeyboardHandlerProps {
   gameStarted: boolean;
@@ -31,22 +32,52 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
 
   const keyboardControls = useKeyboardControls({
     gameSettings,
-    gameOver: gameLogic.gameState.gameOver,
-    paused: gameLogic.gameState.paused,
-    onMoveLeft: () => gameLogic.movePiece(-1, 0),
-    onMoveRight: () => gameLogic.movePiece(1, 0),
+    gameOver: gameLogic.gameOver,
+    paused: gameLogic.isPaused,
+    onMoveLeft: () => {
+      debugLog.debug('Keyboard: Move left');
+      return gameLogic.movePiece(-1, 0);
+    },
+    onMoveRight: () => {
+      debugLog.debug('Keyboard: Move right');
+      return gameLogic.movePiece(1, 0);
+    },
     onSoftDrop: () => {
+      debugLog.debug('Keyboard: Soft drop');
       const moved = gameLogic.movePiece(0, 1);
       if (moved) {
-        // Add soft drop points
+        // Add soft drop points if needed
+      }
+      return moved;
+    },
+    onHardDrop: () => {
+      debugLog.debug('Keyboard: Hard drop');
+      gameLogic.hardDrop();
+    },
+    onRotateClockwise: () => {
+      debugLog.debug('Keyboard: Rotate clockwise');
+      gameLogic.rotatePieceClockwise();
+    },
+    onRotateCounterclockwise: () => {
+      debugLog.debug('Keyboard: Rotate counter-clockwise');
+      gameLogic.rotatePieceCounterclockwise();
+    },
+    onHold: () => {
+      debugLog.debug('Keyboard: Hold piece');
+      gameLogic.holdCurrentPiece();
+    },
+    onPause: () => {
+      debugLog.debug('Keyboard: Pause/Resume');
+      if (gameLogic.isPaused) {
+        gameLogic.resumeGame();
+      } else {
+        gameLogic.pauseGame();
       }
     },
-    onHardDrop: gameLogic.hardDrop,
-    onRotateClockwise: gameLogic.rotatePieceClockwise,
-    onRotateCounterclockwise: gameLogic.rotatePieceCounterclockwise,
-    onHold: gameLogic.holdCurrentPiece,
-    onPause: gameLogic.pauseGame,
-    onBackToMenu: onBackToMenu,
+    onBackToMenu: () => {
+      debugLog.debug('Keyboard: Back to menu');
+      onBackToMenu();
+    },
     onUndo,
     onRedo,
     canUndo,
@@ -55,7 +86,7 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
 
   // 添加键盘控制循环
   useEffect(() => {
-    if (!gameStarted || gameLogic.gameState.gameOver || gameLogic.gameState.paused) {
+    if (!gameStarted || gameLogic.gameOver || gameLogic.isPaused) {
       if (keyboardLoopRef.current) {
         cancelAnimationFrame(keyboardLoopRef.current);
         keyboardLoopRef.current = null;
@@ -76,7 +107,7 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
         keyboardLoopRef.current = null;
       }
     };
-  }, [gameStarted, gameLogic.gameState.gameOver, gameLogic.gameState.paused, keyboardControls, keyboardLoopRef]);
+  }, [gameStarted, gameLogic.gameOver, gameLogic.isPaused, keyboardControls, keyboardLoopRef]);
 
   return null; // This component only handles keyboard logic
 };
