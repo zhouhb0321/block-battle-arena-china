@@ -7,15 +7,31 @@ import { debugLog } from '@/utils/debugLogger';
 
 type UserProfile = Database['public']['Tables']['user_profiles']['Row'];
 
+interface ExtendedUser extends User {
+  profile?: UserProfile;
+  isGuest?: boolean;
+  username?: string;
+  avatar?: string;
+  rating?: number;
+  isPremium?: boolean;
+  isAdmin?: boolean;
+}
+
 interface AuthContextType {
-  user: (User & { profile?: UserProfile; isGuest?: boolean; username?: string }) | null;
+  user: ExtendedUser | null;
   session: Session | null;
   loading: boolean;
+  isAuthenticated: boolean;
   signUp: (email: string, password: string, username: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   playAsGuest: () => void;
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>;
+  // Legacy aliases for backward compatibility
+  register: (email: string, password: string, username: string) => Promise<{ error: any }>;
+  login: (email: string, password: string) => Promise<{ error: any }>;
+  logout: () => Promise<void>;
+  loginAsGuest: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,7 +49,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<(User & { profile?: UserProfile; isGuest?: boolean; username?: string }) | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,33 +77,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const createExtendedUser = (baseUser: User, profile?: UserProfile | null): ExtendedUser => {
+    const isAdmin = baseUser.email === 'admin@tetris.com';
+    const isPremium = profile?.user_type === 'premium';
+    
+    return {
+      ...baseUser,
+      profile: profile || undefined,
+      username: profile?.username || baseUser.email?.split('@')[0] || 'User',
+      avatar: profile?.avatar_url || undefined,
+      rating: profile?.rating || 1000,
+      isPremium,
+      isAdmin
+    };
+  };
+
   useEffect(() => {
     debugLog.auth('初始化认证状态...');
     
-    // 获取当前会话
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        debugLog.auth('找到有效会话，加载用户档案');
-        setSession(session);
-        
-        // 延迟执行用户配置文件加载，避免认证死锁
-        setTimeout(async () => {
-          const profile = await loadUserProfile(session.user.id);
-          setUser({
-            ...session.user,
-            profile: profile || undefined,
-            username: profile?.username || session.user.email?.split('@')[0] || 'User'
-          });
-          setLoading(false);
-        }, 0);
-      } else {
-        debugLog.auth('无有效会话');
-        setUser(null);
-        setSession(null);
-        setLoading(false);
-      }
-    });
-
     // 监听认证状态变化 - 移除异步操作防止死锁
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       debugLog.auth('认证状态变化', { event, hasSession: !!session });
@@ -100,17 +107,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setTimeout(async () => {
           try {
             const profile = await loadUserProfile(session.user.id);
-            setUser({
-              ...session.user,
-              profile: profile || undefined,
-              username: profile?.username || session.user.email?.split('@')[0] || 'User'
-            });
+            setUser(createExtendedUser(session.user, profile));
           } catch (error) {
             debugLog.error('延迟加载用户档案失败', error);
-            setUser({
-              ...session.user,
-              username: session.user.email?.split('@')[0] || 'User'
-            });
+            setUser(createExtendedUser(session.user));
           }
         }, 0);
       } else {
@@ -119,6 +119,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // 认证状态变化时，loading状态应该立即更新
       setLoading(false);
+    });
+
+    // 获取当前会话
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        debugLog.auth('找到有效会话，加载用户档案');
+        setSession(session);
+        
+        // 延迟执行用户配置文件加载，避免认证死锁
+        setTimeout(async () => {
+          const profile = await loadUserProfile(session.user.id);
+          setUser(createExtendedUser(session.user, profile));
+          setLoading(false);
+        }, 0);
+      } else {
+        debugLog.auth('无有效会话');
+        setUser(null);
+        setSession(null);
+        setLoading(false);
+      }
     });
 
     return () => {
@@ -189,11 +209,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const playAsGuest = () => {
     debugLog.auth('以访客身份游戏');
-    setUser({
+    const guestUser: ExtendedUser = {
       id: 'guest-' + Date.now(),
       email: 'guest@example.com',
       isGuest: true,
       username: 'Guest',
+      avatar: undefined,
+      rating: 1000,
+      isPremium: false,
+      isAdmin: false,
       aud: 'authenticated',
       role: 'authenticated',
       email_confirmed_at: null,
@@ -207,7 +231,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       is_anonymous: false
-    });
+    };
+    setUser(guestUser);
     setLoading(false);
   };
 
@@ -232,11 +257,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // 重新加载用户配置文件
       const profile = await loadUserProfile(user.id);
       if (profile) {
-        setUser({
-          ...user,
-          profile,
-          username: profile.username
-        });
+        setUser(createExtendedUser(user, profile));
       }
 
       debugLog.auth('档案更新成功');
@@ -247,15 +268,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const isAuthenticated = !!user && !loading;
+
   const value = {
     user,
     session,
     loading,
+    isAuthenticated,
     signUp,
     signIn,
     signOut,
     playAsGuest,
     updateProfile,
+    // Legacy aliases for backward compatibility
+    register: signUp,
+    login: signIn,
+    logout: signOut,
+    loginAsGuest: playAsGuest,
   };
 
   return (

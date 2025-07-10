@@ -20,7 +20,7 @@ export const useSessionLogger = () => {
         .from('user_session_logs')
         .insert({
           user_id: user.id,
-          username: user.username,
+          username: user.username || 'Unknown',
           session_type: sessionType,
           game_mode: gameMode || null,
           session_data: sessionData,

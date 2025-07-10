@@ -48,7 +48,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick }) 
           <Avatar className="h-10 w-10">
             <AvatarImage src={user.avatar} alt={user.username} />
             <AvatarFallback className="bg-blue-500 text-white">
-              {getUserInitials(user.username)}
+              {getUserInitials(user.username || 'User')}
             </AvatarFallback>
           </Avatar>
         </Button>
