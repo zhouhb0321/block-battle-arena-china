@@ -2,6 +2,7 @@
 import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { GamePiece } from '@/utils/gameTypes';
 
 interface EnhancedGameBoardProps {
@@ -24,6 +25,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   showHiddenRows = true
 }) => {
   const { settings } = useUserSettings();
+  const { actualTheme } = useTheme();
   const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
 
   // 创建扩展的游戏板，包含隐藏行的半透明显示
@@ -83,12 +85,27 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
     if (typeof cellValue === 'string') {
       if (cellValue.startsWith('ghost-')) {
         const color = cellValue.replace('ghost-', '');
-        cellStyle = currentSkin.getBlockStyle(color, true);
-        cellClass = currentSkin.getBlockClass(color, true);
+        // 改善幽灵方块可见性
+        const ghostOpacity = (settings.ghostOpacity / 100) * 0.8; // 增加基础透明度
         
-        // 应用用户设置的幽灵方块透明度
-        const baseOpacity = typeof cellStyle.opacity === 'number' ? cellStyle.opacity : 0.5;
-        cellStyle.opacity = baseOpacity * (settings.ghostOpacity / 100);
+        if (actualTheme === 'light') {
+          // 浅色主题下使用更深的颜色和更强的边框
+          cellStyle = {
+            backgroundColor: `rgba(0, 0, 0, ${ghostOpacity * 0.15})`,
+            border: `2px dashed ${color}`,
+            borderRadius: '3px',
+            opacity: 1,
+          };
+        } else {
+          // 深色主题下使用原有样式但提高对比度
+          cellStyle = {
+            backgroundColor: `rgba(255, 255, 255, ${ghostOpacity * 0.1})`,
+            border: `2px dashed ${color}`,
+            borderRadius: '3px',
+            opacity: ghostOpacity + 0.2,
+          };
+        }
+        cellClass = 'ghost-block';
       } else if (cellValue.startsWith('solid-')) {
         const color = cellValue.replace('solid-', '');
         cellStyle = currentSkin.getBlockStyle(color, false);
@@ -109,17 +126,25 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         cellClass = currentSkin.getBlockClass(color, false);
       }
     } else {
-      // 空方块 - 隐藏行完全透明，可见行显示边框
+      // 空方块 - 改善边框显示
       if (isHidden) {
         cellStyle = {
           backgroundColor: 'transparent',
           border: 'none',
         };
       } else {
-        cellStyle = {
-          backgroundColor: 'transparent',
-          border: '1px solid rgba(255,255,255,0.1)',
-        };
+        // 根据主题调整空方块边框
+        if (actualTheme === 'light') {
+          cellStyle = {
+            backgroundColor: 'transparent',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
+          };
+        } else {
+          cellStyle = {
+            backgroundColor: 'transparent',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+          };
+        }
       }
       cellClass = 'empty-block';
     }
@@ -169,6 +194,15 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
           
           .hidden-row {
             position: relative;
+          }
+          
+          .ghost-block {
+            animation: ghost-pulse 2s ease-in-out infinite;
+          }
+          
+          @keyframes ghost-pulse {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
           }
           
           .neon-block {
