@@ -9,6 +9,7 @@ import EnhancedGameBoard from '@/components/EnhancedGameBoard';
 import HoldPieceDisplay from '@/components/HoldPieceDisplay';
 import NextPiecePreview from '@/components/NextPiecePreview';
 import LineCleanAnimation from '@/components/LineCleanAnimation';
+import OutOfFocusOverlay from '@/components/OutOfFocusOverlay';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Pause, Play } from 'lucide-react';
 import { useTetrisGame } from './TetrisGameProvider';
@@ -62,6 +63,17 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const handleAnimationComplete = () => {
     setShowAnimation(false);
     setAnimationText('');
+  };
+
+  // 处理失焦覆盖层的恢复
+  const handleResumeFromOverlay = () => {
+    debugLog.game('恢复游戏 - 从失焦覆盖层');
+    gameLogic.resumeGame();
+    
+    // 确保游戏容器重新获得焦点
+    if (gameContainerRef.current) {
+      gameContainerRef.current.focus();
+    }
   };
 
   // 当倒计时开始时，立即初始化方块
@@ -125,6 +137,9 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
   const currentTime = Date.now();
   const elapsedTime = gameLogic.time;
+
+  // 确定是否显示失焦覆盖层
+  const showOutOfFocusOverlay = gameLogic.isPaused && gameReallyStarted && !gameLogic.gameOver && !gameLogic.isManuallyPaused;
 
   return (
     <div 
@@ -211,7 +226,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                   </div>
                 </div>
 
-                {gameLogic.isPaused && (
+                {gameLogic.isManuallyPaused && (
                   <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
                     <div className="text-center">
                       <Pause className="w-8 h-8 mx-auto mb-2" />
@@ -248,6 +263,12 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               isVisible={true}
             />
           )}
+          
+          {/* 失焦覆盖层 - 支持点击恢复 */}
+          <OutOfFocusOverlay 
+            show={showOutOfFocusOverlay}
+            onResume={handleResumeFromOverlay}
+          />
         </div>
 
         {/* 右侧面板 - NEXT区域 */}

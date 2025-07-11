@@ -20,10 +20,10 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
   const getCellSize = () => {
     if (cellSize) return cellSize;
     switch (size) {
-      case 'small': return 15;
-      case 'medium': return 20;
-      case 'large': return 25;
-      default: return 20;
+      case 'small': return 12;
+      case 'medium': return 16;
+      case 'large': return 20;
+      default: return 16;
     }
   };
 
@@ -33,7 +33,7 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
     if (!piece) {
       return (
         <div 
-          className="bg-gray-700 border border-gray-600 rounded"
+          className="bg-gray-700/30 border border-gray-600 rounded-sm"
           style={{ 
             width: actualCellSize * 4, 
             height: actualCellSize * 2 
@@ -52,13 +52,16 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
             {row.map((cell, x) => (
               <div
                 key={x}
-                className={`border border-gray-800 ${
+                className={`border-0 ${
                   cell ? 'opacity-100' : 'opacity-0'
                 }`}
                 style={{
                   width: actualCellSize,
                   height: actualCellSize,
-                  backgroundColor: cell ? backgroundColor : 'transparent'
+                  backgroundColor: cell ? backgroundColor : 'transparent',
+                  borderRadius: '2px',
+                  margin: '0.5px',
+                  boxShadow: cell ? 'inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.15)' : 'none'
                 }}
               />
             ))}
@@ -69,13 +72,13 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
   };
 
   return (
-    <div className="bg-gray-800 p-3 rounded-lg">
+    <div className="p-2 rounded-lg">
       {title && (
-        <h3 className="text-white text-xs mb-2 text-center font-bold">
+        <h3 className="text-white text-xs mb-2 text-center font-bold opacity-90">
           {title}
         </h3>
       )}
-      <div className="flex justify-center items-center min-h-[40px]">
+      <div className="flex justify-center items-center min-h-[32px]">
         {renderPiece()}
       </div>
     </div>

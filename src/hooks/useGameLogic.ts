@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useKeyboardControls } from './useKeyboardControls';
 import { useUserSettings } from './useUserSettings';
@@ -41,6 +42,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const [level, setLevel] = useState(1);
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isManuallyPaused, setIsManuallyPaused] = useState(false);
   const [time, setTime] = useState(0);
   const [pps, setPps] = useState(0);
   const [apm, setApm] = useState(0);
@@ -49,7 +51,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const [gameInitialized, setGameInitialized] = useState(false);
 
   const { settings } = useUserSettings();
-  const isWindowFocused = useWindowFocus();
+  const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
   
   const gameStartTime = useRef<number>(Date.now());
   const totalPieces = useRef<number>(0);
@@ -61,6 +63,23 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const createGamePiece = useCallback((pieceType: TetrominoType): GamePiece => {
     return createNewPiece(pieceType);
   }, []);
+
+  // 智能失焦处理 - 区分手动暂停和自动失焦暂停
+  useEffect(() => {
+    if (!gameStarted || gameOver) return;
+
+    if (!isWindowFocused && !isPaused) {
+      // 只有在非手动暂停状态下才自动暂停
+      if (!isManuallyPaused) {
+        setIsPaused(true);
+        debugLog.game('窗口失焦，自动暂停游戏');
+      }
+    } else if (isWindowFocused && isPaused && !isManuallyPaused) {
+      // 窗口重获焦点且非手动暂停时自动恢复
+      setIsPaused(false);
+      debugLog.game('窗口重获焦点，自动恢复游戏');
+    }
+  }, [isWindowFocused, isPaused, isManuallyPaused, gameStarted, gameOver]);
 
   // 立即初始化方块队列 - 在倒计时开始时调用
   const initializePieces = useCallback(() => {
@@ -239,11 +258,13 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     };
   }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted, movePiece]);
 
-  // 修复硬降逻辑 - 确保方块立即落到正确位置
+  // 完全重写硬降逻辑 - 确保立即到底部并锁定
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
     debugLog.game('Hard drop initiated', { currentPiece: currentPiece.type.type });
+    
+    setIsHardDropping(true);
     
     const dropY = calculateDropPosition(board, currentPiece);
     const dropDistance = dropY - currentPiece.y;
@@ -258,35 +279,35 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     setScore(prev => prev + dropDistance * 2);
     totalActions.current++;
     
-    // 立即将方块移动到目标位置并锁定
+    // 立即将方块移动到目标位置
     const droppedPiece = { ...currentPiece, y: dropY };
-    setCurrentPiece(droppedPiece);
     
-    // 立即锁定方块，不需要延迟
-    setTimeout(() => {
-      // 使用更新后的位置来锁定方块
-      const newBoard = placePiece(board, droppedPiece);
-      const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
+    // 立即处理方块锁定和消行
+    const newBoard = placePiece(board, droppedPiece);
+    const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
+    
+    setBoard(clearedBoard);
+    
+    if (linesCleared > 0) {
+      const newLines = lines + linesCleared;
+      const newLevel = Math.floor(newLines / 10) + 1;
+      const lineScore = linesCleared === 4 ? 800 * level : [100, 300, 500][linesCleared - 1] * level;
       
-      setBoard(clearedBoard);
+      setLines(newLines);
+      setLevel(newLevel);
+      setScore(prev => prev + lineScore);
       
-      if (linesCleared > 0) {
-        const newLines = lines + linesCleared;
-        const newLevel = Math.floor(newLines / 10) + 1;
-        const lineScore = linesCleared === 4 ? 800 * level : [100, 300, 500][linesCleared - 1] * level;
-        
-        setLines(newLines);
-        setLevel(newLevel);
-        setScore(prev => prev + lineScore);
-        
-        if (onSpecialClear && linesCleared >= 4) {
-          onSpecialClear('tetris', linesCleared);
-        }
+      if (onSpecialClear && linesCleared >= 4) {
+        onSpecialClear('tetris', linesCleared);
       }
-      
-      // 生成新方块
-      spawnNewPiece();
-    }, 50);
+    }
+    
+    // 重置当前方块，准备生成新方块
+    setCurrentPiece(null);
+    setIsHardDropping(false);
+    
+    // 延迟一帧后生成新方块，确保状态更新完成
+    setTimeout(spawnNewPiece, 16);
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lines, level, onSpecialClear, spawnNewPiece]);
 
   const rotatePieceClockwise = useCallback(() => {
@@ -378,6 +399,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     setLevel(1);
     setGameOver(false);
     setIsPaused(false);
+    setIsManuallyPaused(false);
     setTime(0);
     setPps(0);
     setApm(0);
@@ -391,11 +413,15 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
 
   const pauseGame = useCallback(() => {
     setIsPaused(true);
-  }, []);
+    setIsManuallyPaused(true);
+    setWasManuallyPaused(true);
+  }, [setWasManuallyPaused]);
 
   const resumeGame = useCallback(() => {
     setIsPaused(false);
-  }, []);
+    setIsManuallyPaused(false);
+    setWasManuallyPaused(false);
+  }, [setWasManuallyPaused]);
 
   const ghostPiece = currentPiece ? {
     ...currentPiece,
@@ -430,6 +456,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     level,
     gameOver,
     isPaused,
+    isManuallyPaused,
     time,
     pps,
     apm,
