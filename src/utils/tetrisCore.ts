@@ -75,12 +75,19 @@ export const clearLines = (board: number[][]): { newBoard: number[][]; linesClea
   return { newBoard, linesCleared };
 };
 
-// 计算方块的掉落位置
+// 修复计算方块的掉落位置 - 确保返回正确的最终位置
 export const calculateDropPosition = (board: number[][], piece: GamePiece): number => {
   let dropY = piece.y;
-  while (isValidPosition(board, { ...piece, y: dropY + 1 })) {
+  
+  // 逐行向下检查，直到找到无法放置的位置
+  while (dropY < BOARD_HEIGHT) {
+    const testPiece = { ...piece, y: dropY + 1 };
+    if (!isValidPosition(board, testPiece)) {
+      break;
+    }
     dropY++;
   }
+  
   return dropY;
 };
 

@@ -239,27 +239,55 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     };
   }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted, movePiece]);
 
+  // 修复硬降逻辑 - 确保方块立即落到正确位置
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
-    setIsHardDropping(true);
+    debugLog.game('Hard drop initiated', { currentPiece: currentPiece.type.type });
     
     const dropY = calculateDropPosition(board, currentPiece);
     const dropDistance = dropY - currentPiece.y;
+    
+    debugLog.game('Hard drop calculation', { 
+      currentY: currentPiece.y, 
+      dropY, 
+      dropDistance 
+    });
     
     // Add hard drop score
     setScore(prev => prev + dropDistance * 2);
     totalActions.current++;
     
-    // Move piece to drop position
-    setCurrentPiece(prev => prev ? { ...prev, y: dropY } : null);
+    // 立即将方块移动到目标位置并锁定
+    const droppedPiece = { ...currentPiece, y: dropY };
+    setCurrentPiece(droppedPiece);
     
-    // Lock immediately after hard drop
+    // 立即锁定方块，不需要延迟
     setTimeout(() => {
-      lockPiece();
-      setIsHardDropping(false);
+      // 使用更新后的位置来锁定方块
+      const newBoard = placePiece(board, droppedPiece);
+      const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
+      
+      setBoard(clearedBoard);
+      
+      if (linesCleared > 0) {
+        const newLines = lines + linesCleared;
+        const newLevel = Math.floor(newLines / 10) + 1;
+        const lineScore = linesCleared === 4 ? 800 * level : [100, 300, 500][linesCleared - 1] * level;
+        
+        setLines(newLines);
+        setLevel(newLevel);
+        setScore(prev => prev + lineScore);
+        
+        if (onSpecialClear && linesCleared >= 4) {
+          onSpecialClear('tetris', linesCleared);
+        }
+      }
+      
+      // 生成新方块
+      spawnNewPiece();
     }, 50);
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, lockPiece, gameStarted]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lines, level, onSpecialClear, spawnNewPiece]);
 
   const rotatePieceClockwise = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { TETROMINO_TYPES } from '@/utils/tetrisLogic';
+import { getTetrominoColor } from '@/utils/blockColors';
 import type { TetrominoType } from '@/utils/gameTypes';
 
 interface PiecePreviewProps {
@@ -42,16 +43,7 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
     }
 
     const shape = TETROMINO_TYPES[piece.type]?.shape || piece.shape;
-    // 使用柔和的颜色
-    const pieceColors = {
-      I: '#4a9d9c', // 柔和的青色
-      O: '#c4a661', // 柔和的黄色
-      T: '#8b6bb1', // 柔和的紫色
-      S: '#6b9b6b', // 柔和的绿色
-      Z: '#b87575', // 柔和的红色  
-      J: '#5d7fb8', // 柔和的蓝色
-      L: '#c4906b'  // 柔和的橙色
-    };
+    const backgroundColor = getTetrominoColor(piece.type);
 
     return (
       <div className="relative">
@@ -66,7 +58,7 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
                 style={{
                   width: actualCellSize,
                   height: actualCellSize,
-                  backgroundColor: cell ? pieceColors[piece.type as keyof typeof pieceColors] : 'transparent'
+                  backgroundColor: cell ? backgroundColor : 'transparent'
                 }}
               />
             ))}

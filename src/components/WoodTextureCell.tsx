@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { getBlockColor } from '@/utils/blockColors';
 
 interface WoodTextureCellProps {
   cellValue: number | string;
@@ -45,7 +46,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
           ...baseStyle,
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
           border: `2px dashed ${color}`,
-          opacity: 0.6,
+          opacity: 0.4,
           borderRadius: '2px',
         }}
       />
@@ -67,7 +68,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
           overflow: 'hidden',
         }}
       >
-        {/* Wood grain texture overlay */}
+        {/* 降低木纹纹理的对比度 */}
         <div
           className="wood-grain-overlay"
           style={{
@@ -76,19 +77,19 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
             background: `
               linear-gradient(
                 45deg,
-                rgba(0,0,0,0.1) 0%,
+                rgba(0,0,0,0.05) 0%,
                 transparent 25%,
-                rgba(0,0,0,0.05) 50%,
+                rgba(0,0,0,0.02) 50%,
                 transparent 75%,
-                rgba(0,0,0,0.1) 100%
+                rgba(0,0,0,0.05) 100%
               ),
               linear-gradient(
                 90deg,
-                rgba(255,255,255,0.1) 0%,
+                rgba(255,255,255,0.05) 0%,
                 transparent 20%,
-                rgba(255,255,255,0.05) 40%,
+                rgba(255,255,255,0.02) 40%,
                 transparent 60%,
-                rgba(255,255,255,0.1) 80%,
+                rgba(255,255,255,0.05) 80%,
                 transparent 100%
               )
             `,
@@ -96,7 +97,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
           }}
         />
         
-        {/* Highlight effect */}
+        {/* 减少高光效果 */}
         <div
           className="highlight-overlay"
           style={{
@@ -104,13 +105,13 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
             top: '1px',
             left: '1px',
             right: '3px',
-            height: '30%',
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.3), transparent)',
+            height: '20%',
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)',
             borderRadius: '2px 2px 0 0',
           }}
         />
         
-        {/* Shadow effect */}
+        {/* 减少阴影效果 */}
         <div
           className="shadow-overlay"
           style={{
@@ -118,8 +119,8 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
             bottom: '0',
             left: '0',
             right: '0',
-            height: '20%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)',
+            height: '15%',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.15), transparent)',
             borderRadius: '0 0 2px 2px',
           }}
         />
@@ -127,9 +128,8 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
     );
   }
   
-  // Placed pieces styles (with wood texture effect) - 使用柔和的颜色
-  const colors = ['', '#4a9d9c', '#c4a661', '#8b6bb1', '#6b9b6b', '#b87575', '#5d7fb8', '#c4906b', '#666666'];
-  const backgroundColor = colors[cellValue as number] || '#666666';
+  // Placed pieces styles (with wood texture effect) - 使用统一的颜色系统
+  const backgroundColor = getBlockColor(cellValue as number);
   
   return (
     <div
@@ -143,39 +143,39 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         overflow: 'hidden',
       }}
     >
-      {/* Wood grain texture effect */}
+      {/* 更柔和的木纹纹理效果 */}
       <div
         className="wood-grain-overlay"
         style={{
           position: 'absolute',
           inset: 0,
           background: `
-            radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, transparent 70%),
+            radial-gradient(ellipse at center, rgba(0,0,0,0.05) 0%, transparent 70%),
             linear-gradient(
               30deg,
-              rgba(0,0,0,0.15) 0%,
+              rgba(0,0,0,0.08) 0%,
               transparent 15%,
-              rgba(0,0,0,0.08) 30%,
+              rgba(0,0,0,0.04) 30%,
               transparent 45%,
-              rgba(0,0,0,0.12) 60%,
+              rgba(0,0,0,0.06) 60%,
               transparent 75%,
-              rgba(0,0,0,0.1) 90%,
+              rgba(0,0,0,0.05) 90%,
               transparent 100%
             ),
             linear-gradient(
               120deg,
-              rgba(255,255,255,0.1) 0%,
+              rgba(255,255,255,0.05) 0%,
               transparent 25%,
-              rgba(255,255,255,0.06) 50%,
+              rgba(255,255,255,0.03) 50%,
               transparent 75%,
-              rgba(255,255,255,0.08) 100%
+              rgba(255,255,255,0.04) 100%
             )
           `,
           backgroundSize: '100% 100%, 6px 6px, 10px 8px',
         }}
       />
       
-      {/* Bevel highlight effect */}
+      {/* 更柔和的立体效果 */}
       <div
         className="bevel-highlight"
         style={{
@@ -184,7 +184,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
           left: '0',
           right: '2px',
           bottom: '2px',
-          border: '1px solid rgba(255,255,255,0.4)',
+          border: '1px solid rgba(255,255,255,0.2)',
           borderBottomColor: 'transparent',
           borderRightColor: 'transparent',
           borderRadius: '2px',
@@ -192,7 +192,6 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         }}
       />
       
-      {/* Bevel shadow effect */}
       <div
         className="bevel-shadow"
         style={{
@@ -201,7 +200,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
           left: '2px',
           right: '0',
           bottom: '0',
-          border: '1px solid rgba(0,0,0,0.4)',
+          border: '1px solid rgba(0,0,0,0.2)',
           borderTopColor: 'transparent',
           borderLeftColor: 'transparent',
           borderRadius: '2px',
@@ -209,16 +208,16 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         }}
       />
       
-      {/* Shimmer effect */}
+      {/* 更柔和的闪光效果 */}
       <div
         className="shimmer-overlay"
         style={{
           position: 'absolute',
           top: '1px',
           left: '1px',
-          width: '40%',
-          height: '40%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)',
+          width: '30%',
+          height: '30%',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
           borderRadius: '50%',
           filter: 'blur(1px)',
         }}
