@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +25,7 @@ export interface UserSettings {
   };
   ghostOpacity: number;
   blockSkin?: string;
+  enableWallpaper: boolean;
 }
 
 const DEFAULT_GUEST_SETTINGS: UserSettings = {
@@ -50,7 +50,8 @@ const DEFAULT_GUEST_SETTINGS: UserSettings = {
     backToMenu: 'KeyB',
   },
   ghostOpacity: 50,
-  blockSkin: 'wood'
+  blockSkin: 'wood',
+  enableWallpaper: true,
 };
 
 const useLocalStorage = <T>(key: string, initialValue: T) => {
@@ -116,6 +117,7 @@ export const useUserSettings = () => {
           },
           ghostOpacity: data.ghost_opacity ?? 50,
           blockSkin: data.block_skin ?? 'wood',
+          enableWallpaper: data.enable_wallpaper ?? true,
         };
         setSettings(cloudSettings);
         window.localStorage.setItem('userSettings', JSON.stringify(cloudSettings));
@@ -154,6 +156,7 @@ export const useUserSettings = () => {
         controls: newSettings.controls !== undefined ? newSettings.controls : prevSettings.controls,
         ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
+        enableWallpaper: newSettings.enableWallpaper !== undefined ? newSettings.enableWallpaper : prevSettings.enableWallpaper,
       };
       
       // Guests only save locally
@@ -176,6 +179,7 @@ export const useUserSettings = () => {
         ghost_opacity: mergedSettings.ghostOpacity,
         back_to_menu: mergedSettings.controls.backToMenu,
         block_skin: mergedSettings.blockSkin || 'wood',
+        enable_wallpaper: mergedSettings.enableWallpaper,
       };
       
       supabase
@@ -213,6 +217,7 @@ export const useUserSettings = () => {
         controls: newSettings.controls !== undefined ? newSettings.controls : prevSettings.controls,
         ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
+        enableWallpaper: newSettings.enableWallpaper !== undefined ? newSettings.enableWallpaper : prevSettings.enableWallpaper,
       };
       
       // Guests auto-save locally

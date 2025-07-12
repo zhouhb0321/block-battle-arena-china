@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
@@ -45,7 +44,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
               if (extendedBoard[boardY][boardX] === 0) {
                 const color = getColorByTypeId(shape[row][col]);
-                extendedBoard[boardY][boardX] = `ghost-${color}`;
+                extendedBoard[boardY][boardX] = `ghost-${color}` as any;
               }
             }
           }
@@ -63,7 +62,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
               const color = getColorByTypeId(shape[row][col]);
               const prefix = isLockDelayActive ? 'lock-delay-' : 'solid-';
-              extendedBoard[boardY][boardX] = `${prefix}${color}`;
+              extendedBoard[boardY][boardX] = `${prefix}${color}` as any;
             }
           }
         }
