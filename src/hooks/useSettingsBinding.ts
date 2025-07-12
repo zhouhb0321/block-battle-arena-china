@@ -28,6 +28,7 @@ export const useSettingsBinding = () => {
     sdf: userSettings.sdf,
     controls: userSettings.controls,
     ghostOpacity: userSettings.ghostOpacity,
+    enableWallpaper: userSettings.enableWallpaper,
   });
 
   const [tempSettings, setTempSettings] = useState<GameSettings>(() => convertToGameSettings(settings));

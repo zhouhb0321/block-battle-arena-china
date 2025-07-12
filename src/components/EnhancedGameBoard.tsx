@@ -2,6 +2,7 @@ import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useTheme } from '@/contexts/ThemeContext';
+import { renderBlock, getBlockStyle } from '@/utils/blockRenderer';
 import type { GamePiece } from '@/utils/gameTypes';
 
 interface EnhancedGameBoardProps {
@@ -75,86 +76,18 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   const extendedBoard = createExtendedBoard();
 
   const getCellStyle = (cellValue: number | string, rowIndex: number) => {
-    let cellStyle: React.CSSProperties = {};
-    let cellClass = '';
     const isHidden = showHiddenRows && rowIndex < 3;
     const isClearing = clearingLines.includes(rowIndex);
-
-    if (typeof cellValue === 'string') {
-      if (cellValue.startsWith('ghost-')) {
-        const color = cellValue.replace('ghost-', '');
-        const ghostOpacity = (settings.ghostOpacity || 40) / 100 * 0.8;
-        
-        // 改进的幽灵方块样式 - 灰色边框，内部使用背景色的暗色版本
-        if (actualTheme === 'light') {
-          cellStyle = {
-            backgroundColor: `rgba(60, 60, 60, ${ghostOpacity * 0.3})`, // 暗色填充
-            border: `2px dashed #888888`,
-            borderRadius: '3px',
-            opacity: 1,
-          };
-        } else {
-          cellStyle = {
-            backgroundColor: `rgba(40, 40, 40, ${ghostOpacity * 0.4})`, // 深色主题下的暗色填充
-            border: `2px dashed #666666`,
-            borderRadius: '3px',
-            opacity: ghostOpacity + 0.3,
-          };
-        }
-        cellClass = 'ghost-block';
-      } else if (cellValue.startsWith('lock-delay-')) {
-        const color = cellValue.replace('lock-delay-', '');
-        cellStyle = currentSkin.getBlockStyle(color, false);
-        cellClass = `${currentSkin.getBlockClass(color, false)} lock-delay-flash`;
-      } else if (cellValue.startsWith('solid-')) {
-        const color = cellValue.replace('solid-', '');
-        cellStyle = currentSkin.getBlockStyle(color, false);
-        cellClass = currentSkin.getBlockClass(color, false);
-      }
-    } else if (cellValue !== 0) {
-      if (isGarbageBlock(cellValue)) {
-        cellStyle = {
-          backgroundColor: GARBAGE_COLOR,
-          border: `1px solid ${GARBAGE_COLOR}`,
-          opacity: isHidden ? 0.3 : 1,
-        };
-        cellClass = 'garbage-block';
-      } else {
-        const color = getColorByTypeId(cellValue);
-        cellStyle = currentSkin.getBlockStyle(color, false);
-        cellClass = currentSkin.getBlockClass(color, false);
-      }
-    } else {
-      if (isHidden) {
-        cellStyle = {
-          backgroundColor: 'transparent',
-          border: 'none',
-        };
-      } else {
-        if (actualTheme === 'light') {
-          cellStyle = {
-            backgroundColor: 'transparent',
-            border: '1px solid rgba(0, 0, 0, 0.1)',
-          };
-        } else {
-          cellStyle = {
-            backgroundColor: 'transparent',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-          };
-        }
-      }
-      cellClass = 'empty-block';
-    }
-
-    if (isHidden) {
-      cellStyle.opacity = (cellStyle.opacity as number || 1) * 0.3;
-    }
-
-    if (isClearing) {
-      cellClass += ' clearing-line';
-    }
-
-    return { cellStyle, cellClass };
+    
+    const config = {
+      cellSize,
+      isHidden,
+      isClearing,
+      ghostOpacity: settings.ghostOpacity || 50,
+      theme: actualTheme,
+    };
+    
+    return getBlockStyle(cellValue, config, settings);
   };
 
   return (
@@ -178,16 +111,16 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       >
         {extendedBoard.map((row, rowIndex) => 
           row.map((cellValue, colIndex) => {
-            const { cellStyle, cellClass } = getCellStyle(cellValue, rowIndex);
+            const { style, className } = getCellStyle(cellValue, rowIndex);
             
             return (
               <div
                 key={`${rowIndex}-${colIndex}`}
-                className={`game-cell ${cellClass} ${
+                className={`game-cell ${className} ${
                   showHiddenRows && rowIndex < 3 ? 'hidden-row' : ''
                 } ${showGrid ? 'show-grid' : ''}`}
                 style={{
-                  ...cellStyle,
+                  ...style,
                   width: cellSize,
                   height: cellSize,
                   boxSizing: 'border-box',

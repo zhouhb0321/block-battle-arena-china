@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { TETROMINO_TYPES } from '@/utils/tetrisLogic';
-import { getTetrominoColor } from '@/utils/blockColors';
+import { renderBlockPreview } from '@/utils/blockRenderer';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import type { TetrominoType } from '@/utils/gameTypes';
 
 interface PiecePreviewProps {
@@ -17,6 +18,8 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
   size = 'medium',
   cellSize 
 }) => {
+  const { settings } = useUserSettings();
+  
   const getCellSize = () => {
     if (cellSize) return cellSize;
     switch (size) {
@@ -43,27 +46,28 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
     }
 
     const shape = TETROMINO_TYPES[piece.type]?.shape || piece.shape;
-    const backgroundColor = getTetrominoColor(piece.type);
+    const pieceType = piece.type;
 
     return (
       <div className="relative">
         {shape.map((row, y) => (
           <div key={y} className="flex">
             {row.map((cell, x) => (
-              <div
-                key={x}
-                className={`border-0 ${
-                  cell ? 'opacity-100' : 'opacity-0'
-                }`}
-                style={{
-                  width: actualCellSize,
-                  height: actualCellSize,
-                  backgroundColor: cell ? backgroundColor : 'transparent',
-                  borderRadius: '2px',
-                  margin: '0.5px',
-                  boxShadow: cell ? 'inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.15)' : 'none'
-                }}
-              />
+              cell ? renderBlockPreview(
+                pieceType,
+                { cellSize: actualCellSize },
+                settings,
+                `${y}-${x}`
+              ) : (
+                <div
+                  key={`${y}-${x}`}
+                  className="opacity-0"
+                  style={{
+                    width: actualCellSize,
+                    height: actualCellSize,
+                  }}
+                />
+              )
             ))}
           </div>
         ))}
