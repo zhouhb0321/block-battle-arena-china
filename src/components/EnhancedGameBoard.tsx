@@ -21,13 +21,14 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   board,
   currentPiece,
   ghostPiece,
-  cellSize = 24,
+  cellSize,
   showGrid = true,
   showHiddenRows = true,
   isLockDelayActive = false,
   lockDelayResetCount = 0,
   clearingLines = []
 }) => {
+  const fixedCellSize = 20;
   const { settings } = useUserSettings();
   const { actualTheme } = useTheme();
   const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
@@ -80,7 +81,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
     const isClearing = clearingLines.includes(rowIndex);
     
     const config = {
-      cellSize,
+      cellSize: fixedCellSize,
       isHidden,
       isClearing,
       ghostOpacity: settings.ghostOpacity || 50,
@@ -102,11 +103,11 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       <div 
         className="game-board relative border-2 border-gray-600 bg-gray-900"
         style={{
-          width: cellSize * 10,
-          height: cellSize * (showHiddenRows ? 23 : 20),
+          width: fixedCellSize * 10,
+          height: fixedCellSize * (showHiddenRows ? 23 : 20),
           display: 'grid',
-          gridTemplateColumns: `repeat(10, ${cellSize}px)`,
-          gridTemplateRows: `repeat(${showHiddenRows ? 23 : 20}, ${cellSize}px)`,
+          gridTemplateColumns: `repeat(10, ${fixedCellSize}px)`,
+          gridTemplateRows: `repeat(${showHiddenRows ? 23 : 20}, ${fixedCellSize}px)`,
         }}
       >
         {extendedBoard.map((row, rowIndex) => 
@@ -121,8 +122,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
                 } ${showGrid ? 'show-grid' : ''}`}
                 style={{
                   ...style,
-                  width: cellSize,
-                  height: cellSize,
+                  width: fixedCellSize,
+                  height: fixedCellSize,
                   boxSizing: 'border-box',
                 }}
               />

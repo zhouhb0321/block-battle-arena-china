@@ -19,18 +19,8 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
   cellSize 
 }) => {
   const { settings } = useUserSettings();
-  
-  const getCellSize = () => {
-    if (cellSize) return cellSize;
-    switch (size) {
-      case 'small': return 12;
-      case 'medium': return 16;
-      case 'large': return 20;
-      default: return 16;
-    }
-  };
-
-  const actualCellSize = getCellSize();
+  // 统一cellSize为20
+  const actualCellSize = 20;
 
   const renderPiece = () => {
     if (!piece) {

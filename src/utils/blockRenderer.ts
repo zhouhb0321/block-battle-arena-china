@@ -1,32 +1,30 @@
-import { getCurrentSkin, getColorByTypeId, isGarbageBlock, GARBAGE_COLOR } from './blockSkins';
+import { getCurrentSkin, isGarbageBlock, GARBAGE_COLOR } from './blockSkins';
 import type { UserSettings } from '@/hooks/useUserSettings';
 
-// 优化的方块颜色 - 更柔和的色调
-export const OPTIMIZED_COLORS = {
-  I: '#4FC3F7', // 浅蓝色
-  O: '#FFD54F', // 金黄色
-  T: '#9C27B0', // 紫色
-  S: '#4CAF50', // 绿色
-  Z: '#F44336', // 红色
-  J: '#2196F3', // 蓝色
-  L: '#FF9800', // 橙色
+// 柔和色板（Tetris Guideline风格，低饱和度）
+export const SOFT_COLORS = {
+  I: '#6EC6FF', // 柔和蓝
+  O: '#FFF176', // 柔和黄
+  T: '#BA68C8', // 柔和紫
+  S: '#81C784', // 柔和绿
+  Z: '#E57373', // 柔和红
+  J: '#64B5F6', // 柔和蓝
+  L: '#FFB74D', // 柔和橙
 };
 
-// 获取优化的方块颜色
-export const getOptimizedColor = (typeId: number): string => {
+export const getSoftColor = (typeId: number): string => {
   const colorMap: { [key: number]: string } = {
-    1: OPTIMIZED_COLORS.I,
-    2: OPTIMIZED_COLORS.O,
-    3: OPTIMIZED_COLORS.T,
-    4: OPTIMIZED_COLORS.S,
-    5: OPTIMIZED_COLORS.Z,
-    6: OPTIMIZED_COLORS.J,
-    7: OPTIMIZED_COLORS.L,
+    1: SOFT_COLORS.I,
+    2: SOFT_COLORS.O,
+    3: SOFT_COLORS.T,
+    4: SOFT_COLORS.S,
+    5: SOFT_COLORS.Z,
+    6: SOFT_COLORS.J,
+    7: SOFT_COLORS.L,
   };
-  return colorMap[typeId] || OPTIMIZED_COLORS.I;
+  return colorMap[typeId] || SOFT_COLORS.I;
 };
 
-// 统一的方块渲染配置
 export interface BlockRenderConfig {
   cellSize: number;
   isGhost?: boolean;
@@ -37,7 +35,6 @@ export interface BlockRenderConfig {
   theme?: 'light' | 'dark';
 }
 
-// 获取方块样式
 export const getBlockStyle = (
   cellValue: number | string,
   config: BlockRenderConfig,
@@ -45,32 +42,20 @@ export const getBlockStyle = (
 ): { style: React.CSSProperties; className: string } => {
   const { cellSize, isGhost = false, isLockDelay = false, isHidden = false, isClearing = false, ghostOpacity = 50, theme = 'dark' } = config;
   const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
-  
   let style: React.CSSProperties = {};
   let className = '';
 
-  // 处理字符串类型的方块（幽灵、锁定延迟等）
   if (typeof cellValue === 'string') {
     if (cellValue.startsWith('ghost-')) {
-      const color = cellValue.replace('ghost-', '');
-      const opacity = (ghostOpacity / 100) * 0.8;
-      
-      // 优化的幽灵方块样式
-      if (theme === 'light') {
-        style = {
-          backgroundColor: `rgba(100, 100, 100, ${opacity * 0.4})`,
-          border: `2px dashed #666666`,
-          borderRadius: '3px',
-          opacity: 1,
-        };
-      } else {
-        style = {
-          backgroundColor: `rgba(60, 60, 60, ${opacity * 0.5})`,
-          border: `2px dashed #888888`,
-          borderRadius: '3px',
-          opacity: opacity + 0.3,
-        };
-      }
+      // 幽灵方块：白色2px虚线+发光
+      style = {
+        backgroundColor: 'transparent',
+        border: '2px dashed #fff',
+        borderRadius: '3px',
+        opacity: ghostOpacity / 100 * 0.8 + 0.2,
+        boxShadow: '0 0 8px 2px rgba(255,255,255,0.3)',
+        zIndex: 2,
+      };
       className = 'ghost-block';
     } else if (cellValue.startsWith('lock-delay-')) {
       const color = cellValue.replace('lock-delay-', '');
@@ -82,7 +67,6 @@ export const getBlockStyle = (
       className = currentSkin.getBlockClass(color, false);
     }
   } else if (cellValue !== 0) {
-    // 处理数字类型的方块
     if (isGarbageBlock(cellValue)) {
       style = {
         backgroundColor: GARBAGE_COLOR,
@@ -91,55 +75,37 @@ export const getBlockStyle = (
       };
       className = 'garbage-block';
     } else {
-      const color = getOptimizedColor(cellValue);
-      style = currentSkin.getBlockStyle(color, false);
-      className = currentSkin.getBlockClass(color, false);
+      const color = getSoftColor(cellValue);
+      style = {
+        backgroundColor: color,
+        border: `1px solid #888`,
+        borderRadius: '3px',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 3px rgba(0,0,0,0.10)',
+        opacity: isHidden ? 0.7 : 1,
+      };
+      className = 'soft-block';
     }
   } else {
     // 空方块
-    if (isHidden) {
-      style = {
-        backgroundColor: 'transparent',
-        border: 'none',
-      };
-    } else {
-      if (theme === 'light') {
-        style = {
-          backgroundColor: 'transparent',
-          border: '1px solid rgba(0, 0, 0, 0.1)',
-        };
-      } else {
-        style = {
-          backgroundColor: 'transparent',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-        };
-      }
-    }
+    style = {
+      backgroundColor: 'transparent',
+      border: theme === 'light' ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.08)',
+    };
     className = 'empty-block';
   }
 
-  // 应用通用样式
   style = {
     ...style,
     width: cellSize,
     height: cellSize,
     boxSizing: 'border-box',
+    margin: 1,
   };
 
-  // 处理隐藏行
-  if (isHidden) {
-    style.opacity = (style.opacity as number || 1) * 0.3;
-  }
-
-  // 处理消除行动画
-  if (isClearing) {
-    className += ' clearing-line';
-  }
-
+  if (isClearing) className += ' clearing-line';
   return { style, className };
 };
 
-// 渲染单个方块
 export const renderBlock = (
   cellValue: number | string,
   config: BlockRenderConfig,
@@ -147,7 +113,6 @@ export const renderBlock = (
   key: string
 ): JSX.Element => {
   const { style, className } = getBlockStyle(cellValue, config, settings);
-  
   return (
     <div
       key={key}
@@ -157,7 +122,6 @@ export const renderBlock = (
   );
 };
 
-// 渲染方块预览（用于NEXT和HOLD区域）
 export const renderBlockPreview = (
   pieceType: number | null,
   config: BlockRenderConfig,
@@ -175,10 +139,10 @@ export const renderBlockPreview = (
           backgroundColor: 'transparent',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           boxSizing: 'border-box',
+          margin: 1,
         }}
       />
     );
   }
-
   return renderBlock(pieceType, config, settings, key);
 }; 
