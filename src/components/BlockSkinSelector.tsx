@@ -2,7 +2,6 @@
 import React from 'react';
 import { BLOCK_SKINS, getCurrentSkin } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
-import { Button } from '@/components/ui/button';
 
 const BlockSkinSelector: React.FC = () => {
   const { settings, updateSettings } = useUserSettings();
@@ -23,23 +22,28 @@ const BlockSkinSelector: React.FC = () => {
             key={skin.id}
             className={`p-3 border rounded-lg cursor-pointer transition-all ${
               currentSkin.id === skin.id
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
             }`}
             onClick={() => handleSkinChange(skin.id)}
           >
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium">{skin.name}</h4>
-                <p className="text-sm text-gray-500">{skin.description}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{skin.description}</p>
+                {skin.id === 'hui' && (
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    ✨ 中式美学设计，对称"回"字造型
+                  </p>
+                )}
               </div>
               
               {/* 皮肤预览 */}
               <div className="flex gap-1">
-                {['#00f0f0', '#f0f000', '#a000f0'].map((color, index) => (
+                {['#4a9d9c', '#c4a661', '#8b6bb1'].map((color, index) => (
                   <div
                     key={index}
-                    className="w-6 h-6"
+                    className={`w-6 h-6 ${skin.id === 'hui' ? 'hui-preview' : ''}`}
                     style={skin.getBlockStyle(color, false)}
                   />
                 ))}
@@ -48,6 +52,24 @@ const BlockSkinSelector: React.FC = () => {
           </div>
         ))}
       </div>
+      
+      <style jsx>{`
+        .hui-preview {
+          position: relative;
+        }
+        
+        .hui-preview::after {
+          content: '';
+          position: absolute;
+          top: 25%;
+          left: 25%;
+          width: 50%;
+          height: 50%;
+          background: white;
+          border: 1px solid rgba(0, 0, 0, 0.3);
+          box-sizing: border-box;
+        }
+      `}</style>
     </div>
   );
 };

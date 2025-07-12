@@ -1,5 +1,5 @@
 
-// 方块皮肤系统 - 提供5种不同的方块视觉效果
+// 方块皮肤系统 - 提供6种不同的方块视觉效果
 export interface BlockSkin {
   id: string;
   name: string;
@@ -90,6 +90,20 @@ export const BLOCK_SKINS: BlockSkin[] = [
       };
     },
     getBlockClass: () => 'classic-block'
+  },
+  {
+    id: 'hui',
+    name: '回字风格',
+    description: '中式"回"字设计，对称美学',
+    getBlockStyle: (color: string, isGhost = false) => ({
+      backgroundColor: isGhost ? 'transparent' : color,
+      border: isGhost ? `2px dashed ${color}` : `2px solid ${adjustBrightness(color, -30)}`,
+      opacity: isGhost ? 0.4 : 1,
+      borderRadius: '1px',
+      position: 'relative',
+      boxShadow: isGhost ? 'none' : `inset 0 0 0 1px ${adjustBrightness(color, -20)}`
+    }),
+    getBlockClass: (color: string, isGhost = false) => isGhost ? 'hui-ghost-block' : 'hui-block'
   }
 ];
 

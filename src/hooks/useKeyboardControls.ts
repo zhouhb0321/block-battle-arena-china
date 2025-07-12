@@ -12,6 +12,7 @@ interface UseKeyboardControlsProps {
   onHardDrop: () => void;
   onRotateClockwise: () => void;
   onRotateCounterclockwise: () => void;
+  onRotate180?: () => void;
   onHold: () => void;
   onPause: () => void;
   onBackToMenu?: () => void;
@@ -31,6 +32,7 @@ export const useKeyboardControls = ({
   onHardDrop,
   onRotateClockwise,
   onRotateCounterclockwise,
+  onRotate180,
   onHold,
   onPause,
   onBackToMenu,
@@ -71,33 +73,46 @@ export const useKeyboardControls = ({
       keyPressedTime.current[event.code] = now;
       
       // 立即响应的按键（旋转、硬降、暂存、暂停等）
-      if (event.code === controls.rotateClockwise && !gameOver && !paused) {
-        onRotateClockwise();
-      } else if (event.code === controls.rotateCounterclockwise && !gameOver && !paused) {
-        onRotateCounterclockwise();
-      } else if (event.code === controls.rotate180 && !gameOver && !paused) {
-        // TODO: 实现180度旋转
-        onRotateClockwise();
-        setTimeout(() => onRotateClockwise(), 50);
-      } else if (event.code === controls.hardDrop && !gameOver && !paused) {
-        onHardDrop();
-      } else if (event.code === controls.hold && !gameOver && !paused) {
-        onHold();
-      } else if (event.code === controls.pause) {
+      if (!gameOver && !paused) {
+        if (event.code === controls.rotateClockwise) {
+          console.log('顺时针旋转按键触发');
+          onRotateClockwise();
+        } else if (event.code === controls.rotateCounterclockwise) {
+          console.log('逆时针旋转按键触发');
+          onRotateCounterclockwise();
+        } else if (event.code === controls.rotate180 && onRotate180) {
+          console.log('180度旋转按键触发');
+          onRotate180();
+        } else if (event.code === controls.hardDrop) {
+          console.log('硬降按键触发');
+          onHardDrop();
+        } else if (event.code === controls.hold) {
+          console.log('暂存按键触发');
+          onHold();
+        }
+      }
+      
+      // 暂停和退出不受游戏状态限制
+      if (event.code === controls.pause) {
+        console.log('暂停按键触发');
         onPause();
       } else if (event.code === controls.backToMenu && onBackToMenu) {
+        console.log('返回菜单按键触发');
         onBackToMenu();
       }
       
       // 移动和软降的初始响应
       if (!gameOver && !paused) {
         if (event.code === controls.moveLeft) {
+          console.log('左移按键触发');
           onMoveLeft();
           lastMoveTime.current[event.code] = now;
         } else if (event.code === controls.moveRight) {
+          console.log('右移按键触发');
           onMoveRight();
           lastMoveTime.current[event.code] = now;
         } else if (event.code === controls.softDrop) {
+          console.log('软降按键触发');
           onSoftDrop();
           lastMoveTime.current[event.code] = now;
         }
@@ -105,7 +120,7 @@ export const useKeyboardControls = ({
     }
     
     setKeys(prev => new Set(prev).add(event.code));
-  }, [gameSettings, gameOver, paused, onRotateClockwise, onRotateCounterclockwise, onHardDrop, onHold, onPause, onBackToMenu, onMoveLeft, onMoveRight, onSoftDrop, onUndo, onRedo, canUndo, canRedo]);
+  }, [gameSettings, gameOver, paused, onRotateClockwise, onRotateCounterclockwise, onRotate180, onHardDrop, onHold, onPause, onBackToMenu, onMoveLeft, onMoveRight, onSoftDrop, onUndo, onRedo, canUndo, canRedo]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     delete keyPressedTime.current[event.code];

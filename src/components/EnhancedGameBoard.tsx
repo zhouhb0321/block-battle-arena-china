@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
@@ -7,89 +6,83 @@ import type { GamePiece } from '@/utils/gameTypes';
 
 interface EnhancedGameBoardProps {
   board: number[][];
-  currentPiece: GamePiece | null;
+  currentPiece?: GamePiece | null;
   ghostPiece?: GamePiece | null;
-  enableGhost?: boolean;
   cellSize?: number;
-  clearingLines?: number[];
+  showGrid?: boolean;
   showHiddenRows?: boolean;
+  isLockDelayActive?: boolean;
+  lockDelayResetCount?: number;
 }
 
 const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   board,
   currentPiece,
   ghostPiece,
-  enableGhost = true,
-  cellSize = 25,
-  clearingLines = [],
-  showHiddenRows = true
+  cellSize = 24,
+  showGrid = true,
+  showHiddenRows = true,
+  isLockDelayActive = false,
+  lockDelayResetCount = 0
 }) => {
   const { settings } = useUserSettings();
   const { actualTheme } = useTheme();
   const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
 
-  // 创建扩展的游戏板，包含隐藏行的半透明显示
   const createExtendedBoard = () => {
-    const fullBoard: (number | string)[][] = board.map(row => [...row]);
-    
-    // 添加幽灵方块 - 优先级较低
-    if (enableGhost && ghostPiece && currentPiece && settings.ghostOpacity > 0) {
-      const { shape, color } = ghostPiece.type;
-      shape.forEach((row, rowIndex) => {
-        row.forEach((cell, colIndex) => {
-          if (cell) {
-            const boardY = ghostPiece.y + rowIndex;
-            const boardX = ghostPiece.x + colIndex;
-            if (boardY >= 0 && boardY < board.length && boardX >= 0 && boardX < 10) {
-              if (fullBoard[boardY][boardX] === 0) {
-                fullBoard[boardY][boardX] = `ghost-${color}`;
+    const extendedBoard = board.map(row => [...row]);
+
+    if (ghostPiece && settings.enableGhost) {
+      const shape = ghostPiece.type.shape;
+      for (let row = 0; row < shape.length; row++) {
+        for (let col = 0; col < shape[row].length; col++) {
+          if (shape[row][col] !== 0) {
+            const boardX = ghostPiece.x + col;
+            const boardY = ghostPiece.y + row;
+            if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
+              if (extendedBoard[boardY][boardX] === 0) {
+                const color = getColorByTypeId(shape[row][col]);
+                extendedBoard[boardY][boardX] = `ghost-${color}`;
               }
             }
           }
-        });
-      });
+        }
+      }
     }
 
-    // 添加当前方块 - 优先级最高
     if (currentPiece) {
-      const { shape, color } = currentPiece.type;
-      shape.forEach((row, rowIndex) => {
-        row.forEach((cell, colIndex) => {
-          if (cell) {
-            const boardY = currentPiece.y + rowIndex;
-            const boardX = currentPiece.x + colIndex;
-            if (boardY >= 0 && boardY < board.length && boardX >= 0 && boardX < 10) {
-              fullBoard[boardY][boardX] = `solid-${color}`;
+      const shape = currentPiece.type.shape;
+      for (let row = 0; row < shape.length; row++) {
+        for (let col = 0; col < shape[row].length; col++) {
+          if (shape[row][col] !== 0) {
+            const boardX = currentPiece.x + col;
+            const boardY = currentPiece.y + row;
+            if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
+              const color = getColorByTypeId(shape[row][col]);
+              const prefix = isLockDelayActive ? 'lock-delay-' : 'solid-';
+              extendedBoard[boardY][boardX] = `${prefix}${color}`;
             }
           }
-        });
-      });
+        }
+      }
     }
 
-    return fullBoard;
+    return extendedBoard;
   };
 
   const extendedBoard = createExtendedBoard();
-  
-  // 分离隐藏行和可见行
-  const hiddenRows = extendedBoard.slice(0, 3);
-  const visibleRows = extendedBoard.slice(3);
 
-  const renderCell = (cellValue: number | string, rowIndex: number, colIndex: number, isHidden = false) => {
-    const isClearing = clearingLines.includes(rowIndex);
-    const key = `${rowIndex}-${colIndex}`;
-    
+  const getCellStyle = (cellValue: number | string, rowIndex: number) => {
     let cellStyle: React.CSSProperties = {};
     let cellClass = '';
-    
+    const isHidden = showHiddenRows && rowIndex < 3;
+
     if (typeof cellValue === 'string') {
       if (cellValue.startsWith('ghost-')) {
         const color = cellValue.replace('ghost-', '');
-        // 改善幽灵方块可见性
-        const ghostOpacity = (settings.ghostOpacity / 100) * 0.8; // 增加基础透明度
+        const ghostOpacity = (settings.ghostOpacity / 100) * 0.8;
         
         if (actualTheme === 'light') {
-          // 浅色主题下使用更深的颜色和更强的边框
           cellStyle = {
             backgroundColor: `rgba(0, 0, 0, ${ghostOpacity * 0.15})`,
             border: `2px dashed ${color}`,
@@ -97,7 +90,6 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             opacity: 1,
           };
         } else {
-          // 深色主题下使用原有样式但提高对比度
           cellStyle = {
             backgroundColor: `rgba(255, 255, 255, ${ghostOpacity * 0.1})`,
             border: `2px dashed ${color}`,
@@ -106,6 +98,10 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
           };
         }
         cellClass = 'ghost-block';
+      } else if (cellValue.startsWith('lock-delay-')) {
+        const color = cellValue.replace('lock-delay-', '');
+        cellStyle = currentSkin.getBlockStyle(color, false);
+        cellClass = `${currentSkin.getBlockClass(color, false)} lock-delay-flash`;
       } else if (cellValue.startsWith('solid-')) {
         const color = cellValue.replace('solid-', '');
         cellStyle = currentSkin.getBlockStyle(color, false);
@@ -113,27 +109,24 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       }
     } else if (cellValue !== 0) {
       if (isGarbageBlock(cellValue)) {
-        // 垃圾行使用灰色
         cellStyle = {
           backgroundColor: GARBAGE_COLOR,
           border: `1px solid ${GARBAGE_COLOR}`,
+          opacity: isHidden ? 0.3 : 1,
         };
         cellClass = 'garbage-block';
       } else {
-        // 已堆积的方块保持原始颜色 - 使用方块类型编号获取颜色
-        const color = getColorByTypeId(cellValue as number);
+        const color = getColorByTypeId(cellValue);
         cellStyle = currentSkin.getBlockStyle(color, false);
         cellClass = currentSkin.getBlockClass(color, false);
       }
     } else {
-      // 空方块 - 改善边框显示
       if (isHidden) {
         cellStyle = {
           backgroundColor: 'transparent',
           border: 'none',
         };
       } else {
-        // 根据主题调整空方块边框
         if (actualTheme === 'light') {
           cellStyle = {
             backgroundColor: 'transparent',
@@ -149,106 +142,140 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       cellClass = 'empty-block';
     }
 
-    // 隐藏行的特殊处理
     if (isHidden) {
-      // 对于非空方块，应用半透明效果
-      if (cellValue !== 0) {
-        const currentOpacity = typeof cellStyle.opacity === 'number' ? cellStyle.opacity : 1;
-        cellStyle.opacity = currentOpacity * 0.3;
-        cellClass += ' hidden-row';
-      }
+      cellStyle.opacity = (cellStyle.opacity as number || 1) * 0.3;
     }
 
-    // 消行动画
-    if (isClearing) {
-      cellClass += ' clearing';
-    }
-
-    return (
-      <div
-        key={key}
-        className={cellClass}
-        style={{
-          ...cellStyle,
-          width: `${cellSize}px`,
-          height: `${cellSize}px`,
-          transition: 'all 0.2s ease',
-        }}
-      />
-    );
+    return { cellStyle, cellClass };
   };
 
   return (
     <div className="relative">
-      <style>
-        {`
-          @keyframes flash {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-          }
-          
-          .clearing {
-            animation: flash 0.3s ease-in-out;
-            filter: brightness(1.5) saturate(1.3);
-          }
-          
-          .hidden-row {
-            position: relative;
-          }
-          
-          .ghost-block {
-            animation: ghost-pulse 2s ease-in-out infinite;
-          }
-          
-          @keyframes ghost-pulse {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.3); }
-          }
-          
-          .neon-block {
-            animation: neon-pulse 2s ease-in-out infinite;
-          }
-          
-          @keyframes neon-pulse {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.2); }
-          }
-          
-          .wood-texture-block {
-            background-image: linear-gradient(45deg, rgba(139,69,19,0.2) 25%, transparent 25%, transparent 75%, rgba(139,69,19,0.2) 75%);
-            background-size: 6px 6px;
-          }
-          
-          .3d-block {
-            transform: perspective(100px) rotateX(5deg) rotateY(5deg);
-          }
-          
-          .colorful-block {
-            animation: colorful-shimmer 3s ease-in-out infinite;
-          }
-          
-          @keyframes colorful-shimmer {
-            0%, 100% { filter: hue-rotate(0deg); }
-            50% { filter: hue-rotate(15deg); }
-          }
-        `}
-      </style>
+      {/* 锁定延迟提示 */}
+      {isLockDelayActive && (
+        <div className="absolute top-0 left-0 right-0 bg-yellow-500/20 text-yellow-300 text-xs text-center py-1 z-10">
+          锁定延迟 ({lockDelayResetCount}/{15})
+        </div>
+      )}
       
       <div 
-        className="grid gap-0 border-2 border-border bg-background shadow-2xl"
-        style={{ 
+        className="game-board relative border-2 border-gray-600 bg-gray-900"
+        style={{
+          width: cellSize * 10,
+          height: cellSize * (showHiddenRows ? 23 : 20),
+          display: 'grid',
           gridTemplateColumns: `repeat(10, ${cellSize}px)`,
-          width: `${cellSize * 10 + 4}px`,
-          height: `${cellSize * 23 + 4}px`
+          gridTemplateRows: `repeat(${showHiddenRows ? 23 : 20}, ${cellSize}px)`,
         }}
       >
-        {hiddenRows.map((row, rowIndex) =>
-          row.map((cell, colIndex) => renderCell(cell, rowIndex, colIndex, true))
-        )}
-        {visibleRows.map((row, rowIndex) =>
-          row.map((cell, colIndex) => renderCell(cell, rowIndex + 3, colIndex, false))
+        {extendedBoard.map((row, rowIndex) => 
+          row.map((cellValue, colIndex) => {
+            const { cellStyle, cellClass } = getCellStyle(cellValue, rowIndex);
+            
+            return (
+              <div
+                key={`${rowIndex}-${colIndex}`}
+                className={`game-cell ${cellClass} ${
+                  showHiddenRows && rowIndex < 3 ? 'hidden-row' : ''
+                } ${showGrid ? 'show-grid' : ''}`}
+                style={{
+                  ...cellStyle,
+                  width: cellSize,
+                  height: cellSize,
+                  boxSizing: 'border-box',
+                }}
+              />
+            );
+          })
         )}
       </div>
+      
+      <style jsx>{`
+        .game-board {
+          image-rendering: pixelated;
+          image-rendering: -moz-crisp-edges; 
+          image-rendering: crisp-edges;
+        }
+        
+        .game-cell {
+          position: relative;
+          transition: all 0.1s ease;
+        }
+        
+        .show-grid .game-cell {
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .hidden-row {
+          position: relative;
+        }
+        
+        .ghost-block {
+          animation: ghost-pulse 2s ease-in-out infinite;
+        }
+        
+        .lock-delay-flash {
+          animation: lock-delay-blink 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes ghost-pulse {
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.3); }
+        }
+        
+        @keyframes lock-delay-blink {
+          0%, 100% { filter: brightness(1.2); }
+          50% { filter: brightness(0.8); }
+        }
+        
+        /* 回字皮肤样式 */
+        .hui-block {
+          position: relative;
+        }
+        
+        .hui-block::after {
+          content: '';
+          position: absolute;
+          top: 25%;
+          left: 25%;
+          width: 50%;
+          height: 50%;
+          background: ${actualTheme === 'light' ? '#ffffff' : '#1a1a1a'};
+          border: 1px solid rgba(0, 0, 0, 0.3);
+          box-sizing: border-box;
+        }
+        
+        .hui-ghost-block {
+          position: relative;
+        }
+        
+        .hui-ghost-block::after {
+          content: '';
+          position: absolute;
+          top: 25%;
+          left: 25%;
+          width: 50%;
+          height: 50%;
+          background: transparent;
+          border: 1px dashed currentColor;
+          box-sizing: border-box;
+          opacity: 0.6;
+        }
+        
+        .neon-block {
+          box-shadow: 0 0 10px currentColor, inset 0 0 10px rgba(255, 255, 255, 0.1);
+          animation: neon-glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes neon-glow {
+          from {
+            box-shadow: 0 0 5px currentColor, inset 0 0 5px rgba(255, 255, 255, 0.1);
+          }
+          to {
+            box-shadow: 0 0 15px currentColor, inset 0 0 15px rgba(255, 255, 255, 0.2);
+          }
+        }
+      `}</style>
     </div>
   );
 };
