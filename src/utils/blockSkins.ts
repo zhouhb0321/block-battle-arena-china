@@ -94,14 +94,15 @@ export const BLOCK_SKINS: BlockSkin[] = [
   {
     id: 'hui',
     name: '回字风格',
-    description: '中式"回"字设计，对称美学',
+    description: '中式"回"字设计，实心对称美学',
     getBlockStyle: (color: string, isGhost = false) => ({
       backgroundColor: isGhost ? 'transparent' : color,
       border: isGhost ? `2px dashed ${color}` : `2px solid ${adjustBrightness(color, -30)}`,
       opacity: isGhost ? 0.4 : 1,
       borderRadius: '1px',
-      position: 'relative',
-      boxShadow: isGhost ? 'none' : `inset 0 0 0 1px ${adjustBrightness(color, -20)}`
+      position: 'relative' as const,
+      boxShadow: isGhost ? 'none' : `inset 0 0 0 1px ${adjustBrightness(color, -20)}`,
+      color: color // 设置颜色给 CSS 伪元素使用
     }),
     getBlockClass: (color: string, isGhost = false) => isGhost ? 'hui-ghost-block' : 'hui-block'
   }

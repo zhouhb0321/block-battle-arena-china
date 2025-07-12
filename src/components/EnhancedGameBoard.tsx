@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
@@ -13,6 +14,7 @@ interface EnhancedGameBoardProps {
   showHiddenRows?: boolean;
   isLockDelayActive?: boolean;
   lockDelayResetCount?: number;
+  clearingLines?: number[];
 }
 
 const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
@@ -23,7 +25,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   showGrid = true,
   showHiddenRows = true,
   isLockDelayActive = false,
-  lockDelayResetCount = 0
+  lockDelayResetCount = 0,
+  clearingLines = []
 }) => {
   const { settings } = useUserSettings();
   const { actualTheme } = useTheme();
@@ -76,25 +79,27 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
     let cellStyle: React.CSSProperties = {};
     let cellClass = '';
     const isHidden = showHiddenRows && rowIndex < 3;
+    const isClearing = clearingLines.includes(rowIndex);
 
     if (typeof cellValue === 'string') {
       if (cellValue.startsWith('ghost-')) {
         const color = cellValue.replace('ghost-', '');
-        const ghostOpacity = (settings.ghostOpacity / 100) * 0.8;
+        const ghostOpacity = (settings.ghostOpacity || 40) / 100 * 0.8;
         
+        // 改进的幽灵方块样式 - 灰色边框，内部使用背景色的暗色版本
         if (actualTheme === 'light') {
           cellStyle = {
-            backgroundColor: `rgba(0, 0, 0, ${ghostOpacity * 0.15})`,
-            border: `2px dashed ${color}`,
+            backgroundColor: `rgba(60, 60, 60, ${ghostOpacity * 0.3})`, // 暗色填充
+            border: `2px dashed #888888`,
             borderRadius: '3px',
             opacity: 1,
           };
         } else {
           cellStyle = {
-            backgroundColor: `rgba(255, 255, 255, ${ghostOpacity * 0.1})`,
-            border: `2px dashed ${color}`,
+            backgroundColor: `rgba(40, 40, 40, ${ghostOpacity * 0.4})`, // 深色主题下的暗色填充
+            border: `2px dashed #666666`,
             borderRadius: '3px',
-            opacity: ghostOpacity + 0.2,
+            opacity: ghostOpacity + 0.3,
           };
         }
         cellClass = 'ghost-block';
@@ -146,6 +151,10 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       cellStyle.opacity = (cellStyle.opacity as number || 1) * 0.3;
     }
 
+    if (isClearing) {
+      cellClass += ' clearing-line';
+    }
+
     return { cellStyle, cellClass };
   };
 
@@ -154,7 +163,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       {/* 锁定延迟提示 */}
       {isLockDelayActive && (
         <div className="absolute top-0 left-0 right-0 bg-yellow-500/20 text-yellow-300 text-xs text-center py-1 z-10">
-          锁定延迟 ({lockDelayResetCount}/{15})
+          锁定延迟 ({lockDelayResetCount}/15)
         </div>
       )}
       
@@ -190,7 +199,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         )}
       </div>
       
-      <style jsx>{`
+      <style>{`
         .game-board {
           image-rendering: pixelated;
           image-rendering: -moz-crisp-edges; 
@@ -215,7 +224,12 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         }
         
         .lock-delay-flash {
-          animation: lock-delay-blink 0.5s ease-in-out infinite;
+          animation: lock-delay-blink 0.3s ease-in-out infinite;
+        }
+        
+        .clearing-line {
+          animation: flash 0.3s ease-in-out;
+          filter: brightness(1.5) saturate(1.3);
         }
         
         @keyframes ghost-pulse {
@@ -224,8 +238,13 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         }
         
         @keyframes lock-delay-blink {
-          0%, 100% { filter: brightness(1.2); }
-          50% { filter: brightness(0.8); }
+          0%, 100% { filter: brightness(1.3) saturate(1.2); }
+          50% { filter: brightness(0.7) saturate(0.8); }
+        }
+        
+        @keyframes flash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
         }
         
         /* 回字皮肤样式 */
@@ -240,8 +259,9 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
           left: 25%;
           width: 50%;
           height: 50%;
-          background: ${actualTheme === 'light' ? '#ffffff' : '#1a1a1a'};
-          border: 1px solid rgba(0, 0, 0, 0.3);
+          background: currentColor;
+          filter: brightness(0.6) saturate(1.2);
+          border: 1px solid rgba(0, 0, 0, 0.2);
           box-sizing: border-box;
         }
         
@@ -256,7 +276,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
           left: 25%;
           width: 50%;
           height: 50%;
-          background: transparent;
+          background: currentColor;
+          filter: brightness(0.4) saturate(0.8);
           border: 1px dashed currentColor;
           box-sizing: border-box;
           opacity: 0.6;

@@ -33,7 +33,7 @@ const BlockSkinSelector: React.FC = () => {
                 <p className="text-sm text-gray-500 dark:text-gray-400">{skin.description}</p>
                 {skin.id === 'hui' && (
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    ✨ 中式美学设计，对称"回"字造型
+                    ✨ 中式美学设计，实心"回"字造型
                   </p>
                 )}
               </div>
@@ -53,7 +53,7 @@ const BlockSkinSelector: React.FC = () => {
         ))}
       </div>
       
-      <style jsx>{`
+      <style>{`
         .hui-preview {
           position: relative;
         }
@@ -65,7 +65,8 @@ const BlockSkinSelector: React.FC = () => {
           left: 25%;
           width: 50%;
           height: 50%;
-          background: white;
+          background: currentColor;
+          filter: brightness(0.6) saturate(1.2);
           border: 1px solid rgba(0, 0, 0, 0.3);
           box-sizing: border-box;
         }

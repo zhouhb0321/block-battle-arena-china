@@ -50,7 +50,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const [gameStarted, setGameStarted] = useState(false);
   const [gameInitialized, setGameInitialized] = useState(false);
 
-  // 锁定延迟相关状态
+  // 锁定延迟相关状态 - 增加延迟时间和改进机制
   const [isLockDelayActive, setIsLockDelayActive] = useState(false);
   const [lockDelayResetCount, setLockDelayResetCount] = useState(0);
   
@@ -64,8 +64,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const lockDelayTimer = useRef<NodeJS.Timeout | null>(null);
   const lastTSpinCheck = useRef<{ piece: GamePiece; board: Board; wasKicked: boolean } | null>(null);
 
-  // 锁定延迟设置
-  const LOCK_DELAY_TIME = 500; // 500ms标准锁定延迟
+  // 增强的锁定延迟设置
+  const LOCK_DELAY_TIME = 1000; // 增加到1000ms的标准锁定延迟
   const MAX_LOCK_RESETS = 15; // 最大重置次数
 
   // Helper function to create a GamePiece from TetrominoType
@@ -117,7 +117,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     setIsLockDelayActive(false);
   }, []);
 
-  // 重置锁定延迟
+  // 重置锁定延迟 - 改进的重置机制
   const resetLockDelay = useCallback(() => {
     if (lockDelayResetCount >= MAX_LOCK_RESETS) {
       debugLog.game('锁定延迟重置次数已达上限，强制锁定');
@@ -130,7 +130,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     return true;
   }, [clearLockDelayTimer, lockDelayResetCount]);
 
-  // 开始锁定延迟
+  // 开始锁定延迟 - 改进的锁定延迟逻辑
   const startLockDelay = useCallback(() => {
     if (!currentPiece || isLockDelayActive) return;
     
@@ -141,7 +141,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     }
     
     setIsLockDelayActive(true);
-    debugLog.game('开始锁定延迟', { resetCount: lockDelayResetCount });
+    debugLog.game('开始锁定延迟', { resetCount: lockDelayResetCount, delayTime: LOCK_DELAY_TIME });
     
     lockDelayTimer.current = setTimeout(() => {
       debugLog.game('锁定延迟结束，锁定方块');
@@ -149,6 +149,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     }, LOCK_DELAY_TIME);
   }, [currentPiece, board, lockDelayResetCount]);
 
+  
   const spawnNewPiece = useCallback(() => {
     if (nextPieces.length === 0) {
       debugLog.warn('No next pieces available for spawning');
@@ -270,6 +271,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     }
     return false;
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer, startLockDelay]);
+
+  
 
   // Game timer
   useEffect(() => {
@@ -479,6 +482,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     totalActions.current++;
   }, [currentPiece, holdPiece, canHold, gameOver, isPaused, isHardDropping, spawnNewPiece, gameStarted, clearLockDelayTimer]);
 
+  
+  
   const startGame = useCallback(() => {
     debugLog.game('Starting game logic...');
     setGameStarted(true);
