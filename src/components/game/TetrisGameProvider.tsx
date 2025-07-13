@@ -42,7 +42,8 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
     controls: settings.controls,
     backgroundMusic: settings.backgroundMusic || '',
     musicVolume: settings.musicVolume || 30,
-    ghostOpacity: settings.ghostOpacity || 50
+    ghostOpacity: settings.ghostOpacity || 50,
+    enableWallpaper: settings.enableWallpaper
   };
 
   const gameLogic = useGameLogic({

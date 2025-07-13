@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useTheme } from '@/contexts/ThemeContext';
-import { renderBlock, getBlockStyle } from '@/utils/blockRenderer';
+import { getBlockStyle } from '@/utils/blockRenderer';
 import type { GamePiece } from '@/utils/gameTypes';
 
 interface EnhancedGameBoardProps {

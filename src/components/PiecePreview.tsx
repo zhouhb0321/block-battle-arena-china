@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { TETROMINO_TYPES } from '@/utils/tetrisLogic';
-import { renderBlockPreview } from '@/utils/blockRenderer';
+import { getBlockStyle } from '@/utils/blockRenderer';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import type { TetrominoType } from '@/utils/gameTypes';
 
@@ -42,23 +42,33 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
       <div className="relative">
         {shape.map((row, y) => (
           <div key={y} className="flex">
-            {row.map((cell, x) => (
-              cell ? renderBlockPreview(
-                pieceType,
-                { cellSize: actualCellSize },
-                settings,
-                `${y}-${x}`
-              ) : (
-                <div
-                  key={`${y}-${x}`}
-                  className="opacity-0"
-                  style={{
-                    width: actualCellSize,
-                    height: actualCellSize,
-                  }}
-                />
-              )
-            ))}
+            {row.map((cell, x) => {
+              if (cell) {
+                const { style, className } = getBlockStyle(
+                  pieceType,
+                  { cellSize: actualCellSize },
+                  settings
+                );
+                return (
+                  <div
+                    key={`${y}-${x}`}
+                    className={className}
+                    style={style}
+                  />
+                );
+              } else {
+                return (
+                  <div
+                    key={`${y}-${x}`}
+                    className="opacity-0"
+                    style={{
+                      width: actualCellSize,
+                      height: actualCellSize,
+                    }}
+                  />
+                );
+              }
+            })}
           </div>
         ))}
       </div>
