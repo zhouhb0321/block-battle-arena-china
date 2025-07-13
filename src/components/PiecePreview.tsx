@@ -36,7 +36,9 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
     }
 
     const shape = TETROMINO_TYPES[piece.type]?.shape || piece.shape;
-    const pieceType = piece.type;
+    const pieceType = typeof piece.type === 'string' ? 
+      Object.keys(TETROMINO_TYPES).findIndex(key => key === piece.type) + 1 : 
+      piece.type;
 
     return (
       <div className="relative">

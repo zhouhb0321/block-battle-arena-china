@@ -32,7 +32,6 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   const fixedCellSize = 20;
   const { settings } = useUserSettings();
   const { actualTheme } = useTheme();
-  const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
 
   const createExtendedBoard = () => {
     const extendedBoard = board.map(row => [...row]);
