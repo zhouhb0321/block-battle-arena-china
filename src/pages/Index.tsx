@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -9,17 +8,21 @@ import RankedMatchmakingSystem from '@/components/RankedMatchmakingSystem';
 import AuthModal from '@/components/AuthModal';
 import NavigationBar from '@/components/NavigationBar';
 import ReplaySystem from '@/components/ReplaySystem';
+import ReplayPlayer from '@/components/ReplayPlayer';
 import AdSpace from '@/components/AdSpace';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn } from 'lucide-react';
 import type { ViewType } from '@/types/navigation';
+import type { GameReplay } from '@/utils/gameTypes';
 
 const Index = () => {
   const { user, isAuthenticated } = useAuth();
   const { t } = useLanguage();
   const [currentView, setCurrentView] = useState<ViewType>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedReplay, setSelectedReplay] = useState<GameReplay | null>(null);
+  const [showReplayPlayer, setShowReplayPlayer] = useState(false);
 
   // Reset to main menu when user logs out
   useEffect(() => {
@@ -47,6 +50,16 @@ const Index = () => {
     (window as any).selectedGameMode = gameMode;
   };
 
+  const handleReplaySelect = (replay: GameReplay) => {
+    setSelectedReplay(replay);
+    setShowReplayPlayer(true);
+  };
+
+  const handleCloseReplayPlayer = () => {
+    setShowReplayPlayer(false);
+    setSelectedReplay(null);
+  };
+
   const renderCurrentView = () => {
     switch (currentView) {
       case 'game':
@@ -71,7 +84,7 @@ const Index = () => {
       case 'replays':
         return (
           <div className="max-w-6xl mx-auto">
-            <ReplaySystem />
+            <ReplaySystem onReplaySelect={handleReplaySelect} />
           </div>
         );
       case 'profile':
@@ -262,6 +275,13 @@ const Index = () => {
       <AuthModal 
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
+      />
+
+      {/* Replay Player Modal */}
+      <ReplayPlayer
+        replay={selectedReplay}
+        isOpen={showReplayPlayer}
+        onClose={handleCloseReplayPlayer}
       />
     </div>
   );
