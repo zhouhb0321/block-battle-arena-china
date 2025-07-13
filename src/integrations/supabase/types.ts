@@ -746,7 +746,6 @@ export type Database = {
           das: number
           enable_ghost: boolean
           enable_sound: boolean
-          enable_wallpaper: boolean
           ghost_opacity: number | null
           id: string
           master_volume: number
@@ -765,7 +764,7 @@ export type Database = {
           das?: number
           enable_ghost?: boolean
           enable_sound?: boolean
-          enable_wallpaper?: boolean
+          ghost_opacity?: number | null
           id?: string
           master_volume?: number
           music_volume?: number | null
@@ -783,7 +782,7 @@ export type Database = {
           das?: number
           enable_ghost?: boolean
           enable_sound?: boolean
-          enable_wallpaper?: boolean
+          ghost_opacity?: number | null
           id?: string
           master_volume?: number
           music_volume?: number | null

@@ -1,15 +1,16 @@
+
 import { getCurrentSkin, isGarbageBlock, GARBAGE_COLOR } from './blockSkins';
 import type { UserSettings } from '@/hooks/useUserSettings';
 
-// 柔和色板（Tetris Guideline风格，低饱和度）
+// 柔和色板（优化的低饱和度配色）
 export const SOFT_COLORS = {
-  I: '#6EC6FF', // 柔和蓝
-  O: '#FFF176', // 柔和黄
-  T: '#BA68C8', // 柔和紫
-  S: '#81C784', // 柔和绿
-  Z: '#E57373', // 柔和红
-  J: '#64B5F6', // 柔和蓝
-  L: '#FFB74D', // 柔和橙
+  I: '#4A90E2', // 柔和蓝
+  O: '#F5C842', // 柔和黄
+  T: '#9B59B6', // 柔和紫
+  S: '#58B368', // 柔和绿
+  Z: '#E74C3C', // 柔和红
+  J: '#3498DB', // 柔和蓝
+  L: '#E67E22', // 柔和橙
 };
 
 export const getSoftColor = (typeId: number): string => {
@@ -47,13 +48,14 @@ export const getBlockStyle = (
 
   if (typeof cellValue === 'string') {
     if (cellValue.startsWith('ghost-')) {
-      // 幽灵方块：白色2px虚线+发光
+      // 优化的幽灵方块样式
+      const baseColor = theme === 'dark' ? '#FFFFFF' : '#666666';
       style = {
         backgroundColor: 'transparent',
-        border: '2px dashed #fff',
+        border: `3px dashed ${baseColor}`,
         borderRadius: '3px',
-        opacity: ghostOpacity / 100 * 0.8 + 0.2,
-        boxShadow: '0 0 8px 2px rgba(255,255,255,0.3)',
+        opacity: (ghostOpacity / 100) * 0.8 + 0.2,
+        boxShadow: `0 0 8px 2px ${baseColor}40, inset 0 0 4px ${baseColor}20`,
         zIndex: 2,
       };
       className = 'ghost-block';
@@ -78,9 +80,9 @@ export const getBlockStyle = (
       const color = getSoftColor(cellValue);
       style = {
         backgroundColor: color,
-        border: `1px solid #888`,
-        borderRadius: '3px',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 3px rgba(0,0,0,0.10)',
+        border: `1px solid #444`,
+        borderRadius: '2px',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.1)',
         opacity: isHidden ? 0.7 : 1,
       };
       className = 'soft-block';
@@ -89,7 +91,7 @@ export const getBlockStyle = (
     // 空方块
     style = {
       backgroundColor: 'transparent',
-      border: theme === 'light' ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.08)',
+      border: theme === 'light' ? '1px solid rgba(0,0,0,0.05)' : '1px solid rgba(255,255,255,0.05)',
     };
     className = 'empty-block';
   }
@@ -99,27 +101,21 @@ export const getBlockStyle = (
     width: cellSize,
     height: cellSize,
     boxSizing: 'border-box',
-    margin: 1,
+    margin: 0.5,
   };
 
   if (isClearing) className += ' clearing-line';
   return { style, className };
 };
 
-export const renderBlock = (
+export const createBlockElement = (
   cellValue: number | string,
   config: BlockRenderConfig,
   settings: UserSettings,
   key: string
-): JSX.Element => {
+): { style: React.CSSProperties; className: string; key: string } => {
   const { style, className } = getBlockStyle(cellValue, config, settings);
-  return (
-    <div
-      key={key}
-      className={`game-cell ${className}`}
-      style={style}
-    />
-  );
+  return { style, className, key };
 };
 
 export const renderBlockPreview = (
@@ -127,22 +123,20 @@ export const renderBlockPreview = (
   config: BlockRenderConfig,
   settings: UserSettings,
   key: string
-): JSX.Element => {
+): { style: React.CSSProperties; className: string; key: string } => {
   if (!pieceType) {
-    return (
-      <div
-        key={key}
-        className="game-cell empty-block"
-        style={{
-          width: config.cellSize,
-          height: config.cellSize,
-          backgroundColor: 'transparent',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxSizing: 'border-box',
-          margin: 1,
-        }}
-      />
-    );
+    return {
+      key,
+      className: 'game-cell empty-block',
+      style: {
+        width: config.cellSize,
+        height: config.cellSize,
+        backgroundColor: 'transparent',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxSizing: 'border-box',
+        margin: 0.5,
+      }
+    };
   }
-  return renderBlock(pieceType, config, settings, key);
-}; 
+  return createBlockElement(pieceType, config, settings, key);
+};
