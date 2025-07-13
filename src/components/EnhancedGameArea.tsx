@@ -22,22 +22,38 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
   gameStarted
 }) => {
   return (
-    <div className="flex gap-6 justify-center items-start max-w-6xl mx-auto">
+    <div className="flex gap-8 justify-center items-start max-w-7xl mx-auto px-4">
       {/* 左侧面板 - Next区域（4个方块预览）*/}
-      <div className="flex flex-col gap-4 w-48">
+      <div className="flex flex-col gap-6 w-56">
         <NextPiecePreview nextPieces={gameState.nextPieces} />
         
         {/* 游戏统计信息 */}
-        <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
-          <div className="text-white text-sm space-y-1">
-            <div>分数: {gameState.score.toLocaleString()}</div>
-            <div>行数: {gameState.lines}</div>
-            <div>等级: {gameState.level}</div>
+        <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
+          <h3 className="text-white text-lg font-bold mb-3 text-center">游戏统计</h3>
+          <div className="text-white text-base space-y-2">
+            <div className="flex justify-between">
+              <span>分数:</span>
+              <span className="font-bold text-blue-400">{gameState.score.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>行数:</span>
+              <span className="font-bold text-green-400">{gameState.lines}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>等级:</span>
+              <span className="font-bold text-purple-400">{gameState.level}</span>
+            </div>
             {gameState.combo > 0 && (
-              <div className="text-yellow-400">连击: {gameState.combo + 1}</div>
+              <div className="flex justify-between">
+                <span>连击:</span>
+                <span className="font-bold text-yellow-400">{gameState.combo + 1}</span>
+              </div>
             )}
             {gameState.b2b > 0 && (
-              <div className="text-purple-400">B2B: x{gameState.b2b}</div>
+              <div className="flex justify-between">
+                <span>B2B:</span>
+                <span className="font-bold text-purple-400">x{gameState.b2b}</span>
+              </div>
             )}
           </div>
         </div>
@@ -74,47 +90,82 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
         )}
       </div>
 
-      {/* 中央游戏区域 */}
+      {/* 中央游戏区域 - 更大的游戏板 */}
       <div className="flex-shrink-0">
         <GameBoard
           board={gameState.board}
           currentPiece={gameState.currentPiece}
           ghostPiece={gameSettings.enableGhost ? gameState.ghostPiece : null}
-          cellSize={30}
+          cellSize={36}
         />
       </div>
 
       {/* 右侧面板 - Hold区域和详细统计 */}
-      <div className="flex flex-col gap-4 w-48">
+      <div className="flex flex-col gap-6 w-56">
         <HoldPieceDisplay 
           holdPiece={gameState.holdPiece}
           canHold={gameState.canHold}
         />
         
         {/* 详细统计信息 */}
-        <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
-          <h3 className="text-white text-sm font-bold mb-2 text-center">详细统计</h3>
-          <div className="text-white text-xs space-y-1">
-            <div>方块数: {gameState.pieces}</div>
-            <div>PPS: {gameState.pps.toFixed(2)}</div>
-            <div>APM: {gameState.apm.toFixed(1)}</div>
-            <div>攻击: {gameState.attack}</div>
+        <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
+          <h3 className="text-white text-lg font-bold mb-3 text-center">详细统计</h3>
+          <div className="text-white text-base space-y-2">
+            <div className="flex justify-between">
+              <span>方块数:</span>
+              <span className="font-bold text-cyan-400">{gameState.pieces}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>PPS:</span>
+              <span className="font-bold text-orange-400">{gameState.pps.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>APM:</span>
+              <span className="font-bold text-pink-400">{gameState.apm.toFixed(1)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>攻击:</span>
+              <span className="font-bold text-red-400">{gameState.attack}</span>
+            </div>
             {gameState.startTime && (
-              <div>时间: {Math.floor((Date.now() - gameState.startTime) / 60000)}:{Math.floor(((Date.now() - gameState.startTime) % 60000) / 1000).toString().padStart(2, '0')}</div>
+              <div className="flex justify-between">
+                <span>时间:</span>
+                <span className="font-bold text-indigo-400">
+                  {Math.floor((Date.now() - gameState.startTime) / 60000)}:{Math.floor(((Date.now() - gameState.startTime) % 60000) / 1000).toString().padStart(2, '0')}
+                </span>
+              </div>
             )}
           </div>
         </div>
 
         {/* 操作提示 */}
-        <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
-          <h3 className="text-white text-sm font-bold mb-2 text-center">操作提示</h3>
-          <div className="text-white text-xs space-y-1">
-            <div>← → 移动</div>
-            <div>↓ 软降</div>
-            <div>空格 硬降</div>
-            <div>↑ 旋转</div>
-            <div>C 暂存</div>
-            <div>P 暂停</div>
+        <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
+          <h3 className="text-white text-lg font-bold mb-3 text-center">操作提示</h3>
+          <div className="text-white text-base space-y-2">
+            <div className="flex justify-between">
+              <span>← →</span>
+              <span className="text-gray-400">移动</span>
+            </div>
+            <div className="flex justify-between">
+              <span>↓</span>
+              <span className="text-gray-400">软降</span>
+            </div>
+            <div className="flex justify-between">
+              <span>空格</span>
+              <span className="text-gray-400">硬降</span>
+            </div>
+            <div className="flex justify-between">
+              <span>↑</span>
+              <span className="text-gray-400">旋转</span>
+            </div>
+            <div className="flex justify-between">
+              <span>C</span>
+              <span className="text-gray-400">暂存</span>
+            </div>
+            <div className="flex justify-between">
+              <span>P</span>
+              <span className="text-gray-400">暂停</span>
+            </div>
           </div>
         </div>
       </div>

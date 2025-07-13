@@ -6,7 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { Users, GamepadIcon, DollarSign, Megaphone, Activity } from 'lucide-react';
-import AdminLogsPanel from './AdminLogsPanel';
+import EnhancedAdminLogsPanel from './EnhancedAdminLogsPanel';
+import AdminMusicManagement from './AdminMusicManagement';
+import AdminWallpaperManagement from './AdminWallpaperManagement';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -124,14 +126,16 @@ const AdminPanel: React.FC = () => {
         </Card>
       </div>
 
-      <Tabs defaultValue="users" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="users">用户管理</TabsTrigger>
-          <TabsTrigger value="logs">系统日志</TabsTrigger>
-          <TabsTrigger value="games">游戏记录</TabsTrigger>
-          <TabsTrigger value="revenue">收入管理</TabsTrigger>
-          <TabsTrigger value="ads">广告管理</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="users" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-7">
+            <TabsTrigger value="users">用户管理</TabsTrigger>
+            <TabsTrigger value="logs">系统日志</TabsTrigger>
+            <TabsTrigger value="games">游戏记录</TabsTrigger>
+            <TabsTrigger value="music">音乐管理</TabsTrigger>
+            <TabsTrigger value="wallpapers">壁纸管理</TabsTrigger>
+            <TabsTrigger value="revenue">收入管理</TabsTrigger>
+            <TabsTrigger value="ads">广告管理</TabsTrigger>
+          </TabsList>
 
         <TabsContent value="users" className="space-y-4">
           <Card>
@@ -164,18 +168,16 @@ const AdminPanel: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="logs" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5" />
-                系统日志
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AdminLogsPanel />
-            </CardContent>
-          </Card>
+        <TabsContent value="logs">
+          <EnhancedAdminLogsPanel />
+        </TabsContent>
+
+        <TabsContent value="music">
+          <AdminMusicManagement />
+        </TabsContent>
+
+        <TabsContent value="wallpapers">
+          <AdminWallpaperManagement />
         </TabsContent>
 
         <TabsContent value="games" className="space-y-4">

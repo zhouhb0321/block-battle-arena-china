@@ -256,11 +256,17 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     
     if (isValidPosition(board, newPiece)) {
       setCurrentPiece(newPiece);
+      totalActions.current++;
+      
+      // 横向移动时，只有在接触地面或其他方块时才重置锁定延迟
       if (dx !== 0) {
-        totalActions.current++;
-        // 左右移动时重置锁定延迟
-        if (resetLockDelay()) {
-          clearLockDelayTimer();
+        const testDownPiece = { ...newPiece, y: newPiece.y + 1 };
+        if (!isValidPosition(board, testDownPiece)) {
+          // 方块接触地面，重置锁定延迟
+          if (resetLockDelay()) {
+            clearLockDelayTimer();
+            // 不立即开始新的锁定延迟，等到下一次自动下落失败时
+          }
         }
       }
       return true;

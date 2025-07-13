@@ -10,6 +10,7 @@ import NavigationBar from '@/components/NavigationBar';
 import ReplaySystem from '@/components/ReplaySystem';
 import ReplayPlayer from '@/components/ReplayPlayer';
 import AdSpace from '@/components/AdSpace';
+import AdminPanel from '@/components/AdminPanel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn } from 'lucide-react';
@@ -95,6 +96,12 @@ const Index = () => {
             <Button onClick={handleBackToMenu} className="mt-4">
               {t('common.backToHome')}
             </Button>
+          </div>
+        );
+      case 'admin':
+        return (
+          <div className="max-w-7xl mx-auto">
+            <AdminPanel />
           </div>
         );
       case 'home':
