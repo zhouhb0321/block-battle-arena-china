@@ -8,32 +8,64 @@ import { Image, Eye, EyeOff } from 'lucide-react';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useWallpaperManager } from '@/hooks/useWallpaperManager';
 
-const VisualTab: React.FC = () => {
+interface VisualTabProps {
+  settings?: any;
+  onSettingChange?: (key: string, value: any) => void;
+}
+
+const VisualTab: React.FC<VisualTabProps> = ({ settings: propSettings, onSettingChange }) => {
   const { settings, updateSettings } = useUserSettings();
   const { availableWallpapers, currentWallpaperIndex, isLoading } = useWallpaperManager();
 
+  // Use prop settings if provided, otherwise use hook settings
+  const currentSettings = propSettings || settings;
+
   const handleGhostOpacityChange = (value: number[]) => {
-    updateSettings({ ghost_opacity: value[0] });
+    if (onSettingChange) {
+      onSettingChange('ghostOpacity', value[0]);
+    } else {
+      updateSettings({ ghostOpacity: value[0] });
+    }
   };
 
   const handleWallpaperToggle = (checked: boolean) => {
-    updateSettings({ enable_wallpaper: checked });
+    if (onSettingChange) {
+      onSettingChange('enableWallpaper', checked);
+    } else {
+      updateSettings({ enableWallpaper: checked });
+    }
   };
 
   const handleWallpaperOpacityChange = (value: number[]) => {
-    updateSettings({ wallpaper_opacity: value[0] });
+    if (onSettingChange) {
+      onSettingChange('wallpaperOpacity', value[0]);
+    } else {
+      updateSettings({ wallpaperOpacity: value[0] });
+    }
   };
 
   const handleLineAnimationToggle = (checked: boolean) => {
-    updateSettings({ enable_line_animation: checked });
+    if (onSettingChange) {
+      onSettingChange('enableLineAnimation', checked);
+    } else {
+      updateSettings({ enableLineAnimation: checked });
+    }
   };
 
   const handleAchievementAnimationToggle = (checked: boolean) => {
-    updateSettings({ enable_achievement_animation: checked });
+    if (onSettingChange) {
+      onSettingChange('enableAchievementAnimation', checked);
+    } else {
+      updateSettings({ enableAchievementAnimation: checked });
+    }
   };
 
   const handleLandingEffectToggle = (checked: boolean) => {
-    updateSettings({ enable_landing_effect: checked });
+    if (onSettingChange) {
+      onSettingChange('enableLandingEffect', checked);
+    } else {
+      updateSettings({ enableLandingEffect: checked });
+    }
   };
 
   return (
@@ -50,10 +82,10 @@ const VisualTab: React.FC = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>幽灵方块透明度</Label>
-              <span className="text-sm text-muted-foreground">{settings.ghost_opacity}%</span>
+              <span className="text-sm text-muted-foreground">{currentSettings.ghostOpacity}%</span>
             </div>
             <Slider
-              value={[settings.ghost_opacity]}
+              value={[currentSettings.ghostOpacity]}
               onValueChange={handleGhostOpacityChange}
               max={100}
               step={1}
@@ -66,20 +98,20 @@ const VisualTab: React.FC = () => {
             <Label htmlFor="enable-wallpaper">启用背景壁纸</Label>
             <Switch
               id="enable-wallpaper"
-              checked={settings.enable_wallpaper}
+              checked={currentSettings.enableWallpaper}
               onCheckedChange={handleWallpaperToggle}
             />
           </div>
 
           {/* 壁纸透明度 */}
-          {settings.enable_wallpaper && (
+          {currentSettings.enableWallpaper && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label>壁纸透明度</Label>
-                <span className="text-sm text-muted-foreground">{settings.wallpaper_opacity}%</span>
+                <span className="text-sm text-muted-foreground">{currentSettings.wallpaperOpacity}%</span>
               </div>
               <Slider
-                value={[settings.wallpaper_opacity]}
+                value={[currentSettings.wallpaperOpacity]}
                 onValueChange={handleWallpaperOpacityChange}
                 max={100}
                 step={1}
@@ -96,7 +128,7 @@ const VisualTab: React.FC = () => {
               <Label htmlFor="line-animation">消行动画</Label>
               <Switch
                 id="line-animation"
-                checked={settings.enable_line_animation}
+                checked={currentSettings.enableLineAnimation}
                 onCheckedChange={handleLineAnimationToggle}
               />
             </div>
@@ -105,7 +137,7 @@ const VisualTab: React.FC = () => {
               <Label htmlFor="achievement-animation">成就动画</Label>
               <Switch
                 id="achievement-animation"
-                checked={settings.enable_achievement_animation}
+                checked={currentSettings.enableAchievementAnimation}
                 onCheckedChange={handleAchievementAnimationToggle}
               />
             </div>
@@ -114,7 +146,7 @@ const VisualTab: React.FC = () => {
               <Label htmlFor="landing-effect">落地特效</Label>
               <Switch
                 id="landing-effect"
-                checked={settings.enable_landing_effect}
+                checked={currentSettings.enableLandingEffect}
                 onCheckedChange={handleLandingEffectToggle}
               />
             </div>
@@ -131,17 +163,12 @@ const VisualTab: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mx-auto mb-2"></div>
-              <p className="text-sm text-muted-foreground">自动加载壁纸中...</p>
-            </div>
-          ) : availableWallpapers.length > 0 ? (
+          {availableWallpapers.length > 0 ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {availableWallpapers.slice(0, 6).map((wallpaper, index) => (
                   <div
-                    key={wallpaper.id}
+                    key={wallpaper.name}
                     className={`relative aspect-video rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
                       index === currentWallpaperIndex
                         ? 'border-primary ring-2 ring-primary/20'
@@ -163,7 +190,7 @@ const VisualTab: React.FC = () => {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                * 壁纸已自动检测并加载，当前显示: {availableWallpapers[currentWallpaperIndex]?.name || '默认'}
+                * 壁纸已自动加载，当前显示: {availableWallpapers[currentWallpaperIndex]?.name || '默认'}
               </p>
             </div>
           ) : (

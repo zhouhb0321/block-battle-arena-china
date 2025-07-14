@@ -41,15 +41,12 @@ export const useWallpaperManager = () => {
       }
 
       setAvailableWallpapers(wallpapers);
-      if (wallpapers.length > 0 && !settings.enableWallpaper) {
-        // 如果检测到壁纸但未启用，可以选择自动启用或保持当前设置
-      }
       setIsLoading(false);
     } catch (error) {
       console.error('Error detecting wallpapers:', error);
       setIsLoading(false);
     }
-  }, [settings.enableWallpaper]);
+  }, []);
 
   // 自动切换壁纸功能
   useEffect(() => {
@@ -88,6 +85,5 @@ export const useWallpaperManager = () => {
     availableWallpapers,
     currentWallpaperIndex,
     isLoading
-    // 移除 detectWallpapers 函数，不再暴露给UI使用
   };
 };

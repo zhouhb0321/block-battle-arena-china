@@ -62,6 +62,5 @@ export const useMusicManager = () => {
     currentTrack,
     setCurrentTrack,
     isLoading
-    // 移除 detectMusicFiles 函数，不再暴露给UI使用
   };
 };
