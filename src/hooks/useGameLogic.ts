@@ -134,6 +134,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       lockDelayTimer.current = null;
     }
     setIsLockDelayActive(false);
+    debugLog.game('锁定延迟计时器已清除');
   }, []);
 
   const resetLockDelay = useCallback(() => {
@@ -157,13 +158,17 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }
     
     setIsLockDelayActive(true);
-    debugLog.game('开始锁定延迟', { resetCount: lockDelayResetCount, delayTime: LOCK_DELAY_TIME });
+    debugLog.game('开始锁定延迟', { 
+      resetCount: lockDelayResetCount, 
+      delayTime: LOCK_DELAY_TIME,
+      piecePosition: { x: currentPiece.x, y: currentPiece.y }
+    });
     
     lockDelayTimer.current = setTimeout(() => {
       debugLog.game('锁定延迟结束，锁定方块');
       lockPiece();
     }, LOCK_DELAY_TIME);
-  }, [currentPiece, board, lockDelayResetCount]);
+  }, [currentPiece, board, lockDelayResetCount, isLockDelayActive]);
 
   const spawnNewPiece = useCallback(() => {
     if (nextPieces.length === 0) {
@@ -189,6 +194,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
 
     debugLog.game('New piece spawned', {
       piece: newPiece.type.type,
+      position: { x: newPiece.x, y: newPiece.y },
       totalPieces: totalPieces.current
     });
 
@@ -210,7 +216,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const lockPiece = useCallback(() => {
     if (!currentPiece) return;
 
-    debugLog.game('Locking piece', { piece: currentPiece.type.type });
+    debugLog.game('Locking piece', { 
+      piece: currentPiece.type.type,
+      position: { x: currentPiece.x, y: currentPiece.y }
+    });
     clearLockDelayTimer();
 
     const newBoard = placePiece(board, currentPiece);
@@ -307,17 +316,28 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       totalActions.current++;
       lastMoveWasRotation.current = false;
       
-      // 横向移动时重置锁定延迟
+      debugLog.game('Piece moved', { 
+        from: { x: currentPiece.x, y: currentPiece.y },
+        to: { x: newPiece.x, y: newPiece.y },
+        direction: { dx, dy }
+      });
+      
+      // 横向移动时处理锁定延迟
       if (dx !== 0) {
         const testDownPiece = { ...newPiece, y: newPiece.y + 1 };
         if (!isValidPosition(board, testDownPiece)) {
+          // 方块已到底部，重置锁定延迟
           if (resetLockDelay()) {
-            clearLockDelayTimer();
+            startLockDelay();
           }
+        } else {
+          // 方块不在底部，清除锁定延迟
+          clearLockDelayTimer();
         }
       }
       return true;
     } else if (dy > 0) {
+      // 向下移动失败，开始锁定延迟
       startLockDelay();
       return false;
     }
@@ -361,10 +381,14 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     };
   }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted, movePiece]);
 
+  // 修复硬降函数 - 同步执行，避免空中停留
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
-    debugLog.game('Hard drop initiated', { currentPiece: currentPiece.type.type });
+    debugLog.game('Hard drop initiated', { 
+      currentPiece: currentPiece.type.type,
+      currentPosition: { x: currentPiece.x, y: currentPiece.y }
+    });
     
     setIsHardDropping(true);
     clearLockDelayTimer();
@@ -375,8 +399,16 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     debugLog.game('Hard drop calculation', { 
       currentY: currentPiece.y, 
       dropY, 
-      dropDistance 
+      dropDistance,
+      boardState: board.map((row, i) => ({ row: i, filled: row.filter(cell => cell !== 0).length }))
     });
+    
+    // 验证计算结果的合理性
+    if (dropDistance < 0) {
+      debugLog.error('Hard drop: Invalid drop distance', { dropDistance, currentY: currentPiece.y, dropY });
+      setIsHardDropping(false);
+      return;
+    }
     
     setScore(prev => prev + dropDistance * 2);
     totalActions.current++;
@@ -384,11 +416,17 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     const droppedPiece = { ...currentPiece, y: dropY };
     setCurrentPiece(droppedPiece);
     
-    // 立即锁定方块
-    setTimeout(() => {
+    debugLog.game('Hard drop completed', {
+      finalPosition: { x: droppedPiece.x, y: droppedPiece.y },
+      scoreAdded: dropDistance * 2
+    });
+    
+    // 同步锁定方块，避免使用 setTimeout
+    setIsHardDropping(false);
+    // 使用 requestAnimationFrame 确保状态更新后再锁定
+    requestAnimationFrame(() => {
       lockPiece();
-      setIsHardDropping(false);
-    }, 50);
+    });
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lockPiece, clearLockDelayTimer]);
 
   const rotatePieceClockwise = useCallback(() => {

@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { getBlockColor } from '@/utils/blockColors';
+import { getBlockColor, getTetrominoColor, getGhostColor, adaptColorForTheme, validateColor } from '@/utils/blockColors';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface WoodTextureCellProps {
   cellValue: number | string;
@@ -17,6 +18,8 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
   isClearing = false,
   className = ''
 }) => {
+  const { actualTheme } = useTheme();
+  
   const baseStyle = {
     width: `${cellSize}px`,
     height: `${cellSize}px`,
@@ -29,107 +32,56 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         className={className}
         style={{
           ...baseStyle,
-          backgroundColor: '#1a1a1a',
-          border: '1px solid #333',
+          backgroundColor: actualTheme === 'dark' ? '#1a1a1a' : '#f5f5f5',
+          border: `1px solid ${actualTheme === 'dark' ? '#333' : '#ddd'}`,
         }}
       />
     );
   }
   
-  // Ghost piece styles
+  // Ghost piece styles - 统一幽灵方块处理
   if (typeof cellValue === 'string' && cellValue.startsWith('ghost-')) {
-    const color = cellValue.replace('ghost-', '');
+    const baseColor = cellValue.replace('ghost-', '');
+    const ghostColor = validateColor(baseColor) ? getGhostColor(baseColor, 0.4) : getGhostColor(getTetrominoColor('I'), 0.4);
+    
     return (
       <div
         className={className}
         style={{
           ...baseStyle,
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          border: `2px dashed ${color}`,
-          opacity: 0.4,
+          backgroundColor: 'transparent',
+          border: `2px dashed ${adaptColorForTheme(baseColor, actualTheme)}`,
+          opacity: 0.6,
           borderRadius: '2px',
         }}
       />
     );
   }
   
-  // Active piece styles (solid pieces)
+  // Active piece styles (solid pieces) - 统一活动方块处理
   if (typeof cellValue === 'string' && cellValue.startsWith('solid-')) {
-    const color = cellValue.replace('solid-', '');
+    const baseColor = cellValue.replace('solid-', '');
+    const finalColor = validateColor(baseColor) ? adaptColorForTheme(baseColor, actualTheme) : adaptColorForTheme(getTetrominoColor('I'), actualTheme);
+    
     return (
       <div
         className={`wood-texture-block ${isClearing ? 'clearing' : ''} ${className}`}
         style={{
           ...baseStyle,
-          backgroundColor: color,
-          border: `1px solid ${color}`,
+          backgroundColor: finalColor,
+          border: `1px solid ${finalColor}`,
           borderRadius: '3px',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        {/* 降低木纹纹理的对比度 */}
-        <div
-          className="wood-grain-overlay"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: `
-              linear-gradient(
-                45deg,
-                rgba(0,0,0,0.05) 0%,
-                transparent 25%,
-                rgba(0,0,0,0.02) 50%,
-                transparent 75%,
-                rgba(0,0,0,0.05) 100%
-              ),
-              linear-gradient(
-                90deg,
-                rgba(255,255,255,0.05) 0%,
-                transparent 20%,
-                rgba(255,255,255,0.02) 40%,
-                transparent 60%,
-                rgba(255,255,255,0.05) 80%,
-                transparent 100%
-              )
-            `,
-            backgroundSize: '8px 8px, 12px 4px',
-          }}
-        />
-        
-        {/* 减少高光效果 */}
-        <div
-          className="highlight-overlay"
-          style={{
-            position: 'absolute',
-            top: '1px',
-            left: '1px',
-            right: '3px',
-            height: '20%',
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)',
-            borderRadius: '2px 2px 0 0',
-          }}
-        />
-        
-        {/* 减少阴影效果 */}
-        <div
-          className="shadow-overlay"
-          style={{
-            position: 'absolute',
-            bottom: '0',
-            left: '0',
-            right: '0',
-            height: '15%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.15), transparent)',
-            borderRadius: '0 0 2px 2px',
-          }}
-        />
+        {renderWoodTexture()}
       </div>
     );
   }
   
   // Placed pieces styles (with wood texture effect) - 使用统一的颜色系统
-  const backgroundColor = getBlockColor(cellValue as number);
+  const backgroundColor = adaptColorForTheme(getBlockColor(cellValue as number), actualTheme);
   
   return (
     <div
@@ -143,87 +95,98 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         overflow: 'hidden',
       }}
     >
-      {/* 更柔和的木纹纹理效果 */}
-      <div
-        className="wood-grain-overlay"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: `
-            radial-gradient(ellipse at center, rgba(0,0,0,0.05) 0%, transparent 70%),
-            linear-gradient(
-              30deg,
-              rgba(0,0,0,0.08) 0%,
-              transparent 15%,
-              rgba(0,0,0,0.04) 30%,
-              transparent 45%,
-              rgba(0,0,0,0.06) 60%,
-              transparent 75%,
-              rgba(0,0,0,0.05) 90%,
-              transparent 100%
-            ),
-            linear-gradient(
-              120deg,
-              rgba(255,255,255,0.05) 0%,
-              transparent 25%,
-              rgba(255,255,255,0.03) 50%,
-              transparent 75%,
-              rgba(255,255,255,0.04) 100%
-            )
-          `,
-          backgroundSize: '100% 100%, 6px 6px, 10px 8px',
-        }}
-      />
-      
-      {/* 更柔和的立体效果 */}
-      <div
-        className="bevel-highlight"
-        style={{
-          position: 'absolute',
-          top: '0',
-          left: '0',
-          right: '2px',
-          bottom: '2px',
-          border: '1px solid rgba(255,255,255,0.2)',
-          borderBottomColor: 'transparent',
-          borderRightColor: 'transparent',
-          borderRadius: '2px',
-          pointerEvents: 'none',
-        }}
-      />
-      
-      <div
-        className="bevel-shadow"
-        style={{
-          position: 'absolute',
-          top: '2px',
-          left: '2px',
-          right: '0',
-          bottom: '0',
-          border: '1px solid rgba(0,0,0,0.2)',
-          borderTopColor: 'transparent',
-          borderLeftColor: 'transparent',
-          borderRadius: '2px',
-          pointerEvents: 'none',
-        }}
-      />
-      
-      {/* 更柔和的闪光效果 */}
-      <div
-        className="shimmer-overlay"
-        style={{
-          position: 'absolute',
-          top: '1px',
-          left: '1px',
-          width: '30%',
-          height: '30%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-          borderRadius: '50%',
-          filter: 'blur(1px)',
-        }}
-      />
+      {renderWoodTexture()}
     </div>
   );
+
+  // 渲染木纹纹理的辅助函数
+  function renderWoodTexture() {
+    return (
+      <>
+        {/* 更柔和的木纹纹理效果 */}
+        <div
+          className="wood-grain-overlay"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `
+              radial-gradient(ellipse at center, rgba(0,0,0,0.05) 0%, transparent 70%),
+              linear-gradient(
+                30deg,
+                rgba(0,0,0,0.08) 0%,
+                transparent 15%,
+                rgba(0,0,0,0.04) 30%,
+                transparent 45%,
+                rgba(0,0,0,0.06) 60%,
+                transparent 75%,
+                rgba(0,0,0,0.05) 90%,
+                transparent 100%
+              ),
+              linear-gradient(
+                120deg,
+                rgba(255,255,255,0.05) 0%,
+                transparent 25%,
+                rgba(255,255,255,0.03) 50%,
+                transparent 75%,
+                rgba(255,255,255,0.04) 100%
+              )
+            `,
+            backgroundSize: '100% 100%, 6px 6px, 10px 8px',
+            mixBlendMode: 'multiply',
+          }}
+        />
+        
+        {/* 更柔和的立体效果 */}
+        <div
+          className="bevel-highlight"
+          style={{
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            right: '2px',
+            bottom: '2px',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderBottomColor: 'transparent',
+            borderRightColor: 'transparent',
+            borderRadius: '2px',
+            pointerEvents: 'none',
+          }}
+        />
+        
+        <div
+          className="bevel-shadow"
+          style={{
+            position: 'absolute',
+            top: '2px',
+            left: '2px',
+            right: '0',
+            bottom: '0',
+            border: '1px solid rgba(0,0,0,0.2)',
+            borderTopColor: 'transparent',
+            borderLeftColor: 'transparent',
+            borderRadius: '2px',
+            pointerEvents: 'none',
+          }}
+        />
+        
+        {/* 更柔和的闪光效果 */}
+        <div
+          className="shimmer-overlay"
+          style={{
+            position: 'absolute',
+            top: '1px',
+            left: '1px',
+            width: '30%',
+            height: '30%',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
+            borderRadius: '50%',
+            filter: 'blur(1px)',
+            animation: 'shimmer 3s ease-in-out infinite',
+          }}
+        />
+      </>
+    );
+  }
 };
 
 export default WoodTextureCell;

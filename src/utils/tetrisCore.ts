@@ -13,7 +13,7 @@ export const createEmptyBoard = (): number[][] => {
 
 // 检查给定的方块位置是否有效
 export const isValidPosition = (board: number[][], piece: GamePiece): boolean => {
-  const { type, x, y, rotation } = piece;
+  const { type, x, y } = piece;
   const shape = type.shape;
 
   for (let row = 0; row < shape.length; row++) {
@@ -75,18 +75,51 @@ export const clearLines = (board: number[][]): { newBoard: number[][]; linesClea
   return { newBoard, linesCleared };
 };
 
-// 修复计算方块的掉落位置 - 确保返回正确的最终位置
+// 修复计算方块的掉落位置 - 确保返回正确的最终位置，添加详细验证
 export const calculateDropPosition = (board: number[][], piece: GamePiece): number => {
+  if (!piece || !board || board.length === 0) {
+    console.error('calculateDropPosition: Invalid input', { piece, boardLength: board?.length });
+    return piece?.y || 0;
+  }
+
   let dropY = piece.y;
   
+  // 确保起始位置是有效的
+  if (!isValidPosition(board, piece)) {
+    console.warn('calculateDropPosition: Starting position is invalid', { 
+      piece: piece.type.type, 
+      position: { x: piece.x, y: piece.y } 
+    });
+    return piece.y;
+  }
+  
   // 逐行向下检查，直到找到无法放置的位置
-  while (dropY < BOARD_HEIGHT) {
+  while (dropY < BOARD_HEIGHT - 1) {
     const testPiece = { ...piece, y: dropY + 1 };
     if (!isValidPosition(board, testPiece)) {
       break;
     }
     dropY++;
   }
+  
+  // 验证计算结果
+  const finalPiece = { ...piece, y: dropY };
+  if (!isValidPosition(board, finalPiece)) {
+    console.error('calculateDropPosition: Final position is invalid', {
+      piece: piece.type.type,
+      originalY: piece.y,
+      calculatedY: dropY,
+      finalPosition: { x: finalPiece.x, y: finalPiece.y }
+    });
+    return piece.y; // 返回原始位置以避免错误
+  }
+  
+  console.log('calculateDropPosition: Success', {
+    piece: piece.type.type,
+    from: piece.y,
+    to: dropY,
+    distance: dropY - piece.y
+  });
   
   return dropY;
 };
