@@ -77,6 +77,23 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     return createNewPiece(pieceType);
   }, []);
 
+  // 立即初始化方块队列 - 在倒计时开始时调用
+  const initializePieces = useCallback(() => {
+    debugLog.game('Initializing pieces for countdown start');
+    resetSevenBag();
+    
+    const allPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
+    
+    setCurrentPiece(allPieces[0]);
+    setNextPieces(allPieces.slice(1));
+    setGameInitialized(true);
+    
+    debugLog.game('Pieces initialized', {
+      currentPiece: allPieces[0].type.type,
+      nextPieces: allPieces.slice(1).map(p => p.type.type)
+    });
+  }, [createGamePiece]);
+
   // 应用游戏状态 - 用于撤销/重做
   const applyGameState = useCallback((gameState: GameState) => {
     setBoard(gameState.board);
@@ -110,23 +127,6 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       debugLog.game('窗口重获焦点，自动恢复游戏');
     }
   }, [isWindowFocused, isPaused, isManuallyPaused, gameStarted, gameOver]);
-
-  // 立即初始化方块队列 - 在倒计时开始时调用
-  const initializePieces = useCallback(() => {
-    debugLog.game('Initializing pieces for countdown start');
-    resetSevenBag();
-    
-    const allPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
-    
-    setCurrentPiece(allPieces[0]);
-    setNextPieces(allPieces.slice(1));
-    setGameInitialized(true);
-    
-    debugLog.game('Pieces initialized', {
-      currentPiece: allPieces[0].type.type,
-      nextPieces: allPieces.slice(1).map(p => p.type.type)
-    });
-  }, [createGamePiece]);
 
   const clearLockDelayTimer = useCallback(() => {
     if (lockDelayTimer.current) {
@@ -572,7 +572,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       if (!gameInitialized) {
         initializePieces();
       }
-    }, [gameInitialized]),
+    }, [gameInitialized, initializePieces]),
     resetGame: useCallback(() => {
       debugLog.game('Resetting game...');
       setBoard(createEmptyBoard());
@@ -621,27 +621,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     initializeForCountdown: useCallback(() => {
       debugLog.game('Initializing for countdown start');
       initializePieces();
-    }, []),
+    }, [initializePieces]),
     applyGameState,
     undoMove: () => {},
     redoMove: () => {},
     canUndo: false,
     canRedo: false
   };
-
-  function initializePieces() {
-    debugLog.game('Initializing pieces for countdown start');
-    resetSevenBag();
-    
-    const allPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
-    
-    setCurrentPiece(allPieces[0]);
-    setNextPieces(allPieces.slice(1));
-    setGameInitialized(true);
-    
-    debugLog.game('Pieces initialized', {
-      currentPiece: allPieces[0].type.type,
-      nextPieces: allPieces.slice(1).map(p => p.type.type)
-    });
-  }
 };
