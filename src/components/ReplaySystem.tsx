@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,7 +81,14 @@ const ReplaySystem: React.FC<ReplaySystemProps> = ({ onReplaySelect }) => {
             backgroundMusic: '',
             musicVolume: 30,
             ghostOpacity: 50,
-            enableWallpaper: true
+            enableWallpaper: true,
+            wallpaperOpacity: 100,
+            autoPlayMusic: false,
+            loopMusic: true,
+            enableLineAnimation: true,
+            enableAchievementAnimation: true,
+            enableLandingEffect: true,
+            blockSkin: 'wood'
           }
         }
       }));
