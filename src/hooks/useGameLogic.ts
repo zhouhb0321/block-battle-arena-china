@@ -22,7 +22,8 @@ import type {
   GameMode, 
   Position,
   GameStats,
-  GamePiece
+  GamePiece,
+  GameState
 } from '@/utils/gameTypes';
 
 interface UseGameLogicProps {
@@ -71,6 +72,23 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   // Helper function to create a GamePiece from TetrominoType
   const createGamePiece = useCallback((pieceType: TetrominoType): GamePiece => {
     return createNewPiece(pieceType);
+  }, []);
+
+  // 应用游戏状态 - 新增的方法用于撤销/重做
+  const applyGameState = useCallback((gameState: GameState) => {
+    setBoard(gameState.board);
+    setCurrentPiece(gameState.currentPiece);
+    setNextPieces(gameState.nextPieces);
+    setHoldPiece(gameState.holdPiece);
+    setCanHold(gameState.canHold);
+    setScore(gameState.score);
+    setLines(gameState.lines);
+    setLevel(gameState.level);
+    setGameOver(gameState.gameOver);
+    setIsPaused(gameState.paused);
+    setPps(gameState.pps);
+    setApm(gameState.apm);
+    debugLog.game('游戏状态已应用', gameState);
   }, []);
 
   // 智能失焦处理 - 区分手动暂停和自动失焦暂停
@@ -277,8 +295,6 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     }
     return false;
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer, startLockDelay]);
-
-  
 
   // Game timer
   useEffect(() => {
@@ -602,6 +618,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     spawnNewPiece,
     lockPiece,
     initializeForCountdown,
+    applyGameState, // 新增的方法
     // Placeholder methods for compatibility
     undoMove: () => {},
     redoMove: () => {},

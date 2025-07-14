@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, Image, Monitor } from 'lucide-react';
+import { Image, Monitor } from 'lucide-react';
 import { useWallpaperManager } from '@/hooks/useWallpaperManager';
 import type { GameSettings } from '@/utils/gameTypes';
 
@@ -15,7 +14,7 @@ interface VisualTabProps {
 }
 
 const VisualTab: React.FC<VisualTabProps> = ({ settings, onSettingChange }) => {
-  const { availableWallpapers, currentWallpaperIndex, isLoading, detectWallpapers } = useWallpaperManager();
+  const { availableWallpapers, currentWallpaperIndex, isLoading } = useWallpaperManager();
 
   return (
     <div className="space-y-6">
@@ -71,44 +70,28 @@ const VisualTab: React.FC<VisualTabProps> = ({ settings, onSettingChange }) => {
 
           {settings.enableWallpaper && (
             <>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>壁纸文件检测</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={detectWallpapers}
-                    disabled={isLoading}
-                    className="flex items-center gap-2"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    {isLoading ? '检测中...' : '重新检测'}
-                  </Button>
-                </div>
-                
-                <div className="bg-muted p-3 rounded-lg">
-                  <div className="text-sm space-y-2">
-                    <div className="font-medium">
-                      检测到 {availableWallpapers.length} 个壁纸文件
-                    </div>
-                    {availableWallpapers.length > 0 ? (
-                      <>
-                        <div className="text-xs text-muted-foreground">
-                          当前显示: {availableWallpapers[currentWallpaperIndex]?.name || '无'}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          • 壁纸每 2-3 分钟自动随机切换
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          • 支持格式: JPG, PNG, WebP
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-xs text-muted-foreground">
-                        将壁纸文件放入 public/wallpapers/ 目录中即可自动检测
-                      </div>
-                    )}
+              <div className="bg-muted p-3 rounded-lg">
+                <div className="text-sm space-y-2">
+                  <div className="font-medium">
+                    {isLoading ? '正在检测壁纸文件...' : `已找到 ${availableWallpapers.length} 个壁纸文件`}
                   </div>
+                  {availableWallpapers.length > 0 ? (
+                    <>
+                      <div className="text-xs text-muted-foreground">
+                        当前显示: {availableWallpapers[currentWallpaperIndex]?.name || '无'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        • 壁纸每 2-3 分钟自动随机切换
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        • 支持格式: JPG, PNG, WebP
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      将壁纸文件放入 public/wallpapers/ 目录中，重新加载页面即可自动检测
+                    </div>
+                  )}
                 </div>
               </div>
 
