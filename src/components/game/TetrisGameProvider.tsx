@@ -43,7 +43,14 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
     backgroundMusic: settings.backgroundMusic || '',
     musicVolume: settings.musicVolume || 30,
     ghostOpacity: settings.ghostOpacity || 50,
-    enableWallpaper: settings.enableWallpaper
+    enableWallpaper: settings.enableWallpaper,
+    wallpaperOpacity: settings.wallpaperOpacity || 100,
+    autoPlayMusic: settings.autoPlayMusic || false,
+    loopMusic: settings.loopMusic || true,
+    enableLineAnimation: settings.enableLineAnimation || true,
+    enableAchievementAnimation: settings.enableAchievementAnimation || true,
+    enableLandingEffect: settings.enableLandingEffect || true,
+    blockSkin: settings.blockSkin || 'wood'
   };
 
   const gameLogic = useGameLogic({

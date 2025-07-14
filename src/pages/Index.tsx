@@ -25,7 +25,7 @@ const Index = () => {
   useWallpaperManager();
 
   // Check if user is admin
-  const isAdmin = user?.email === 'admin@tetris.com' || user?.user_type === 'admin';
+  const isAdmin = user?.email === 'admin@tetris.com';
 
   useEffect(() => {
     // Simulate auth loading check
@@ -75,12 +75,26 @@ const Index = () => {
           </Card>
         );
       case 'multiplayer':
-        return <MultiPlayerMenu />;
+        return (
+          <MultiPlayerMenu 
+            onSelectMode={() => {}} 
+            onBack={() => setCurrentView('menu')} 
+          />
+        );
       case 'league':
-        return <LeagueMenu />;
+        return (
+          <LeagueMenu 
+            onBack={() => setCurrentView('menu')} 
+          />
+        );
       default:
         return (
-          <MainMenu />
+          <MainMenu 
+            onGameStart={() => setCurrentView('game')}
+            onLeaderboard={() => {}}
+            onSettings={() => setCurrentView('settings')}
+            onRanked={() => setCurrentView('league')}
+          />
         );
     }
   };

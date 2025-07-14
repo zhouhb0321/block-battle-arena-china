@@ -59,7 +59,7 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
   };
 
   const handleResetToDefaults = () => {
-    const defaultSettings = {
+    const defaultSettings: GameSettings = {
       das: 167,
       arr: 33,
       sdf: 20,
@@ -81,7 +81,14 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
       backgroundMusic: '',
       musicVolume: 30,
       ghostOpacity: 50,
-      enableWallpaper: true
+      enableWallpaper: true,
+      wallpaperOpacity: 100,
+      autoPlayMusic: false,
+      loopMusic: true,
+      enableLineAnimation: true,
+      enableAchievementAnimation: true,
+      enableLandingEffect: true,
+      blockSkin: 'wood'
     };
     
     setTempSettings(defaultSettings);

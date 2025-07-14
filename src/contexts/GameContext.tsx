@@ -30,7 +30,14 @@ const convertToGameSettings = (userSettings: any): GameSettings => ({
   sdf: userSettings.sdf,
   controls: userSettings.controls,
   ghostOpacity: userSettings.ghostOpacity,
-  enableWallpaper: userSettings.enableWallpaper
+  enableWallpaper: userSettings.enableWallpaper,
+  wallpaperOpacity: userSettings.wallpaperOpacity || 100,
+  autoPlayMusic: userSettings.autoPlayMusic || false,
+  loopMusic: userSettings.loopMusic || true,
+  enableLineAnimation: userSettings.enableLineAnimation || true,
+  enableAchievementAnimation: userSettings.enableAchievementAnimation || true,
+  enableLandingEffect: userSettings.enableLandingEffect || true,
+  blockSkin: userSettings.blockSkin || 'wood'
 });
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -57,7 +64,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sdf: updatedSettings.sdf,
       controls: updatedSettings.controls,
       ghostOpacity: updatedSettings.ghostOpacity,
-      enableWallpaper: updatedSettings.enableWallpaper
+      enableWallpaper: updatedSettings.enableWallpaper,
+      wallpaperOpacity: updatedSettings.wallpaperOpacity,
+      autoPlayMusic: updatedSettings.autoPlayMusic,
+      loopMusic: updatedSettings.loopMusic,
+      enableLineAnimation: updatedSettings.enableLineAnimation,
+      enableAchievementAnimation: updatedSettings.enableAchievementAnimation,
+      enableLandingEffect: updatedSettings.enableLandingEffect,
+      blockSkin: updatedSettings.blockSkin
     });
   };
 

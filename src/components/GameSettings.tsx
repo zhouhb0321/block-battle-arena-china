@@ -75,7 +75,14 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
       backgroundMusic: '',
       musicVolume: 30,
       ghostOpacity: 50,
-      enableWallpaper: true
+      enableWallpaper: true,
+      wallpaperOpacity: 100,
+      autoPlayMusic: false,
+      loopMusic: true,
+      enableLineAnimation: true,
+      enableAchievementAnimation: true,
+      enableLandingEffect: true,
+      blockSkin: 'wood'
     };
     setTempSettings(defaultSettings);
   };

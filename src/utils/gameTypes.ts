@@ -83,6 +83,7 @@ export interface GameSettings {
   enableLineAnimation: boolean;
   enableAchievementAnimation: boolean;
   enableLandingEffect: boolean;
+  blockSkin: string;
 }
 
 export interface AdContent {
