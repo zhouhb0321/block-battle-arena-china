@@ -18,7 +18,7 @@ import type { ViewType } from '@/types/navigation';
 import type { GameReplay } from '@/utils/gameTypes';
 
 const Index = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, playAsGuest } = useAuth();
   const { t } = useLanguage();
   const [currentView, setCurrentView] = useState<ViewType>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -127,11 +127,16 @@ const Index = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button 
                 size="lg"
-                onClick={() => handleViewChange('game')}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    playAsGuest();
+                  }
+                  handleViewChange('game');
+                }}
                 className="bg-game-gradient-primary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <Play className="w-6 h-6 mr-3" />
-                {t('game.play')}
+                {!isAuthenticated ? 'Start Guest Playing' : t('game.play')}
               </Button>
               
               <Button 
