@@ -77,6 +77,12 @@ export interface GameSettings {
   musicVolume: number;
   ghostOpacity: number;
   enableWallpaper: boolean;
+  wallpaperOpacity: number;
+  autoPlayMusic: boolean;
+  loopMusic: boolean;
+  enableLineAnimation: boolean;
+  enableAchievementAnimation: boolean;
+  enableLandingEffect: boolean;
 }
 
 export interface AdContent {

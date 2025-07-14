@@ -8,7 +8,7 @@ interface WallpaperFile {
 }
 
 export const useWallpaperManager = () => {
-  const { settings, updateSetting } = useUserSettings();
+  const { settings, updateSettings } = useUserSettings();
   const [availableWallpapers, setAvailableWallpapers] = useState<WallpaperFile[]>([]);
   const [currentWallpaperIndex, setCurrentWallpaperIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,14 +66,16 @@ export const useWallpaperManager = () => {
   useEffect(() => {
     if (settings.enableWallpaper && availableWallpapers.length > 0) {
       const wallpaper = availableWallpapers[currentWallpaperIndex];
+      const opacity = (settings.wallpaperOpacity || 100) / 100;
       document.body.style.backgroundImage = `url('${wallpaper.url}')`;
       document.body.style.backgroundSize = 'cover';
       document.body.style.backgroundPosition = 'center';
       document.body.style.backgroundAttachment = 'fixed';
+      document.body.style.opacity = opacity.toString();
     } else {
       document.body.style.backgroundImage = '';
     }
-  }, [settings.enableWallpaper, availableWallpapers, currentWallpaperIndex]);
+  }, [settings.enableWallpaper, availableWallpapers, currentWallpaperIndex, settings.wallpaperOpacity]);
 
   useEffect(() => {
     detectWallpapers();

@@ -113,9 +113,9 @@ const VisualTab: React.FC<VisualTabProps> = ({ settings, onSettingChange }) => {
               </div>
 
               <div className="space-y-2">
-                <Label>壁纸透明度: {settings.wallpaperOpacity}%</Label>
+                <Label>壁纸透明度: {settings.wallpaperOpacity || 100}%</Label>
                 <Slider
-                  value={[settings.wallpaperOpacity]}
+                  value={[settings.wallpaperOpacity || 100]}
                   onValueChange={(values) => onSettingChange('wallpaperOpacity', values[0])}
                   max={100}
                   min={10}
@@ -137,7 +137,7 @@ const VisualTab: React.FC<VisualTabProps> = ({ settings, onSettingChange }) => {
           <div className="flex items-center justify-between">
             <Label>启用行消除动画</Label>
             <Switch
-              checked={settings.enableLineAnimation}
+              checked={settings.enableLineAnimation || false}
               onCheckedChange={(checked) => onSettingChange('enableLineAnimation', checked)}
             />
           </div>
@@ -145,7 +145,7 @@ const VisualTab: React.FC<VisualTabProps> = ({ settings, onSettingChange }) => {
           <div className="flex items-center justify-between">
             <Label>启用成就动画</Label>
             <Switch
-              checked={settings.enableAchievementAnimation}
+              checked={settings.enableAchievementAnimation || false}
               onCheckedChange={(checked) => onSettingChange('enableAchievementAnimation', checked)}
             />
           </div>
@@ -153,7 +153,7 @@ const VisualTab: React.FC<VisualTabProps> = ({ settings, onSettingChange }) => {
           <div className="flex items-center justify-between">
             <Label>启用方块着陆效果</Label>
             <Switch
-              checked={settings.enableLandingEffect}
+              checked={settings.enableLandingEffect || false}
               onCheckedChange={(checked) => onSettingChange('enableLandingEffect', checked)}
             />
           </div>

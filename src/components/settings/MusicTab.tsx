@@ -146,7 +146,7 @@ const MusicTab: React.FC<MusicTabProps> = ({ settings, onSettingChange }) => {
           <div className="flex items-center justify-between">
             <Label>游戏开始时自动播放音乐</Label>
             <Switch
-              checked={settings.autoPlayMusic}
+              checked={settings.autoPlayMusic || false}
               onCheckedChange={(checked) => onSettingChange('autoPlayMusic', checked)}
             />
           </div>
@@ -155,7 +155,7 @@ const MusicTab: React.FC<MusicTabProps> = ({ settings, onSettingChange }) => {
           <div className="flex items-center justify-between">
             <Label>循环播放</Label>
             <Switch
-              checked={settings.loopMusic}
+              checked={settings.loopMusic || false}
               onCheckedChange={(checked) => onSettingChange('loopMusic', checked)}
             />
           </div>

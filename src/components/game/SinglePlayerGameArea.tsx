@@ -15,7 +15,7 @@ import AchievementAnimation from '@/components/AchievementAnimation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Pause, Play } from 'lucide-react';
 import { useTetrisGame } from './TetrisGameProvider';
-import type { GameMode } from '@/utils/gameTypes';
+import type { GameMode, GameState, GamePiece } from '@/utils/gameTypes';
 
 interface SinglePlayerGameAreaProps {
   gameMode: GameMode;
@@ -47,9 +47,32 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   // Save game state for undo/redo system
   useEffect(() => {
     if (gameReallyStarted && !gameLogic.gameOver) {
-      saveState(gameLogic.gameState);
+      const completeGameState = {
+        board: gameLogic.board,
+        currentPiece: gameLogic.currentPiece,
+        nextPieces: gameLogic.nextPieces,
+        holdPiece: gameLogic.holdPiece,
+        canHold: gameLogic.canHold,
+        isHolding: false,
+        score: gameLogic.score,
+        level: gameLogic.level,
+        lines: gameLogic.lines,
+        gameOver: gameLogic.gameOver,
+        paused: gameLogic.isPaused,
+        combo: -1,
+        b2b: 0,
+        pieces: 0,
+        attack: 0,
+        pps: gameLogic.pps,
+        apm: gameLogic.apm,
+        startTime: Date.now(),
+        endTime: null,
+        ghostPiece: gameLogic.ghostPiece,
+        clearingLines: []
+      };
+      saveState(completeGameState);
     }
-  }, [gameLogic.gameState, gameReallyStarted, gameLogic.gameOver, saveState]);
+  }, [gameLogic.board, gameLogic.currentPiece, gameLogic.nextPieces, gameLogic.holdPiece, gameLogic.canHold, gameLogic.score, gameLogic.level, gameLogic.lines, gameLogic.gameOver, gameLogic.isPaused, gameLogic.pps, gameLogic.apm, gameLogic.ghostPiece, gameReallyStarted, saveState]);
 
   // Achievement detection and animation
   useEffect(() => {

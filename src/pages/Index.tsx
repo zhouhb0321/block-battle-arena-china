@@ -15,22 +15,30 @@ import AuthModal from '@/components/AuthModal';
 type ViewType = 'menu' | 'game' | 'settings' | 'admin' | 'multiplayer' | 'league';
 
 const Index = () => {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const { actualTheme } = useTheme();
   const [currentView, setCurrentView] = useState<ViewType>('menu');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   
   // Initialize wallpaper manager
   useWallpaperManager();
 
   // Check if user is admin
-  const isAdmin = user?.email === 'admin@tetris.com' || user?.isAdmin;
+  const isAdmin = user?.email === 'admin@tetris.com' || user?.user_type === 'admin';
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      setShowAuthModal(true);
-    }
-  }, [user, isLoading]);
+    // Simulate auth loading check
+    const checkAuth = async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (!user) {
+        setShowAuthModal(true);
+      }
+      setAuthLoading(false);
+    };
+    
+    checkAuth();
+  }, [user]);
 
   const handleViewChange = (view: ViewType) => {
     // Check admin access
@@ -67,23 +75,17 @@ const Index = () => {
           </Card>
         );
       case 'multiplayer':
-        return <MultiPlayerMenu onBackToMenu={() => setCurrentView('menu')} />;
+        return <MultiPlayerMenu />;
       case 'league':
-        return <LeagueMenu onBackToMenu={() => setCurrentView('menu')} />;
+        return <LeagueMenu />;
       default:
         return (
-          <MainMenu 
-            onStartGame={() => handleViewChange('game')}
-            onOpenSettings={() => handleViewChange('settings')}
-            onOpenAdmin={() => handleViewChange('admin')}
-            onOpenMultiplayer={() => handleViewChange('multiplayer')}
-            onOpenLeague={() => handleViewChange('league')}
-          />
+          <MainMenu />
         );
     }
   };
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
