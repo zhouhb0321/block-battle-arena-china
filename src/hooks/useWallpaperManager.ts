@@ -13,14 +13,13 @@ export const useWallpaperManager = () => {
   const [currentWallpaperIndex, setCurrentWallpaperIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Detect wallpapers in public/wallpapers/ directory
+  // 自动检测壁纸文件，不需要用户手动触发
   const detectWallpapers = useCallback(async () => {
     try {
-      // Common wallpaper extensions
       const extensions = ['jpg', 'jpeg', 'png', 'webp'];
       const wallpapers: WallpaperFile[] = [];
       
-      // Try to load common wallpaper names
+      // 预定义的壁纸列表，应用启动时检测
       const commonNames = [
         'wallpaper1', 'wallpaper2', 'wallpaper3', 'wallpaper4', 'wallpaper5',
         'bg1', 'bg2', 'bg3', 'bg4', 'bg5',
@@ -36,20 +35,23 @@ export const useWallpaperManager = () => {
               wallpapers.push({ name: `${name}.${ext}`, url });
             }
           } catch (error) {
-            // File doesn't exist, continue
+            // 文件不存在，继续检测其他文件
           }
         }
       }
 
       setAvailableWallpapers(wallpapers);
+      if (wallpapers.length > 0 && !settings.enableWallpaper) {
+        // 如果检测到壁纸但未启用，可以选择自动启用或保持当前设置
+      }
       setIsLoading(false);
     } catch (error) {
       console.error('Error detecting wallpapers:', error);
       setIsLoading(false);
     }
-  }, []);
+  }, [settings.enableWallpaper]);
 
-  // Auto-switch wallpaper every 2-3 minutes
+  // 自动切换壁纸功能
   useEffect(() => {
     if (!settings.enableWallpaper || availableWallpapers.length === 0) return;
 
@@ -57,12 +59,12 @@ export const useWallpaperManager = () => {
       setCurrentWallpaperIndex(prev => 
         (prev + 1) % availableWallpapers.length
       );
-    }, Math.random() * 60000 + 120000); // 2-3 minutes random
+    }, Math.random() * 60000 + 120000); // 2-3分钟随机切换
 
     return () => clearInterval(interval);
   }, [settings.enableWallpaper, availableWallpapers.length]);
 
-  // Set background wallpaper
+  // 应用壁纸到页面背景
   useEffect(() => {
     if (settings.enableWallpaper && availableWallpapers.length > 0) {
       const wallpaper = availableWallpapers[currentWallpaperIndex];
@@ -77,6 +79,7 @@ export const useWallpaperManager = () => {
     }
   }, [settings.enableWallpaper, availableWallpapers, currentWallpaperIndex, settings.wallpaperOpacity]);
 
+  // 应用启动时自动检测
   useEffect(() => {
     detectWallpapers();
   }, [detectWallpapers]);
@@ -84,7 +87,7 @@ export const useWallpaperManager = () => {
   return {
     availableWallpapers,
     currentWallpaperIndex,
-    isLoading,
-    detectWallpapers
+    isLoading
+    // 移除 detectWallpapers 函数，不再暴露给UI使用
   };
 };

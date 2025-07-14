@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWallpaperManager } from '@/hooks/useWallpaperManager';
+import { useMusicManager } from '@/hooks/useMusicManager';
+import NavigationBar from '@/components/NavigationBar';
 import MainMenu from '@/components/MainMenu';
 import TetrisGame from '@/components/TetrisGame';
 import SettingsMenu from '@/components/menus/SettingsMenu';
@@ -11,37 +13,34 @@ import AdminPanel from '@/components/AdminPanel';
 import MultiPlayerMenu from '@/components/menus/MultiPlayerMenu';
 import LeagueMenu from '@/components/menus/LeagueMenu';
 import AuthModal from '@/components/AuthModal';
-
-type ViewType = 'menu' | 'game' | 'settings' | 'admin' | 'multiplayer' | 'league';
+import type { ViewType } from '@/types/navigation';
 
 const Index = () => {
   const { user } = useAuth();
   const { actualTheme } = useTheme();
-  const [currentView, setCurrentView] = useState<ViewType>('menu');
+  const [currentView, setCurrentView] = useState<ViewType>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // Initialize wallpaper manager
+  // 初始化资源管理器但不显示在UI上
   useWallpaperManager();
+  useMusicManager();
 
-  // Check if user is admin
+  // 检查是否为管理员
   const isAdmin = user?.email === 'admin@tetris.com';
 
   useEffect(() => {
-    // Simulate auth loading check
+    // 模拟认证检查
     const checkAuth = async () => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      if (!user) {
-        setShowAuthModal(true);
-      }
       setAuthLoading(false);
     };
     
     checkAuth();
-  }, [user]);
+  }, []);
 
   const handleViewChange = (view: ViewType) => {
-    // Check admin access
+    // 检查管理员权限
     if (view === 'admin' && !isAdmin) {
       console.log('Access denied: User is not admin');
       return;
@@ -49,15 +48,19 @@ const Index = () => {
     setCurrentView(view);
   };
 
+  const handleAuthModalOpen = () => {
+    setShowAuthModal(true);
+  };
+
   const renderCurrentView = () => {
     switch (currentView) {
       case 'game':
-        return <TetrisGame onBackToMenu={() => setCurrentView('menu')} />;
+        return <TetrisGame onBackToMenu={() => setCurrentView('home')} />;
       case 'settings':
-        return <SettingsMenu onBackToMenu={() => setCurrentView('menu')} />;
+        return <SettingsMenu onBackToMenu={() => setCurrentView('home')} />;
       case 'admin':
         return isAdmin ? (
-          <AdminPanel onBackToMenu={() => setCurrentView('menu')} />
+          <AdminPanel onBackToMenu={() => setCurrentView('home')} />
         ) : (
           <Card className="max-w-md mx-auto mt-8">
             <CardHeader>
@@ -74,18 +77,25 @@ const Index = () => {
             </CardContent>
           </Card>
         );
-      case 'multiplayer':
+      case 'ranked':
         return (
           <MultiPlayerMenu 
             onSelectMode={() => {}} 
-            onBack={() => setCurrentView('menu')} 
+            onBack={() => setCurrentView('home')} 
           />
         );
-      case 'league':
+      case 'profile':
         return (
-          <LeagueMenu 
-            onBack={() => setCurrentView('menu')} 
-          />
+          <div className="container mx-auto px-4 py-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>用户资料</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>用户资料页面开发中...</p>
+              </CardContent>
+            </Card>
+          </div>
         );
       default:
         return (
@@ -93,7 +103,7 @@ const Index = () => {
             onGameStart={() => setCurrentView('game')}
             onLeaderboard={() => {}}
             onSettings={() => setCurrentView('settings')}
-            onRanked={() => setCurrentView('league')}
+            onRanked={() => setCurrentView('ranked')}
           />
         );
     }
@@ -111,7 +121,15 @@ const Index = () => {
     <div className={`min-h-screen transition-colors duration-300 ${
       actualTheme === 'light' ? 'bg-gray-50' : 'bg-gray-900'
     }`}>
-      {renderCurrentView()}
+      <NavigationBar 
+        currentView={currentView}
+        onViewChange={handleViewChange}
+        onAuthModalOpen={handleAuthModalOpen}
+      />
+      
+      <main className="pt-4">
+        {renderCurrentView()}
+      </main>
       
       <AuthModal 
         isOpen={showAuthModal} 

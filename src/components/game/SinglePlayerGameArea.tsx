@@ -12,8 +12,9 @@ import NextPiecePreview from '@/components/NextPiecePreview';
 import LineCleanAnimation from '@/components/LineCleanAnimation';
 import OutOfFocusOverlay from '@/components/OutOfFocusOverlay';
 import AchievementAnimation from '@/components/AchievementAnimation';
+import AchievementDetector from './AchievementDetector';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Pause, Play } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Undo2, Redo2 } from 'lucide-react';
 import { useTetrisGame } from './TetrisGameProvider';
 import type { GameMode, GameState, GamePiece } from '@/utils/gameTypes';
 
@@ -44,7 +45,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const [achievementText, setAchievementText] = useState<string | null>(null);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
-  // Save game state for undo/redo system
+  // 保存游戏状态用于撤销/重做
   useEffect(() => {
     if (gameReallyStarted && !gameLogic.gameOver) {
       const completeGameState = {
@@ -74,37 +75,25 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     }
   }, [gameLogic.board, gameLogic.currentPiece, gameLogic.nextPieces, gameLogic.holdPiece, gameLogic.canHold, gameLogic.score, gameLogic.level, gameLogic.lines, gameLogic.gameOver, gameLogic.isPaused, gameLogic.pps, gameLogic.apm, gameLogic.ghostPiece, gameReallyStarted, saveState]);
 
-  // Achievement detection and animation
-  useEffect(() => {
-    // Listen for special clears and show achievements
-    const checkForAchievements = () => {
-      // This would be called from game logic when special clears happen
-      // For now, just a placeholder
-    };
-    
-    checkForAchievements();
-  }, [gameLogic.lines, gameLogic.score]);
-
-  // Keyboard controls for undo/redo
+  // 撤销/重做键盘控制
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!gameReallyStarted || gameLogic.gameOver) return;
       
       if (event.ctrlKey) {
-        if (event.code === 'KeyZ' && canUndo) {
+        if (event.code === 'KeyZ' && canUndo && !event.shiftKey) {
           event.preventDefault();
           const previousState = undo();
-          if (previousState) {
-            // Apply previous state to game logic
-            // This would need to be implemented in the game logic
-            debugLog.game('Undo performed');
+          if (previousState && gameLogic.applyGameState) {
+            gameLogic.applyGameState(previousState);
+            debugLog.game('撤销操作执行');
           }
-        } else if (event.code === 'KeyX' && canRedo) {
+        } else if ((event.code === 'KeyY' || (event.code === 'KeyZ' && event.shiftKey)) && canRedo) {
           event.preventDefault();
           const nextState = redo();
-          if (nextState) {
-            // Apply next state to game logic
-            debugLog.game('Redo performed');
+          if (nextState && gameLogic.applyGameState) {
+            gameLogic.applyGameState(nextState);
+            debugLog.game('重做操作执行');
           }
         }
       }
@@ -112,13 +101,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [gameReallyStarted, gameLogic.gameOver, canUndo, canRedo, undo, redo]);
+  }, [gameReallyStarted, gameLogic.gameOver, canUndo, canRedo, undo, redo, gameLogic]);
 
   const handleCountdownComplete = () => {
-    debugLog.game('Countdown completed, starting game...');
+    debugLog.game('倒计时完成，开始游戏...');
     setShowCountdown(false);
     setGameReallyStarted(true);
-    clearHistory(); // Clear any previous history
+    clearHistory();
     
     gameLogic.startGame();
     
@@ -143,6 +132,10 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     setAchievementText(null);
   };
 
+  const handleAchievement = (achievement: string) => {
+    setAchievementText(achievement);
+  };
+
   const handleResumeFromOverlay = () => {
     debugLog.game('恢复游戏 - 从失焦覆盖层');
     gameLogic.resumeGame();
@@ -152,9 +145,27 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     }
   };
 
+  const handleUndo = () => {
+    if (canUndo) {
+      const previousState = undo();
+      if (previousState && gameLogic.applyGameState) {
+        gameLogic.applyGameState(previousState);
+      }
+    }
+  };
+
+  const handleRedo = () => {
+    if (canRedo) {
+      const nextState = redo();
+      if (nextState && gameLogic.applyGameState) {
+        gameLogic.applyGameState(nextState);
+      }
+    }
+  };
+
   useEffect(() => {
     if (gameStarted && showCountdown && !gameLogic.gameInitialized) {
-      debugLog.game('Game area ready, initializing pieces for countdown...');
+      debugLog.game('游戏区域准备，为倒计时初始化方块...');
       gameLogic.initializeForCountdown();
     }
   }, [gameStarted, showCountdown, gameLogic]);
@@ -177,7 +188,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         gameMode: gameMode.id
       };
       
-      debugLog.game('Game ended', { stats: finalStats, gameMode: gameMode.id });
+      debugLog.game('游戏结束', { stats: finalStats, gameMode: gameMode.id });
       
       if (user && !user.isGuest) {
         logUserSession('game_end', gameMode.id, { 
@@ -234,24 +245,42 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           )}
           
           {gameReallyStarted && (
-            <Button
-              onClick={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-              disabled={gameLogic.gameOver}
-            >
-              {gameLogic.isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-              {gameLogic.isPaused ? '继续' : '暂停'}
-            </Button>
-          )}
-          
-          {/* Undo/Redo indicators */}
-          {gameReallyStarted && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className={canUndo ? 'text-blue-400' : ''}>Ctrl+Z 撤销</span>
-              <span className={canRedo ? 'text-green-400' : ''}>Ctrl+X 重做</span>
-            </div>
+            <>
+              <Button
+                onClick={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                disabled={gameLogic.gameOver}
+              >
+                {gameLogic.isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                {gameLogic.isPaused ? '继续' : '暂停'}
+              </Button>
+              
+              <Button
+                onClick={handleUndo}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                disabled={!canUndo || gameLogic.gameOver}
+                title="撤销 (Ctrl+Z)"
+              >
+                <Undo2 className="w-4 h-4" />
+                撤销
+              </Button>
+              
+              <Button
+                onClick={handleRedo}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                disabled={!canRedo || gameLogic.gameOver}
+                title="重做 (Ctrl+Y)"
+              >
+                <Redo2 className="w-4 h-4" />
+                重做
+              </Button>
+            </>
           )}
         </div>
         
@@ -271,9 +300,20 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             />
           </div>
           
+          {/* 成就动画显示区域 - 在Hold区域下方 */}
+          <div className="relative min-h-[100px]">
+            {achievementText && (
+              <AchievementAnimation
+                achievement={achievementText}
+                onComplete={handleAchievementComplete}
+              />
+            )}
+          </div>
+          
           {/* 游戏信息面板 */}
           <div className="flex-1">
             <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
+              
               <div className="space-y-3">
                 <div className="text-center border-b pb-2 mb-3">
                   <div className="font-bold text-lg">
@@ -322,7 +362,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           </div>
         </div>
 
-        {/* 中央游戏区域 - 使用响应式游戏板 */}
+        {/* 中央游戏区域 */}
         <div className="relative flex-shrink-0">
           <div className={`p-4 rounded-lg border ${getBoardThemeClasses()}`}>
             <EnhancedGameBoard
@@ -347,14 +387,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             show={showOutOfFocusOverlay}
             onResume={handleResumeFromOverlay}
           />
-          
-          {/* 成就动画覆盖层 */}
-          {achievementText && (
-            <AchievementAnimation
-              achievement={achievementText}
-              onComplete={handleAchievementComplete}
-            />
-          )}
         </div>
 
         {/* 右侧面板 - NEXT区域 */}
@@ -367,6 +399,16 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           </div>
         </div>
       </div>
+      
+      {/* 成就检测器 */}
+      <AchievementDetector
+        linesCleared={0} // 这些值需要从游戏逻辑中获取
+        tSpinResult={null}
+        combo={-1}
+        b2b={0}
+        tetris={false}
+        onAchievement={handleAchievement}
+      />
     </div>
   );
 };

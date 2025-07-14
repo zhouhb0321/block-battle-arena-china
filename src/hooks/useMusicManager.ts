@@ -12,13 +12,13 @@ export const useMusicManager = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentTrack, setCurrentTrack] = useState<MusicFile | null>(null);
 
-  // Detect music files in public/music/ directory
+  // 自动检测音乐文件，应用启动时执行
   const detectMusicFiles = useCallback(async () => {
     try {
       const extensions = ['mp3', 'wav', 'ogg', 'm4a'];
       const musicFiles: MusicFile[] = [];
       
-      // Try to load common music file names
+      // 预定义的音乐文件列表
       const commonNames = [
         'WotLK_main_title', 'tetris_theme', 'game_music', 'background_music',
         'music1', 'music2', 'music3', 'track1', 'track2', 'track3'
@@ -36,7 +36,7 @@ export const useMusicManager = () => {
               });
             }
           } catch (error) {
-            // File doesn't exist, continue
+            // 文件不存在，继续检测其他文件
           }
         }
       }
@@ -52,6 +52,7 @@ export const useMusicManager = () => {
     }
   }, [currentTrack]);
 
+  // 应用启动时自动检测
   useEffect(() => {
     detectMusicFiles();
   }, [detectMusicFiles]);
@@ -60,7 +61,7 @@ export const useMusicManager = () => {
     availableMusic,
     currentTrack,
     setCurrentTrack,
-    isLoading,
-    detectMusicFiles
+    isLoading
+    // 移除 detectMusicFiles 函数，不再暴露给UI使用
   };
 };
