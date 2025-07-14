@@ -10,7 +10,11 @@ import EnhancedAdminLogsPanel from './EnhancedAdminLogsPanel';
 import AdminMusicManagement from './AdminMusicManagement';
 import AdminWallpaperManagement from './AdminWallpaperManagement';
 
-const AdminPanel: React.FC = () => {
+interface AdminPanelProps {
+  onBackToMenu?: () => void;
+}
+
+const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToMenu }) => {
   const { user } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [gameStats, setGameStats] = useState({

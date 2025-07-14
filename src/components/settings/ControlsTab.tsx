@@ -19,6 +19,46 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
   onKeyRecord,
   onSettingChange
 }) => {
+  // 控制预设
+  const controlPresets = {
+    directional: {
+      name: '指导配置',
+      description: '使用方向键控制，适合新手',
+      controls: {
+        moveLeft: 'ArrowLeft',
+        moveRight: 'ArrowRight',
+        softDrop: 'ArrowDown',
+        hardDrop: 'Space',
+        rotateClockwise: 'ArrowUp',
+        rotateCounterclockwise: 'KeyZ',
+        rotate180: 'KeyA',
+        hold: 'KeyC',
+        pause: 'Escape',
+        backToMenu: 'KeyB'
+      }
+    },
+    wasd: {
+      name: 'WASD配置',
+      description: '使用WASD键位，适合游戏玩家',
+      controls: {
+        moveLeft: 'KeyA',
+        moveRight: 'KeyD',
+        softDrop: 'KeyS',
+        hardDrop: 'Space',
+        rotateClockwise: 'KeyW',
+        rotateCounterclockwise: 'KeyQ',
+        rotate180: 'KeyE',
+        hold: 'KeyC',
+        pause: 'Escape',
+        backToMenu: 'KeyB'
+      }
+    }
+  };
+
+  const applyPreset = (presetKey: keyof typeof controlPresets) => {
+    const preset = controlPresets[presetKey];
+    onSettingChange('controls', preset.controls);
+  };
   const getKeyDisplayName = (keyCode: string) => {
     const keyMap: { [key: string]: string } = {
       'ArrowLeft': '←', 'ArrowRight': '→', 'ArrowUp': '↑', 'ArrowDown': '↓',
@@ -117,70 +157,94 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
   }, [recordingKey]);
 
   return (
-    <Card className="bg-gray-800 border-gray-700">
-      <CardHeader>
-        <CardTitle className="text-lg text-white">按键设置</CardTitle>
-        <CardDescription className="text-gray-400">
-          点击按钮自定义按键绑定。设置会立即保存并生效。
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries(controlLabels).map(([key, label]) => (
-            <div key={key} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-              <div className="flex items-center gap-3">
-                <span className="text-xl w-8 text-center">{controlIcons[key as keyof typeof controlIcons]}</span>
-                <Label className="text-white font-medium">{label}</Label>
+    <div className="space-y-6">
+      {/* 预设配置 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>控制预设</CardTitle>
+          <CardDescription>
+            选择一个预设配置快速开始，或使用自定义配置进行个性化设置
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(controlPresets).map(([key, preset]) => (
+              <Card key={key} className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => applyPreset(key as keyof typeof controlPresets)}>
+                <h3 className="font-semibold mb-2">{preset.name}</h3>
+                <p className="text-sm text-muted-foreground mb-3">{preset.description}</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  应用此配置
+                </Button>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 自定义按键设置 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>自定义按键设置</CardTitle>
+          <CardDescription>
+            点击按钮自定义按键绑定。设置会立即保存并生效。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(controlLabels).map(([key, label]) => (
+              <div key={key} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl w-8 text-center">{controlIcons[key as keyof typeof controlIcons]}</span>
+                  <Label className="font-medium">{label}</Label>
+                </div>
+                <Button
+                  variant={recordingKey === key ? "destructive" : "outline"}
+                  size="sm"
+                  onClick={() => onKeyRecord(key)}
+                  className={`min-w-20 font-mono ${
+                    recordingKey === key ? 'animate-pulse' : ''
+                  }`}
+                >
+                  {recordingKey === key ? '按下按键...' : 
+                    getKeyDisplayName(settings.controls[key as keyof typeof settings.controls])}
+                </Button>
               </div>
-              <Button
-                variant={recordingKey === key ? "destructive" : "outline"}
-                size="sm"
-                onClick={() => onKeyRecord(key)}
-                className={`min-w-20 font-mono ${
-                  recordingKey === key 
-                    ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse' 
-                    : 'bg-gray-600 hover:bg-gray-500 text-white border-gray-500 hover:border-gray-400'
-                }`}
-              >
-                {recordingKey === key ? '按下按键...' : 
-                  getKeyDisplayName(settings.controls[key as keyof typeof settings.controls])}
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        {recordingKey && (
-          <div className="bg-blue-900/50 border border-blue-500/50 p-4 rounded-lg animate-pulse">
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="bg-blue-600 text-white border-blue-400 animate-bounce">
-                正在录制
-              </Badge>
-              <span className="text-blue-200">
-                正在为 <strong>{controlLabels[recordingKey as keyof typeof controlLabels]}</strong> 录制按键...
-              </span>
-            </div>
-            <p className="text-blue-300 text-sm">
-              请按下您想要设置的按键，或等待5秒自动取消。如与其他按键冲突将自动交换。
-            </p>
+            ))}
           </div>
-        )}
 
-        <div className="bg-gray-700 p-4 rounded-lg">
-          <h4 className="font-semibold mb-2 text-white">按键说明</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-300">
-            <div>• <strong>左移/右移</strong>：控制方块左右移动</div>
-            <div>• <strong>软降</strong>：加速方块下降</div>
-            <div>• <strong>硬降</strong>：瞬间降落到底部</div>
-            <div>• <strong>顺时针旋转</strong>：方块顺时针旋转90°</div>
-            <div>• <strong>逆时针旋转</strong>：方块逆时针旋转90°</div>
-            <div>• <strong>180°旋转</strong>：方块旋转180°</div>
-            <div>• <strong>暂存</strong>：保存当前方块供以后使用</div>
-            <div>• <strong>暂停</strong>：暂停/继续游戏</div>
-            <div>• <strong>返回菜单</strong>：返回到上一个界面</div>
+          {recordingKey && (
+            <div className="bg-primary/10 border border-primary/20 p-4 rounded-lg animate-pulse">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="outline" className="animate-bounce">
+                  正在录制
+                </Badge>
+                <span>
+                  正在为 <strong>{controlLabels[recordingKey as keyof typeof controlLabels]}</strong> 录制按键...
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                请按下您想要设置的按键，或等待5秒自动取消。如与其他按键冲突将自动交换。
+              </p>
+            </div>
+          )}
+
+          <div className="bg-muted p-4 rounded-lg">
+            <h4 className="font-semibold mb-2">按键说明</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+              <div>• <strong>左移/右移</strong>：控制方块左右移动</div>
+              <div>• <strong>软降</strong>：加速方块下降</div>
+              <div>• <strong>硬降</strong>：瞬间降落到底部</div>
+              <div>• <strong>顺时针旋转</strong>：方块顺时针旋转90°</div>
+              <div>• <strong>逆时针旋转</strong>：方块逆时针旋转90°</div>
+              <div>• <strong>180°旋转</strong>：方块旋转180°</div>
+              <div>• <strong>暂存</strong>：保存当前方块供以后使用</div>
+              <div>• <strong>暂停</strong>：暂停/继续游戏</div>
+              <div>• <strong>返回菜单</strong>：返回到上一个界面</div>
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

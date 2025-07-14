@@ -17,9 +17,32 @@ const MusicTab: React.FC<MusicTabProps> = ({ settings, onSettingChange }) => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>音乐设置</CardTitle>
+          <CardTitle>音频设置</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* 音效开关 */}
+          <div className="flex items-center justify-between">
+            <Label>启用音效</Label>
+            <Switch
+              checked={settings.enableSound}
+              onCheckedChange={(checked) => onSettingChange('enableSound', checked)}
+            />
+          </div>
+
+          {/* 主音量控制 */}
+          {settings.enableSound && (
+            <div className="space-y-2">
+              <Label>主音量: {settings.masterVolume}%</Label>
+              <Slider
+                value={[settings.masterVolume]}
+                onValueChange={(values) => onSettingChange('masterVolume', values[0])}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+            </div>
+          )}
+
           {/* 音乐音量控制 */}
           <div className="space-y-2">
             <Label>音乐音量: {settings.musicVolume}%</Label>
@@ -44,19 +67,6 @@ const MusicTab: React.FC<MusicTabProps> = ({ settings, onSettingChange }) => {
               shuffle={true}
             />
           </div>
-
-          {/* 音乐文件说明 */}
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="pt-6">
-              <h4 className="font-semibold text-blue-800 mb-2">音乐文件说明</h4>
-              <div className="text-sm text-blue-700 space-y-1">
-                <p>• 将音乐文件放置在 <code>public/music/</code> 目录下</p>
-                <p>• 支持格式：MP3, WAV, OGG</p>
-                <p>• 推荐文件大小：&lt; 5MB</p>
-                <p>• 系统会自动随机播放可用的音乐文件</p>
-              </div>
-            </CardContent>
-          </Card>
         </CardContent>
       </Card>
     </div>

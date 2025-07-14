@@ -7,7 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import TimingTab from '@/components/settings/TimingTab';
 import ControlsTab from '@/components/settings/ControlsTab';
-import AudioTab from '@/components/settings/AudioTab';
+
 import VisualTab from '@/components/settings/VisualTab';
 import MusicTab from '@/components/settings/MusicTab';
 import BlockSkinTab from '@/components/settings/BlockSkinTab';
@@ -73,13 +73,12 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
       />
 
       <Tabs defaultValue="timing" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="timing">手感</TabsTrigger>
           <TabsTrigger value="controls">键位</TabsTrigger>
           <TabsTrigger value="visual">视觉</TabsTrigger>
           <TabsTrigger value="blocks">方块</TabsTrigger>
-          <TabsTrigger value="audio">音效</TabsTrigger>
-          <TabsTrigger value="music">音乐</TabsTrigger>
+          <TabsTrigger value="music">音频</TabsTrigger>
         </TabsList>
 
         <TabsContent value="timing" className="space-y-4">
@@ -107,13 +106,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
 
         <TabsContent value="blocks" className="space-y-4">
           <BlockSkinTab 
-            settings={settings}
-            onSettingChange={updateSetting}
-          />
-        </TabsContent>
-
-        <TabsContent value="audio" className="space-y-4">
-          <AudioTab 
             settings={settings}
             onSettingChange={updateSetting}
           />

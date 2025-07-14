@@ -62,7 +62,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         `}
       </style>
       <div 
-        className="grid gap-0 border-2 border-border bg-background shadow-2xl"
+        className="game-board-light grid gap-0 border-2 border-border shadow-2xl"
         style={{ 
           gridTemplateColumns: `repeat(10, ${cellSize}px)`,
           width: `${cellSize * 10 + 4}px`,

@@ -16,8 +16,8 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   const renderHoldPiece = () => {
     if (!holdPiece) {
       return (
-        <div className="w-16 h-16 border border-gray-600 rounded bg-gray-800 flex items-center justify-center">
-          <span className="text-gray-500 text-xs">空</span>
+        <div className="w-16 h-16 border border-border rounded bg-muted flex items-center justify-center">
+          <span className="text-muted-foreground text-xs">空</span>
         </div>
       );
     }
@@ -44,7 +44,7 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     const pieceHeight = maxRow - minRow + 1;
 
     return (
-      <div className={`p-2 bg-gray-800 rounded border border-gray-600 ${!canHold ? 'opacity-50' : ''}`}>
+      <div className={`p-2 bg-muted rounded border border-border ${!canHold ? 'opacity-50' : ''}`}>
         <div 
           className="flex justify-center items-center"
           style={{ 
@@ -94,13 +94,13 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   };
 
   return (
-    <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
-      <h3 className="text-white text-sm font-bold mb-2 text-center">HOLD</h3>
+    <div className="game-panel-light p-3 rounded-lg">
+      <h3 className="text-foreground text-sm font-bold mb-2 text-center">HOLD</h3>
       <div className="flex justify-center">
         {renderHoldPiece()}
       </div>
       {!canHold && (
-        <p className="text-red-400 text-xs text-center mt-1">已使用</p>
+        <p className="text-destructive text-xs text-center mt-1">已使用</p>
       )}
     </div>
   );

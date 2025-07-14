@@ -28,9 +28,9 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
         <NextPiecePreview nextPieces={gameState.nextPieces} />
         
         {/* 游戏统计信息 */}
-        <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-          <h3 className="text-white text-lg font-bold mb-3 text-center">游戏统计</h3>
-          <div className="text-white text-base space-y-2">
+        <div className="game-panel-light p-4 rounded-lg">
+          <h3 className="text-foreground text-lg font-bold mb-3 text-center">游戏统计</h3>
+          <div className="text-foreground text-base space-y-2">
             <div className="flex justify-between">
               <span>分数:</span>
               <span className="font-bold text-blue-400">{gameState.score.toLocaleString()}</span>
@@ -70,8 +70,8 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
 
         {/* 目标进度 */}
         {gameMode.targetLines && (
-          <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
-            <h3 className="text-white text-sm font-bold mb-2 text-center">目标进度</h3>
+          <div className="game-panel-light p-3 rounded-lg">
+            <h3 className="text-foreground text-sm font-bold mb-2 text-center">目标进度</h3>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-400">
                 {gameState.lines} / {gameMode.targetLines}
@@ -90,13 +90,13 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
         )}
       </div>
 
-      {/* 中央游戏区域 - 更大的游戏板 */}
+      {/* 中央游戏区域 - 显著增大的游戏板 */}
       <div className="flex-shrink-0">
         <GameBoard
           board={gameState.board}
           currentPiece={gameState.currentPiece}
           ghostPiece={gameSettings.enableGhost ? gameState.ghostPiece : null}
-          cellSize={36}
+          cellSize={42}
         />
       </div>
 
@@ -108,9 +108,9 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
         />
         
         {/* 详细统计信息 */}
-        <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-          <h3 className="text-white text-lg font-bold mb-3 text-center">详细统计</h3>
-          <div className="text-white text-base space-y-2">
+        <div className="game-panel-light p-4 rounded-lg">
+          <h3 className="text-foreground text-lg font-bold mb-3 text-center">详细统计</h3>
+          <div className="text-foreground text-base space-y-2">
             <div className="flex justify-between">
               <span>方块数:</span>
               <span className="font-bold text-cyan-400">{gameState.pieces}</span>
@@ -138,33 +138,13 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
           </div>
         </div>
 
-        {/* 操作提示 */}
-        <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-          <h3 className="text-white text-lg font-bold mb-3 text-center">操作提示</h3>
-          <div className="text-white text-base space-y-2">
-            <div className="flex justify-between">
-              <span>← →</span>
-              <span className="text-gray-400">移动</span>
-            </div>
-            <div className="flex justify-between">
-              <span>↓</span>
-              <span className="text-gray-400">软降</span>
-            </div>
-            <div className="flex justify-between">
-              <span>空格</span>
-              <span className="text-gray-400">硬降</span>
-            </div>
-            <div className="flex justify-between">
-              <span>↑</span>
-              <span className="text-gray-400">旋转</span>
-            </div>
-            <div className="flex justify-between">
-              <span>C</span>
-              <span className="text-gray-400">暂存</span>
-            </div>
-            <div className="flex justify-between">
-              <span>P</span>
-              <span className="text-gray-400">暂停</span>
+        {/* 成就动画区域 */}
+        <div className="game-panel-light p-4 rounded-lg min-h-[120px] flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-sm text-muted-foreground mb-2">成就提示</div>
+            <div className="text-xs text-muted-foreground">
+              完成 Tetris、T-Spin、Combo 等操作时<br />
+              会在此显示鼓励信息
             </div>
           </div>
         </div>

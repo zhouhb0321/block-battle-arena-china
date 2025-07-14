@@ -44,6 +44,9 @@ const Index = () => {
     setCurrentView(view);
   };
 
+  // Check if user can access admin panel
+  const canAccessAdmin = isAuthenticated && user?.email === 'admin@tetris.com';
+
   const handleGameModeStart = (gameType: string, gameMode: any) => {
     console.log('Starting game directly with mode:', gameMode);
     setCurrentView('game');
@@ -99,9 +102,13 @@ const Index = () => {
           </div>
         );
       case 'admin':
+        if (!canAccessAdmin) {
+          setCurrentView('home');
+          return null;
+        }
         return (
           <div className="max-w-7xl mx-auto">
-            <AdminPanel />
+            <AdminPanel onBackToMenu={handleBackToMenu} />
           </div>
         );
       case 'home':
@@ -158,6 +165,17 @@ const Index = () => {
                 >
                   <LogIn className="w-6 h-6 mr-3" />
                   {t('auth.login')} / {t('auth.register')}
+                </Button>
+              )}
+              
+              {canAccessAdmin && (
+                <Button 
+                  size="lg"
+                  onClick={() => handleViewChange('admin')}
+                  className="bg-destructive/80 hover:bg-destructive text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <Settings className="w-6 h-6 mr-3" />
+                  管理面板
                 </Button>
               )}
             </div>
