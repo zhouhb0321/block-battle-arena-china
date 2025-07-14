@@ -1,13 +1,13 @@
 
-// 统一的方块颜色配置
+// 统一的方块颜色配置 - 使用更柔和的颜色
 export const TETROMINO_COLORS = {
-  I: '#4a9d9c', // 柔和的青色
-  O: '#c4a661', // 柔和的黄色
-  T: '#8b6bb1', // 柔和的紫色
-  S: '#6b9b6b', // 柔和的绿色
-  Z: '#b87575', // 柔和的红色
-  J: '#5d7fb8', // 柔和的蓝色
-  L: '#c4906b'  // 柔和的橙色
+  I: '#6b7280', // 柔和的灰色
+  O: '#a3a3a3', // 浅灰色
+  T: '#8b7355', // 土黄色
+  S: '#9ca3af', // 中性灰
+  Z: '#94a3b8', // 蓝灰色
+  J: '#71717a', // 深灰色
+  L: '#a78bfa'  // 淡紫色
 };
 
 // 方块类型到颜色的映射（用于游戏板渲染）
@@ -24,10 +24,10 @@ export const TETROMINO_TYPE_TO_COLOR: { [key: number]: string } = {
 
 // 获取方块类型的颜色
 export const getTetrominoColor = (type: string): string => {
-  return TETROMINO_COLORS[type as keyof typeof TETROMINO_COLORS] || '#666666';
+  return TETROMINO_COLORS[type as keyof typeof TETROMINO_COLORS] || '#6b7280';
 };
 
 // 获取数字ID对应的颜色
 export const getBlockColor = (typeId: number): string => {
-  return TETROMINO_TYPE_TO_COLOR[typeId] || '#666666';
+  return TETROMINO_TYPE_TO_COLOR[typeId] || '#6b7280';
 };

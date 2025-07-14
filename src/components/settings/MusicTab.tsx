@@ -1,149 +1,128 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Music, Volume2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Volume2, VolumeX, Music, Play, Pause } from 'lucide-react';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import { useMusicManager } from '@/hooks/useMusicManager';
-import type { GameSettings } from '@/utils/gameTypes';
 
-interface MusicTabProps {
-  settings: GameSettings;
-  onSettingChange: (key: keyof GameSettings, value: any) => void;
-}
-
-const MusicTab: React.FC<MusicTabProps> = ({ settings, onSettingChange }) => {
+const MusicTab: React.FC = () => {
+  const { settings, updateSettings } = useUserSettings();
   const { availableMusic, currentTrack, setCurrentTrack, isLoading } = useMusicManager();
+
+  const handleVolumeChange = (value: number[]) => {
+    updateSettings({ music_volume: value[0] });
+  };
+
+  const handleAutoPlayToggle = (checked: boolean) => {
+    updateSettings({ auto_play_music: checked });
+  };
+
+  const handleLoopToggle = (checked: boolean) => {
+    updateSettings({ loop_music: checked });
+  };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Volume2 className="w-5 h-5" />
-            音频设置
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* 音效开关 */}
-          <div className="flex items-center justify-between">
-            <Label>启用音效</Label>
-            <Switch
-              checked={settings.enableSound}
-              onCheckedChange={(checked) => onSettingChange('enableSound', checked)}
-            />
-          </div>
-
-          {/* 主音量控制 */}
-          {settings.enableSound && (
-            <div className="space-y-2">
-              <Label>主音量: {settings.masterVolume}%</Label>
-              <Slider
-                value={[settings.masterVolume]}
-                onValueChange={(values) => onSettingChange('masterVolume', values[0])}
-                max={100}
-                step={1}
-                className="w-full"
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
             <Music className="w-5 h-5" />
-            背景音乐设置
+            音乐设置
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* 音乐音量控制 */}
-          <div className="space-y-2">
-            <Label>音乐音量: {settings.musicVolume}%</Label>
+          {/* 音乐音量 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2">
+                {settings.music_volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                音乐音量
+              </Label>
+              <span className="text-sm text-muted-foreground">{settings.music_volume}%</span>
+            </div>
             <Slider
-              value={[settings.musicVolume]}
-              onValueChange={(values) => onSettingChange('musicVolume', values[0])}
+              value={[settings.music_volume]}
+              onValueChange={handleVolumeChange}
               max={100}
               step={1}
               className="w-full"
             />
           </div>
 
-          {/* 音乐文件选择 */}
-          {availableMusic.length > 0 ? (
-            <div className="space-y-3">
-              <Label>选择背景音乐</Label>
-              <Select
-                value={currentTrack?.name || ''}
-                onValueChange={(value) => {
-                  const track = availableMusic.find(t => t.name === value);
-                  if (track) {
-                    setCurrentTrack(track);
-                    onSettingChange('backgroundMusic', track.name);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="选择音乐文件" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableMusic.map((track) => (
-                    <SelectItem key={track.name} value={track.name}>
-                      {track.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* 自动播放 */}
+          <div className="flex items-center justify-between">
+            <Label htmlFor="auto-play">自动播放背景音乐</Label>
+            <Switch
+              id="auto-play"
+              checked={settings.auto_play_music}
+              onCheckedChange={handleAutoPlayToggle}
+            />
+          </div>
 
-              <div className="bg-muted p-3 rounded-lg">
-                <div className="text-sm space-y-1">
-                  <div className="font-medium">
-                    已找到 {availableMusic.length} 个音乐文件
+          {/* 循环播放 */}
+          <div className="flex items-center justify-between">
+            <Label htmlFor="loop">循环播放</Label>
+            <Switch
+              id="loop"
+              checked={settings.loop_music}
+              onCheckedChange={handleLoopToggle}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 可用音乐列表 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Music className="w-5 h-5" />
+            可用音乐
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mx-auto mb-2"></div>
+              <p className="text-sm text-muted-foreground">自动检测音乐文件中...</p>
+            </div>
+          ) : availableMusic.length > 0 ? (
+            <div className="space-y-2">
+              {availableMusic.map((track) => (
+                <div
+                  key={track.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                    currentTrack?.id === track.id
+                      ? 'bg-primary/10 border-primary'
+                      : 'hover:bg-muted/50'
+                  }`}
+                  onClick={() => setCurrentTrack(track)}
+                >
+                  <div>
+                    <div className="font-medium">{track.title}</div>
+                    <div className="text-sm text-muted-foreground">{track.filename}</div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    当前选择: {currentTrack?.name || '无'}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    支持格式: MP3, WAV, OGG, M4A
+                  <div className="flex items-center gap-2">
+                    {currentTrack?.id === track.id && <Play className="w-4 h-4 text-primary" />}
                   </div>
                 </div>
-              </div>
+              ))}
+              <p className="text-xs text-muted-foreground mt-4">
+                * 音乐文件已自动检测并加载
+              </p>
             </div>
           ) : (
-            <div className="bg-muted p-3 rounded-lg">
-              <div className="text-sm text-muted-foreground">
-                <div className="font-medium mb-2">
-                  {isLoading ? '正在检测音乐文件...' : '未找到音乐文件'}
-                </div>
-                <div className="text-xs space-y-1">
-                  <div>• 将音乐文件放入 public/music/ 目录中</div>
-                  <div>• 支持格式: MP3, WAV, OGG, M4A</div>
-                  <div>• 重新加载页面即可自动检测</div>
-                </div>
-              </div>
+            <div className="text-center py-8">
+              <Music className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">未发现音乐文件</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                请联系管理员添加音乐文件
+              </p>
             </div>
           )}
-
-          {/* 自动播放设置 */}
-          <div className="flex items-center justify-between">
-            <Label>游戏开始时自动播放音乐</Label>
-            <Switch
-              checked={settings.autoPlayMusic || false}
-              onCheckedChange={(checked) => onSettingChange('autoPlayMusic', checked)}
-            />
-          </div>
-
-          {/* 循环播放设置 */}
-          <div className="flex items-center justify-between">
-            <Label>循环播放</Label>
-            <Switch
-              checked={settings.loopMusic || false}
-              onCheckedChange={(checked) => onSettingChange('loopMusic', checked)}
-            />
-          </div>
         </CardContent>
       </Card>
     </div>

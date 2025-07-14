@@ -38,6 +38,16 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const [animationText, setAnimationText] = useState('');
   const [showAnimation, setShowAnimation] = useState(false);
   const [achievementText, setAchievementText] = useState<string | null>(null);
+  
+  // 成就相关状态
+  const [currentAchievementData, setCurrentAchievementData] = useState({
+    linesCleared: 0,
+    tSpinResult: null as any,
+    combo: -1,
+    b2b: 0,
+    tetris: false
+  });
+  
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
   // 保存游戏状态用于撤销/重做
@@ -55,8 +65,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         lines: gameLogic.lines,
         gameOver: gameLogic.gameOver,
         paused: gameLogic.isPaused,
-        combo: -1,
-        b2b: 0,
+        combo: gameLogic.combo,
+        b2b: gameLogic.b2b,
         pieces: 0,
         attack: 0,
         pps: gameLogic.pps,
@@ -68,22 +78,22 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       };
       saveState(completeGameState);
     }
-  }, [gameLogic.board, gameLogic.currentPiece, gameLogic.nextPieces, gameLogic.holdPiece, gameLogic.canHold, gameLogic.score, gameLogic.level, gameLogic.lines, gameLogic.gameOver, gameLogic.isPaused, gameLogic.pps, gameLogic.apm, gameLogic.ghostPiece, gameReallyStarted, saveState]);
+  }, [gameLogic.board, gameLogic.currentPiece, gameLogic.nextPieces, gameLogic.holdPiece, gameLogic.canHold, gameLogic.score, gameLogic.level, gameLogic.lines, gameLogic.gameOver, gameLogic.isPaused, gameLogic.pps, gameLogic.apm, gameLogic.ghostPiece, gameLogic.combo, gameLogic.b2b, gameReallyStarted, saveState]);
 
-  // 撤销/重做键盘控制
+  // 撤销/重做键盘控制 - 修复Ctrl+Z和Ctrl+Y
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!gameReallyStarted || gameLogic.gameOver) return;
       
       if (event.ctrlKey) {
-        if (event.code === 'KeyZ' && canUndo && !event.shiftKey) {
+        if (event.code === 'KeyZ' && !event.shiftKey) {
           event.preventDefault();
           const previousState = undo();
           if (previousState && gameLogic.applyGameState) {
             gameLogic.applyGameState(previousState);
             debugLog.game('撤销操作执行');
           }
-        } else if ((event.code === 'KeyY' || (event.code === 'KeyZ' && event.shiftKey)) && canRedo) {
+        } else if (event.code === 'KeyY' || (event.code === 'KeyZ' && event.shiftKey)) {
           event.preventDefault();
           const nextState = redo();
           if (nextState && gameLogic.applyGameState) {
@@ -127,9 +137,15 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     setAchievementText(null);
   };
 
-  const handleAchievement = (achievement: string) => {
+  // 处理成就数据更新
+  const handleAchievement = useCallback((achievement: string) => {
     setAchievementText(achievement);
-  };
+  }, []);
+
+  // 处理游戏逻辑中的成就触发
+  const handleGameAchievement = useCallback((data: { linesCleared: number; tSpinResult: any; combo: number; b2b: number; tetris: boolean }) => {
+    setCurrentAchievementData(data);
+  }, []);
 
   const handleResumeFromOverlay = () => {
     debugLog.game('恢复游戏 - 从失焦覆盖层');
@@ -206,6 +222,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       : 'bg-gray-900 text-white';
   };
 
+  // 修改游戏逻辑初始化，传入成就回调
+  useEffect(() => {
+    if (gameLogic && typeof gameLogic === 'object' && 'setAchievementCallback' in gameLogic) {
+      (gameLogic as any).setAchievementCallback(handleGameAchievement);
+    }
+  }, [gameLogic, handleGameAchievement]);
+
   const elapsedTime = gameLogic.time;
   const showOutOfFocusOverlay = gameLogic.isPaused && gameReallyStarted && !gameLogic.gameOver && !gameLogic.isManuallyPaused;
 
@@ -229,7 +252,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         onRedo={handleRedo}
       />
 
-      {/* 游戏区域 */}
       <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-7xl mx-auto">
         <GameInfoPanel
           holdPiece={gameLogic.holdPiece}
@@ -265,13 +287,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         />
       </div>
       
-      {/* 成就检测器 */}
+      {/* 成就检测器 - 使用实际的游戏数据 */}
       <AchievementDetector
-        linesCleared={0}
-        tSpinResult={null}
-        combo={-1}
-        b2b={0}
-        tetris={false}
+        linesCleared={currentAchievementData.linesCleared}
+        tSpinResult={currentAchievementData.tSpinResult}
+        combo={currentAchievementData.combo}
+        b2b={currentAchievementData.b2b}
+        tetris={currentAchievementData.tetris}
         onAchievement={handleAchievement}
       />
     </div>
