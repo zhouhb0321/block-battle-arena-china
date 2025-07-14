@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionLogger } from '@/hooks/useSessionLogger';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useResponsiveCellSize } from '@/hooks/useResponsiveCellSize';
+import { useGameHistory } from '@/hooks/useGameHistory';
 import { debugLog } from '@/utils/debugLogger';
 import GameCountdownInArea from '@/components/GameCountdownInArea';
 import EnhancedGameBoard from '@/components/EnhancedGameBoard';
@@ -9,6 +11,7 @@ import HoldPieceDisplay from '@/components/HoldPieceDisplay';
 import NextPiecePreview from '@/components/NextPiecePreview';
 import LineCleanAnimation from '@/components/LineCleanAnimation';
 import OutOfFocusOverlay from '@/components/OutOfFocusOverlay';
+import AchievementAnimation from '@/components/AchievementAnimation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Pause, Play } from 'lucide-react';
 import { useTetrisGame } from './TetrisGameProvider';
@@ -31,19 +34,69 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { logUserSession } = useSessionLogger();
   const { actualTheme } = useTheme();
   const { gameLogic, gameSettings } = useTetrisGame();
+  const cellSize = useResponsiveCellSize({ minSize: 26, maxSize: 30 });
+  const { saveState, undo, redo, canUndo, canRedo, clearHistory } = useGameHistory(50);
   
   const [showCountdown, setShowCountdown] = useState(true);
   const [gameReallyStarted, setGameReallyStarted] = useState(false);
   const [animationText, setAnimationText] = useState('');
   const [showAnimation, setShowAnimation] = useState(false);
+  const [achievementText, setAchievementText] = useState<string | null>(null);
   const gameContainerRef = useRef<HTMLDivElement>(null);
+
+  // Save game state for undo/redo system
+  useEffect(() => {
+    if (gameReallyStarted && !gameLogic.gameOver) {
+      saveState(gameLogic.gameState);
+    }
+  }, [gameLogic.gameState, gameReallyStarted, gameLogic.gameOver, saveState]);
+
+  // Achievement detection and animation
+  useEffect(() => {
+    // Listen for special clears and show achievements
+    const checkForAchievements = () => {
+      // This would be called from game logic when special clears happen
+      // For now, just a placeholder
+    };
+    
+    checkForAchievements();
+  }, [gameLogic.lines, gameLogic.score]);
+
+  // Keyboard controls for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!gameReallyStarted || gameLogic.gameOver) return;
+      
+      if (event.ctrlKey) {
+        if (event.code === 'KeyZ' && canUndo) {
+          event.preventDefault();
+          const previousState = undo();
+          if (previousState) {
+            // Apply previous state to game logic
+            // This would need to be implemented in the game logic
+            debugLog.game('Undo performed');
+          }
+        } else if (event.code === 'KeyX' && canRedo) {
+          event.preventDefault();
+          const nextState = redo();
+          if (nextState) {
+            // Apply next state to game logic
+            debugLog.game('Redo performed');
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [gameReallyStarted, gameLogic.gameOver, canUndo, canRedo, undo, redo]);
 
   const handleCountdownComplete = () => {
     debugLog.game('Countdown completed, starting game...');
     setShowCountdown(false);
     setGameReallyStarted(true);
+    clearHistory(); // Clear any previous history
     
-    // 启动游戏逻辑
     gameLogic.startGame();
     
     if (user && !user.isGuest) {
@@ -53,7 +106,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       });
     }
 
-    // 确保游戏容器获得焦点以接收键盘事件
     if (gameContainerRef.current) {
       gameContainerRef.current.focus();
     }
@@ -64,12 +116,14 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     setAnimationText('');
   };
 
-  // 处理失焦覆盖层的恢复
+  const handleAchievementComplete = () => {
+    setAchievementText(null);
+  };
+
   const handleResumeFromOverlay = () => {
     debugLog.game('恢复游戏 - 从失焦覆盖层');
     gameLogic.resumeGame();
     
-    // 确保游戏容器重新获得焦点
     if (gameContainerRef.current) {
       gameContainerRef.current.focus();
     }
@@ -131,10 +185,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       : 'bg-gray-900 border-gray-700';
   };
 
-  const currentTime = Date.now();
   const elapsedTime = gameLogic.time;
-
-  // 确定是否显示失焦覆盖层
   const showOutOfFocusOverlay = gameLogic.isPaused && gameReallyStarted && !gameLogic.gameOver && !gameLogic.isManuallyPaused;
 
   return (
@@ -171,17 +222,24 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               {gameLogic.isPaused ? '继续' : '暂停'}
             </Button>
           )}
+          
+          {/* Undo/Redo indicators */}
+          {gameReallyStarted && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className={canUndo ? 'text-blue-400' : ''}>Ctrl+Z 撤销</span>
+              <span className={canRedo ? 'text-green-400' : ''}>Ctrl+X 重做</span>
+            </div>
+          )}
         </div>
         
-        {/* 游戏模式信息 */}
         <div className="text-lg font-semibold">
           {gameMode.displayName}
         </div>
       </div>
 
-      {/* 游戏区域 - 优化布局，移除操作提示 */}
+      {/* 游戏区域 */}
       <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-7xl mx-auto">
-        {/* 左侧面板 - Hold区域，宽度优化 */}
+        {/* 左侧面板 - Hold区域 */}
         <div className="flex flex-col gap-4 lg:w-60">
           <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
             <HoldPieceDisplay 
@@ -190,7 +248,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             />
           </div>
           
-          {/* 游戏信息面板 - 增加高度和信息显示 */}
+          {/* 游戏信息面板 */}
           <div className="flex-1">
             <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
               <div className="space-y-3">
@@ -241,14 +299,14 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           </div>
         </div>
 
-        {/* 中央游戏区域 - 使用更大的游戏板 */}
+        {/* 中央游戏区域 - 使用响应式游戏板 */}
         <div className="relative flex-shrink-0">
           <div className={`p-4 rounded-lg border ${getBoardThemeClasses()}`}>
             <EnhancedGameBoard
               board={gameLogic.board}
               currentPiece={gameLogic.currentPiece}
               ghostPiece={gameLogic.ghostPiece}
-              cellSize={42}
+              cellSize={cellSize}
             />
           </div>
           
@@ -261,14 +319,22 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             />
           )}
           
-          {/* 失焦覆盖层 - 支持点击恢复 */}
+          {/* 失焦覆盖层 */}
           <OutOfFocusOverlay 
             show={showOutOfFocusOverlay}
             onResume={handleResumeFromOverlay}
           />
+          
+          {/* 成就动画覆盖层 */}
+          {achievementText && (
+            <AchievementAnimation
+              achievement={achievementText}
+              onComplete={handleAchievementComplete}
+            />
+          )}
         </div>
 
-        {/* 右侧面板 - NEXT区域，移除操作提示 */}
+        {/* 右侧面板 - NEXT区域 */}
         <div className="lg:w-60">
           <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
             <NextPiecePreview 

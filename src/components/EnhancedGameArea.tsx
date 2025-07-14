@@ -4,6 +4,8 @@ import GameBoard from './GameBoard';
 import NextPiecePreview from './NextPiecePreview';
 import HoldPieceDisplay from './HoldPieceDisplay';
 import TimeChallengeClock from './TimeChallengeClock';
+import AchievementAnimation from './AchievementAnimation';
+import { useResponsiveCellSize } from '@/hooks/useResponsiveCellSize';
 import type { GameState, GameSettings, GameMode } from '@/utils/gameTypes';
 
 interface EnhancedGameAreaProps {
@@ -12,6 +14,8 @@ interface EnhancedGameAreaProps {
   gameMode: GameMode;
   onTimeUp?: () => void;
   gameStarted: boolean;
+  achievementText?: string | null;
+  onAchievementComplete?: () => void;
 }
 
 const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
@@ -19,8 +23,12 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
   gameSettings,
   gameMode,
   onTimeUp,
-  gameStarted
+  gameStarted,
+  achievementText,
+  onAchievementComplete
 }) => {
+  const cellSize = useResponsiveCellSize({ minSize: 26, maxSize: 30 });
+
   return (
     <div className="flex gap-8 justify-center items-start max-w-7xl mx-auto px-4">
       {/* 左侧面板 - Next区域（4个方块预览）*/}
@@ -90,14 +98,22 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
         )}
       </div>
 
-      {/* 中央游戏区域 - 显著增大的游戏板 */}
-      <div className="flex-shrink-0">
+      {/* 中央游戏区域 - 响应式游戏板 */}
+      <div className="flex-shrink-0 relative">
         <GameBoard
           board={gameState.board}
           currentPiece={gameState.currentPiece}
           ghostPiece={gameSettings.enableGhost ? gameState.ghostPiece : null}
-          cellSize={42}
+          cellSize={cellSize}
         />
+        
+        {/* 成就动画覆盖层 */}
+        {achievementText && onAchievementComplete && (
+          <AchievementAnimation
+            achievement={achievementText}
+            onComplete={onAchievementComplete}
+          />
+        )}
       </div>
 
       {/* 右侧面板 - Hold区域和详细统计 */}
@@ -135,17 +151,6 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
                 </span>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* 成就动画区域 */}
-        <div className="game-panel-light p-4 rounded-lg min-h-[120px] flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-sm text-muted-foreground mb-2">成就提示</div>
-            <div className="text-xs text-muted-foreground">
-              完成 Tetris、T-Spin、Combo 等操作时<br />
-              会在此显示鼓励信息
-            </div>
           </div>
         </div>
       </div>
