@@ -5,18 +5,13 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useResponsiveCellSize } from '@/hooks/useResponsiveCellSize';
 import { useGameHistory } from '@/hooks/useGameHistory';
 import { debugLog } from '@/utils/debugLogger';
-import GameCountdownInArea from '@/components/GameCountdownInArea';
-import EnhancedGameBoard from '@/components/EnhancedGameBoard';
-import HoldPieceDisplay from '@/components/HoldPieceDisplay';
-import NextPiecePreview from '@/components/NextPiecePreview';
-import LineCleanAnimation from '@/components/LineCleanAnimation';
-import OutOfFocusOverlay from '@/components/OutOfFocusOverlay';
-import AchievementAnimation from '@/components/AchievementAnimation';
+import GameTopBar from './GameTopBar';
+import GameInfoPanel from './GameInfoPanel';
+import GameCentralArea from './GameCentralArea';
+import GameRightPanel from './GameRightPanel';
 import AchievementDetector from './AchievementDetector';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Pause, Play, Undo2, Redo2 } from 'lucide-react';
 import { useTetrisGame } from './TetrisGameProvider';
-import type { GameMode, GameState, GamePiece } from '@/utils/gameTypes';
+import type { GameMode, GameState } from '@/utils/gameTypes';
 
 interface SinglePlayerGameAreaProps {
   gameMode: GameMode;
@@ -145,6 +140,10 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     }
   };
 
+  const handlePauseResume = () => {
+    gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame();
+  };
+
   const handleUndo = () => {
     if (canUndo) {
       const previousState = undo();
@@ -207,18 +206,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       : 'bg-gray-900 text-white';
   };
 
-  const getBoardThemeClasses = () => {
-    return actualTheme === 'light' 
-      ? 'bg-white border-gray-300' 
-      : 'bg-gray-800 border-gray-600';
-  };
-
-  const getPanelThemeClasses = () => {
-    return actualTheme === 'light' 
-      ? 'bg-white border-gray-300' 
-      : 'bg-gray-900 border-gray-700';
-  };
-
   const elapsedTime = gameLogic.time;
   const showOutOfFocusOverlay = gameLogic.isPaused && gameReallyStarted && !gameLogic.gameOver && !gameLogic.isManuallyPaused;
 
@@ -229,180 +216,58 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       tabIndex={0}
       style={{ outline: 'none' }}
     >
-      {/* 顶部控制栏 */}
-      <div className="mb-4 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          {onBackToMenu && (
-            <Button
-              onClick={onBackToMenu}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              返回菜单
-            </Button>
-          )}
-          
-          {gameReallyStarted && (
-            <>
-              <Button
-                onClick={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-                disabled={gameLogic.gameOver}
-              >
-                {gameLogic.isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                {gameLogic.isPaused ? '继续' : '暂停'}
-              </Button>
-              
-              <Button
-                onClick={handleUndo}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-                disabled={!canUndo || gameLogic.gameOver}
-                title="撤销 (Ctrl+Z)"
-              >
-                <Undo2 className="w-4 h-4" />
-                撤销
-              </Button>
-              
-              <Button
-                onClick={handleRedo}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-                disabled={!canRedo || gameLogic.gameOver}
-                title="重做 (Ctrl+Y)"
-              >
-                <Redo2 className="w-4 h-4" />
-                重做
-              </Button>
-            </>
-          )}
-        </div>
-        
-        <div className="text-lg font-semibold">
-          {gameMode.displayName}
-        </div>
-      </div>
+      <GameTopBar
+        gameMode={gameMode}
+        gameReallyStarted={gameReallyStarted}
+        isPaused={gameLogic.isPaused}
+        gameOver={gameLogic.gameOver}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onBackToMenu={onBackToMenu}
+        onPauseResume={handlePauseResume}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+      />
 
       {/* 游戏区域 */}
       <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-7xl mx-auto">
-        {/* 左侧面板 - Hold区域 */}
-        <div className="flex flex-col gap-4 lg:w-60">
-          <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
-            <HoldPieceDisplay 
-              holdPiece={gameLogic.holdPiece} 
-              canHold={gameLogic.canHold}
-            />
-          </div>
-          
-          {/* 成就动画显示区域 - 在Hold区域下方 */}
-          <div className="relative min-h-[100px]">
-            {achievementText && (
-              <AchievementAnimation
-                achievement={achievementText}
-                onComplete={handleAchievementComplete}
-              />
-            )}
-          </div>
-          
-          {/* 游戏信息面板 */}
-          <div className="flex-1">
-            <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
-              
-              <div className="space-y-3">
-                <div className="text-center border-b pb-2 mb-3">
-                  <div className="font-bold text-lg">
-                    {user?.username || user?.email?.split('@')[0] || 'Player'}
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>得分:</div>
-                  <div className="font-mono text-right">{gameLogic.score.toLocaleString()}</div>
-                  
-                  <div>行数:</div>
-                  <div className="font-mono text-right">{gameLogic.lines}</div>
-                  
-                  <div>等级:</div>
-                  <div className="font-mono text-right">{gameLogic.level}</div>
-                  
-                  <div>PPS:</div>
-                  <div className="font-mono text-right">{gameLogic.pps.toFixed(2)}</div>
-                  
-                  <div>攻击:</div>
-                  <div className="font-mono text-right">{gameLogic.apm.toFixed(1)}</div>
-                  
-                  <div>时间:</div>
-                  <div className="font-mono text-right">
-                    {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
-                  </div>
-                </div>
+        <GameInfoPanel
+          holdPiece={gameLogic.holdPiece}
+          canHold={gameLogic.canHold}
+          score={gameLogic.score}
+          lines={gameLogic.lines}
+          level={gameLogic.level}
+          pps={gameLogic.pps}
+          apm={gameLogic.apm}
+          elapsedTime={elapsedTime}
+          isManuallyPaused={gameLogic.isManuallyPaused}
+          showAnimation={showAnimation}
+          animationText={animationText}
+          achievementText={achievementText}
+          onAnimationComplete={handleAnimationComplete}
+          onAchievementComplete={handleAchievementComplete}
+        />
 
-                {gameLogic.isManuallyPaused && (
-                  <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      <Pause className="w-8 h-8 mx-auto mb-2" />
-                      <div className="text-sm">游戏暂停</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <LineCleanAnimation
-                isVisible={showAnimation}
-                text={animationText}
-                onComplete={handleAnimationComplete}
-              />
-            </div>
-          </div>
-        </div>
+        <GameCentralArea
+          board={gameLogic.board}
+          currentPiece={gameLogic.currentPiece}
+          ghostPiece={gameLogic.ghostPiece}
+          cellSize={cellSize}
+          gameStarted={gameStarted}
+          showCountdown={showCountdown}
+          showOutOfFocusOverlay={showOutOfFocusOverlay}
+          onCountdownComplete={handleCountdownComplete}
+          onResumeFromOverlay={handleResumeFromOverlay}
+        />
 
-        {/* 中央游戏区域 */}
-        <div className="relative flex-shrink-0">
-          <div className={`p-4 rounded-lg border ${getBoardThemeClasses()}`}>
-            <EnhancedGameBoard
-              board={gameLogic.board}
-              currentPiece={gameLogic.currentPiece}
-              ghostPiece={gameLogic.ghostPiece}
-              cellSize={cellSize}
-            />
-          </div>
-          
-          {/* 倒计时覆盖层 */}
-          {gameStarted && showCountdown && (
-            <GameCountdownInArea
-              initialCount={3}
-              onComplete={handleCountdownComplete}
-              isVisible={true}
-            />
-          )}
-          
-          {/* 失焦覆盖层 */}
-          <OutOfFocusOverlay 
-            show={showOutOfFocusOverlay}
-            onResume={handleResumeFromOverlay}
-          />
-        </div>
-
-        {/* 右侧面板 - NEXT区域 */}
-        <div className="lg:w-60">
-          <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
-            <NextPiecePreview 
-              nextPieces={gameLogic.nextPieces} 
-              compact={false}
-            />
-          </div>
-        </div>
+        <GameRightPanel
+          nextPieces={gameLogic.nextPieces}
+        />
       </div>
       
       {/* 成就检测器 */}
       <AchievementDetector
-        linesCleared={0} // 这些值需要从游戏逻辑中获取
+        linesCleared={0}
         tSpinResult={null}
         combo={-1}
         b2b={0}
