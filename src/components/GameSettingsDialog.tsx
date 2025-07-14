@@ -12,6 +12,7 @@ import VisualTab from './settings/VisualTab';
 import AudioTab from './settings/AudioTab';
 import MusicTab from './settings/MusicTab';
 import { useKeyRecording } from './settings/useKeyRecording';
+import type { GameSettings } from '@/utils/gameTypes';
 
 interface GameSettingsDialogProps {
   trigger?: React.ReactNode;

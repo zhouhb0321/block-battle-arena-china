@@ -738,60 +738,78 @@ export type Database = {
       user_settings: {
         Row: {
           arr: number
+          auto_play_music: boolean | null
           back_to_menu: string | null
           background_music: string | null
           block_skin: string | null
           controls: Json
           created_at: string
           das: number
+          enable_achievement_animation: boolean | null
           enable_ghost: boolean
+          enable_landing_effect: boolean | null
+          enable_line_animation: boolean | null
           enable_sound: boolean
           enable_wallpaper: boolean | null
           ghost_opacity: number | null
           id: string
+          loop_music: boolean | null
           master_volume: number
           music_volume: number | null
           sdf: number
           updated_at: string
           user_id: string
+          wallpaper_opacity: number | null
         }
         Insert: {
           arr?: number
+          auto_play_music?: boolean | null
           back_to_menu?: string | null
           background_music?: string | null
           block_skin?: string | null
           controls?: Json
           created_at?: string
           das?: number
+          enable_achievement_animation?: boolean | null
           enable_ghost?: boolean
+          enable_landing_effect?: boolean | null
+          enable_line_animation?: boolean | null
           enable_sound?: boolean
           enable_wallpaper?: boolean | null
           ghost_opacity?: number | null
           id?: string
+          loop_music?: boolean | null
           master_volume?: number
           music_volume?: number | null
           sdf?: number
           updated_at?: string
           user_id: string
+          wallpaper_opacity?: number | null
         }
         Update: {
           arr?: number
+          auto_play_music?: boolean | null
           back_to_menu?: string | null
           background_music?: string | null
           block_skin?: string | null
           controls?: Json
           created_at?: string
           das?: number
+          enable_achievement_animation?: boolean | null
           enable_ghost?: boolean
+          enable_landing_effect?: boolean | null
+          enable_line_animation?: boolean | null
           enable_sound?: boolean
           enable_wallpaper?: boolean | null
           ghost_opacity?: number | null
           id?: string
+          loop_music?: boolean | null
           master_volume?: number
           music_volume?: number | null
           sdf?: number
           updated_at?: string
           user_id?: string
+          wallpaper_opacity?: number | null
         }
         Relationships: []
       }
