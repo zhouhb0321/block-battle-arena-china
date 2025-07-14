@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
@@ -22,14 +21,13 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   board,
   currentPiece,
   ghostPiece,
-  cellSize,
+  cellSize = 42, // 使用传入的 cellSize，默认为 42
   showGrid = true,
   showHiddenRows = true,
   isLockDelayActive = false,
   lockDelayResetCount = 0,
   clearingLines = []
 }) => {
-  const fixedCellSize = 20;
   const { settings } = useUserSettings();
   const { actualTheme } = useTheme();
 
@@ -81,7 +79,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
     const isClearing = clearingLines.includes(rowIndex);
     
     const config = {
-      cellSize: fixedCellSize,
+      cellSize,
       isHidden,
       isClearing,
       ghostOpacity: settings.ghostOpacity || 50,
@@ -103,11 +101,11 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       <div 
         className="game-board relative border-2 border-gray-600 bg-gray-900"
         style={{
-          width: fixedCellSize * 10,
-          height: fixedCellSize * (showHiddenRows ? 23 : 20),
+          width: cellSize * 10,
+          height: cellSize * (showHiddenRows ? 23 : 20),
           display: 'grid',
-          gridTemplateColumns: `repeat(10, ${fixedCellSize}px)`,
-          gridTemplateRows: `repeat(${showHiddenRows ? 23 : 20}, ${fixedCellSize}px)`,
+          gridTemplateColumns: `repeat(10, ${cellSize}px)`,
+          gridTemplateRows: `repeat(${showHiddenRows ? 23 : 20}, ${cellSize}px)`,
         }}
       >
         {extendedBoard.map((row, rowIndex) => 
@@ -122,8 +120,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
                 } ${showGrid ? 'show-grid' : ''}`}
                 style={{
                   ...style,
-                  width: fixedCellSize,
-                  height: fixedCellSize,
+                  width: cellSize,
+                  height: cellSize,
                   boxSizing: 'border-box',
                 }}
               />

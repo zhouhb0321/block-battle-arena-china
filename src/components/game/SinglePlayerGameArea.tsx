@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionLogger } from '@/hooks/useSessionLogger';
@@ -76,7 +75,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     }
   };
 
-  // 当倒计时开始时，立即初始化方块
   useEffect(() => {
     if (gameStarted && showCountdown && !gameLogic.gameInitialized) {
       debugLog.game('Game area ready, initializing pieces for countdown...');
@@ -84,14 +82,12 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     }
   }, [gameStarted, showCountdown, gameLogic]);
 
-  // 确保游戏容器在游戏开始后保持焦点
   useEffect(() => {
     if (gameReallyStarted && gameContainerRef.current) {
       gameContainerRef.current.focus();
     }
   }, [gameReallyStarted]);
 
-  // 处理游戏结束
   useEffect(() => {
     if (gameLogic.gameOver) {
       const finalStats = {
@@ -183,10 +179,10 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         </div>
       </div>
 
-      {/* 游戏区域 - 重新设计布局 */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start justify-center">
-        {/* 左侧面板 - Hold区域 */}
-        <div className="flex flex-col gap-4 lg:w-48">
+      {/* 游戏区域 - 优化布局，移除操作提示 */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-7xl mx-auto">
+        {/* 左侧面板 - Hold区域，宽度优化 */}
+        <div className="flex flex-col gap-4 lg:w-60">
           <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
             <HoldPieceDisplay 
               holdPiece={gameLogic.holdPiece} 
@@ -194,8 +190,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             />
           </div>
           
-          {/* 游戏信息面板 - 与游戏板底部对齐 */}
-          <div className="flex-1 flex flex-col justify-end">
+          {/* 游戏信息面板 - 增加高度和信息显示 */}
+          <div className="flex-1">
             <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
               <div className="space-y-3">
                 <div className="text-center border-b pb-2 mb-3">
@@ -245,13 +241,14 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           </div>
         </div>
 
-        {/* 中央游戏区域 */}
-        <div className="relative">
+        {/* 中央游戏区域 - 使用更大的游戏板 */}
+        <div className="relative flex-shrink-0">
           <div className={`p-4 rounded-lg border ${getBoardThemeClasses()}`}>
             <EnhancedGameBoard
               board={gameLogic.board}
               currentPiece={gameLogic.currentPiece}
               ghostPiece={gameLogic.ghostPiece}
+              cellSize={42}
             />
           </div>
           
@@ -271,26 +268,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           />
         </div>
 
-        {/* 右侧面板 - NEXT区域 */}
-        <div className="lg:w-48">
+        {/* 右侧面板 - NEXT区域，移除操作提示 */}
+        <div className="lg:w-60">
           <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
             <NextPiecePreview 
               nextPieces={gameLogic.nextPieces} 
               compact={false}
             />
-          </div>
-          
-          {/* 操作提示 */}
-          <div className={`mt-4 p-3 rounded-lg border ${getPanelThemeClasses()}`}>
-            <h3 className="text-sm font-bold mb-2 text-center">操作提示</h3>
-            <div className="text-xs space-y-1">
-              <div>← → 移动</div>
-              <div>↓ 软降</div>
-              <div>空格 硬降</div>
-              <div>↑ 旋转</div>
-              <div>C 暂存</div>
-              <div>P 暂停</div>
-            </div>
           </div>
         </div>
       </div>

@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image, Eye, RefreshCw } from 'lucide-react';
+import { Image, Eye, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface WallpaperFile {
@@ -104,8 +105,18 @@ const AdminWallpaperManagement: React.FC = () => {
   const checkImageFile = (url: string): Promise<boolean> => {
     return new Promise((resolve) => {
       const img = document.createElement('img');
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
+      const timeout = setTimeout(() => {
+        resolve(false);
+      }, 5000);
+      
+      img.onload = () => {
+        clearTimeout(timeout);
+        resolve(true);
+      };
+      img.onerror = () => {
+        clearTimeout(timeout);
+        resolve(false);
+      };
       img.src = url;
     });
   };
@@ -197,11 +208,17 @@ const AdminWallpaperManagement: React.FC = () => {
               {/* 统计信息 */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">{existingFiles.length}</div>
+                  <div className="text-2xl font-bold text-green-600 flex items-center justify-center gap-2">
+                    <CheckCircle className="w-6 h-6" />
+                    {existingFiles.length}
+                  </div>
                   <div className="text-sm text-green-700">可用壁纸</div>
                 </div>
                 <div className="text-center p-4 bg-red-50 rounded-lg">
-                  <div className="text-2xl font-bold text-red-600">{missingFiles.length}</div>
+                  <div className="text-2xl font-bold text-red-600 flex items-center justify-center gap-2">
+                    <XCircle className="w-6 h-6" />
+                    {missingFiles.length}
+                  </div>
                   <div className="text-sm text-red-700">缺失壁纸</div>
                 </div>
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
@@ -213,13 +230,16 @@ const AdminWallpaperManagement: React.FC = () => {
               {/* 可用壁纸列表 */}
               {existingFiles.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold mb-3 text-green-700">可用壁纸文件</h3>
+                  <h3 className="text-lg font-semibold mb-3 text-green-700 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    可用壁纸文件 ({existingFiles.length})
+                  </h3>
                   {Object.entries(existingByCategory).map(([category, files]) => (
-                    <div key={category} className="mb-4">
-                      <h4 className="text-md font-medium mb-2 text-green-600">{category} ({files.length})</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div key={category} className="mb-6">
+                      <h4 className="text-md font-medium mb-3 text-green-600">{category} ({files.length})</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {files.map((file) => (
-                          <div key={file.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div key={file.id} className="p-3 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 transition-colors">
                             <div className="flex items-center justify-between mb-2">
                               <div>
                                 <div className="font-medium text-green-800">{file.title}</div>
@@ -227,13 +247,14 @@ const AdminWallpaperManagement: React.FC = () => {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
                                   可用
                                 </Badge>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => showPreview(file)}
-                                  className="text-green-600 hover:text-green-700"
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-200"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
@@ -244,7 +265,7 @@ const AdminWallpaperManagement: React.FC = () => {
                               className="w-full h-24 bg-cover bg-center rounded cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
                               style={{
                                 backgroundImage: `url(${file.url})`,
-                                filter: 'brightness(0.7) contrast(1.1)'
+                                filter: 'brightness(0.8) contrast(1.1)'
                               }}
                               onClick={() => showPreview(file)}
                             />
@@ -259,7 +280,10 @@ const AdminWallpaperManagement: React.FC = () => {
               {/* 缺失壁纸列表 */}
               {missingFiles.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold mb-3 text-red-700">缺失壁纸文件</h3>
+                  <h3 className="text-lg font-semibold mb-3 text-red-700 flex items-center gap-2">
+                    <XCircle className="w-5 h-5" />
+                    缺失壁纸文件 ({missingFiles.length})
+                  </h3>
                   {Object.entries(missingByCategory).map(([category, files]) => (
                     <div key={category} className="mb-4">
                       <h4 className="text-md font-medium mb-2 text-red-600">{category} ({files.length})</h4>
@@ -267,11 +291,11 @@ const AdminWallpaperManagement: React.FC = () => {
                         {files.map((file) => (
                           <div key={file.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
                             <div className="flex items-center gap-3">
-                              <Image className="w-4 h-4 text-red-600" />
+                              <XCircle className="w-4 h-4 text-red-600" />
                               <div>
                                 <div className="font-medium text-red-800">{file.title}</div>
                                 <div className="text-sm text-red-600">{file.filename}</div>
-                                <div className="text-xs text-red-500">路径: {file.url}</div>
+                                <div className="text-xs text-red-500 font-mono">路径: {file.url}</div>
                               </div>
                             </div>
                             <Badge variant="destructive">
@@ -282,30 +306,21 @@ const AdminWallpaperManagement: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  
-                  {/* 添加说明 */}
-                  <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-800 mb-2">如何添加壁纸文件：</h4>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                      <li>1. 将壁纸文件放置在项目的 <code className="bg-blue-100 px-1 rounded">public/wallpapers/</code> 目录下</li>
-                      <li>2. 确保文件名与上表中的文件名完全一致</li>
-                      <li>3. 支持的图像格式：JPG, PNG, WEBP</li>
-                      <li>4. 建议分辨率：1920x1080 或更高</li>
-                      <li>5. 建议文件大小：500KB - 2MB</li>
-                      <li>6. 添加文件后点击"重新扫描"按钮</li>
-                    </ul>
-                  </div>
                 </div>
               )}
 
               {/* 使用说明 */}
               <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-gray-800 mb-2">壁纸系统状态：</h4>
+                <h4 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
+                  <Image className="w-4 h-4" />
+                  壁纸系统状态
+                </h4>
                 <div className="text-sm text-gray-600 space-y-1">
                   <div>• 用户可以在设置中启用/禁用动态壁纸</div>
                   <div>• 系统会每2-3分钟自动切换壁纸</div>
                   <div>• 壁纸会自动应用深色滤镜以确保内容可读性</div>
                   <div>• 支持响应式设计，适配不同屏幕尺寸</div>
+                  <div>• 壁纸文件位置: <code className="bg-gray-200 px-1 rounded">public/wallpapers/</code></div>
                 </div>
               </div>
             </div>
@@ -323,7 +338,7 @@ const AdminWallpaperManagement: React.FC = () => {
             <img 
               src={previewImage} 
               alt="壁纸预览" 
-              className="max-w-full max-h-full object-contain rounded-lg"
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
             />
             <Button 
               className="mt-4 w-full"

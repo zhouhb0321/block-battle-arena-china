@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Gamepad, Keyboard, Settings, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { GameSettings } from '@/utils/gameTypes';
 
 interface ControlsTabProps {
@@ -23,7 +24,8 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
   const controlPresets = {
     directional: {
       name: '指导配置',
-      description: '使用方向键控制，适合新手',
+      description: '使用方向键控制，适合新手玩家',
+      icon: <ArrowUp className="w-4 h-4" />,
       controls: {
         moveLeft: 'ArrowLeft',
         moveRight: 'ArrowRight',
@@ -40,6 +42,7 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
     wasd: {
       name: 'WASD配置',
       description: '使用WASD键位，适合游戏玩家',
+      icon: <Keyboard className="w-4 h-4" />,
       controls: {
         moveLeft: 'KeyA',
         moveRight: 'KeyD',
@@ -52,6 +55,12 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
         pause: 'Escape',
         backToMenu: 'KeyB'
       }
+    },
+    custom: {
+      name: '自定义配置',
+      description: '完全自定义所有按键',
+      icon: <Settings className="w-4 h-4" />,
+      controls: settings.controls
     }
   };
 
@@ -59,6 +68,7 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
     const preset = controlPresets[presetKey];
     onSettingChange('controls', preset.controls);
   };
+
   const getKeyDisplayName = (keyCode: string) => {
     const keyMap: { [key: string]: string } = {
       'ArrowLeft': '←', 'ArrowRight': '→', 'ArrowUp': '↑', 'ArrowDown': '↓',
@@ -114,7 +124,6 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
         [conflictKeyName]: oldValue
       };
       
-      // 立即应用设置更改
       await onSettingChange('controls', newControls);
       
       const conflictLabel = controlLabels[conflictKeyName as keyof typeof controlLabels];
@@ -126,7 +135,6 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
         [controlName]: newKey
       };
       
-      // 立即应用设置更改
       await onSettingChange('controls', newControls);
       console.log('键位已更新:', controlName, newKey);
     }
@@ -161,20 +169,61 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
       {/* 预设配置 */}
       <Card>
         <CardHeader>
-          <CardTitle>控制预设</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Gamepad className="w-5 h-5" />
+            控制预设
+          </CardTitle>
           <CardDescription>
-            选择一个预设配置快速开始，或使用自定义配置进行个性化设置
+            选择一个预设配置快速开始。第一次使用建议选择"指导配置"。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Object.entries(controlPresets).map(([key, preset]) => (
-              <Card key={key} className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => applyPreset(key as keyof typeof controlPresets)}>
-                <h3 className="font-semibold mb-2">{preset.name}</h3>
+              <Card 
+                key={key} 
+                className="p-4 hover:bg-muted/50 transition-colors cursor-pointer border-2 hover:border-primary/50" 
+                onClick={() => key !== 'custom' && applyPreset(key as keyof typeof controlPresets)}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  {preset.icon}
+                  <h3 className="font-semibold">{preset.name}</h3>
+                </div>
                 <p className="text-sm text-muted-foreground mb-3">{preset.description}</p>
-                <Button variant="outline" size="sm" className="w-full">
-                  应用此配置
-                </Button>
+                {key === 'directional' && (
+                  <div className="flex gap-1 mb-3">
+                    <Badge variant="outline" className="text-xs">
+                      <ArrowLeft className="w-3 h-3 mr-1" />←
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      <ArrowDown className="w-3 h-3 mr-1" />↓
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      <ArrowUp className="w-3 h-3 mr-1" />↑
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      <ArrowRight className="w-3 h-3 mr-1" />→
+                    </Badge>
+                  </div>
+                )}
+                {key === 'wasd' && (
+                  <div className="flex gap-1 mb-3">
+                    <Badge variant="outline" className="text-xs">A</Badge>
+                    <Badge variant="outline" className="text-xs">S</Badge>
+                    <Badge variant="outline" className="text-xs">W</Badge>
+                    <Badge variant="outline" className="text-xs">D</Badge>
+                  </div>
+                )}
+                {key !== 'custom' && (
+                  <Button variant="outline" size="sm" className="w-full">
+                    应用此配置
+                  </Button>
+                )}
+                {key === 'custom' && (
+                  <Badge variant="secondary" className="w-full justify-center">
+                    当前配置
+                  </Badge>
+                )}
               </Card>
             ))}
           </div>
@@ -184,7 +233,10 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
       {/* 自定义按键设置 */}
       <Card>
         <CardHeader>
-          <CardTitle>自定义按键设置</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            自定义按键设置
+          </CardTitle>
           <CardDescription>
             点击按钮自定义按键绑定。设置会立即保存并生效。
           </CardDescription>
@@ -229,7 +281,10 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
           )}
 
           <div className="bg-muted p-4 rounded-lg">
-            <h4 className="font-semibold mb-2">按键说明</h4>
+            <h4 className="font-semibold mb-2 flex items-center gap-2">
+              <Gamepad className="w-4 h-4" />
+              新手指导
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
               <div>• <strong>左移/右移</strong>：控制方块左右移动</div>
               <div>• <strong>软降</strong>：加速方块下降</div>
@@ -239,7 +294,11 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
               <div>• <strong>180°旋转</strong>：方块旋转180°</div>
               <div>• <strong>暂存</strong>：保存当前方块供以后使用</div>
               <div>• <strong>暂停</strong>：暂停/继续游戏</div>
-              <div>• <strong>返回菜单</strong>：返回到上一个界面</div>
+            </div>
+            <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
+              <p className="text-sm text-blue-700">
+                💡 <strong>小贴士</strong>：如果不熟悉操作，建议先选择"指导配置"使用方向键练习，熟悉后可以切换到"WASD配置"获得更好的游戏体验。
+              </p>
             </div>
           </div>
         </CardContent>
