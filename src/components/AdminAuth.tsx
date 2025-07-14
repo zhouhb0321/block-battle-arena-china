@@ -24,11 +24,50 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
 
-  // 检查现有用户登录状态
+  // 检查现有用户登录状态和管理员权限
   useEffect(() => {
-    if (user?.email === 'admin@tetris.com') {
-      onAuthenticated();
-    }
+    const checkAdminStatus = async () => {
+      if (user?.email === 'admin@tetris.com') {
+        console.log('Admin user detected, checking profile...');
+        
+        try {
+          const { data: profile, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('email', 'admin@tetris.com')
+            .single();
+            
+          console.log('Admin profile check:', { profile, error });
+          
+          if (profile) {
+            console.log('Admin authenticated successfully');
+            onAuthenticated();
+          } else {
+            console.log('Admin profile not found, creating...');
+            // 创建管理员档案
+            const { error: insertError } = await supabase
+              .from('user_profiles')
+              .insert({
+                id: user.id,
+                username: 'Administrator',
+                email: 'admin@tetris.com',
+                user_type: 'admin'
+              });
+              
+            if (!insertError) {
+              console.log('Admin profile created successfully');
+              onAuthenticated();
+            } else {
+              console.error('Failed to create admin profile:', insertError);
+            }
+          }
+        } catch (err) {
+          console.error('Error checking admin status:', err);
+        }
+      }
+    };
+    
+    checkAdminStatus();
   }, [user, onAuthenticated]);
 
   // 检查是否被锁定
@@ -110,7 +149,12 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         throw new Error('无效的管理员账户');
       }
 
-      // 使用Supabase认证
+      // 使用固定密码验证（在实际应用中应该使用更安全的方式）
+      if (password !== 'admin123') {
+        throw new Error('密码错误');
+      }
+
+      // 尝试使用Supabase认证（如果账户存在）
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -118,29 +162,36 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
 
       console.log('Supabase登录结果:', { data: data?.user?.email, error: authError?.message });
 
-      if (authError) {
+      // 如果Supabase认证失败，但密码正确，则创建账户
+      if (authError && password === 'admin123') {
+        console.log('创建管理员账户...');
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              username: 'Administrator',
+              user_type: 'admin'
+            }
+          }
+        });
+        
+        if (signUpError) {
+          console.error('创建管理员账户失败:', signUpError);
+          throw new Error(`创建管理员账户失败: ${signUpError.message}`);
+        }
+        
+        console.log('管理员账户创建成功');
+      } else if (authError) {
         console.error('认证错误:', authError);
         handleFailedAttempt();
-        
-        if (authError.message.includes('Invalid login credentials')) {
-          throw new Error('邮箱或密码错误。请检查您的登录信息');
-        } else if (authError.message.includes('Email not confirmed')) {
-          throw new Error('邮箱未验证。请先验证邮箱');
-        } else if (authError.message.includes('User not found')) {
-          throw new Error('管理员账户不存在。请联系系统管理员');
-        } else {
-          throw new Error(`登录失败: ${authError.message}`);
-        }
+        throw new Error(`登录失败: ${authError.message}`);
       }
 
-      if (data?.user) {
-        console.log('登录成功，准备发送MFA验证码');
-        // 发送MFA验证码
-        await sendMFACode(email);
-        setStep('mfa');
-      } else {
-        throw new Error('登录失败，请重试');
-      }
+      console.log('登录成功，准备发送MFA验证码');
+      // 发送MFA验证码
+      await sendMFACode(email);
+      setStep('mfa');
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '登录失败';
@@ -255,7 +306,8 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         <Alert className="mb-4 border-blue-200">
           <CheckCircle className="h-4 w-4" />
           <AlertDescription className="text-blue-700">
-            请使用 admin@tetris.com 账户登录管理面板
+            管理员账户: admin@tetris.com<br />
+            默认密码: admin123
           </AlertDescription>
         </Alert>
 
@@ -337,7 +389,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
             <li>• 不要在公共设备上登录</li>
             <li>• 登录失败3次将锁定30分钟</li>
             <li>• 会话将在4小时后自动过期</li>
-            <li>• 请确保 admin@tetris.com 账户已在系统中创建</li>
+            <li>• 默认密码: admin123</li>
           </ul>
         </div>
       </CardContent>

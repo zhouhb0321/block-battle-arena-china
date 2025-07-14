@@ -322,8 +322,21 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         direction: { dx, dy }
       });
       
-      // 横向移动时处理锁定延迟
-      if (dx !== 0) {
+      // 改进软降锁定延迟处理
+      if (dy > 0) {
+        // 检查方块是否到底部
+        const testDownPiece = { ...newPiece, y: newPiece.y + 1 };
+        if (!isValidPosition(board, testDownPiece)) {
+          // 到达底部，开始锁定延迟
+          if (!isLockDelayActive) {
+            startLockDelay();
+          }
+        } else {
+          // 未到底部，清除锁定延迟
+          clearLockDelayTimer();
+        }
+      } else if (dx !== 0) {
+        // 横向移动时处理锁定延迟
         const testDownPiece = { ...newPiece, y: newPiece.y + 1 };
         if (!isValidPosition(board, testDownPiece)) {
           // 方块已到底部，重置锁定延迟
@@ -342,7 +355,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer, startLockDelay]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer, startLockDelay, isLockDelayActive]);
 
   // Game timer
   useEffect(() => {
@@ -361,7 +374,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     return () => clearInterval(timer);
   }, [gameOver, isPaused, isWindowFocused, gameStarted]);
 
-  // Auto drop logic - 修复自动下落
+  // Auto drop logic
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
 
@@ -381,7 +394,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     };
   }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted, movePiece]);
 
-  // 修复硬降函数 - 同步执行，避免空中停留
+  // 修复硬降函数 - 恢复同步执行
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
@@ -399,8 +412,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     debugLog.game('Hard drop calculation', { 
       currentY: currentPiece.y, 
       dropY, 
-      dropDistance,
-      boardState: board.map((row, i) => ({ row: i, filled: row.filter(cell => cell !== 0).length }))
+      dropDistance
     });
     
     // 验证计算结果的合理性
@@ -421,12 +433,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       scoreAdded: dropDistance * 2
     });
     
-    // 同步锁定方块，避免使用 setTimeout
+    // 恢复同步锁定，避免方块停在空中
     setIsHardDropping(false);
-    // 使用 requestAnimationFrame 确保状态更新后再锁定
-    requestAnimationFrame(() => {
-      lockPiece();
-    });
+    lockPiece();
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lockPiece, clearLockDelayTimer]);
 
   const rotatePieceClockwise = useCallback(() => {

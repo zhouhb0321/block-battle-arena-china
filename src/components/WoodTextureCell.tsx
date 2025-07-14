@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { getBlockColor, getTetrominoColor, getGhostColor, adaptColorForTheme, validateColor } from '@/utils/blockColors';
+import { getBlockColor, getTetrominoColor } from '@/utils/blockColors';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface WoodTextureCellProps {
@@ -39,10 +39,10 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
     );
   }
   
-  // Ghost piece styles - 统一幽灵方块处理
+  // 统一处理幽灵方块 - 使用统一的颜色系统
   if (typeof cellValue === 'string' && cellValue.startsWith('ghost-')) {
-    const baseColor = cellValue.replace('ghost-', '');
-    const ghostColor = validateColor(baseColor) ? getGhostColor(baseColor, 0.4) : getGhostColor(getTetrominoColor('I'), 0.4);
+    const pieceType = cellValue.replace('ghost-', '');
+    const baseColor = getTetrominoColor(pieceType);
     
     return (
       <div
@@ -50,18 +50,18 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         style={{
           ...baseStyle,
           backgroundColor: 'transparent',
-          border: `2px dashed ${adaptColorForTheme(baseColor, actualTheme)}`,
-          opacity: 0.6,
+          border: `2px dashed ${baseColor}`,
+          opacity: 0.4,
           borderRadius: '2px',
         }}
       />
     );
   }
   
-  // Active piece styles (solid pieces) - 统一活动方块处理
+  // 统一处理活动方块 - 确保颜色一致性
   if (typeof cellValue === 'string' && cellValue.startsWith('solid-')) {
-    const baseColor = cellValue.replace('solid-', '');
-    const finalColor = validateColor(baseColor) ? adaptColorForTheme(baseColor, actualTheme) : adaptColorForTheme(getTetrominoColor('I'), actualTheme);
+    const pieceType = cellValue.replace('solid-', '');
+    const finalColor = getTetrominoColor(pieceType);
     
     return (
       <div
@@ -80,8 +80,8 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
     );
   }
   
-  // Placed pieces styles (with wood texture effect) - 使用统一的颜色系统
-  const backgroundColor = adaptColorForTheme(getBlockColor(cellValue as number), actualTheme);
+  // 处理已放置的方块 - 使用统一的颜色系统
+  const backgroundColor = getBlockColor(cellValue as number);
   
   return (
     <div
