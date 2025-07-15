@@ -1,7 +1,8 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { BOARD_WIDTH, BOARD_HEIGHT } from '@/utils/tetrisCore';
 import { generatePiece, PIECE_COLORS } from '@/utils/pieceGeneration';
-import { rotatePiece } from '@/utils/srsRotation';
+import { performSRSRotation } from '@/utils/srsRotation';
 import { calculateScore, calculateLevel } from '@/utils/scoringSystem';
 import { detectTSpin } from '@/utils/tspinDetection';
 
@@ -37,6 +38,9 @@ export interface GameState {
   b2b: number;
   allClear: boolean;
   statistics: { [key: string]: number };
+  pieces: number;
+  attack: number;
+  startTime: number | null;
 }
 
 const createEmptyBoard = (): (string | null)[][] => {
@@ -61,7 +65,10 @@ const initialState: GameState = {
   combo: 0,
   b2b: 0,
   allClear: false,
-  statistics: { I: 0, O: 0, T: 0, S: 0, Z: 0, J: 0, L: 0 }
+  statistics: { I: 0, O: 0, T: 0, S: 0, Z: 0, J: 0, L: 0 },
+  pieces: 0,
+  attack: 0,
+  startTime: null
 };
 
 export const useGameLogic = (gameMode: string = 'marathon') => {
@@ -211,7 +218,8 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
         score: prevState.score + hardDropScore + (linesCleared * 100),
         lines: prevState.lines + linesCleared,
         canHold: true,
-        statistics: newStatistics
+        statistics: newStatistics,
+        pieces: prevState.pieces + 1
       };
     });
   }, [calculateDropPosition, lockPiece, clearLines, spawnPiece]);
@@ -240,18 +248,41 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
     });
   }, [isValidPosition]);
 
-  const rotatePieceInGame = useCallback((direction: 'clockwise' | 'counterclockwise' | '180') => {
+  const rotatePiece = useCallback((direction: 'clockwise' | 'counterclockwise' | '180') => {
     setGameState(prevState => {
       if (!prevState.currentPiece || prevState.gameOver || prevState.isPaused) {
         return prevState;
       }
       
-      const rotatedPiece = rotatePiece(prevState.currentPiece, direction, prevState.board);
+      // Create a GamePiece-like object for SRS rotation
+      const gamePiece = {
+        type: {
+          name: prevState.currentPiece.type,
+          type: prevState.currentPiece.type,
+          shape: prevState.currentPiece.shape,
+          color: PIECE_COLORS[prevState.currentPiece.type] || '#ffffff'
+        },
+        x: prevState.currentPiece.x,
+        y: prevState.currentPiece.y,
+        rotation: prevState.currentPiece.rotation
+      };
       
-      if (rotatedPiece) {
+      const rotationResult = performSRSRotation(
+        prevState.board.map(row => row.map(cell => cell ? 1 : 0)),
+        gamePiece,
+        direction === 'clockwise'
+      );
+      
+      if (rotationResult.success && rotationResult.newPiece) {
         return {
           ...prevState,
-          currentPiece: rotatedPiece
+          currentPiece: {
+            ...prevState.currentPiece,
+            shape: rotationResult.newPiece.type.shape,
+            x: rotationResult.newPiece.x,
+            y: rotationResult.newPiece.y,
+            rotation: rotationResult.newPiece.rotation
+          }
         };
       }
       
@@ -307,7 +338,8 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
     setGameState({
       ...initialState,
       currentPiece: spawnPiece(),
-      nextPieces: newPieces
+      nextPieces: newPieces,
+      startTime: Date.now()
     });
   }, [spawnPiece]);
 
@@ -333,7 +365,7 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
   return {
     gameState,
     movePiece,
-    rotatePiece: rotatePieceInGame,
+    rotatePiece,
     hardDrop,
     holdPiece,
     startGame,

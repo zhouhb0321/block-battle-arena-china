@@ -54,11 +54,41 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   // 保存游戏状态用于撤销/重做
   useEffect(() => {
     if (gameReallyStarted && !gameLogic.gameState.gameOver) {
-      const completeGameState = {
+      const completeGameState: GameState = {
         board: gameLogic.gameState.board,
-        currentPiece: gameLogic.gameState.currentPiece,
-        nextPieces: gameLogic.gameState.nextPieces,
-        holdPiece: gameLogic.gameState.heldPiece,
+        currentPiece: gameLogic.gameState.currentPiece ? {
+          type: {
+            name: gameLogic.gameState.currentPiece.type,
+            type: gameLogic.gameState.currentPiece.type,
+            shape: gameLogic.gameState.currentPiece.shape,
+            color: '#ffffff'
+          },
+          x: gameLogic.gameState.currentPiece.x,
+          y: gameLogic.gameState.currentPiece.y,
+          rotation: gameLogic.gameState.currentPiece.rotation
+        } : null,
+        nextPieces: gameLogic.gameState.nextPieces.map(piece => ({
+          type: {
+            name: piece.type,
+            type: piece.type,
+            shape: piece.shape,
+            color: '#ffffff'
+          },
+          x: piece.x,
+          y: piece.y,
+          rotation: piece.rotation
+        })),
+        holdPiece: gameLogic.gameState.heldPiece ? {
+          type: {
+            name: gameLogic.gameState.heldPiece.type,
+            type: gameLogic.gameState.heldPiece.type,
+            shape: gameLogic.gameState.heldPiece.shape,
+            color: '#ffffff'
+          },
+          x: gameLogic.gameState.heldPiece.x,
+          y: gameLogic.gameState.heldPiece.y,
+          rotation: gameLogic.gameState.heldPiece.rotation
+        } : null,
         canHold: gameLogic.gameState.canHold,
         isHolding: false,
         score: gameLogic.gameState.score,
@@ -89,11 +119,9 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       if (event.ctrlKey) {
         if (event.code === 'KeyZ' && !event.shiftKey) {
           event.preventDefault();
-          // Remove undo/redo functionality for now since applyGameState is not available
           debugLog.game('撤销功能暂时不可用');
         } else if (event.code === 'KeyY' || (event.code === 'KeyZ' && event.shiftKey)) {
           event.preventDefault();
-          // Remove undo/redo functionality for now since applyGameState is not available
           debugLog.game('重做功能暂时不可用');
         }
       }
@@ -156,12 +184,10 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   };
 
   const handleUndo = () => {
-    // Remove undo functionality for now
     debugLog.game('撤销功能暂时不可用');
   };
 
   const handleRedo = () => {
-    // Remove redo functionality for now
     debugLog.game('重做功能暂时不可用');
   };
 
@@ -234,7 +260,17 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
       <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-7xl mx-auto">
         <GameInfoPanel
-          holdPiece={gameLogic.gameState.heldPiece}
+          holdPiece={gameLogic.gameState.heldPiece ? {
+            type: {
+              name: gameLogic.gameState.heldPiece.type,
+              type: gameLogic.gameState.heldPiece.type,
+              shape: gameLogic.gameState.heldPiece.shape,
+              color: '#ffffff'
+            },
+            x: gameLogic.gameState.heldPiece.x,
+            y: gameLogic.gameState.heldPiece.y,
+            rotation: gameLogic.gameState.heldPiece.rotation
+          } : null}
           canHold={gameLogic.gameState.canHold}
           score={gameLogic.gameState.score}
           lines={gameLogic.gameState.lines}
@@ -252,7 +288,17 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
         <GameCentralArea
           board={gameLogic.gameState.board}
-          currentPiece={gameLogic.gameState.currentPiece}
+          currentPiece={gameLogic.gameState.currentPiece ? {
+            type: {
+              name: gameLogic.gameState.currentPiece.type,
+              type: gameLogic.gameState.currentPiece.type,
+              shape: gameLogic.gameState.currentPiece.shape,
+              color: '#ffffff'
+            },
+            x: gameLogic.gameState.currentPiece.x,
+            y: gameLogic.gameState.currentPiece.y,
+            rotation: gameLogic.gameState.currentPiece.rotation
+          } : null}
           ghostPiece={null}
           cellSize={cellSize}
           gameStarted={gameStarted}
@@ -263,7 +309,17 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         />
 
         <GameRightPanel
-          nextPieces={gameLogic.gameState.nextPieces}
+          nextPieces={gameLogic.gameState.nextPieces.map(piece => ({
+            type: {
+              name: piece.type,
+              type: piece.type,
+              shape: piece.shape,
+              color: '#ffffff'
+            },
+            x: piece.x,
+            y: piece.y,
+            rotation: piece.rotation
+          }))}
         />
       </div>
       
