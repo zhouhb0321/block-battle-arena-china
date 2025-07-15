@@ -41,7 +41,7 @@ const GameCentralArea: React.FC<GameCentralAreaProps> = ({
     <div className="relative flex-shrink-0">
       <div className={`p-4 rounded-lg border ${getBoardThemeClasses()}`}>
         <EnhancedGameBoard
-          board={board}
+          board={board as number[][]}
           currentPiece={currentPiece}
           ghostPiece={ghostPiece}
           cellSize={cellSize}

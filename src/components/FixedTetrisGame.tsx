@@ -54,7 +54,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
   const { saveState, undo, redo, canUndo, canRedo, clearHistory } = useGameHistory(50);
   
   const [gameState, setGameState] = useState<GameState>({
-    board: createEmptyBoard(),
+    board: createEmptyBoard() as number[][],
     currentPiece: null,
     nextPieces: [],
     holdPiece: null,

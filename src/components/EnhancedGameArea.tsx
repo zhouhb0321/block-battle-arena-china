@@ -101,7 +101,7 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
       {/* 中央游戏区域 - 响应式游戏板 */}
       <div className="flex-shrink-0 relative">
         <GameBoard
-          board={gameState.board}
+          board={gameState.board as number[][]}
           currentPiece={gameState.currentPiece}
           ghostPiece={gameSettings.enableGhost ? gameState.ghostPiece : null}
           cellSize={cellSize}
