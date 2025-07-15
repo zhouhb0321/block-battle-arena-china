@@ -20,7 +20,7 @@ export interface Piece {
 }
 
 export interface GameState {
-  board: (string | null)[][];
+  board: number[][];
   currentPiece: Piece | null;
   nextPieces: Piece[];
   heldPiece: Piece | null;
@@ -43,8 +43,8 @@ export interface GameState {
   startTime: number | null;
 }
 
-const createEmptyBoard = (): (string | null)[][] => {
-  return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(null));
+const createEmptyBoard = (): number[][] => {
+  return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
 };
 
 const initialState: GameState = {
@@ -93,7 +93,7 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
             return false;
           }
           
-          if (boardY >= 0 && gameStateRef.current.board[boardY][boardX]) {
+          if (boardY >= 0 && gameStateRef.current.board[boardY][boardX] !== 0) {
             return false;
           }
         }
@@ -117,12 +117,16 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
     return dropY;
   }, [isValidPosition]);
 
-  const lockPiece = useCallback((piece: Piece, board: (string | null)[][]) => {
+  const lockPiece = useCallback((piece: Piece, board: number[][]) => {
     console.log('Locking piece at position:', { x: piece.x, y: piece.y, type: piece.type });
     
     const newBoard = board.map(row => [...row]);
     
-    // Place the piece on the board with consistent color
+    // Place the piece on the board with piece type IDs
+    const pieceTypeIds: { [key: string]: number } = {
+      'I': 1, 'O': 2, 'T': 3, 'S': 4, 'Z': 5, 'J': 6, 'L': 7
+    };
+    
     for (let y = 0; y < piece.shape.length; y++) {
       for (let x = 0; x < piece.shape[y].length; x++) {
         if (piece.shape[y][x]) {
@@ -130,8 +134,8 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
           const boardX = piece.x + x;
           
           if (boardY >= 0 && boardY < BOARD_HEIGHT && boardX >= 0 && boardX < BOARD_WIDTH) {
-            // Use consistent piece type for color
-            newBoard[boardY][boardX] = piece.type;
+            // Use piece type ID
+            newBoard[boardY][boardX] = pieceTypeIds[piece.type] || 1;
             console.log(`Placed ${piece.type} block at [${boardY}][${boardX}]`);
           }
         }
@@ -141,13 +145,13 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
     return newBoard;
   }, []);
 
-  const clearLines = useCallback((board: (string | null)[][]) => {
+  const clearLines = useCallback((board: number[][]) => {
     const newBoard = [...board];
     const clearedLines: number[] = [];
     
     // Find lines to clear
     for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
-      if (newBoard[y].every(cell => cell !== null)) {
+      if (newBoard[y].every(cell => cell !== 0)) {
         clearedLines.push(y);
       }
     }
@@ -155,7 +159,7 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
     // Remove cleared lines and add new empty lines at top
     clearedLines.forEach(() => {
       newBoard.splice(clearedLines[0], 1);
-      newBoard.unshift(Array(BOARD_WIDTH).fill(null));
+      newBoard.unshift(Array(BOARD_WIDTH).fill(0));
     });
     
     return {
@@ -268,7 +272,7 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
       };
       
       const rotationResult = performSRSRotation(
-        prevState.board.map(row => row.map(cell => cell ? 1 : 0)),
+        prevState.board,
         gamePiece,
         direction === 'clockwise'
       );

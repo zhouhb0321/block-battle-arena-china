@@ -1,6 +1,6 @@
 
 export interface GameState {
-  board: (string | null)[][];
+  board: number[][];
   currentPiece: GamePiece | null;
   nextPieces: GamePiece[];
   holdPiece: GamePiece | null;
@@ -134,7 +134,7 @@ export interface ReplayAction {
   data?: any;
 }
 
-export type Board = (string | null)[][];
+export type Board = number[][];
 
 export interface Position {
   x: number;
