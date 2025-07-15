@@ -1,91 +1,108 @@
 
-// 计算得分 - 修正参数数量
+// Scoring constants
+const LINE_CLEAR_SCORES = {
+  1: 100,  // Single
+  2: 300,  // Double
+  3: 500,  // Triple
+  4: 800   // Tetris
+};
+
+const TSPIN_SCORES = {
+  single: 800,
+  double: 1200,
+  triple: 1600,
+  mini_single: 200,
+  mini_double: 400
+};
+
+// Calculate score based on lines cleared and various modifiers
 export const calculateScore = (
   linesCleared: number,
   level: number,
-  tSpin: { type: string; isMini: boolean } | null,
-  b2b: boolean,
-  combo: number,
-  isPerfectClear: boolean
+  tSpinResult: { type: string; isMini: boolean } | null = null,
+  isB2B: boolean = false,
+  combo: number = -1,
+  isPerfectClear: boolean = false
 ): number => {
-  let score = 0;
+  if (linesCleared === 0) return 0;
 
-  if (isPerfectClear) {
-    score += 3500; // 全清奖励
-  }
+  let baseScore = 0;
 
-  if (tSpin) {
-    if (tSpin.isMini) {
-      score += level * (b2b ? 100 : 800); // Mini T-Spin
-    } else {
-      score += level * (b2b ? 1200 : 400); // Regular T-Spin
-    }
+  // T-Spin scoring
+  if (tSpinResult) {
+    const tSpinType = `${tSpinResult.isMini ? 'mini_' : ''}${
+      linesCleared === 1 ? 'single' : 
+      linesCleared === 2 ? 'double' : 'triple'
+    }`;
+    baseScore = TSPIN_SCORES[tSpinType as keyof typeof TSPIN_SCORES] || 0;
   } else {
-    switch (linesCleared) {
-      case 1:
-        score += 100 * level;
-        break;
-      case 2:
-        score += 300 * level;
-        break;
-      case 3:
-        score += 500 * level;
-        break;
-      case 4:
-        score += 800 * level;
-        break;
-      default:
-        break;
-    }
+    // Regular line clear scoring
+    baseScore = LINE_CLEAR_SCORES[linesCleared as keyof typeof LINE_CLEAR_SCORES] || 0;
   }
 
-  if (combo > 0) {
-    score += 50 * combo * level; // 连击奖励
+  // Level multiplier
+  baseScore *= level;
+
+  // B2B bonus (50% more points)
+  if (isB2B && (tSpinResult || linesCleared === 4)) {
+    baseScore = Math.floor(baseScore * 1.5);
   }
 
-  return score;
+  // Combo bonus
+  if (combo >= 0) {
+    baseScore += combo * 50 * level;
+  }
+
+  // Perfect Clear bonus
+  if (isPerfectClear) {
+    baseScore += 3500;
+  }
+
+  return baseScore;
 };
 
-// 计算攻击行数 - 修正参数数量
+// Calculate attack lines sent to opponent
 export const calculateAttackLines = (
   linesCleared: number,
-  tSpin: { type: string; isMini: boolean } | null,
-  b2b: boolean,
-  combo: number
+  tSpinResult: { type: string; isMini: boolean } | null = null,
+  isB2B: boolean = false,
+  combo: number = -1
 ): number => {
-  let attack = 0;
+  if (linesCleared === 0) return 0;
 
-  if (tSpin) {
-    if (tSpin.isMini) {
-      attack += b2b ? 1 : 0; // Mini T-Spin
+  let attackLines = 0;
+
+  // Base attack for T-Spins
+  if (tSpinResult) {
+    if (tSpinResult.isMini) {
+      attackLines = linesCleared === 1 ? 0 : linesCleared === 2 ? 1 : 0;
     } else {
-      attack += b2b ? 4 : 2; // Regular T-Spin
+      attackLines = linesCleared === 1 ? 2 : linesCleared === 2 ? 4 : linesCleared === 3 ? 6 : 0;
     }
   } else {
+    // Regular line clear attack
     switch (linesCleared) {
-      case 1:
-        attack += 0;
-        break;
-      case 2:
-        attack += 1;
-        break;
-      case 3:
-        attack += 2;
-        break;
-      case 4:
-        attack += b2b ? 5 : 4;
-        break;
-      default:
-        break;
+      case 1: attackLines = 0; break;
+      case 2: attackLines = 1; break;
+      case 3: attackLines = 2; break;
+      case 4: attackLines = 4; break;
     }
   }
 
-  if (combo > 1) {
-    attack += comboMatrix[Math.min(combo, comboMatrix.length - 1)]; // 连击奖励
+  // B2B bonus
+  if (isB2B && attackLines > 0) {
+    attackLines += 1;
   }
 
-  return attack;
+  // Combo bonus
+  if (combo >= 0) {
+    attackLines += Math.floor(combo / 2);
+  }
+
+  return attackLines;
 };
 
-// 连击奖励矩阵
-const comboMatrix = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5];
+// Calculate level based on lines cleared
+export const calculateLevel = (lines: number): number => {
+  return Math.floor(lines / 10) + 1;
+};

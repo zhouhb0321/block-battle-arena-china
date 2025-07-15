@@ -1,3 +1,4 @@
+
 export interface GameState {
   board: number[][];
   currentPiece: GamePiece | null;
@@ -27,7 +28,7 @@ export interface Piece {
   color: string;
   x: number;
   y: number;
-  type: TetrominoType;
+  type: string;
   rotation: number;
 }
 

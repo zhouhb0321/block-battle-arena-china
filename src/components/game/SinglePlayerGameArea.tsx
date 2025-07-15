@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionLogger } from '@/hooks/useSessionLogger';
@@ -67,7 +68,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         paused: gameLogic.gameState.isPaused,
         combo: gameLogic.gameState.combo,
         b2b: gameLogic.gameState.b2b,
-        pieces: gameLogic.gameState.pieces,
+        pieces: gameLogic.gameState.pieces || 0,
         attack: gameLogic.gameState.attack || 0,
         pps: 0,
         apm: 0,
@@ -88,25 +89,19 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       if (event.ctrlKey) {
         if (event.code === 'KeyZ' && !event.shiftKey) {
           event.preventDefault();
-          const previousState = undo();
-          if (previousState && gameLogic.applyGameState) {
-            gameLogic.applyGameState(previousState);
-            debugLog.game('撤销操作执行');
-          }
+          // Remove undo/redo functionality for now since applyGameState is not available
+          debugLog.game('撤销功能暂时不可用');
         } else if (event.code === 'KeyY' || (event.code === 'KeyZ' && event.shiftKey)) {
           event.preventDefault();
-          const nextState = redo();
-          if (nextState && gameLogic.applyGameState) {
-            gameLogic.applyGameState(nextState);
-            debugLog.game('重做操作执行');
-          }
+          // Remove undo/redo functionality for now since applyGameState is not available
+          debugLog.game('重做功能暂时不可用');
         }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [gameReallyStarted, gameLogic.gameState.gameOver, canUndo, canRedo, undo, redo, gameLogic]);
+  }, [gameReallyStarted, gameLogic.gameState.gameOver]);
 
   const handleCountdownComplete = () => {
     debugLog.game('倒计时完成，开始游戏...');
@@ -161,21 +156,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   };
 
   const handleUndo = () => {
-    if (canUndo) {
-      const previousState = undo();
-      if (previousState && gameLogic.applyGameState) {
-        gameLogic.applyGameState(previousState);
-      }
-    }
+    // Remove undo functionality for now
+    debugLog.game('撤销功能暂时不可用');
   };
 
   const handleRedo = () => {
-    if (canRedo) {
-      const nextState = redo();
-      if (nextState && gameLogic.applyGameState) {
-        gameLogic.applyGameState(nextState);
-      }
-    }
+    // Remove redo functionality for now
+    debugLog.game('重做功能暂时不可用');
   };
 
   useEffect(() => {
@@ -221,13 +208,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       ? 'bg-gray-50 text-gray-900' 
       : 'bg-gray-900 text-white';
   };
-
-  // 修改游戏逻辑初始化，传入成就回调
-  useEffect(() => {
-    if (gameLogic && typeof gameLogic === 'object' && 'setAchievementCallback' in gameLogic) {
-      (gameLogic as any).setAchievementCallback(handleGameAchievement);
-    }
-  }, [gameLogic, handleGameAchievement]);
 
   const elapsedTime = 0;
   const showOutOfFocusOverlay = gameLogic.gameState.isPaused && gameReallyStarted && !gameLogic.gameState.gameOver;

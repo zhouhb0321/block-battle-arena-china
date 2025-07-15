@@ -1,3 +1,4 @@
+
 import type { TetrominoType, GamePiece } from './gameTypes';
 
 // Define colors for each piece type
@@ -20,6 +21,17 @@ export const PIECE_SHAPES: { [key: string]: number[][] } = {
   Z: [[1, 1, 0], [0, 1, 1]],
   J: [[1, 0, 0], [1, 1, 1]],
   L: [[0, 0, 1], [1, 1, 1]]
+};
+
+// Tetromino type IDs for board representation
+export const TETROMINO_TYPE_IDS: { [key: string]: number } = {
+  I: 1,
+  O: 2,
+  T: 3,
+  S: 4,
+  Z: 5,
+  J: 6,
+  L: 7
 };
 
 // Function to generate a new piece with a random type
@@ -58,5 +70,20 @@ export const generatePiece = () => {
     rotation: 0,
     x: 0,
     y: 0
+  };
+};
+
+// Rotate piece function
+export const rotatePiece = (type: TetrominoType, clockwise: boolean = true): TetrominoType => {
+  const shape = type.shape;
+  const rotated = shape[0].map((_, index) => 
+    clockwise 
+      ? shape.map(row => row[index]).reverse()
+      : shape.map(row => row[index]).slice().reverse()
+  );
+  
+  return {
+    ...type,
+    shape: rotated
   };
 };
