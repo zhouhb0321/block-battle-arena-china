@@ -22,8 +22,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   currentPiece,
   ghostPiece,
   cellSize = 42, // 使用传入的 cellSize，默认为 42
-  showGrid = true,
-  showHiddenRows = true,
+  showGrid = false, // 默认不显示网格线
+  showHiddenRows = false, // 默认不显示隐藏行
   isLockDelayActive = false,
   lockDelayResetCount = 0,
   clearingLines = []
@@ -102,22 +102,21 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         className="game-board relative border-2 border-gray-600 bg-gray-900"
         style={{
           width: cellSize * 10,
-          height: cellSize * (showHiddenRows ? 23 : 20),
+          height: cellSize * 20, // 固定为20行可见区域
           display: 'grid',
           gridTemplateColumns: `repeat(10, ${cellSize}px)`,
-          gridTemplateRows: `repeat(${showHiddenRows ? 23 : 20}, ${cellSize}px)`,
+          gridTemplateRows: `repeat(20, ${cellSize}px)`,
         }}
       >
-        {extendedBoard.map((row, rowIndex) => 
+        {extendedBoard.slice(3).map((row, rowIndex) => // 跳过前3行隐藏行
           row.map((cellValue, colIndex) => {
-            const { style, className } = getCellStyle(cellValue, rowIndex);
+            const actualRowIndex = rowIndex + 3; // 真实的行索引
+            const { style, className } = getCellStyle(cellValue, actualRowIndex);
             
             return (
               <div
-                key={`${rowIndex}-${colIndex}`}
-                className={`game-cell ${className} ${
-                  showHiddenRows && rowIndex < 3 ? 'hidden-row' : ''
-                } ${showGrid ? 'show-grid' : ''}`}
+                key={`${actualRowIndex}-${colIndex}`}
+                className={`game-cell ${className}`}
                 style={{
                   ...style,
                   width: cellSize,

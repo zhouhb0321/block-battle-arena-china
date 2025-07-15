@@ -94,8 +94,8 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   };
 
   return (
-    <div className="game-panel-light p-3 rounded-lg">
-      <h3 className="text-foreground text-sm font-bold mb-2 text-center">HOLD</h3>
+    <div className="game-panel-light p-2 rounded-lg w-20">
+      <h3 className="text-foreground text-xs font-bold mb-2 text-center">HOLD</h3>
       <div className="flex justify-center">
         {renderHoldPiece()}
       </div>

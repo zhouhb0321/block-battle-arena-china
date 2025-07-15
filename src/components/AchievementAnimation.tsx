@@ -45,15 +45,15 @@ const AchievementAnimation: React.FC<AchievementAnimationProps> = ({
 
   const getAchievementStyle = () => {
     const baseStyle = "fixed left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none";
-    const textStyle = "font-bold text-center px-6 py-3 rounded-lg shadow-2xl border-2";
+    const textStyle = "font-bold text-center px-8 py-4 rounded-xl shadow-2xl border-2";
     
     switch (animationPhase) {
       case 'enter':
-        return `${baseStyle} ${textStyle} scale-50 opacity-0 transition-all duration-200 ease-out`;
+        return `${baseStyle} ${textStyle} scale-75 opacity-0 transition-all duration-300 ease-out`;
       case 'display':
-        return `${baseStyle} ${textStyle} scale-110 opacity-100 transition-all duration-200 ease-out`;
+        return `${baseStyle} ${textStyle} scale-125 opacity-100 transition-all duration-300 ease-out animate-bounce`;
       case 'exit':
-        return `${baseStyle} ${textStyle} scale-125 opacity-0 transition-all duration-400 ease-in`;
+        return `${baseStyle} ${textStyle} scale-150 opacity-0 transition-all duration-500 ease-in`;
       default:
         return `${baseStyle} ${textStyle}`;
     }
@@ -75,7 +75,7 @@ const AchievementAnimation: React.FC<AchievementAnimationProps> = ({
 
   return (
     <div className={`${getAchievementStyle()} ${getAchievementColor()}`}>
-      <div className="text-lg md:text-xl lg:text-2xl font-extrabold tracking-wide">
+      <div className="text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-wide">
         {achievement}
       </div>
     </div>

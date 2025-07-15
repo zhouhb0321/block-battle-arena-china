@@ -137,6 +137,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     setGameReallyStarted(true);
     clearHistory();
     
+    gameLogic.endCountdown(); // 结束倒计时状态
     gameLogic.startGame();
     
     if (user && !user.isGuest) {
@@ -193,7 +194,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
   useEffect(() => {
     if (gameStarted && showCountdown) {
-      debugLog.game('游戏区域准备，为倒计时初始化方块...');
+      debugLog.game('游戏区域准备，开始倒计时模式...');
+      gameLogic.startCountdown(); // 启动倒计时状态
       gameLogic.startGame();
     }
   }, [gameStarted, showCountdown, gameLogic]);
@@ -299,7 +301,17 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             y: gameLogic.gameState.currentPiece.y,
             rotation: gameLogic.gameState.currentPiece.rotation
           } : null}
-          ghostPiece={null}
+          ghostPiece={gameLogic.gameState.currentPiece && gameSettings.enableGhost ? {
+            type: {
+              name: gameLogic.gameState.currentPiece.type,
+              type: gameLogic.gameState.currentPiece.type,
+              shape: gameLogic.gameState.currentPiece.shape,
+              color: '#ffffff'
+            },
+            x: gameLogic.gameState.currentPiece.x,
+            y: gameLogic.calculateDropPosition(gameLogic.gameState.currentPiece),
+            rotation: gameLogic.gameState.currentPiece.rotation
+          } : null}
           cellSize={cellSize}
           gameStarted={gameStarted}
           showCountdown={showCountdown}

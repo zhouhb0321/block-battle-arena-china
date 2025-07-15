@@ -37,6 +37,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       if (isLogin) {
         await login(email, password);
         toast.success('登录成功！');
+        // 延迟关闭，确保状态更新完成
+        setTimeout(() => {
+          onClose();
+        }, 100);
       } else {
         if (!username) {
           toast.error('请填写用户名');
@@ -45,8 +49,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         }
         await register(email, password, username);
         toast.success('注册成功！');
+        setTimeout(() => {
+          onClose();
+        }, 100);
       }
-      onClose();
     } catch (error: any) {
       console.error('Authentication failed:', error);
       if (error.message.includes('Invalid login credentials')) {

@@ -74,11 +74,21 @@ const initialState: GameState = {
 export const useGameLogic = (gameMode: string = 'marathon') => {
   const [gameState, setGameState] = useState<GameState>(initialState);
   const gameStateRef = useRef(gameState);
+  const [isCountdownActive, setIsCountdownActive] = useState(false);
   
   // Keep ref in sync with state
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
+
+  // Add countdown control methods
+  const startCountdown = useCallback(() => {
+    setIsCountdownActive(true);
+  }, []);
+
+  const endCountdown = useCallback(() => {
+    setIsCountdownActive(false);
+  }, []);
 
   const isValidPosition = useCallback((piece: Piece, newX: number, newY: number, newShape?: number[][]): boolean => {
     const shape = newShape || piece.shape;
@@ -186,8 +196,8 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
     console.log('Hard drop initiated');
     
     setGameState(prevState => {
-      if (!prevState.currentPiece || prevState.gameOver || prevState.isPaused) {
-        console.log('Hard drop cancelled - no piece or game over/paused');
+      if (!prevState.currentPiece || prevState.gameOver || prevState.isPaused || isCountdownActive) {
+        console.log('Hard drop cancelled - no piece or game over/paused/countdown');
         return prevState;
       }
       
@@ -230,7 +240,7 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
 
   const movePiece = useCallback((dx: number, dy: number) => {
     setGameState(prevState => {
-      if (!prevState.currentPiece || prevState.gameOver || prevState.isPaused) {
+      if (!prevState.currentPiece || prevState.gameOver || prevState.isPaused || isCountdownActive) {
         return prevState;
       }
       
@@ -254,7 +264,7 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
 
   const rotatePiece = useCallback((direction: 'clockwise' | 'counterclockwise' | '180') => {
     setGameState(prevState => {
-      if (!prevState.currentPiece || prevState.gameOver || prevState.isPaused) {
+      if (!prevState.currentPiece || prevState.gameOver || prevState.isPaused || isCountdownActive) {
         return prevState;
       }
       
@@ -296,7 +306,7 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
 
   const holdPiece = useCallback(() => {
     setGameState(prevState => {
-      if (!prevState.currentPiece || !prevState.canHold || prevState.gameOver || prevState.isPaused) {
+      if (!prevState.currentPiece || !prevState.canHold || prevState.gameOver || prevState.isPaused || isCountdownActive) {
         return prevState;
       }
       
@@ -375,6 +385,9 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
     startGame,
     pauseGame,
     resetGame,
-    calculateDropPosition
+    calculateDropPosition,
+    startCountdown,
+    endCountdown,
+    isCountdownActive
   };
 };
