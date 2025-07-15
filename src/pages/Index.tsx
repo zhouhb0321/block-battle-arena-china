@@ -29,7 +29,7 @@ const Index = () => {
   useMusicManager();
 
   // 检查是否为管理员
-  const isAdmin = user?.email === 'admin@tetris.com';
+  const isAdmin = user?.email === 'admin@tetris.com' || user?.isAdmin;
 
   useEffect(() => {
     // 模拟认证检查

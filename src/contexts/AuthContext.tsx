@@ -117,8 +117,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
       }
       
-      // 认证状态变化时，loading状态应该立即更新
-      setLoading(false);
+      // 认证状态变化时，loading状态应该立即更新，但有延迟以防止UI闪烁
+      setTimeout(() => setLoading(false), 50);
     });
 
     // 获取当前会话
@@ -201,7 +201,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
-      debugLog.auth('注销成功');
+      
+      // Reset to guest mode after logout
+      setTimeout(() => {
+        playAsGuest();
+      }, 100);
+      
+      debugLog.auth('注销成功，切换到访客模式');
     } catch (error) {
       debugLog.error('注销错误', error);
     }

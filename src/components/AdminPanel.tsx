@@ -83,7 +83,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToMenu }) => {
           return;
         }
 
-        if (profile?.user_type === 'admin' || profile?.email === 'admin@tetris.com') {
+        if (profile?.user_type === 'admin' || profile?.email === 'admin@tetris.com' || user.email === 'admin@tetris.com') {
           console.log('管理员权限验证成功');
           setIsAdmin(true);
           await loadAdminData();
