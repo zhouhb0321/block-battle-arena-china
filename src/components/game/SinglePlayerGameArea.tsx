@@ -52,38 +52,38 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
   // 保存游戏状态用于撤销/重做
   useEffect(() => {
-    if (gameReallyStarted && !gameLogic.gameOver) {
+    if (gameReallyStarted && !gameLogic.gameState.gameOver) {
       const completeGameState = {
-        board: gameLogic.board,
-        currentPiece: gameLogic.currentPiece,
-        nextPieces: gameLogic.nextPieces,
-        holdPiece: gameLogic.holdPiece,
-        canHold: gameLogic.canHold,
+        board: gameLogic.gameState.board,
+        currentPiece: gameLogic.gameState.currentPiece,
+        nextPieces: gameLogic.gameState.nextPieces,
+        holdPiece: gameLogic.gameState.heldPiece,
+        canHold: gameLogic.gameState.canHold,
         isHolding: false,
-        score: gameLogic.score,
-        level: gameLogic.level,
-        lines: gameLogic.lines,
-        gameOver: gameLogic.gameOver,
-        paused: gameLogic.isPaused,
-        combo: gameLogic.combo,
-        b2b: gameLogic.b2b,
-        pieces: 0,
-        attack: 0,
-        pps: gameLogic.pps,
-        apm: gameLogic.apm,
-        startTime: Date.now(),
+        score: gameLogic.gameState.score,
+        level: gameLogic.gameState.level,
+        lines: gameLogic.gameState.lines,
+        gameOver: gameLogic.gameState.gameOver,
+        paused: gameLogic.gameState.isPaused,
+        combo: gameLogic.gameState.combo,
+        b2b: gameLogic.gameState.b2b,
+        pieces: gameLogic.gameState.pieces,
+        attack: gameLogic.gameState.attack || 0,
+        pps: 0,
+        apm: 0,
+        startTime: gameLogic.gameState.startTime || Date.now(),
         endTime: null,
-        ghostPiece: gameLogic.ghostPiece,
+        ghostPiece: null,
         clearingLines: []
       };
       saveState(completeGameState);
     }
-  }, [gameLogic.board, gameLogic.currentPiece, gameLogic.nextPieces, gameLogic.holdPiece, gameLogic.canHold, gameLogic.score, gameLogic.level, gameLogic.lines, gameLogic.gameOver, gameLogic.isPaused, gameLogic.pps, gameLogic.apm, gameLogic.ghostPiece, gameLogic.combo, gameLogic.b2b, gameReallyStarted, saveState]);
+  }, [gameLogic.gameState.board, gameLogic.gameState.currentPiece, gameLogic.gameState.nextPieces, gameLogic.gameState.heldPiece, gameLogic.gameState.canHold, gameLogic.gameState.score, gameLogic.gameState.level, gameLogic.gameState.lines, gameLogic.gameState.gameOver, gameLogic.gameState.isPaused, gameLogic.gameState.combo, gameLogic.gameState.b2b, gameReallyStarted, saveState]);
 
   // 撤销/重做键盘控制 - 修复Ctrl+Z和Ctrl+Y
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!gameReallyStarted || gameLogic.gameOver) return;
+      if (!gameReallyStarted || gameLogic.gameState.gameOver) return;
       
       if (event.ctrlKey) {
         if (event.code === 'KeyZ' && !event.shiftKey) {
@@ -106,7 +106,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [gameReallyStarted, gameLogic.gameOver, canUndo, canRedo, undo, redo, gameLogic]);
+  }, [gameReallyStarted, gameLogic.gameState.gameOver, canUndo, canRedo, undo, redo, gameLogic]);
 
   const handleCountdownComplete = () => {
     debugLog.game('倒计时完成，开始游戏...');
@@ -149,7 +149,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
   const handleResumeFromOverlay = () => {
     debugLog.game('恢复游戏 - 从失焦覆盖层');
-    gameLogic.resumeGame();
+    gameLogic.pauseGame();
     
     if (gameContainerRef.current) {
       gameContainerRef.current.focus();
@@ -157,7 +157,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   };
 
   const handlePauseResume = () => {
-    gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame();
+    gameLogic.pauseGame();
   };
 
   const handleUndo = () => {
@@ -179,9 +179,9 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   };
 
   useEffect(() => {
-    if (gameStarted && showCountdown && !gameLogic.gameInitialized) {
+    if (gameStarted && showCountdown) {
       debugLog.game('游戏区域准备，为倒计时初始化方块...');
-      gameLogic.initializeForCountdown();
+      gameLogic.startGame();
     }
   }, [gameStarted, showCountdown, gameLogic]);
 
@@ -192,14 +192,14 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   }, [gameReallyStarted]);
 
   useEffect(() => {
-    if (gameLogic.gameOver) {
+    if (gameLogic.gameState.gameOver) {
       const finalStats = {
-        score: gameLogic.score,
-        lines: gameLogic.lines,
-        level: gameLogic.level,
-        time: gameLogic.time,
-        pps: gameLogic.pps,
-        apm: gameLogic.apm,
+        score: gameLogic.gameState.score,
+        lines: gameLogic.gameState.lines,
+        level: gameLogic.gameState.level,
+        time: 0,
+        pps: 0,
+        apm: 0,
         gameMode: gameMode.id
       };
       
@@ -214,7 +214,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       
       onGameEnd(finalStats);
     }
-  }, [gameLogic.gameOver, gameLogic.score, gameLogic.lines, gameLogic.level, gameLogic.time, gameLogic.pps, gameLogic.apm, gameMode.id, user, logUserSession, onGameEnd]);
+  }, [gameLogic.gameState.gameOver, gameLogic.gameState.score, gameLogic.gameState.lines, gameLogic.gameState.level, gameMode.id, user, logUserSession, onGameEnd]);
 
   const getThemeClasses = () => {
     return actualTheme === 'light' 
@@ -229,8 +229,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     }
   }, [gameLogic, handleGameAchievement]);
 
-  const elapsedTime = gameLogic.time;
-  const showOutOfFocusOverlay = gameLogic.isPaused && gameReallyStarted && !gameLogic.gameOver && !gameLogic.isManuallyPaused;
+  const elapsedTime = 0;
+  const showOutOfFocusOverlay = gameLogic.gameState.isPaused && gameReallyStarted && !gameLogic.gameState.gameOver;
 
   return (
     <div 
@@ -242,8 +242,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       <GameTopBar
         gameMode={gameMode}
         gameReallyStarted={gameReallyStarted}
-        isPaused={gameLogic.isPaused}
-        gameOver={gameLogic.gameOver}
+        isPaused={gameLogic.gameState.isPaused}
+        gameOver={gameLogic.gameState.gameOver}
         canUndo={canUndo}
         canRedo={canRedo}
         onBackToMenu={onBackToMenu}
@@ -254,15 +254,15 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
       <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-7xl mx-auto">
         <GameInfoPanel
-          holdPiece={gameLogic.holdPiece}
-          canHold={gameLogic.canHold}
-          score={gameLogic.score}
-          lines={gameLogic.lines}
-          level={gameLogic.level}
-          pps={gameLogic.pps}
-          apm={gameLogic.apm}
+          holdPiece={gameLogic.gameState.heldPiece}
+          canHold={gameLogic.gameState.canHold}
+          score={gameLogic.gameState.score}
+          lines={gameLogic.gameState.lines}
+          level={gameLogic.gameState.level}
+          pps={0}
+          apm={0}
           elapsedTime={elapsedTime}
-          isManuallyPaused={gameLogic.isManuallyPaused}
+          isManuallyPaused={gameLogic.gameState.isPaused}
           showAnimation={showAnimation}
           animationText={animationText}
           achievementText={achievementText}
@@ -271,9 +271,9 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         />
 
         <GameCentralArea
-          board={gameLogic.board}
-          currentPiece={gameLogic.currentPiece}
-          ghostPiece={gameLogic.ghostPiece}
+          board={gameLogic.gameState.board}
+          currentPiece={gameLogic.gameState.currentPiece}
+          ghostPiece={null}
           cellSize={cellSize}
           gameStarted={gameStarted}
           showCountdown={showCountdown}
@@ -283,7 +283,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         />
 
         <GameRightPanel
-          nextPieces={gameLogic.nextPieces}
+          nextPieces={gameLogic.gameState.nextPieces}
         />
       </div>
       

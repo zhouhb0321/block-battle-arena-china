@@ -53,15 +53,7 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
     blockSkin: settings.blockSkin || 'wood'
   };
 
-  const gameLogic = useGameLogic({
-    gameMode,
-    onGameEnd: (stats) => {
-      console.log('Game ended:', stats);
-    },
-    onSpecialClear: (clearType: string, lines: number) => {
-      console.log('Special clear:', clearType, lines);
-    }
-  });
+  const gameLogic = useGameLogic(gameMode.id);
 
   const contextValue: TetrisGameContextType = {
     gameLogic,
