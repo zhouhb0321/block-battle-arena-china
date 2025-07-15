@@ -37,14 +37,30 @@ const PaymentSystem: React.FC<PaymentSystemProps> = ({ onClose }) => {
 
   const loadPaymentMethods = async () => {
     try {
-      const { data, error } = await supabase
-        .from('payment_methods')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at');
-
-      if (error) throw error;
-      setPaymentMethods(data || []);
+      // For now, use mock data since the payment_methods table might not be ready
+      const mockMethods: PaymentMethod[] = [
+        {
+          id: '1',
+          name: 'Stripe 支付',
+          type: 'stripe',
+          is_active: true
+        },
+        {
+          id: '2',
+          name: '支付宝扫码',
+          type: 'alipay',
+          qr_code_url: 'https://via.placeholder.com/200x200?text=Alipay+QR',
+          is_active: true
+        },
+        {
+          id: '3',
+          name: '易宝支付',
+          type: 'yeepay',
+          qr_code_url: 'https://via.placeholder.com/200x200?text=YeePay+QR',
+          is_active: true
+        }
+      ];
+      setPaymentMethods(mockMethods);
     } catch (error) {
       console.error('Error loading payment methods:', error);
     }

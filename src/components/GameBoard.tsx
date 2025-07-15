@@ -1,3 +1,4 @@
+
 import React from 'react';
 import WoodTextureCell from './WoodTextureCell';
 import type { GamePiece } from '@/utils/gameTypes';
@@ -73,7 +74,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           row.map((cell, colIndex) => (
             <WoodTextureCell
               key={`${rowIndex}-${colIndex}`}
-              cellValue={cell}
+              cellType={cell === 0 ? null : cell.toString()}
               rowIndex={rowIndex}
               cellSize={cellSize}
               isClearing={clearingLines.includes(rowIndex)}

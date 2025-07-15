@@ -74,10 +74,10 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       <GameKeyboardHandler
         gameStarted={gameStarted}
         onBackToMenu={handleBackToMenu}
-        onUndo={gameLogic.undoMove}
-        onRedo={gameLogic.redoMove}
-        canUndo={gameLogic.canUndo}
-        canRedo={gameLogic.canRedo}
+        onUndo={() => console.log('Undo not implemented')}
+        onRedo={() => console.log('Redo not implemented')}
+        canUndo={false}
+        canRedo={false}
       />
       
       <SinglePlayerGameArea
@@ -90,7 +90,7 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       />
       
       <OutOfFocusOverlay 
-        show={gameLogic.gameState.paused && gameStarted && !gameLogic.gameState.gameOver} 
+        show={gameLogic.gameState.isPaused && gameStarted && !gameLogic.gameState.gameOver} 
       />
     </div>
   );

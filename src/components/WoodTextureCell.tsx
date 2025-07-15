@@ -6,12 +6,16 @@ interface WoodTextureCellProps {
   cellType: string | null;
   isGhost?: boolean;
   className?: string;
+  rowIndex?: number;
+  cellSize?: number;
+  isClearing?: boolean;
 }
 
 const WoodTextureCell: React.FC<WoodTextureCellProps> = ({ 
   cellType, 
   isGhost = false, 
-  className = '' 
+  className = '',
+  isClearing = false
 }) => {
   if (!cellType) {
     return (
@@ -58,7 +62,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
 
   return (
     <div 
-      className={`w-full h-full relative overflow-hidden ${className}`}
+      className={`w-full h-full relative overflow-hidden wood-texture-block ${isClearing ? 'clearing' : ''} ${className}`}
       style={baseStyle}
     >
       {/* Wood grain texture overlay */}
