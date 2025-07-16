@@ -1,10 +1,11 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { BOARD_WIDTH, BOARD_HEIGHT } from '@/utils/tetrisCore';
+import { BOARD_WIDTH, BOARD_HEIGHT, calculateDropPosition as tetrisCalculateDropPosition } from '@/utils/tetrisCore';
 import { generatePiece, PIECE_COLORS } from '@/utils/pieceGeneration';
 import { performSRSRotation } from '@/utils/srsRotation';
 import { calculateScore, calculateLevel } from '@/utils/scoringSystem';
 import { detectTSpin } from '@/utils/tspinDetection';
+import { useUndoRedo } from './useUndoRedo';
 
 export interface Position {
   x: number;
@@ -112,20 +113,12 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
     return true;
   }, []);
 
+  // Use the tetrisCore calculateDropPosition function
   const calculateDropPosition = useCallback((piece: Piece): number => {
-    if (!piece) return piece?.y || 0;
+    if (!piece || !gameStateRef.current?.board) return piece?.y || 0;
     
-    let dropY = piece.y;
-    console.log('Calculating drop position from:', dropY);
-    
-    // Find the lowest valid position
-    while (dropY < BOARD_HEIGHT && isValidPosition(piece, piece.x, dropY + 1)) {
-      dropY++;
-    }
-    
-    console.log('Drop position calculated:', dropY);
-    return dropY;
-  }, [isValidPosition]);
+    return tetrisCalculateDropPosition(gameStateRef.current.board, piece as any);
+  }, []);
 
   const lockPiece = useCallback((piece: Piece, board: number[][]) => {
     console.log('Locking piece at position:', { x: piece.x, y: piece.y, type: piece.type });

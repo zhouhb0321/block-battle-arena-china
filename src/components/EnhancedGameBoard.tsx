@@ -100,27 +100,46 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         className={`game-board relative border-2 border-border ${showGrid ? 'show-grid' : ''}`}
         style={{
           width: cellSize * 10,
-          height: cellSize * 20, // 固定为20行可见区域
+          height: cellSize * 23, // 显示全部23行
           display: 'grid',
           gridTemplateColumns: `repeat(10, ${cellSize}px)`,
-          gridTemplateRows: `repeat(20, ${cellSize}px)`,
+          gridTemplateRows: `repeat(23, ${cellSize}px)`,
           backgroundColor: actualTheme === 'light' ? '#ffffff' : '#1f2937',
         }}
       >
-        {extendedBoard.slice(3).map((row, rowIndex) => // 跳过前3行隐藏行
+        {extendedBoard.map((row, rowIndex) => // 显示所有行包括隐藏行
           row.map((cellValue, colIndex) => {
-            const actualRowIndex = rowIndex + 3; // 真实的行索引
-            const { style, className } = getCellStyle(cellValue, actualRowIndex);
+            const isHiddenRow = rowIndex < 3;
+            const { style, className } = getCellStyle(cellValue, rowIndex);
+            
+            // 对于隐藏行，只显示方块不显示网格
+            const shouldShowCell = !isHiddenRow || cellValue !== 0;
+            
+            if (!shouldShowCell) {
+              return (
+                <div
+                  key={`${rowIndex}-${colIndex}`}
+                  className="game-cell empty-hidden"
+                  style={{
+                    width: cellSize,
+                    height: cellSize,
+                    backgroundColor: 'transparent',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              );
+            }
             
             return (
               <div
-                key={`${actualRowIndex}-${colIndex}`}
-                className={`game-cell ${className} ${showGrid ? 'with-grid' : ''}`}
+                key={`${rowIndex}-${colIndex}`}
+                className={`game-cell ${className} ${showGrid && !isHiddenRow ? 'with-grid' : ''}`}
                 style={{
                   ...style,
                   width: cellSize,
                   height: cellSize,
                   boxSizing: 'border-box',
+                  ...(isHiddenRow && { opacity: cellValue === 0 ? 0 : 0.8 })
                 }}
               />
             );

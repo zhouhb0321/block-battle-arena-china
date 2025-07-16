@@ -1,91 +1,89 @@
-
 import React from 'react';
-import { TETROMINO_TYPES } from '@/utils/tetrisLogic';
-import { getBlockStyle } from '@/utils/blockRenderer';
-import { useUserSettings } from '@/hooks/useUserSettings';
+import { getBlockColor } from '@/utils/blockColors';
+import { PIECE_SHAPES } from '@/utils/pieceGeneration';
 import type { TetrominoType } from '@/utils/gameTypes';
 
 interface PiecePreviewProps {
   piece: TetrominoType | null;
-  title: string;
-  size?: 'small' | 'medium' | 'large';
+  title?: string;
   cellSize?: number;
+  size?: 'small' | 'medium' | 'large'; // For backward compatibility
 }
 
 const PiecePreview: React.FC<PiecePreviewProps> = ({ 
   piece, 
   title, 
-  size = 'medium',
-  cellSize 
+  cellSize = 20 
 }) => {
-  const { settings } = useUserSettings();
-  // 统一cellSize为20
-  const actualCellSize = 20;
-
-  const renderPiece = () => {
-    if (!piece) {
-      return (
-        <div 
-          className="bg-gray-700/30 border border-gray-600 rounded-sm"
-          style={{ 
-            width: actualCellSize * 4, 
-            height: actualCellSize * 2 
-          }}
-        />
-      );
-    }
-
-    const shape = TETROMINO_TYPES[piece.type]?.shape || piece.shape;
-    const pieceType = typeof piece.type === 'string' ? 
-      Object.keys(TETROMINO_TYPES).findIndex(key => key === piece.type) + 1 : 
-      piece.type;
-
+  if (!piece) {
     return (
-      <div className="relative">
-        {shape.map((row, y) => (
-          <div key={y} className="flex">
-            {row.map((cell, x) => {
-              if (cell) {
-                const { style, className } = getBlockStyle(
-                  pieceType,
-                  { cellSize: actualCellSize },
-                  settings
-                );
-                return (
-                  <div
-                    key={`${y}-${x}`}
-                    className={className}
-                    style={style}
-                  />
-                );
-              } else {
-                return (
-                  <div
-                    key={`${y}-${x}`}
-                    className="opacity-0"
-                    style={{
-                      width: actualCellSize,
-                      height: actualCellSize,
-                    }}
-                  />
-                );
-              }
-            })}
-          </div>
-        ))}
+      <div className="w-16 h-12 border border-border rounded bg-muted flex items-center justify-center">
+        <span className="text-muted-foreground text-xs">空</span>
       </div>
     );
-  };
+  }
+
+  const shape = PIECE_SHAPES[piece.type] || piece.shape;
+  const color = getBlockColor(piece.type);
+
+  // Calculate bounding box
+  let minRow = shape.length, maxRow = -1;
+  let minCol = shape[0].length, maxCol = -1;
+  
+  for (let row = 0; row < shape.length; row++) {
+    for (let col = 0; col < shape[row].length; col++) {
+      if (shape[row][col] !== 0) {
+        minRow = Math.min(minRow, row);
+        maxRow = Math.max(maxRow, row);
+        minCol = Math.min(minCol, col);
+        maxCol = Math.max(maxCol, col);
+      }
+    }
+  }
+
+  const pieceWidth = maxCol - minCol + 1;
+  const pieceHeight = maxRow - minRow + 1;
 
   return (
-    <div className="p-2 rounded-lg">
+    <div className="flex flex-col items-center">
       {title && (
-        <h3 className="text-white text-xs mb-2 text-center font-bold opacity-90">
-          {title}
-        </h3>
+        <h4 className="text-xs font-bold text-foreground mb-1">{title}</h4>
       )}
-      <div className="flex justify-center items-center min-h-[32px]">
-        {renderPiece()}
+      <div 
+        className="flex justify-center items-center"
+        style={{ 
+          width: Math.max(cellSize * 4, pieceWidth * cellSize),
+          height: Math.max(cellSize * 2, pieceHeight * cellSize)
+        }}
+      >
+        <div 
+          className="relative"
+          style={{
+            width: pieceWidth * cellSize,
+            height: pieceHeight * cellSize,
+            display: 'grid',
+            gridTemplateColumns: `repeat(${pieceWidth}, ${cellSize}px)`,
+            gridTemplateRows: `repeat(${pieceHeight}, ${cellSize}px)`,
+          }}
+        >
+          {shape.slice(minRow, maxRow + 1).map((row, rowIndex) =>
+            row.slice(minCol, maxCol + 1).map((cell, colIndex) => (
+              <div
+                key={`${rowIndex}-${colIndex}`}
+                className="guideline-block"
+                style={{
+                  backgroundColor: cell === 1 ? color : 'transparent',
+                  border: cell === 1 ? '2px solid #333' : 'none',
+                  borderRadius: cell === 1 ? '2px' : '0',
+                  boxShadow: cell === 1 ? 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.2)' : 'none',
+                  width: cellSize,
+                  height: cellSize,
+                  boxSizing: 'border-box',
+                }}
+              />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

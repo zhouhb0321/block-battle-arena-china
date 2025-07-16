@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { getCurrentSkin, getColorByTypeId } from '@/utils/blockSkins';
+import { getBlockColor } from '@/utils/blockColors';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import type { GamePiece } from '@/utils/gameTypes';
+import AchievementDisplay from './AchievementDisplay';
 
 interface HoldPieceDisplayProps {
   holdPiece: GamePiece | null;
@@ -11,7 +12,6 @@ interface HoldPieceDisplayProps {
 
 const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold }) => {
   const { settings } = useUserSettings();
-  const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
 
   const renderHoldPiece = () => {
     if (!holdPiece) {
@@ -68,15 +68,17 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
                   return <div key={`${rowIndex}-${colIndex}`} />;
                 }
                 
-                const blockStyle = currentSkin.getBlockStyle(holdPiece.type.type, false);
-                const blockClass = currentSkin.getBlockClass(holdPiece.type.type, false);
+                const color = getBlockColor(holdPiece.type.type);
                 
                 return (
                   <div
                     key={`${rowIndex}-${colIndex}`}
-                    className={`${blockClass} ${!canHold ? 'grayscale' : ''}`}
+                    className={`guideline-block ${!canHold ? 'grayscale' : ''}`}
                     style={{
-                      ...blockStyle,
+                      backgroundColor: color,
+                      border: '2px solid #333',
+                      borderRadius: '2px',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.2)',
                       width: cellSize,
                       height: cellSize,
                       opacity: canHold ? 1 : 0.6,
@@ -103,11 +105,7 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
       )}
       
       {/* Achievement Display Area */}
-      <div className="w-full h-10 mt-2 border border-muted/30 rounded-lg bg-background/20 flex items-center justify-center">
-        <div className="text-muted-foreground text-xs opacity-50">
-          Achievement
-        </div>
-      </div>
+      <AchievementDisplay className="w-full mt-2" />
     </div>
   );
 };

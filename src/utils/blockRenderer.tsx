@@ -1,29 +1,36 @@
 import React from 'react';
 import { getCurrentSkin, isGarbageBlock, GARBAGE_COLOR } from './blockSkins';
+import { getBlockColor } from './blockColors';
 import type { UserSettings } from '@/hooks/useUserSettings';
 
-// 柔和色板（Tetris Guideline风格，低饱和度）
-export const SOFT_COLORS = {
-  I: '#6EC6FF', // 柔和蓝
-  O: '#FFF176', // 柔和黄
-  T: '#BA68C8', // 柔和紫
-  S: '#81C784', // 柔和绿
-  Z: '#E57373', // 柔和红
-  J: '#64B5F6', // 柔和蓝
-  L: '#FFB74D', // 柔和橙
+// Official Tetris Guideline colors (harddrop.com/wiki/Tetris_Guideline)
+export const GUIDELINE_COLORS = {
+  I: '#00f0f0', // Cyan - I-piece
+  O: '#f0f000', // Yellow - O-piece
+  T: '#800080', // Purple - T-piece
+  S: '#00f000', // Green - S-piece
+  Z: '#f00000', // Red - Z-piece
+  J: '#0000f0', // Blue - J-piece
+  L: '#ffa500', // Orange - L-piece
 };
 
-export const getSoftColor = (typeId: number): string => {
+export const getGuidelineColor = (typeId: number | string): string => {
+  if (typeof typeId === 'string') {
+    // Handle string types like 'I', 'O', etc.
+    const upperType = typeId.toUpperCase();
+    return GUIDELINE_COLORS[upperType as keyof typeof GUIDELINE_COLORS] || GUIDELINE_COLORS.I;
+  }
+  
   const colorMap: { [key: number]: string } = {
-    1: SOFT_COLORS.I,
-    2: SOFT_COLORS.O,
-    3: SOFT_COLORS.T,
-    4: SOFT_COLORS.S,
-    5: SOFT_COLORS.Z,
-    6: SOFT_COLORS.J,
-    7: SOFT_COLORS.L,
+    1: GUIDELINE_COLORS.I,
+    2: GUIDELINE_COLORS.O,
+    3: GUIDELINE_COLORS.T,
+    4: GUIDELINE_COLORS.S,
+    5: GUIDELINE_COLORS.Z,
+    6: GUIDELINE_COLORS.J,
+    7: GUIDELINE_COLORS.L,
   };
-  return colorMap[typeId] || SOFT_COLORS.I;
+  return colorMap[typeId] || GUIDELINE_COLORS.I;
 };
 
 export interface BlockRenderConfig {
@@ -59,13 +66,25 @@ export const getBlockStyle = (
       };
       className = 'ghost-block';
     } else if (cellValue.startsWith('lock-delay-')) {
-      const color = cellValue.replace('lock-delay-', '');
-      style = currentSkin.getBlockStyle(color, false);
-      className = `${currentSkin.getBlockClass(color, false)} lock-delay-flash`;
+      const pieceType = cellValue.replace('lock-delay-', '');
+      const color = getBlockColor(pieceType);
+      style = {
+        backgroundColor: color,
+        border: `2px solid #333`,
+        borderRadius: '2px',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.2)',
+      };
+      className = 'guideline-block lock-delay-flash';
     } else if (cellValue.startsWith('solid-')) {
-      const color = cellValue.replace('solid-', '');
-      style = currentSkin.getBlockStyle(color, false);
-      className = currentSkin.getBlockClass(color, false);
+      const pieceType = cellValue.replace('solid-', '');
+      const color = getBlockColor(pieceType);
+      style = {
+        backgroundColor: color,
+        border: `2px solid #333`,
+        borderRadius: '2px',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.2)',
+      };
+      className = 'guideline-block';
     }
   } else if (cellValue !== 0) {
     if (isGarbageBlock(cellValue)) {
@@ -76,15 +95,15 @@ export const getBlockStyle = (
       };
       className = 'garbage-block';
     } else {
-      const color = getSoftColor(cellValue);
+      const color = getBlockColor(cellValue);
       style = {
         backgroundColor: color,
-        border: `1px solid #888`,
-        borderRadius: '3px',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 3px rgba(0,0,0,0.10)',
+        border: `2px solid #333`,
+        borderRadius: '2px',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.2)',
         opacity: isHidden ? 0.7 : 1,
       };
-      className = 'soft-block';
+      className = 'guideline-block';
     }
   } else {
     // 空方块
