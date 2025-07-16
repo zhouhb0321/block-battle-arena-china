@@ -12,11 +12,11 @@ const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({
   nextPieces, 
   compact = false 
 }) => {
-  const displayCount = compact ? 3 : 5;
+  const displayCount = compact ? 4 : 5;  // Show 4 pieces in compact mode
   const pieceSize = compact ? 20 : 28;
 
   return (
-    <div className={`p-2 rounded-lg ${compact ? 'w-28' : 'w-full'}`}>
+    <div className={`p-2 rounded-lg ${compact ? 'w-24' : 'w-full'}`}>
       <h3 className="text-foreground text-xs font-bold mb-2 text-center">NEXT</h3>
       <div className="space-y-1">
         {nextPieces.slice(0, displayCount).map((piece, index) => (
@@ -29,7 +29,7 @@ const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({
             <PiecePreview 
               piece={piece.type} 
               title=""
-              cellSize={compact ? 12 : 20}
+              cellSize={compact ? 10 : 20}  // Smaller cells for compact mode
             />
           </div>
         ))}

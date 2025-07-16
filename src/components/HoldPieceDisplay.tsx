@@ -23,7 +23,7 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     }
 
     const { shape } = holdPiece.type;
-    const cellSize = 12;
+    const cellSize = 10;
 
     // 计算方块的边界框
     let minRow = shape.length, maxRow = -1;
@@ -68,9 +68,8 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
                   return <div key={`${rowIndex}-${colIndex}`} />;
                 }
                 
-                const color = getColorByTypeId(cell);
-                const blockStyle = currentSkin.getBlockStyle(color, false);
-                const blockClass = currentSkin.getBlockClass(color, false);
+                const blockStyle = currentSkin.getBlockStyle(holdPiece.type.type, false);
+                const blockClass = currentSkin.getBlockClass(holdPiece.type.type, false);
                 
                 return (
                   <div
@@ -94,7 +93,7 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   };
 
   return (
-    <div className="p-2 rounded-lg w-28">
+    <div className="p-2 rounded-lg w-24">
       <h3 className="text-foreground text-xs font-bold mb-2 text-center">HOLD</h3>
       <div className="flex justify-center">
         {renderHoldPiece()}
@@ -102,6 +101,13 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
       {!canHold && (
         <p className="text-destructive text-xs text-center mt-1">Used</p>
       )}
+      
+      {/* Achievement Display Area */}
+      <div className="w-full h-10 mt-2 border border-muted/30 rounded-lg bg-background/20 flex items-center justify-center">
+        <div className="text-muted-foreground text-xs opacity-50">
+          Achievement
+        </div>
+      </div>
     </div>
   );
 };

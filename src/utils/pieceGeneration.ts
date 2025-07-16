@@ -47,10 +47,28 @@ export const generatePieceType = (): TetrominoType => {
   };
 };
 
-// Add the missing generatePiece function that's expected by useGameLogic
-export const generatePiece = () => {
+// Seven-bag piece generator to ensure fair distribution
+let currentBag: string[] = [];
+
+const generateSevenBag = (): string[] => {
   const pieces = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
-  const randomType = pieces[Math.floor(Math.random() * pieces.length)];
+  const bag: string[] = [];
+  
+  for (let i = pieces.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+  }
+  
+  return pieces;
+};
+
+// Generate piece using 7-bag algorithm
+export const generatePiece = () => {
+  if (currentBag.length === 0) {
+    currentBag = generateSevenBag();
+  }
+  
+  const randomType = currentBag.pop()!;
   
   const pieceDefinitions = {
     'I': { shape: [[1,1,1,1]], color: '#00f5ff' },

@@ -114,6 +114,19 @@ const Index = () => {
               <p className="text-xl text-muted-foreground mb-8">
                 Classic gameplay, modern experience
               </p>
+              
+              {/* Register & Start Playing Button - moved to below title */}
+              <div className="mb-8">
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className="border-border text-muted-foreground hover:bg-muted hover:text-foreground font-semibold px-6 py-3 mr-4"
+                  onClick={handleAuthModalOpen}
+                >
+                  Register & Start Playing
+                </Button>
+              </div>
+              
               <Button
                 size="lg"
                 onClick={handleGuestPlay}

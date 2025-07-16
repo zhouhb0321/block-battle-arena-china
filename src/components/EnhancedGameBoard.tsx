@@ -43,8 +43,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             const boardY = ghostPiece.y + row;
             if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
               if (extendedBoard[boardY][boardX] === 0) {
-                const color = getColorByTypeId(shape[row][col]);
-                extendedBoard[boardY][boardX] = `ghost-${color}` as any;
+                extendedBoard[boardY][boardX] = `ghost-${ghostPiece.type.type}` as any;
               }
             }
           }
@@ -60,9 +59,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             const boardX = currentPiece.x + col;
             const boardY = currentPiece.y + row;
             if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
-              const color = getColorByTypeId(shape[row][col]);
               const prefix = isLockDelayActive ? 'lock-delay-' : 'solid-';
-              extendedBoard[boardY][boardX] = `${prefix}${color}` as any;
+              extendedBoard[boardY][boardX] = `${prefix}${currentPiece.type.type}` as any;
             }
           }
         }

@@ -230,18 +230,18 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
       
       if (newNextPieces.length > 0) {
         newCurrentPiece = newNextPieces.shift()!;
-        // Ensure we have at least 5 pieces in queue
-        while (newNextPieces.length < 5) {
+        // Ensure we have at least 6 pieces in queue
+        while (newNextPieces.length < 6) {
           newNextPieces.push(generatePiece());
         }
       } else {
         newCurrentPiece = spawnPiece();
-        newNextPieces = Array(5).fill(null).map(() => generatePiece());
+        newNextPieces = Array(6).fill(null).map(() => generatePiece());
       }
       
       // Reset position for new piece
       if (newCurrentPiece) {
-        newCurrentPiece.x = Math.floor(BOARD_WIDTH / 2) - Math.floor(newCurrentPiece.type.shape[0].length / 2);
+        newCurrentPiece.x = Math.floor(BOARD_WIDTH / 2) - Math.floor(newCurrentPiece.shape[0].length / 2);
         newCurrentPiece.y = 0;
       }
       
@@ -370,7 +370,7 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
 
   const startGame = useCallback(() => {
     console.log('Starting new game');
-    const newPieces = Array(5).fill(null).map(() => generatePiece());
+    const newPieces = Array(6).fill(null).map(() => generatePiece());  // Generate 6 pieces for proper queue
     
     setGameState({
       ...initialState,
