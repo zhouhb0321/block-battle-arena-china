@@ -117,7 +117,20 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
   const calculateDropPosition = useCallback((piece: Piece): number => {
     if (!piece || !gameStateRef.current?.board) return piece?.y || 0;
     
-    return tetrisCalculateDropPosition(gameStateRef.current.board, piece as any);
+    // Convert useGameLogic Piece to tetrisCore GamePiece format
+    const gamePiece = {
+      type: {
+        shape: piece.shape,
+        type: piece.type,
+        name: piece.type,
+        color: PIECE_COLORS[piece.type] || '#ffffff'
+      },
+      x: piece.x,
+      y: piece.y,
+      rotation: piece.rotation
+    };
+    
+    return tetrisCalculateDropPosition(gameStateRef.current.board, gamePiece);
   }, []);
 
   const lockPiece = useCallback((piece: Piece, board: number[][]) => {
