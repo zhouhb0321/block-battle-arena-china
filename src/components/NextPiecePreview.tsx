@@ -16,20 +16,20 @@ const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({
   const pieceSize = compact ? 20 : 28;
 
   return (
-    <div className={`game-panel-light p-2 rounded-lg ${compact ? 'w-20' : 'w-full'}`}>
-      <h3 className="text-foreground text-sm font-bold mb-2 text-center">NEXT</h3>
-      <div className="space-y-2">
+    <div className={`p-2 rounded-lg ${compact ? 'w-28' : 'w-full'}`}>
+      <h3 className="text-foreground text-xs font-bold mb-2 text-center">NEXT</h3>
+      <div className="space-y-1">
         {nextPieces.slice(0, displayCount).map((piece, index) => (
           <div 
             key={index} 
-            className={`flex justify-center ${compact ? 'p-1' : 'p-1'} ${
-              index === 0 ? 'bg-muted rounded' : ''
+            className={`flex justify-center ${compact ? 'p-0.5' : 'p-1'} ${
+              index === 0 ? 'bg-muted/50 rounded' : ''
             }`}
           >
             <PiecePreview 
               piece={piece.type} 
               title=""
-              cellSize={compact ? 16 : 24}
+              cellSize={compact ? 12 : 20}
             />
           </div>
         ))}

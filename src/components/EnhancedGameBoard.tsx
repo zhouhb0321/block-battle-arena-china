@@ -99,13 +99,14 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       )}
       
       <div 
-        className="game-board relative border-2 border-gray-600 bg-gray-900"
+        className={`game-board relative border-2 border-border ${showGrid ? 'show-grid' : ''}`}
         style={{
           width: cellSize * 10,
           height: cellSize * 20, // 固定为20行可见区域
           display: 'grid',
           gridTemplateColumns: `repeat(10, ${cellSize}px)`,
           gridTemplateRows: `repeat(20, ${cellSize}px)`,
+          backgroundColor: actualTheme === 'light' ? '#ffffff' : '#1f2937',
         }}
       >
         {extendedBoard.slice(3).map((row, rowIndex) => // 跳过前3行隐藏行
@@ -116,7 +117,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             return (
               <div
                 key={`${actualRowIndex}-${colIndex}`}
-                className={`game-cell ${className}`}
+                className={`game-cell ${className} ${showGrid ? 'with-grid' : ''}`}
                 style={{
                   ...style,
                   width: cellSize,

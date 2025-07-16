@@ -94,13 +94,13 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   };
 
   return (
-    <div className="game-panel-light p-2 rounded-lg w-20">
+    <div className="p-2 rounded-lg w-28">
       <h3 className="text-foreground text-xs font-bold mb-2 text-center">HOLD</h3>
       <div className="flex justify-center">
         {renderHoldPiece()}
       </div>
       {!canHold && (
-        <p className="text-destructive text-xs text-center mt-1">已使用</p>
+        <p className="text-destructive text-xs text-center mt-1">Used</p>
       )}
     </div>
   );

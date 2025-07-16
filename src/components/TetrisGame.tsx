@@ -97,7 +97,8 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
 };
 
 const TetrisGame: React.FC<TetrisGameProps> = (props) => {
-  const defaultGameMode = GAME_MODES.find(mode => mode.id === 'endless') || GAME_MODES[0];
+  // Default to 40L mode for guest playing
+  const defaultGameMode = GAME_MODES.find(mode => mode.id === '40lines') || GAME_MODES[0];
 
   return (
     <TetrisGameProvider gameMode={defaultGameMode}>

@@ -181,14 +181,15 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
   const spawnPiece = useCallback(() => {
     const piece = generatePiece();
     const startX = Math.floor(BOARD_WIDTH / 2) - Math.floor(piece.shape[0].length / 2);
-    const startY = 0;
+    const startY = 0; // Start at the very top (hidden row area)
     
     console.log('Spawning new piece:', { type: piece.type, x: startX, y: startY });
     
     return {
       ...piece,
       x: startX,
-      y: startY
+      y: startY,
+      rotation: 0
     };
   }, []);
 
@@ -223,12 +224,34 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
         [droppedPiece.type]: (prevState.statistics[droppedPiece.type] || 0) + 1
       };
       
+      // Get next piece from queue and refresh if needed
+      let newNextPieces = [...prevState.nextPieces];
+      let newCurrentPiece = null;
+      
+      if (newNextPieces.length > 0) {
+        newCurrentPiece = newNextPieces.shift()!;
+        // Ensure we have at least 5 pieces in queue
+        while (newNextPieces.length < 5) {
+          newNextPieces.push(generatePiece());
+        }
+      } else {
+        newCurrentPiece = spawnPiece();
+        newNextPieces = Array(5).fill(null).map(() => generatePiece());
+      }
+      
+      // Reset position for new piece
+      if (newCurrentPiece) {
+        newCurrentPiece.x = Math.floor(BOARD_WIDTH / 2) - Math.floor(newCurrentPiece.type.shape[0].length / 2);
+        newCurrentPiece.y = 0;
+      }
+      
       console.log('Hard drop completed, lines cleared:', linesCleared);
       
       return {
         ...prevState,
         board: clearedBoard,
-        currentPiece: spawnPiece(),
+        currentPiece: newCurrentPiece,
+        nextPieces: newNextPieces,
         score: prevState.score + hardDropScore + (linesCleared * 100),
         lines: prevState.lines + linesCleared,
         canHold: true,
