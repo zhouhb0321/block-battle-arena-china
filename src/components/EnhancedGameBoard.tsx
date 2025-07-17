@@ -97,7 +97,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       )}
       
       <div 
-        className={`game-board relative border-2 border-border ${showGrid ? 'show-grid' : ''}`}
+        className="game-board relative"
         style={{
           width: cellSize * 10,
           height: cellSize * 23, // 显示全部23行
@@ -133,7 +133,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             return (
               <div
                 key={`${rowIndex}-${colIndex}`}
-                className={`game-cell ${className} ${showGrid && !isHiddenRow ? 'with-grid' : ''}`}
+                className={`game-cell ${className}`}
                 style={{
                   ...style,
                   width: cellSize,
@@ -157,10 +157,6 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         .game-cell {
           position: relative;
           transition: all 0.1s ease;
-        }
-        
-        .show-grid .game-cell {
-          border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .hidden-row {
