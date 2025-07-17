@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
@@ -21,9 +22,9 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   board,
   currentPiece,
   ghostPiece,
-  cellSize = 42, // 使用传入的 cellSize，默认为 42
-  showGrid = false, // 默认不显示网格线
-  showHiddenRows = false, // 默认不显示隐藏行
+  cellSize = 42,
+  showGrid = false,
+  showHiddenRows = false,
   isLockDelayActive = false,
   lockDelayResetCount = 0,
   clearingLines = []
@@ -73,12 +74,12 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   const extendedBoard = createExtendedBoard();
 
   const getCellStyle = (cellValue: number | string, rowIndex: number) => {
-    const isHidden = showHiddenRows && rowIndex < 3;
+    const isHidden = rowIndex < 3;
     const isClearing = clearingLines.includes(rowIndex);
     
     const config = {
       cellSize,
-      isHidden,
+      isHidden: false, // Always show blocks, even in hidden rows
       isClearing,
       ghostOpacity: settings.ghostOpacity || 50,
       theme: actualTheme,
@@ -100,22 +101,22 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         className="game-board relative"
         style={{
           width: cellSize * 10,
-          height: cellSize * 23, // 显示全部23行
+          height: cellSize * 23,
           display: 'grid',
           gridTemplateColumns: `repeat(10, ${cellSize}px)`,
           gridTemplateRows: `repeat(23, ${cellSize}px)`,
           backgroundColor: actualTheme === 'light' ? '#ffffff' : '#1f2937',
         }}
       >
-        {extendedBoard.map((row, rowIndex) => // 显示所有行包括隐藏行
+        {extendedBoard.map((row, rowIndex) =>
           row.map((cellValue, colIndex) => {
             const isHiddenRow = rowIndex < 3;
             const { style, className } = getCellStyle(cellValue, rowIndex);
             
-            // 对于隐藏行，只显示方块不显示网格
-            const shouldShowCell = !isHiddenRow || cellValue !== 0;
+            // Always show blocks in hidden rows, only hide empty cells
+            const shouldShowCell = cellValue !== 0;
             
-            if (!shouldShowCell) {
+            if (!shouldShowCell && isHiddenRow) {
               return (
                 <div
                   key={`${rowIndex}-${colIndex}`}
@@ -139,7 +140,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
                   width: cellSize,
                   height: cellSize,
                   boxSizing: 'border-box',
-                  ...(isHiddenRow && { opacity: cellValue === 0 ? 0 : 0.8 })
+                  // Remove opacity reduction for hidden row blocks
+                  opacity: cellValue === 0 ? (isHiddenRow ? 0 : 1) : 1
                 }}
               />
             );

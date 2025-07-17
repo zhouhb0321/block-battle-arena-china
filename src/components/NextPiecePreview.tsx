@@ -12,13 +12,13 @@ const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({
   nextPieces, 
   compact = false 
 }) => {
-  const displayCount = compact ? 4 : 5;  // Show 4 pieces in compact mode
-  const pieceSize = compact ? 40 : 56;
+  const displayCount = compact ? 4 : 5;
+  const cellSize = 42; // Unified size with game board
 
   return (
-    <div className={`p-2 rounded-lg ${compact ? 'w-48' : 'w-full'}`}>
-      <h3 className="text-foreground text-xs font-bold mb-2 text-center">NEXT</h3>
-      <div className="space-y-1">
+    <div className={`p-3 rounded-lg ${compact ? 'w-56' : 'w-full'}`}>
+      <h3 className="text-foreground text-xs font-bold mb-3 text-center">NEXT</h3>
+      <div className="space-y-2">
         {nextPieces.slice(0, displayCount).map((piece, index) => (
           <div 
             key={index} 
@@ -29,7 +29,7 @@ const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({
             <PiecePreview 
               piece={piece.type} 
               title=""
-              cellSize={compact ? 20 : 40}  // Doubled cell size
+              cellSize={cellSize}
             />
           </div>
         ))}

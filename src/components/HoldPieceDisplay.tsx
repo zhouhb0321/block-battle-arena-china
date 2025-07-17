@@ -12,18 +12,18 @@ interface HoldPieceDisplayProps {
 
 const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold }) => {
   const { settings } = useUserSettings();
+  const cellSize = 42; // Unified size with game board
 
   const renderHoldPiece = () => {
     if (!holdPiece) {
       return (
-        <div className="w-16 h-16 border border-border rounded bg-muted flex items-center justify-center">
+        <div className="w-20 h-16 border border-border rounded bg-muted flex items-center justify-center">
           <span className="text-muted-foreground text-xs">空</span>
         </div>
       );
     }
 
     const { shape } = holdPiece.type;
-    const cellSize = 10;
 
     // 计算方块的边界框
     let minRow = shape.length, maxRow = -1;
@@ -44,12 +44,12 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     const pieceHeight = maxRow - minRow + 1;
 
     return (
-      <div className={`p-2 bg-muted rounded border border-border ${!canHold ? 'opacity-50' : ''}`}>
+      <div className={`p-3 bg-muted rounded border border-border ${!canHold ? 'opacity-50' : ''}`}>
         <div 
           className="flex justify-center items-center"
           style={{ 
-            width: Math.max(64, pieceWidth * cellSize),
-            height: Math.max(48, pieceHeight * cellSize)
+            width: Math.max(84, pieceWidth * cellSize),
+            height: Math.max(84, pieceHeight * cellSize)
           }}
         >
           <div 
@@ -95,17 +95,17 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   };
 
   return (
-    <div className="p-2 rounded-lg w-24">
-      <h3 className="text-foreground text-xs font-bold mb-2 text-center">HOLD</h3>
+    <div className="p-3 rounded-lg w-32">
+      <h3 className="text-foreground text-xs font-bold mb-3 text-center">HOLD</h3>
       <div className="flex justify-center">
         {renderHoldPiece()}
       </div>
       {!canHold && (
-        <p className="text-destructive text-xs text-center mt-1">Used</p>
+        <p className="text-destructive text-xs text-center mt-2">Used</p>
       )}
       
       {/* Achievement Display Area */}
-      <AchievementDisplay className="w-full mt-2" />
+      <AchievementDisplay className="w-full mt-3" />
     </div>
   );
 };

@@ -20,7 +20,7 @@ const GameRightPanel: React.FC<GameRightPanelProps> = ({
   };
 
   return (
-    <div className="w-28">
+    <div className="w-64">
       <div className={`p-2 rounded-lg border ${getPanelThemeClasses()}`}>
         <NextPiecePreview 
           nextPieces={nextPieces} 

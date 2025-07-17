@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { getBlockColor } from '@/utils/blockColors';
 import { PIECE_SHAPES } from '@/utils/pieceGeneration';
@@ -13,11 +14,11 @@ interface PiecePreviewProps {
 const PiecePreview: React.FC<PiecePreviewProps> = ({ 
   piece, 
   title, 
-  cellSize = 20 
+  cellSize = 42 // Unified size with game board
 }) => {
   if (!piece) {
     return (
-      <div className="w-16 h-12 border border-border rounded bg-muted flex items-center justify-center">
+      <div className="w-20 h-16 border border-border rounded bg-muted flex items-center justify-center">
         <span className="text-muted-foreground text-xs">空</span>
       </div>
     );
@@ -47,7 +48,7 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
   return (
     <div className="flex flex-col items-center">
       {title && (
-        <h4 className="text-xs font-bold text-foreground mb-1">{title}</h4>
+        <h4 className="text-xs font-bold text-foreground mb-2">{title}</h4>
       )}
       <div 
         className="flex justify-center items-center"
