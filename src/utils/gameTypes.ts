@@ -1,4 +1,3 @@
-
 export interface GameState {
   board: number[][];
   currentPiece: GamePiece | null;
@@ -28,7 +27,7 @@ export interface Piece {
   color: string;
   x: number;
   y: number;
-  type: string;
+  type: TetrominoType;
   rotation: number;
 }
 
@@ -77,14 +76,6 @@ export interface GameSettings {
   backgroundMusic: string;
   musicVolume: number;
   ghostOpacity: number;
-  enableWallpaper: boolean;
-  wallpaperOpacity: number;
-  autoPlayMusic: boolean;
-  loopMusic: boolean;
-  enableLineAnimation: boolean;
-  enableAchievementAnimation: boolean;
-  enableLandingEffect: boolean;
-  blockSkin: string;
 }
 
 export interface AdContent {

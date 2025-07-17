@@ -25,24 +25,30 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
 
   // 180度旋转功能
   const rotate180 = useCallback(() => {
-    gameLogic.rotatePiece('180');
+    if (gameLogic.rotatePiece180) {
+      gameLogic.rotatePiece180();
+    }
   }, [gameLogic]);
 
   const keyboardControls = useKeyboardControls({
     gameSettings,
-    gameOver: gameLogic.gameState.gameOver,
-    paused: gameLogic.gameState.isPaused,
+    gameOver: gameLogic.gameOver,
+    paused: gameLogic.isPaused,
     onMoveLeft: () => {
       debugLog.debug('Keyboard: Move left');
-      gameLogic.movePiece(-1, 0);
+      return gameLogic.movePiece(-1, 0);
     },
     onMoveRight: () => {
       debugLog.debug('Keyboard: Move right');
-      gameLogic.movePiece(1, 0);
+      return gameLogic.movePiece(1, 0);
     },
     onSoftDrop: () => {
       debugLog.debug('Keyboard: Soft drop');
-      gameLogic.movePiece(0, 1);
+      const moved = gameLogic.movePiece(0, 1);
+      if (moved) {
+        // Add soft drop points if needed
+      }
+      return moved;
     },
     onHardDrop: () => {
       debugLog.debug('Keyboard: Hard drop');
@@ -50,19 +56,23 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
     },
     onRotateClockwise: () => {
       debugLog.debug('Keyboard: Rotate clockwise');
-      gameLogic.rotatePiece('clockwise');
+      gameLogic.rotatePieceClockwise();
     },
     onRotateCounterclockwise: () => {
       debugLog.debug('Keyboard: Rotate counter-clockwise');
-      gameLogic.rotatePiece('counterclockwise');
+      gameLogic.rotatePieceCounterclockwise();
     },
     onHold: () => {
       debugLog.debug('Keyboard: Hold piece');
-      gameLogic.holdPiece();
+      gameLogic.holdCurrentPiece();
     },
     onPause: () => {
       debugLog.debug('Keyboard: Pause/Resume');
-      gameLogic.pauseGame();
+      if (gameLogic.isPaused) {
+        gameLogic.resumeGame();
+      } else {
+        gameLogic.pauseGame();
+      }
     },
     onBackToMenu: () => {
       debugLog.debug('Keyboard: Back to menu');
@@ -76,7 +86,7 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
 
   // 添加键盘控制循环
   useEffect(() => {
-    if (!gameStarted || gameLogic.gameState.gameOver || gameLogic.gameState.isPaused) {
+    if (!gameStarted || gameLogic.gameOver || gameLogic.isPaused) {
       if (keyboardLoopRef.current) {
         cancelAnimationFrame(keyboardLoopRef.current);
         keyboardLoopRef.current = null;
@@ -97,7 +107,7 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
         keyboardLoopRef.current = null;
       }
     };
-  }, [gameStarted, gameLogic.gameState.gameOver, gameLogic.gameState.isPaused, keyboardControls, keyboardLoopRef]);
+  }, [gameStarted, gameLogic.gameOver, gameLogic.isPaused, keyboardControls, keyboardLoopRef]);
 
   return null; // This component only handles keyboard logic
 };

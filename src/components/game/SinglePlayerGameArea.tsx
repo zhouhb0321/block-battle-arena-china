@@ -1,18 +1,19 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionLogger } from '@/hooks/useSessionLogger';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useResponsiveCellSize } from '@/hooks/useResponsiveCellSize';
-import { useGameHistory } from '@/hooks/useGameHistory';
 import { debugLog } from '@/utils/debugLogger';
-import GameTopBar from './GameTopBar';
-import GameInfoPanel from './GameInfoPanel';
-import GameCentralArea from './GameCentralArea';
-import GameRightPanel from './GameRightPanel';
-import AchievementDetector from './AchievementDetector';
+import GameCountdownInArea from '@/components/GameCountdownInArea';
+import EnhancedGameBoard from '@/components/EnhancedGameBoard';
+import HoldPieceDisplay from '@/components/HoldPieceDisplay';
+import NextPiecePreview from '@/components/NextPiecePreview';
+import LineCleanAnimation from '@/components/LineCleanAnimation';
+import OutOfFocusOverlay from '@/components/OutOfFocusOverlay';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Pause, Play } from 'lucide-react';
 import { useTetrisGame } from './TetrisGameProvider';
-import type { GameMode, GameState } from '@/utils/gameTypes';
+import type { GameMode } from '@/utils/gameTypes';
 
 interface SinglePlayerGameAreaProps {
   gameMode: GameMode;
@@ -31,113 +32,19 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { logUserSession } = useSessionLogger();
   const { actualTheme } = useTheme();
   const { gameLogic, gameSettings } = useTetrisGame();
-  const cellSize = useResponsiveCellSize({ minSize: 26, maxSize: 30 });
-  const { saveState, undo, redo, canUndo, canRedo, clearHistory } = useGameHistory(50);
   
   const [showCountdown, setShowCountdown] = useState(true);
   const [gameReallyStarted, setGameReallyStarted] = useState(false);
   const [animationText, setAnimationText] = useState('');
   const [showAnimation, setShowAnimation] = useState(false);
-  const [achievementText, setAchievementText] = useState<string | null>(null);
-  
-  // 成就相关状态
-  const [currentAchievementData, setCurrentAchievementData] = useState({
-    linesCleared: 0,
-    tSpinResult: null as any,
-    combo: -1,
-    b2b: 0,
-    tetris: false
-  });
-  
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
-  // 保存游戏状态用于撤销/重做
-  useEffect(() => {
-    if (gameReallyStarted && !gameLogic.gameState.gameOver) {
-      const completeGameState: GameState = {
-        board: gameLogic.gameState.board,
-        currentPiece: gameLogic.gameState.currentPiece ? {
-          type: {
-            name: gameLogic.gameState.currentPiece.type,
-            type: gameLogic.gameState.currentPiece.type,
-            shape: gameLogic.gameState.currentPiece.shape,
-            color: '#ffffff'
-          },
-          x: gameLogic.gameState.currentPiece.x,
-          y: gameLogic.gameState.currentPiece.y,
-          rotation: gameLogic.gameState.currentPiece.rotation
-        } : null,
-        nextPieces: gameLogic.gameState.nextPieces.map(piece => ({
-          type: {
-            name: piece.type,
-            type: piece.type,
-            shape: piece.shape,
-            color: '#ffffff'
-          },
-          x: piece.x,
-          y: piece.y,
-          rotation: piece.rotation
-        })),
-        holdPiece: gameLogic.gameState.heldPiece ? {
-          type: {
-            name: gameLogic.gameState.heldPiece.type,
-            type: gameLogic.gameState.heldPiece.type,
-            shape: gameLogic.gameState.heldPiece.shape,
-            color: '#ffffff'
-          },
-          x: gameLogic.gameState.heldPiece.x,
-          y: gameLogic.gameState.heldPiece.y,
-          rotation: gameLogic.gameState.heldPiece.rotation
-        } : null,
-        canHold: gameLogic.gameState.canHold,
-        isHolding: false,
-        score: gameLogic.gameState.score,
-        level: gameLogic.gameState.level,
-        lines: gameLogic.gameState.lines,
-        gameOver: gameLogic.gameState.gameOver,
-        paused: gameLogic.gameState.isPaused,
-        combo: gameLogic.gameState.combo,
-        b2b: gameLogic.gameState.b2b,
-        pieces: gameLogic.gameState.pieces || 0,
-        attack: gameLogic.gameState.attack || 0,
-        pps: 0,
-        apm: 0,
-        startTime: gameLogic.gameState.startTime || Date.now(),
-        endTime: null,
-        ghostPiece: null,
-        clearingLines: []
-      };
-      saveState(completeGameState);
-    }
-  }, [gameLogic.gameState.board, gameLogic.gameState.currentPiece, gameLogic.gameState.nextPieces, gameLogic.gameState.heldPiece, gameLogic.gameState.canHold, gameLogic.gameState.score, gameLogic.gameState.level, gameLogic.gameState.lines, gameLogic.gameState.gameOver, gameLogic.gameState.isPaused, gameLogic.gameState.combo, gameLogic.gameState.b2b, gameReallyStarted, saveState]);
-
-  // 撤销/重做键盘控制 - 修复Ctrl+Z和Ctrl+Y
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!gameReallyStarted || gameLogic.gameState.gameOver) return;
-      
-      if (event.ctrlKey) {
-        if (event.code === 'KeyZ' && !event.shiftKey) {
-          event.preventDefault();
-          debugLog.game('撤销功能暂时不可用');
-        } else if (event.code === 'KeyY' || (event.code === 'KeyZ' && event.shiftKey)) {
-          event.preventDefault();
-          debugLog.game('重做功能暂时不可用');
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [gameReallyStarted, gameLogic.gameState.gameOver]);
-
   const handleCountdownComplete = () => {
-    debugLog.game('倒计时完成，开始游戏...');
+    debugLog.game('Countdown completed, starting game...');
     setShowCountdown(false);
     setGameReallyStarted(true);
-    clearHistory();
     
-    gameLogic.endCountdown(); // 结束倒计时状态
+    // 启动游戏逻辑
     gameLogic.startGame();
     
     if (user && !user.isGuest) {
@@ -147,6 +54,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       });
     }
 
+    // 确保游戏容器获得焦点以接收键盘事件
     if (gameContainerRef.current) {
       gameContainerRef.current.focus();
     }
@@ -157,68 +65,46 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     setAnimationText('');
   };
 
-  const handleAchievementComplete = () => {
-    setAchievementText(null);
-  };
-
-  // 处理成就数据更新
-  const handleAchievement = useCallback((achievement: string) => {
-    setAchievementText(achievement);
-  }, []);
-
-  // 处理游戏逻辑中的成就触发
-  const handleGameAchievement = useCallback((data: { linesCleared: number; tSpinResult: any; combo: number; b2b: number; tetris: boolean }) => {
-    setCurrentAchievementData(data);
-  }, []);
-
+  // 处理失焦覆盖层的恢复
   const handleResumeFromOverlay = () => {
     debugLog.game('恢复游戏 - 从失焦覆盖层');
-    gameLogic.pauseGame();
+    gameLogic.resumeGame();
     
+    // 确保游戏容器重新获得焦点
     if (gameContainerRef.current) {
       gameContainerRef.current.focus();
     }
   };
 
-  const handlePauseResume = () => {
-    gameLogic.pauseGame();
-  };
-
-  const handleUndo = () => {
-    debugLog.game('撤销功能暂时不可用');
-  };
-
-  const handleRedo = () => {
-    debugLog.game('重做功能暂时不可用');
-  };
-
+  // 当倒计时开始时，立即初始化方块
   useEffect(() => {
-    if (gameStarted && showCountdown) {
-      debugLog.game('游戏区域准备，开始倒计时模式...');
-      gameLogic.startCountdown(); // 启动倒计时状态
-      gameLogic.startGame();
+    if (gameStarted && showCountdown && !gameLogic.gameInitialized) {
+      debugLog.game('Game area ready, initializing pieces for countdown...');
+      gameLogic.initializeForCountdown();
     }
   }, [gameStarted, showCountdown, gameLogic]);
 
+  // 确保游戏容器在游戏开始后保持焦点
   useEffect(() => {
     if (gameReallyStarted && gameContainerRef.current) {
       gameContainerRef.current.focus();
     }
   }, [gameReallyStarted]);
 
+  // 处理游戏结束
   useEffect(() => {
-    if (gameLogic.gameState.gameOver) {
+    if (gameLogic.gameOver) {
       const finalStats = {
-        score: gameLogic.gameState.score,
-        lines: gameLogic.gameState.lines,
-        level: gameLogic.gameState.level,
-        time: 0,
-        pps: 0,
-        apm: 0,
+        score: gameLogic.score,
+        lines: gameLogic.lines,
+        level: gameLogic.level,
+        time: gameLogic.time,
+        pps: gameLogic.pps,
+        apm: gameLogic.apm,
         gameMode: gameMode.id
       };
       
-      debugLog.game('游戏结束', { stats: finalStats, gameMode: gameMode.id });
+      debugLog.game('Game ended', { stats: finalStats, gameMode: gameMode.id });
       
       if (user && !user.isGuest) {
         logUserSession('game_end', gameMode.id, { 
@@ -229,7 +115,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       
       onGameEnd(finalStats);
     }
-  }, [gameLogic.gameState.gameOver, gameLogic.gameState.score, gameLogic.gameState.lines, gameLogic.gameState.level, gameMode.id, user, logUserSession, onGameEnd]);
+  }, [gameLogic.gameOver, gameLogic.score, gameLogic.lines, gameLogic.level, gameLogic.time, gameLogic.pps, gameLogic.apm, gameMode.id, user, logUserSession, onGameEnd]);
 
   const getThemeClasses = () => {
     return actualTheme === 'light' 
@@ -237,8 +123,23 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       : 'bg-gray-900 text-white';
   };
 
-  const elapsedTime = 0;
-  const showOutOfFocusOverlay = gameLogic.gameState.isPaused && gameReallyStarted && !gameLogic.gameState.gameOver;
+  const getBoardThemeClasses = () => {
+    return actualTheme === 'light' 
+      ? 'bg-white border-gray-300' 
+      : 'bg-gray-800 border-gray-600';
+  };
+
+  const getPanelThemeClasses = () => {
+    return actualTheme === 'light' 
+      ? 'bg-white border-gray-300' 
+      : 'bg-gray-900 border-gray-700';
+  };
+
+  const currentTime = Date.now();
+  const elapsedTime = gameLogic.time;
+
+  // 确定是否显示失焦覆盖层
+  const showOutOfFocusOverlay = gameLogic.isPaused && gameReallyStarted && !gameLogic.gameOver && !gameLogic.isManuallyPaused;
 
   return (
     <div 
@@ -247,103 +148,152 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       tabIndex={0}
       style={{ outline: 'none' }}
     >
-      <GameTopBar
-        gameMode={gameMode}
-        gameReallyStarted={gameReallyStarted}
-        isPaused={gameLogic.gameState.isPaused}
-        gameOver={gameLogic.gameState.gameOver}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onBackToMenu={onBackToMenu}
-        onPauseResume={handlePauseResume}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-      />
-
-      <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-7xl mx-auto">
-        <GameInfoPanel
-          holdPiece={gameLogic.gameState.heldPiece ? {
-            type: {
-              name: gameLogic.gameState.heldPiece.type,
-              type: gameLogic.gameState.heldPiece.type,
-              shape: gameLogic.gameState.heldPiece.shape,
-              color: '#ffffff'
-            },
-            x: gameLogic.gameState.heldPiece.x,
-            y: gameLogic.gameState.heldPiece.y,
-            rotation: gameLogic.gameState.heldPiece.rotation
-          } : null}
-          canHold={gameLogic.gameState.canHold}
-          score={gameLogic.gameState.score}
-          lines={gameLogic.gameState.lines}
-          level={gameLogic.gameState.level}
-          pps={0}
-          apm={0}
-          elapsedTime={elapsedTime}
-          isManuallyPaused={gameLogic.gameState.isPaused}
-          showAnimation={showAnimation}
-          animationText={animationText}
-          achievementText={achievementText}
-          onAnimationComplete={handleAnimationComplete}
-          onAchievementComplete={handleAchievementComplete}
-        />
-
-        <GameCentralArea
-          board={gameLogic.gameState.board}
-          currentPiece={gameLogic.gameState.currentPiece ? {
-            type: {
-              name: gameLogic.gameState.currentPiece.type,
-              type: gameLogic.gameState.currentPiece.type,
-              shape: gameLogic.gameState.currentPiece.shape,
-              color: '#ffffff'
-            },
-            x: gameLogic.gameState.currentPiece.x,
-            y: gameLogic.gameState.currentPiece.y,
-            rotation: gameLogic.gameState.currentPiece.rotation
-          } : null}
-          ghostPiece={gameLogic.gameState.currentPiece && gameSettings.enableGhost ? {
-            type: {
-              name: gameLogic.gameState.currentPiece.type,
-              type: gameLogic.gameState.currentPiece.type,
-              shape: gameLogic.gameState.currentPiece.shape,
-              color: '#ffffff'
-            },
-            x: gameLogic.gameState.currentPiece.x,
-            y: gameLogic.calculateDropPosition(gameLogic.gameState.currentPiece),
-            rotation: gameLogic.gameState.currentPiece.rotation
-          } : null}
-          cellSize={cellSize}
-          gameStarted={gameStarted}
-          showCountdown={showCountdown}
-          showOutOfFocusOverlay={showOutOfFocusOverlay}
-          onCountdownComplete={handleCountdownComplete}
-          onResumeFromOverlay={handleResumeFromOverlay}
-        />
-
-        <GameRightPanel
-          nextPieces={gameLogic.gameState.nextPieces.map(piece => ({
-            type: {
-              name: piece.type,
-              type: piece.type,
-              shape: piece.shape,
-              color: '#ffffff'
-            },
-            x: piece.x,
-            y: piece.y,
-            rotation: piece.rotation
-          }))}
-        />
+      {/* 顶部控制栏 */}
+      <div className="mb-4 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          {onBackToMenu && (
+            <Button
+              onClick={onBackToMenu}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              返回菜单
+            </Button>
+          )}
+          
+          {gameReallyStarted && (
+            <Button
+              onClick={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+              disabled={gameLogic.gameOver}
+            >
+              {gameLogic.isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+              {gameLogic.isPaused ? '继续' : '暂停'}
+            </Button>
+          )}
+        </div>
+        
+        {/* 游戏模式信息 */}
+        <div className="text-lg font-semibold">
+          {gameMode.displayName}
+        </div>
       </div>
-      
-      {/* 成就检测器 - 使用实际的游戏数据 */}
-      <AchievementDetector
-        linesCleared={currentAchievementData.linesCleared}
-        tSpinResult={currentAchievementData.tSpinResult}
-        combo={currentAchievementData.combo}
-        b2b={currentAchievementData.b2b}
-        tetris={currentAchievementData.tetris}
-        onAchievement={handleAchievement}
-      />
+
+      {/* 游戏区域 - 重新设计布局 */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start justify-center">
+        {/* 左侧面板 - Hold区域 */}
+        <div className="flex flex-col gap-4 lg:w-48">
+          <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
+            <HoldPieceDisplay 
+              holdPiece={gameLogic.holdPiece} 
+              canHold={gameLogic.canHold}
+            />
+          </div>
+          
+          {/* 游戏信息面板 - 与游戏板底部对齐 */}
+          <div className="flex-1 flex flex-col justify-end">
+            <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
+              <div className="space-y-3">
+                <div className="text-center border-b pb-2 mb-3">
+                  <div className="font-bold text-lg">
+                    {user?.username || user?.email?.split('@')[0] || 'Player'}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>得分:</div>
+                  <div className="font-mono text-right">{gameLogic.score.toLocaleString()}</div>
+                  
+                  <div>行数:</div>
+                  <div className="font-mono text-right">{gameLogic.lines}</div>
+                  
+                  <div>等级:</div>
+                  <div className="font-mono text-right">{gameLogic.level}</div>
+                  
+                  <div>PPS:</div>
+                  <div className="font-mono text-right">{gameLogic.pps.toFixed(2)}</div>
+                  
+                  <div>攻击:</div>
+                  <div className="font-mono text-right">{gameLogic.apm.toFixed(1)}</div>
+                  
+                  <div>时间:</div>
+                  <div className="font-mono text-right">
+                    {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
+                  </div>
+                </div>
+
+                {gameLogic.isManuallyPaused && (
+                  <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <Pause className="w-8 h-8 mx-auto mb-2" />
+                      <div className="text-sm">游戏暂停</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <LineCleanAnimation
+                isVisible={showAnimation}
+                text={animationText}
+                onComplete={handleAnimationComplete}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 中央游戏区域 */}
+        <div className="relative">
+          <div className={`p-4 rounded-lg border ${getBoardThemeClasses()}`}>
+            <EnhancedGameBoard
+              board={gameLogic.board}
+              currentPiece={gameLogic.currentPiece}
+              ghostPiece={gameLogic.ghostPiece}
+            />
+          </div>
+          
+          {/* 倒计时覆盖层 */}
+          {gameStarted && showCountdown && (
+            <GameCountdownInArea
+              initialCount={3}
+              onComplete={handleCountdownComplete}
+              isVisible={true}
+            />
+          )}
+          
+          {/* 失焦覆盖层 - 支持点击恢复 */}
+          <OutOfFocusOverlay 
+            show={showOutOfFocusOverlay}
+            onResume={handleResumeFromOverlay}
+          />
+        </div>
+
+        {/* 右侧面板 - NEXT区域 */}
+        <div className="lg:w-48">
+          <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
+            <NextPiecePreview 
+              nextPieces={gameLogic.nextPieces} 
+              compact={false}
+            />
+          </div>
+          
+          {/* 操作提示 */}
+          <div className={`mt-4 p-3 rounded-lg border ${getPanelThemeClasses()}`}>
+            <h3 className="text-sm font-bold mb-2 text-center">操作提示</h3>
+            <div className="text-xs space-y-1">
+              <div>← → 移动</div>
+              <div>↓ 软降</div>
+              <div>空格 硬降</div>
+              <div>↑ 旋转</div>
+              <div>C 暂存</div>
+              <div>P 暂停</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

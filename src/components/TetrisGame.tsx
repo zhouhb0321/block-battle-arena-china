@@ -74,10 +74,10 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       <GameKeyboardHandler
         gameStarted={gameStarted}
         onBackToMenu={handleBackToMenu}
-        onUndo={() => console.log('Undo not implemented')}
-        onRedo={() => console.log('Redo not implemented')}
-        canUndo={false}
-        canRedo={false}
+        onUndo={gameLogic.undoMove}
+        onRedo={gameLogic.redoMove}
+        canUndo={gameLogic.canUndo}
+        canRedo={gameLogic.canRedo}
       />
       
       <SinglePlayerGameArea
@@ -90,22 +90,18 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       />
       
       <OutOfFocusOverlay 
-        show={gameLogic.gameState.isPaused && gameStarted && !gameLogic.gameState.gameOver} 
+        show={gameLogic.gameState.paused && gameStarted && !gameLogic.gameState.gameOver} 
       />
     </div>
   );
 };
 
 const TetrisGame: React.FC<TetrisGameProps> = (props) => {
-  // Default to 40L mode for quick start
-  const defaultGameMode = GAME_MODES.find(mode => mode.id === 'sprint40') || GAME_MODES[0];
-  
-  // 如果没有传入gameConfig，创建一个默认配置直接启动40L模式
-  const gameConfigWithDefault = props.gameConfig || { gameMode: defaultGameMode };
+  const defaultGameMode = GAME_MODES.find(mode => mode.id === 'endless') || GAME_MODES[0];
 
   return (
     <TetrisGameProvider gameMode={defaultGameMode}>
-      <TetrisGameContent {...props} gameConfig={gameConfigWithDefault} />
+      <TetrisGameContent {...props} />
     </TetrisGameProvider>
   );
 };

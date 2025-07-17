@@ -12,7 +12,6 @@ import VisualTab from './settings/VisualTab';
 import AudioTab from './settings/AudioTab';
 import MusicTab from './settings/MusicTab';
 import { useKeyRecording } from './settings/useKeyRecording';
-import type { GameSettings } from '@/utils/gameTypes';
 
 interface GameSettingsDialogProps {
   trigger?: React.ReactNode;
@@ -60,7 +59,7 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
   };
 
   const handleResetToDefaults = () => {
-    const defaultSettings: GameSettings = {
+    const defaultSettings = {
       das: 167,
       arr: 33,
       sdf: 20,
@@ -81,15 +80,7 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
       masterVolume: 50,
       backgroundMusic: '',
       musicVolume: 30,
-      ghostOpacity: 50,
-      enableWallpaper: true,
-      wallpaperOpacity: 100,
-      autoPlayMusic: false,
-      loopMusic: true,
-      enableLineAnimation: true,
-      enableAchievementAnimation: true,
-      enableLandingEffect: true,
-      blockSkin: 'wood'
+      ghostOpacity: 50
     };
     
     setTempSettings(defaultSettings);

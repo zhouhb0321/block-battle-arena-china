@@ -1,464 +1,605 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useKeyboardControls } from './useKeyboardControls';
+import { useUserSettings } from './useUserSettings';
+import { useWindowFocus } from './useWindowFocus';
+import { debugLog } from '@/utils/debugLogger';
+import { 
+  createEmptyBoard, 
+  isValidPosition,
+  clearLines,
+  calculateDropPosition,
+  generateRandomPiece,
+  checkTSpin,
+  placePiece,
+  resetSevenBag,
+  createNewPiece,
+  performSRSRotation,
+  performSRS180Rotation
+} from '@/utils/tetrisLogic';
+import type { 
+  Board, 
+  TetrominoType, 
+  GameMode, 
+  Position,
+  GameStats,
+  GamePiece
+} from '@/utils/gameTypes';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { BOARD_WIDTH, BOARD_HEIGHT, calculateDropPosition as tetrisCalculateDropPosition } from '@/utils/tetrisCore';
-import { generatePiece, PIECE_COLORS } from '@/utils/pieceGeneration';
-import { performSRSRotation } from '@/utils/srsRotation';
-import { calculateScore, calculateLevel } from '@/utils/scoringSystem';
-import { detectTSpin } from '@/utils/tspinDetection';
-import { calculateDropSpeed } from '@/utils/gravitySystem';
-import { useUndoRedo } from './useUndoRedo';
-
-export interface Position {
-  x: number;
-  y: number;
+interface UseGameLogicProps {
+  gameMode: GameMode;
+  onGameEnd: (stats: GameStats) => void;
+  onSpecialClear?: (clearType: string, lines: number) => void;
 }
 
-export interface Piece {
-  shape: number[][];
-  x: number;
-  y: number;
-  type: string;
-  rotation: number;
-}
+export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLogicProps) => {
+  const [board, setBoard] = useState<Board>(createEmptyBoard());
+  const [currentPiece, setCurrentPiece] = useState<GamePiece | null>(null);
+  const [nextPieces, setNextPieces] = useState<GamePiece[]>([]);
+  const [holdPiece, setHoldPiece] = useState<GamePiece | null>(null);
+  const [canHold, setCanHold] = useState(true);
+  const [score, setScore] = useState(0);
+  const [lines, setLines] = useState(0);
+  const [level, setLevel] = useState(1);
+  const [gameOver, setGameOver] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isManuallyPaused, setIsManuallyPaused] = useState(false);
+  const [time, setTime] = useState(0);
+  const [pps, setPps] = useState(0);
+  const [apm, setApm] = useState(0);
+  const [isHardDropping, setIsHardDropping] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameInitialized, setGameInitialized] = useState(false);
 
-export interface GameState {
-  board: number[][];
-  currentPiece: Piece | null;
-  nextPieces: Piece[];
-  heldPiece: Piece | null;
-  canHold: boolean;
-  score: number;
-  lines: number;
-  level: number;
-  gameOver: boolean;
-  isPaused: boolean;
-  lastMoveTime: number;
-  dropTime: number;
-  lockDelay: number;
-  lockDelayTimer: number;
-  combo: number;
-  b2b: number;
-  allClear: boolean;
-  statistics: { [key: string]: number };
-  pieces: number;
-  attack: number;
-  startTime: number | null;
-}
-
-const createEmptyBoard = (): number[][] => {
-  return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
-};
-
-const initialState: GameState = {
-  board: createEmptyBoard(),
-  currentPiece: null,
-  nextPieces: [],
-  heldPiece: null,
-  canHold: true,
-  score: 0,
-  lines: 0,
-  level: 1,
-  gameOver: false,
-  isPaused: false,
-  lastMoveTime: 0,
-  dropTime: calculateDropSpeed(0), // Use gravity system
-  lockDelay: 500,
-  lockDelayTimer: 0,
-  combo: 0,
-  b2b: 0,
-  allClear: false,
-  statistics: { I: 0, O: 0, T: 0, S: 0, Z: 0, J: 0, L: 0 },
-  pieces: 0,
-  attack: 0,
-  startTime: null
-};
-
-export const useGameLogic = (gameMode: string = 'marathon') => {
-  const [gameState, setGameState] = useState<GameState>(initialState);
-  const gameStateRef = useRef(gameState);
-  const [isCountdownActive, setIsCountdownActive] = useState(false);
+  // 锁定延迟相关状态 - 增加延迟时间和改进机制
+  const [isLockDelayActive, setIsLockDelayActive] = useState(false);
+  const [lockDelayResetCount, setLockDelayResetCount] = useState(0);
   
-  // Keep ref in sync with state
+  const { settings } = useUserSettings();
+  const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
+  
+  const gameStartTime = useRef<number>(Date.now());
+  const totalPieces = useRef<number>(0);
+  const totalActions = useRef<number>(0);
+  const dropTimer = useRef<NodeJS.Timeout | null>(null);
+  const lockDelayTimer = useRef<NodeJS.Timeout | null>(null);
+  const lastTSpinCheck = useRef<{ piece: GamePiece; board: Board; wasKicked: boolean } | null>(null);
+
+  // 增强的锁定延迟设置
+  const LOCK_DELAY_TIME = 1000; // 增加到1000ms的标准锁定延迟
+  const MAX_LOCK_RESETS = 15; // 最大重置次数
+
+  // Helper function to create a GamePiece from TetrominoType
+  const createGamePiece = useCallback((pieceType: TetrominoType): GamePiece => {
+    return createNewPiece(pieceType);
+  }, []);
+
+  // 智能失焦处理 - 区分手动暂停和自动失焦暂停
   useEffect(() => {
-    gameStateRef.current = gameState;
-  }, [gameState]);
+    if (!gameStarted || gameOver) return;
 
-  // Add countdown control methods
-  const startCountdown = useCallback(() => {
-    setIsCountdownActive(true);
-  }, []);
-
-  const endCountdown = useCallback(() => {
-    setIsCountdownActive(false);
-  }, []);
-
-  const isValidPosition = useCallback((piece: Piece, newX: number, newY: number, newShape?: number[][]): boolean => {
-    const shape = newShape || piece.shape;
-    
-    for (let y = 0; y < shape.length; y++) {
-      for (let x = 0; x < shape[y].length; x++) {
-        if (shape[y][x]) {
-          const boardX = newX + x;
-          const boardY = newY + y;
-          
-          if (boardX < 0 || boardX >= BOARD_WIDTH || boardY >= BOARD_HEIGHT) {
-            return false;
-          }
-          
-          if (boardY >= 0 && gameStateRef.current.board[boardY][boardX] !== 0) {
-            return false;
-          }
-        }
+    if (!isWindowFocused && !isPaused) {
+      // 只有在非手动暂停状态下才自动暂停
+      if (!isManuallyPaused) {
+        setIsPaused(true);
+        debugLog.game('窗口失焦，自动暂停游戏');
       }
+    } else if (isWindowFocused && isPaused && !isManuallyPaused) {
+      // 窗口重获焦点且非手动暂停时自动恢复
+      setIsPaused(false);
+      debugLog.game('窗口重获焦点，自动恢复游戏');
     }
+  }, [isWindowFocused, isPaused, isManuallyPaused, gameStarted, gameOver]);
+
+  // 立即初始化方块队列 - 在倒计时开始时调用
+  const initializePieces = useCallback(() => {
+    debugLog.game('Initializing pieces for countdown start');
+    resetSevenBag();
+    
+    // 生成7个方块：1个当前方块 + 6个NEXT方块
+    const allPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
+    
+    setCurrentPiece(allPieces[0]);
+    setNextPieces(allPieces.slice(1));
+    setGameInitialized(true);
+    
+    debugLog.game('Pieces initialized', {
+      currentPiece: allPieces[0].type.type,
+      nextPieces: allPieces.slice(1).map(p => p.type.type)
+    });
+  }, [createGamePiece]);
+
+  // 清除锁定延迟定时器
+  const clearLockDelayTimer = useCallback(() => {
+    if (lockDelayTimer.current) {
+      clearTimeout(lockDelayTimer.current);
+      lockDelayTimer.current = null;
+    }
+    setIsLockDelayActive(false);
+  }, []);
+
+  // 重置锁定延迟 - 改进的重置机制
+  const resetLockDelay = useCallback(() => {
+    if (lockDelayResetCount >= MAX_LOCK_RESETS) {
+      debugLog.game('锁定延迟重置次数已达上限，强制锁定');
+      return false;
+    }
+    
+    clearLockDelayTimer();
+    setLockDelayResetCount(prev => prev + 1);
+    debugLog.game('锁定延迟重置', { resetCount: lockDelayResetCount + 1 });
     return true;
-  }, []);
+  }, [clearLockDelayTimer, lockDelayResetCount]);
 
-  // Use the tetrisCore calculateDropPosition function
-  const calculateDropPosition = useCallback((piece: Piece): number => {
-    if (!piece || !gameStateRef.current?.board) return piece?.y || 0;
+  // 开始锁定延迟 - 改进的锁定延迟逻辑
+  const startLockDelay = useCallback(() => {
+    if (!currentPiece || isLockDelayActive) return;
     
-    // Convert useGameLogic Piece to tetrisCore GamePiece format
-    const gamePiece = {
-      type: {
-        shape: piece.shape,
-        type: piece.type,
-        name: piece.type,
-        color: PIECE_COLORS[piece.type] || '#ffffff'
-      },
-      x: piece.x,
-      y: piece.y,
-      rotation: piece.rotation
-    };
-    
-    return tetrisCalculateDropPosition(gameStateRef.current.board, gamePiece);
-  }, []);
-
-  const lockPiece = useCallback((piece: Piece, board: number[][]) => {
-    console.log('Locking piece at position:', { x: piece.x, y: piece.y, type: piece.type });
-    
-    const newBoard = board.map(row => [...row]);
-    
-    // Place the piece on the board with piece type IDs
-    const pieceTypeIds: { [key: string]: number } = {
-      'I': 1, 'O': 2, 'T': 3, 'S': 4, 'Z': 5, 'J': 6, 'L': 7
-    };
-    
-    for (let y = 0; y < piece.shape.length; y++) {
-      for (let x = 0; x < piece.shape[y].length; x++) {
-        if (piece.shape[y][x]) {
-          const boardY = piece.y + y;
-          const boardX = piece.x + x;
-          
-          if (boardY >= 0 && boardY < BOARD_HEIGHT && boardX >= 0 && boardX < BOARD_WIDTH) {
-            // Use piece type ID
-            newBoard[boardY][boardX] = pieceTypeIds[piece.type] || 1;
-            console.log(`Placed ${piece.type} block at [${boardY}][${boardX}]`);
-          }
-        }
-      }
+    // 检查方块是否真的无法下移
+    const testPiece = { ...currentPiece, y: currentPiece.y + 1 };
+    if (isValidPosition(board, testPiece)) {
+      return; // 方块还能下移，不需要锁定延迟
     }
     
-    return newBoard;
-  }, []);
+    setIsLockDelayActive(true);
+    debugLog.game('开始锁定延迟', { resetCount: lockDelayResetCount, delayTime: LOCK_DELAY_TIME });
+    
+    lockDelayTimer.current = setTimeout(() => {
+      debugLog.game('锁定延迟结束，锁定方块');
+      lockPiece();
+    }, LOCK_DELAY_TIME);
+  }, [currentPiece, board, lockDelayResetCount]);
 
-  const clearLines = useCallback((board: number[][]) => {
-    const newBoard = [...board];
-    const clearedLines: number[] = [];
-    
-    // Find lines to clear
-    for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
-      if (newBoard[y].every(cell => cell !== 0)) {
-        clearedLines.push(y);
-      }
+  
+  const spawnNewPiece = useCallback(() => {
+    if (nextPieces.length === 0) {
+      debugLog.warn('No next pieces available for spawning');
+      return;
     }
+
+    const newPiece = nextPieces[0];
+    const newNextPieces = nextPieces.slice(1);
     
-    // Remove cleared lines and add new empty lines at top
-    clearedLines.forEach(() => {
-      newBoard.splice(clearedLines[0], 1);
-      newBoard.unshift(Array(BOARD_WIDTH).fill(0));
+    if (newNextPieces.length < 4) {
+      const additionalPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
+      newNextPieces.push(...additionalPieces);
+    }
+
+    setCurrentPiece(newPiece);
+    setNextPieces(newNextPieces);
+    setCanHold(true);
+    setLockDelayResetCount(0); // 重置锁定延迟计数
+    clearLockDelayTimer();
+    totalPieces.current++;
+
+    debugLog.game('New piece spawned', {
+      piece: newPiece.type.type,
+      totalPieces: totalPieces.current
     });
-    
-    return {
-      board: newBoard,
-      linesCleared: clearedLines.length
-    };
-  }, []);
 
-  const spawnPiece = useCallback(() => {
-    const piece = generatePiece();
-    const startX = Math.floor(BOARD_WIDTH / 2) - Math.floor(piece.shape[0].length / 2);
-    const startY = 0; // Start at the very top (hidden row area)
-    
-    console.log('Spawning new piece:', { type: piece.type, x: startX, y: startY });
-    
-    return {
-      ...piece,
-      x: startX,
-      y: startY,
-      rotation: 0
-    };
-  }, []);
+    if (!isValidPosition(board, newPiece)) {
+      debugLog.game('Game over - no valid position for new piece');
+      setGameOver(true);
+      onGameEnd({
+        score,
+        lines,
+        level,
+        time,
+        pps,
+        apm,
+        gameMode: gameMode.id
+      });
+    }
+  }, [nextPieces, board, score, lines, level, time, pps, apm, gameMode, onGameEnd, createGamePiece, clearLockDelayTimer]);
 
-  const hardDrop = useCallback(() => {
-    console.log('Hard drop initiated');
+  const lockPiece = useCallback(() => {
+    if (!currentPiece) return;
+
+    debugLog.game('Locking piece', { piece: currentPiece.type.type });
+    clearLockDelayTimer();
+
+    const newBoard = placePiece(board, currentPiece);
+
+    // Check for T-Spin before clearing lines
+    const isTSpin = currentPiece.type.type === 'T' && lastTSpinCheck.current && 
+                   checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked);
+
+    const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     
-    setGameState(prevState => {
-      if (!prevState.currentPiece || prevState.gameOver || prevState.isPaused || isCountdownActive) {
-        console.log('Hard drop cancelled - no piece or game over/paused/countdown');
-        return prevState;
-      }
+    setBoard(clearedBoard);
+    
+    if (linesCleared > 0) {
+      const newLines = lines + linesCleared;
+      const newLevel = Math.floor(newLines / 10) + 1;
+      let lineScore = 0;
       
-      const dropY = calculateDropPosition(prevState.currentPiece);
-      console.log('Hard drop to position:', dropY);
-      
-      const droppedPiece = {
-        ...prevState.currentPiece,
-        y: dropY
-      };
-      
-      // Lock the piece immediately
-      const newBoard = lockPiece(droppedPiece, prevState.board);
-      const { board: clearedBoard, linesCleared } = clearLines(newBoard);
-      
-      // Calculate score for hard drop
-      const dropDistance = dropY - prevState.currentPiece.y;
-      const hardDropScore = dropDistance * 2;
-      
-      // Update statistics
-      const newStatistics = {
-        ...prevState.statistics,
-        [droppedPiece.type]: (prevState.statistics[droppedPiece.type] || 0) + 1
-      };
-      
-      // Get next piece from queue and refresh if needed
-      let newNextPieces = [...prevState.nextPieces];
-      let newCurrentPiece = null;
-      
-      if (newNextPieces.length > 0) {
-        newCurrentPiece = newNextPieces.shift()!;
-        // Ensure we have at least 6 pieces in queue
-        while (newNextPieces.length < 6) {
-          newNextPieces.push(generatePiece());
-        }
+      let clearType = '';
+      if (isTSpin) {
+        clearType = `tspin_${linesCleared === 3 ? 'triple' : linesCleared === 2 ? 'double' : 'single'}`;
+        lineScore = [800, 1200, 1600][linesCleared - 1] * level;
+      } else if (linesCleared === 4) {
+        clearType = 'tetris';
+        lineScore = 800 * level;
       } else {
-        newCurrentPiece = spawnPiece();
-        newNextPieces = Array(6).fill(null).map(() => generatePiece());
+        lineScore = [100, 300, 500][linesCleared - 1] * level;
       }
       
-      // Reset position for new piece
-      if (newCurrentPiece) {
-        newCurrentPiece.x = Math.floor(BOARD_WIDTH / 2) - Math.floor(newCurrentPiece.shape[0].length / 2);
-        newCurrentPiece.y = 0;
+      setLines(newLines);
+      setLevel(newLevel);
+      setScore(prev => prev + lineScore);
+      
+      debugLog.game('Lines cleared', {
+        linesCleared,
+        clearType,
+        newLines,
+        newLevel,
+        lineScore
+      });
+      
+      if (onSpecialClear && (clearType || linesCleared >= 4)) {
+        onSpecialClear(clearType || 'tetris', linesCleared);
       }
-      
-      console.log('Hard drop completed, lines cleared:', linesCleared);
-      
-      return {
-        ...prevState,
-        board: clearedBoard,
-        currentPiece: newCurrentPiece,
-        nextPieces: newNextPieces,
-        score: prevState.score + hardDropScore + (linesCleared * 100),
-        lines: prevState.lines + linesCleared,
-        level: calculateLevel(prevState.lines + linesCleared),
-        dropTime: calculateDropSpeed(prevState.lines + linesCleared),
-        canHold: true,
-        statistics: newStatistics,
-        pieces: prevState.pieces + 1
-      };
-    });
-  }, [calculateDropPosition, lockPiece, clearLines, spawnPiece]);
+    }
+
+    lastTSpinCheck.current = null;
+    spawnNewPiece();
+  }, [currentPiece, board, lines, level, spawnNewPiece, onSpecialClear, clearLockDelayTimer]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
-    setGameState(prevState => {
-      if (!prevState.currentPiece || prevState.gameOver || prevState.isPaused || isCountdownActive) {
-        return prevState;
-      }
-      
-      const newX = prevState.currentPiece.x + dx;
-      const newY = prevState.currentPiece.y + dy;
-      
-      if (isValidPosition(prevState.currentPiece, newX, newY)) {
-        return {
-          ...prevState,
-          currentPiece: {
-            ...prevState.currentPiece,
-            x: newX,
-            y: newY
-          }
-        };
-      }
-      
-      return prevState;
-    });
-  }, [isValidPosition]);
+    if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return false;
 
-  const rotatePiece = useCallback((direction: 'clockwise' | 'counterclockwise' | '180') => {
-    setGameState(prevState => {
-      if (!prevState.currentPiece || prevState.gameOver || prevState.isPaused || isCountdownActive) {
-        return prevState;
-      }
-      
-      // Create a GamePiece-like object for SRS rotation
-      const gamePiece = {
-        type: {
-          name: prevState.currentPiece.type,
-          type: prevState.currentPiece.type,
-          shape: prevState.currentPiece.shape,
-          color: PIECE_COLORS[prevState.currentPiece.type] || '#ffffff'
-        },
-        x: prevState.currentPiece.x,
-        y: prevState.currentPiece.y,
-        rotation: prevState.currentPiece.rotation
-      };
-      
-      const rotationResult = performSRSRotation(
-        prevState.board,
-        gamePiece,
-        direction === 'clockwise'
-      );
-      
-      if (rotationResult.success && rotationResult.newPiece) {
-        // Check for T-Spin after successful rotation
-        if (prevState.currentPiece.type === 'T') {
-          const tSpin = detectTSpin(
-            prevState.board,
-            rotationResult.newPiece,
-            'rotate',
-            rotationResult.wasKicked || false
-          );
-          
-          if (tSpin) {
-            console.log(`${tSpin.type} detected!`, { 
-              position: { x: rotationResult.newPiece.x, y: rotationResult.newPiece.y },
-              rotation: rotationResult.newPiece.rotation,
-              wasKicked: rotationResult.wasKicked
-            });
-            // Store T-Spin state for scoring when piece locks
-          }
-        }
-        
-        return {
-          ...prevState,
-          currentPiece: {
-            ...prevState.currentPiece,
-            shape: rotationResult.newPiece.type.shape,
-            x: rotationResult.newPiece.x,
-            y: rotationResult.newPiece.y,
-            rotation: rotationResult.newPiece.rotation
-          }
-        };
-      }
-      
-      return prevState;
-    });
-  }, []);
-
-  const holdPiece = useCallback(() => {
-    setGameState(prevState => {
-      if (!prevState.currentPiece || !prevState.canHold || prevState.gameOver || prevState.isPaused || isCountdownActive) {
-        return prevState;
-      }
-      
-      const currentPiece = prevState.currentPiece;
-      const heldPiece = prevState.heldPiece;
-      
-      if (heldPiece) {
-        // Swap current and held piece
-        return {
-          ...prevState,
-          currentPiece: {
-            ...heldPiece,
-            x: Math.floor(BOARD_WIDTH / 2) - Math.floor(heldPiece.shape[0].length / 2),
-            y: 0
-          },
-          heldPiece: {
-            ...currentPiece,
-            x: 0,
-            y: 0
-          },
-          canHold: false
-        };
-      } else {
-        // Hold current piece and spawn new one
-        return {
-          ...prevState,
-          currentPiece: spawnPiece(),
-          heldPiece: {
-            ...currentPiece,
-            x: 0,
-            y: 0
-          },
-          canHold: false
-        };
-      }
-    });
-  }, [spawnPiece]);
-
-  const initializePieces = useCallback(() => {
-    // 固定生成方块队列，确保在倒计时期间不会改变
-    const newPieces: any[] = [];
+    const newPosition: Position = { 
+      x: currentPiece.x + dx, 
+      y: currentPiece.y + dy 
+    };
     
-    // 预生成足够的方块，避免倒计时期间变化
-    for (let i = 0; i < 21; i++) { // 生成3个7-bag (21块)
-      newPieces.push(generatePiece());
+    const newPiece = { ...currentPiece, x: newPosition.x, y: newPosition.y };
+    
+    if (isValidPosition(board, newPiece)) {
+      setCurrentPiece(newPiece);
+      if (dx !== 0) {
+        totalActions.current++;
+        // 左右移动时重置锁定延迟
+        if (resetLockDelay()) {
+          clearLockDelayTimer();
+        }
+      }
+      return true;
+    } else if (dy > 0) {
+      // 方块无法下移时开始锁定延迟
+      startLockDelay();
+      return false;
+    }
+    return false;
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer, startLockDelay]);
+
+  
+
+  // Game timer
+  useEffect(() => {
+    if (gameOver || isPaused || !isWindowFocused || !gameStarted) return;
+
+    const timer = setInterval(() => {
+      setTime(prev => prev + 1);
+      
+      const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
+      if (elapsedTime > 0) {
+        setPps(totalPieces.current / elapsedTime);
+        setApm((totalActions.current / elapsedTime) * 60);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameOver, isPaused, isWindowFocused, gameStarted]);
+
+  // Auto drop logic - 修复自动下落
+  useEffect(() => {
+    if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
+
+    const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+    
+    debugLog.debug('Setting drop timer', { dropInterval, level });
+    
+    dropTimer.current = setTimeout(() => {
+      debugLog.debug('Auto drop triggered');
+      movePiece(0, 1);
+    }, dropInterval);
+
+    return () => {
+      if (dropTimer.current) {
+        clearTimeout(dropTimer.current);
+      }
+    };
+  }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted, movePiece]);
+
+  const hardDrop = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
+
+    debugLog.game('Hard drop initiated', { currentPiece: currentPiece.type.type });
+    
+    setIsHardDropping(true);
+    clearLockDelayTimer(); // 硬降时清除锁定延迟
+    
+    const dropY = calculateDropPosition(board, currentPiece);
+    const dropDistance = dropY - currentPiece.y;
+    
+    debugLog.game('Hard drop calculation', { 
+      currentY: currentPiece.y, 
+      dropY, 
+      dropDistance 
+    });
+    
+    setScore(prev => prev + dropDistance * 2);
+    totalActions.current++;
+    
+    const droppedPiece = { ...currentPiece, y: dropY };
+    
+    const newBoard = placePiece(board, droppedPiece);
+    const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
+    
+    setBoard(clearedBoard);
+    
+    if (linesCleared > 0) {
+      const newLines = lines + linesCleared;
+      const newLevel = Math.floor(newLines / 10) + 1;
+      const lineScore = linesCleared === 4 ? 800 * level : [100, 300, 500][linesCleared - 1] * level;
+      
+      setLines(newLines);
+      setLevel(newLevel);
+      setScore(prev => prev + lineScore);
+      
+      if (onSpecialClear && linesCleared >= 4) {
+        onSpecialClear('tetris', linesCleared);
+      }
     }
     
-    const currentPiece = spawnPiece();
+    setCurrentPiece(null);
+    setIsHardDropping(false);
     
-    console.log('Initialized pieces for game:', { 
-      currentPiece: currentPiece?.type, 
-      nextCount: newPieces.length,
-      first6Next: newPieces.slice(0, 6).map(p => p.type)
-    });
-    
-    return { currentPiece, nextPieces: newPieces };
-  }, [spawnPiece]);
+    setTimeout(spawnNewPiece, 16);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lines, level, onSpecialClear, spawnNewPiece, clearLockDelayTimer]);
 
-  const startGame = useCallback(() => {
-    console.log('Starting new game');
-    const { currentPiece, nextPieces } = initializePieces();
+  // 使用SRS旋转系统的顺时针旋转
+  const rotatePieceClockwise = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
+
+    debugLog.game('尝试顺时针旋转', { piece: currentPiece.type.type });
+
+    // 存储当前状态用于T-Spin检测
+    lastTSpinCheck.current = {
+      piece: { ...currentPiece },
+      board: board.map(row => [...row]),
+      wasKicked: false
+    };
+
+    const srsResult = performSRSRotation(board, currentPiece, true);
     
-    setGameState({
-      ...initialState,
-      currentPiece,
-      nextPieces,
-      startTime: Date.now()
-    });
+    if (srsResult.success && srsResult.newPiece) {
+      setCurrentPiece(srsResult.newPiece);
+      totalActions.current++;
+      
+      // 更新T-Spin检测状态
+      if (lastTSpinCheck.current) {
+        lastTSpinCheck.current.wasKicked = srsResult.wasKicked;
+      }
+      
+      // 旋转时重置锁定延迟
+      if (resetLockDelay()) {
+        clearLockDelayTimer();
+      }
+      
+      debugLog.game('旋转成功', { wasKicked: srsResult.wasKicked });
+    } else {
+      lastTSpinCheck.current = null;
+      debugLog.game('旋转失败');
+    }
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer]);
+
+  // 使用SRS旋转系统的逆时针旋转
+  const rotatePieceCounterclockwise = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
+
+    debugLog.game('尝试逆时针旋转', { piece: currentPiece.type.type });
+
+    lastTSpinCheck.current = {
+      piece: { ...currentPiece },
+      board: board.map(row => [...row]),
+      wasKicked: false
+    };
+
+    const srsResult = performSRSRotation(board, currentPiece, false);
+    
+    if (srsResult.success && srsResult.newPiece) {
+      setCurrentPiece(srsResult.newPiece);
+      totalActions.current++;
+      
+      if (lastTSpinCheck.current) {
+        lastTSpinCheck.current.wasKicked = srsResult.wasKicked;
+      }
+      
+      if (resetLockDelay()) {
+        clearLockDelayTimer();
+      }
+      
+      debugLog.game('逆时针旋转成功', { wasKicked: srsResult.wasKicked });
+    } else {
+      lastTSpinCheck.current = null;
+      debugLog.game('逆时针旋转失败');
+    }
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer]);
+
+  // 180度旋转
+  const rotatePiece180 = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
+
+    debugLog.game('尝试180度旋转', { piece: currentPiece.type.type });
+
+    lastTSpinCheck.current = {
+      piece: { ...currentPiece },
+      board: board.map(row => [...row]),
+      wasKicked: false
+    };
+
+    const srsResult = performSRS180Rotation(board, currentPiece);
+    
+    if (srsResult.success && srsResult.newPiece) {
+      setCurrentPiece(srsResult.newPiece);
+      totalActions.current++;
+      
+      if (lastTSpinCheck.current) {
+        lastTSpinCheck.current.wasKicked = srsResult.wasKicked;
+      }
+      
+      if (resetLockDelay()) {
+        clearLockDelayTimer();
+      }
+      
+      debugLog.game('180度旋转成功', { wasKicked: srsResult.wasKicked });
+    } else {
+      lastTSpinCheck.current = null;
+      debugLog.game('180度旋转失败');
+    }
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer]);
+
+  const holdCurrentPiece = useCallback(() => {
+    if (!currentPiece || !canHold || gameOver || isPaused || isHardDropping || !gameStarted) return;
+
+    clearLockDelayTimer(); // 暂存时清除锁定延迟
+
+    if (holdPiece === null) {
+      setHoldPiece(currentPiece);
+      spawnNewPiece();
+    } else {
+      const tempPiece = holdPiece;
+      setHoldPiece(currentPiece);
+      setCurrentPiece({
+        ...tempPiece,
+        x: 4,
+        y: 0
+      });
+    }
+    
+    setCanHold(false);
+    totalActions.current++;
+  }, [currentPiece, holdPiece, canHold, gameOver, isPaused, isHardDropping, spawnNewPiece, gameStarted, clearLockDelayTimer]);
+
+  
+  
+  const startGame = useCallback(() => {
+    debugLog.game('Starting game logic...');
+    setGameStarted(true);
+    gameStartTime.current = Date.now();
+    
+    // 如果还没有初始化方块，现在初始化
+    if (!gameInitialized) {
+      initializePieces();
+    }
+  }, [initializePieces, gameInitialized]);
+
+  // 倒计时开始时就初始化方块 - 新增的函数
+  const initializeForCountdown = useCallback(() => {
+    debugLog.game('Initializing for countdown start');
+    initializePieces();
   }, [initializePieces]);
 
-  const pauseGame = useCallback(() => {
-    setGameState(prevState => ({
-      ...prevState,
-      isPaused: !prevState.isPaused
-    }));
-  }, []);
-
   const resetGame = useCallback(() => {
-    console.log('Resetting game');
-    setGameState(initialState);
-  }, []);
+    debugLog.game('Resetting game...');
+    setBoard(createEmptyBoard());
+    setCurrentPiece(null);
+    setNextPieces([]);
+    setHoldPiece(null);
+    setCanHold(true);
+    setScore(0);
+    setLines(0);
+    setLevel(1);
+    setGameOver(false);
+    setIsPaused(false);
+    setIsManuallyPaused(false);
+    setTime(0);
+    setPps(0);
+    setApm(0);
+    setIsHardDropping(false);
+    setGameStarted(false);
+    setGameInitialized(false);
+    setLockDelayResetCount(0);
+    clearLockDelayTimer();
+    totalPieces.current = 0;
+    totalActions.current = 0;
+    gameStartTime.current = Date.now();
+  }, [clearLockDelayTimer]);
 
-  // Initialize game on first load
-  useEffect(() => {
-    if (!gameState.currentPiece && !gameState.gameOver) {
-      startGame();
-    }
-  }, []);
+  const pauseGame = useCallback(() => {
+    setIsPaused(true);
+    setIsManuallyPaused(true);
+    setWasManuallyPaused(true);
+  }, [setWasManuallyPaused]);
+
+  const resumeGame = useCallback(() => {
+    setIsPaused(false);
+    setIsManuallyPaused(false);
+    setWasManuallyPaused(false);
+  }, [setWasManuallyPaused]);
+
+  const ghostPiece = currentPiece ? {
+    ...currentPiece,
+    y: calculateDropPosition(board, currentPiece)
+  } : null;
+
+  const gameState = {
+    board,
+    currentPiece,
+    nextPieces,
+    holdPiece,
+    canHold,
+    score,
+    lines,
+    level,
+    gameOver,
+    paused: isPaused,
+    time,
+    pps,
+    apm
+  };
 
   return {
-    gameState,
-    movePiece,
-    rotatePiece,
-    hardDrop,
+    // State properties
+    board,
+    currentPiece,
+    nextPieces,
     holdPiece,
+    canHold,
+    score,
+    lines,
+    level,
+    gameOver,
+    isPaused,
+    isManuallyPaused,
+    time,
+    pps,
+    apm,
+    ghostPiece,
+    isHardDropping,
+    gameState,
+    gameInitialized,
+    isLockDelayActive,
+    lockDelayResetCount,
+    // Action methods
     startGame,
-    pauseGame,
     resetGame,
-    calculateDropPosition,
-    startCountdown,
-    endCountdown,
-    isCountdownActive
+    pauseGame,
+    resumeGame,
+    movePiece,
+    hardDrop,
+    rotatePieceClockwise,
+    rotatePieceCounterclockwise,
+    rotatePiece180,
+    holdCurrentPiece,
+    spawnNewPiece,
+    lockPiece,
+    initializeForCountdown,
+    // Placeholder methods for compatibility
+    undoMove: () => {},
+    redoMove: () => {},
+    canUndo: false,
+    canRedo: false
   };
 };

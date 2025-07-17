@@ -1,10 +1,7 @@
 
 import type { GamePiece } from './gameTypes';
-import { rotatePiece as rotatePieceShape } from './pieceGeneration';
+import { rotatePiece } from './pieceGeneration';
 import { isValidPosition } from './tetrisCore';
-
-// Export the rotatePiece function for use in other modules
-export { rotatePiece } from './pieceGeneration';
 
 // SRS标准旋转中心点（以左上角为(0,0)）
 // I: (1.5, 0.5)  O: (0.5, 0.5)  其它: (1,1)
@@ -54,7 +51,7 @@ export const performSRSRotation = (
   piece: GamePiece,
   clockwise: boolean = true
 ): { success: boolean; newPiece: GamePiece | null; wasKicked: boolean } => {
-  const rotated = rotatePieceShape(piece.type, clockwise);
+  const rotated = rotatePiece(piece.type, clockwise);
   const newRotation = clockwise 
     ? (piece.rotation + 1) % 4 
     : (piece.rotation + 3) % 4;
@@ -106,7 +103,7 @@ export const performSRS180Rotation = (
   board: number[][],
   piece: GamePiece
 ): { success: boolean; newPiece: GamePiece | null; wasKicked: boolean } => {
-  const rotated = rotatePieceShape(rotatePieceShape(piece.type, true), true); // 旋转两次
+  const rotated = rotatePiece(rotatePiece(piece.type, true), true); // 旋转两次
   const newRotation = (piece.rotation + 2) % 4;
   
   // 获取180度旋转的踢墙测试序列

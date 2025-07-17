@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,12 +26,6 @@ export interface UserSettings {
   ghostOpacity: number;
   blockSkin?: string;
   enableWallpaper: boolean;
-  wallpaperOpacity: number;
-  autoPlayMusic: boolean;
-  loopMusic: boolean;
-  enableLineAnimation: boolean;
-  enableAchievementAnimation: boolean;
-  enableLandingEffect: boolean;
 }
 
 const DEFAULT_GUEST_SETTINGS: UserSettings = {
@@ -59,12 +52,6 @@ const DEFAULT_GUEST_SETTINGS: UserSettings = {
   ghostOpacity: 50,
   blockSkin: 'wood',
   enableWallpaper: true,
-  wallpaperOpacity: 100,
-  autoPlayMusic: false,
-  loopMusic: true,
-  enableLineAnimation: true,
-  enableAchievementAnimation: true,
-  enableLandingEffect: true,
 };
 
 const useLocalStorage = <T>(key: string, initialValue: T) => {
@@ -131,12 +118,6 @@ export const useUserSettings = () => {
           ghostOpacity: data.ghost_opacity ?? 50,
           blockSkin: data.block_skin ?? 'wood',
           enableWallpaper: data.enable_wallpaper ?? true,
-          wallpaperOpacity: data.wallpaper_opacity ?? 100,
-          autoPlayMusic: data.auto_play_music ?? false,
-          loopMusic: data.loop_music ?? true,
-          enableLineAnimation: data.enable_line_animation ?? true,
-          enableAchievementAnimation: data.enable_achievement_animation ?? true,
-          enableLandingEffect: data.enable_landing_effect ?? true,
         };
         setSettings(cloudSettings);
         window.localStorage.setItem('userSettings', JSON.stringify(cloudSettings));
@@ -176,12 +157,6 @@ export const useUserSettings = () => {
         ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
         enableWallpaper: newSettings.enableWallpaper !== undefined ? newSettings.enableWallpaper : prevSettings.enableWallpaper,
-        wallpaperOpacity: newSettings.wallpaperOpacity !== undefined ? newSettings.wallpaperOpacity : prevSettings.wallpaperOpacity,
-        autoPlayMusic: newSettings.autoPlayMusic !== undefined ? newSettings.autoPlayMusic : prevSettings.autoPlayMusic,
-        loopMusic: newSettings.loopMusic !== undefined ? newSettings.loopMusic : prevSettings.loopMusic,
-        enableLineAnimation: newSettings.enableLineAnimation !== undefined ? newSettings.enableLineAnimation : prevSettings.enableLineAnimation,
-        enableAchievementAnimation: newSettings.enableAchievementAnimation !== undefined ? newSettings.enableAchievementAnimation : prevSettings.enableAchievementAnimation,
-        enableLandingEffect: newSettings.enableLandingEffect !== undefined ? newSettings.enableLandingEffect : prevSettings.enableLandingEffect,
       };
       
       // Guests only save locally
@@ -205,12 +180,6 @@ export const useUserSettings = () => {
         back_to_menu: mergedSettings.controls.backToMenu,
         block_skin: mergedSettings.blockSkin || 'wood',
         enable_wallpaper: mergedSettings.enableWallpaper,
-        wallpaper_opacity: mergedSettings.wallpaperOpacity,
-        auto_play_music: mergedSettings.autoPlayMusic,
-        loop_music: mergedSettings.loopMusic,
-        enable_line_animation: mergedSettings.enableLineAnimation,
-        enable_achievement_animation: mergedSettings.enableAchievementAnimation,
-        enable_landing_effect: mergedSettings.enableLandingEffect,
       };
       
       supabase
@@ -249,12 +218,6 @@ export const useUserSettings = () => {
         ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
         enableWallpaper: newSettings.enableWallpaper !== undefined ? newSettings.enableWallpaper : prevSettings.enableWallpaper,
-        wallpaperOpacity: newSettings.wallpaperOpacity !== undefined ? newSettings.wallpaperOpacity : prevSettings.wallpaperOpacity,
-        autoPlayMusic: newSettings.autoPlayMusic !== undefined ? newSettings.autoPlayMusic : prevSettings.autoPlayMusic,
-        loopMusic: newSettings.loopMusic !== undefined ? newSettings.loopMusic : prevSettings.loopMusic,
-        enableLineAnimation: newSettings.enableLineAnimation !== undefined ? newSettings.enableLineAnimation : prevSettings.enableLineAnimation,
-        enableAchievementAnimation: newSettings.enableAchievementAnimation !== undefined ? newSettings.enableAchievementAnimation : prevSettings.enableAchievementAnimation,
-        enableLandingEffect: newSettings.enableLandingEffect !== undefined ? newSettings.enableLandingEffect : prevSettings.enableLandingEffect,
       };
       
       // Guests auto-save locally

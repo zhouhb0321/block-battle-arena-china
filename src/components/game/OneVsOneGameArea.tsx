@@ -93,7 +93,7 @@ const OneVsOneGameArea: React.FC<OneVsOneGameAreaProps> = ({
             {/* 玩家1游戏板 */}
             <div className="relative">
               <GameBoard
-                board={player1State.board as number[][]}
+                board={player1State.board}
                 currentPiece={player1State.currentPiece}
                 ghostPiece={gameSettings.enableGhost ? player1State.ghostPiece : null}
                 enableGhost={gameSettings.enableGhost}
@@ -131,7 +131,7 @@ const OneVsOneGameArea: React.FC<OneVsOneGameAreaProps> = ({
             {/* 玩家 2游戏板 */}
             <div className="relative">
               <GameBoard
-                board={player2State.board as number[][]}
+                board={player2State.board}
                 currentPiece={player2State.currentPiece}
                 ghostPiece={gameSettings.enableGhost ? player2State.ghostPiece : null}
                 enableGhost={gameSettings.enableGhost}

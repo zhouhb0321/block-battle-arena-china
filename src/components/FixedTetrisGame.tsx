@@ -4,13 +4,10 @@ import EnhancedGameBoard from './EnhancedGameBoard';
 import GameAreaCountdown from './GameAreaCountdown';
 import OutOfFocusOverlay from './OutOfFocusOverlay';
 import PiecePreview from './PiecePreview';
-import AchievementAnimation from './AchievementAnimation';
-import AchievementDetector from './game/AchievementDetector';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Undo2, Redo2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWindowFocus } from '@/hooks/useWindowFocus';
-import { useGameHistory } from '@/hooks/useGameHistory';
 import { debugLog } from '@/utils/debugLogger';
 import {
   TETROMINO_TYPES,
@@ -36,10 +33,9 @@ import type { TetrominoType, GamePiece, GameState } from '@/utils/gameTypes';
 
 interface FixedTetrisGameProps {
   onBackToMenu?: () => void;
-  gameMode?: string;
 }
 
-const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMode = 'sprint' }) => {
+const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
   const { user } = useAuth();
   const isWindowFocused = useWindowFocus();
   const [gameStarted, setGameStarted] = useState(false);
@@ -48,15 +44,9 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
   const [nextBag, setNextBag] = useState<TetrominoType[]>(() => generateSevenBag());
   const [bagIndex, setBagIndex] = useState(0);
   const wasPausedBeforeFocusLoss = useRef(false);
-  const [achievementText, setAchievementText] = useState<string | null>(null);
-  const [lockDelayActive, setLockDelayActive] = useState(false);
-  
-  // 添加撤销/重做功能 - 仅限马拉松和无尽模式
-  const isUndoRedoEnabled = gameMode === 'marathon' || gameMode === 'endless';
-  const { saveState, undo, redo, canUndo, canRedo, clearHistory } = useGameHistory(50);
   
   const [gameState, setGameState] = useState<GameState>({
-    board: createEmptyBoard() as number[][],
+    board: createEmptyBoard(),
     currentPiece: null,
     nextPieces: [],
     holdPiece: null,
@@ -79,43 +69,6 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
     apm: 0
   });
 
-  // 保存游戏状态用于撤销/重做 - 仅限特定模式
-  useEffect(() => {
-    if (isUndoRedoEnabled && gameStarted && !gameState.gameOver) {
-      saveState(gameState);
-    }
-  }, [gameState.board, gameState.currentPiece, gameState.score, gameState.lines, gameStarted, gameState.gameOver, saveState, isUndoRedoEnabled]);
-
-  // 撤销/重做功能 - 仅限特定模式
-  const handleUndo = useCallback(() => {
-    if (isUndoRedoEnabled && canUndo && !gameState.gameOver) {
-      const previousState = undo();
-      if (previousState) {
-        setGameState(previousState);
-        debugLog.game('撤销操作执行');
-      }
-    }
-  }, [isUndoRedoEnabled, canUndo, gameState.gameOver, undo]);
-
-  const handleRedo = useCallback(() => {
-    if (isUndoRedoEnabled && canRedo && !gameState.gameOver) {
-      const nextState = redo();
-      if (nextState) {
-        setGameState(nextState);
-        debugLog.game('重做操作执行');
-      }
-    }
-  }, [isUndoRedoEnabled, canRedo, gameState.gameOver, redo]);
-
-  // 成就检测处理
-  const handleAchievement = useCallback((achievement: string) => {
-    setAchievementText(achievement);
-  }, []);
-
-  const handleAchievementComplete = useCallback(() => {
-    setAchievementText(null);
-  }, []);
-
   // 处理窗口焦点变化
   useEffect(() => {
     if (!isWindowFocused && !gameState.gameOver && gameStarted) {
@@ -134,11 +87,13 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
     }
   }, [isWindowFocused, gameState.paused, gameState.gameOver, gameStarted]);
 
+  // 获取下一个方块（7-bag系统）
   const getNextPiece = useCallback((): TetrominoType => {
     const currentBag = sevenBag;
     const currentIndex = bagIndex;
     
     if (currentIndex >= currentBag.length) {
+      // 当前包用完，切换到下一个包
       setSevenBag(nextBag);
       setNextBag(generateSevenBag());
       setBagIndex(1);
@@ -149,6 +104,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
     }
   }, [sevenBag, nextBag, bagIndex]);
 
+  // 获取接下来的方块预览
   const getUpcomingPieces = useCallback((): GamePiece[] => {
     const upcoming: GamePiece[] = [];
     let currentBag = sevenBag;
@@ -168,28 +124,13 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
     return upcoming;
   }, [sevenBag, nextBag, bagIndex]);
 
+  // 初始化方块队列 - 在倒计时开始时就调用
   const initializePieces = useCallback(() => {
-    debugLog.game('倒计时开始，初始化方块队列 - 仅执行一次');
-    
-    // 固定重置7-bag系统，确保倒计时期间稳定
-    const fixedBag = generateSevenBag();
-    const fixedNextBag = generateSevenBag(); 
-    setSevenBag(fixedBag);
-    setNextBag(fixedNextBag);
-    setBagIndex(1); // 第一个方块已被使用
-    
-    const newPiece = createNewPiece(fixedBag[0]);
+    debugLog.game('倒计时开始，初始化方块队列');
+    const nextPieceType = getNextPiece();
+    const newPiece = createNewPiece(nextPieceType);
     const ghostPiece = createGhostPiece(gameState.board, newPiece);
-    
-    // 预生成接下来的6个方块，确保稳定
-    const nextPieces: GamePiece[] = [];
-    for (let i = 1; i < 7; i++) {
-      if (i < fixedBag.length) {
-        nextPieces.push(createNewPiece(fixedBag[i]));
-      } else {
-        nextPieces.push(createNewPiece(fixedNextBag[i - fixedBag.length]));
-      }
-    }
+    const nextPieces = getUpcomingPieces();
 
     setGameState(prev => ({
       ...prev,
@@ -199,22 +140,25 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
       pieces: prev.pieces + 1
     }));
 
-    debugLog.game('方块队列初始化完成 - 稳定队列', {
+    debugLog.game('方块队列初始化完成', {
       currentPiece: newPiece.type.type,
       nextPieces: nextPieces.map(p => p.type.type)
     });
-  }, [gameState.board]);
+  }, [getNextPiece, getUpcomingPieces, gameState.board]);
 
+  // 生成新方块
   const spawnNewPiece = useCallback(() => {
     const nextPieceType = getNextPiece();
     const newPiece = createNewPiece(nextPieceType);
 
+    // 检查游戏是否结束
     if (!isValidPosition(gameState.board, newPiece)) {
       toast.error('游戏结束！');
       setGameState(prev => ({ ...prev, gameOver: true }));
       return;
     }
 
+    // 生成幽灵方块
     const ghostPiece = createGhostPiece(gameState.board, newPiece);
 
     setGameState(prev => ({
@@ -240,16 +184,6 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
       if (isValidPosition(prev.board, newPiece)) {
         const newGhostPiece = createGhostPiece(prev.board, newPiece);
         
-        // 优化软降时的锁定延迟处理
-        if (dy > 0) {
-          // 检查是否到达底部
-          const testPiece = { ...newPiece, y: newPiece.y + 1 };
-          if (!isValidPosition(prev.board, testPiece)) {
-            setLockDelayActive(true);
-            setTimeout(() => setLockDelayActive(false), 500); // 500ms锁定延迟
-          }
-        }
-        
         return {
           ...prev,
           currentPiece: newPiece,
@@ -273,8 +207,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
         newRotation
       );
 
-      for (let i = 0; i < kickTests.length; i++) {
-        const kick = kickTests[i];
+      for (const kick of kickTests) {
         const testPiece: GamePiece = {
           type: rotatedType,
           x: prev.currentPiece.x + kick.x,
@@ -284,18 +217,6 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
         
         if (isValidPosition(prev.board, testPiece)) {
           const newGhostPiece = createGhostPiece(prev.board, testPiece);
-          
-          // Check for T-Spin after successful rotation
-          if (prev.currentPiece.type.name === 'T') {
-            const tSpin = checkTSpin(prev.board, testPiece, 'rotate', i > 0);
-            if (tSpin) {
-              console.log(`${tSpin.type} detected!`, { 
-                position: { x: testPiece.x, y: testPiece.y },
-                rotation: testPiece.rotation,
-                wasKicked: i > 0
-              });
-            }
-          }
           
           return {
             ...prev,
@@ -322,6 +243,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
         y: dropY
       };
 
+      // 立即放置方块并处理消行
       const tSpinResult = checkTSpin(prev.board, droppedPiece, 'rotate');
       const newBoard = placePiece(prev.board, droppedPiece);
       const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
@@ -330,8 +252,10 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
       const isSpecialClear = tSpinResult !== null || linesCleared === 4;
       const newB2B = isSpecialClear ? prev.b2b + 1 : (linesCleared > 0 ? 0 : prev.b2b);
       
+      // 检查是否为全清
       const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
       
+      // 使用新的重力系统计算等级
       const newTotalLines = prev.lines + linesCleared;
       const gravityInfo = getGravityInfo(newTotalLines);
       
@@ -342,6 +266,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
       const newPps = prev.pieces > 0 ? prev.pieces / Math.max(timeElapsed, 1) : 0;
       const newApm = attackLines > 0 ? (prev.attack + attackLines) / Math.max(timeElapsed / 60, 1/60) : prev.apm;
 
+      // 显示消行提示
       if (linesCleared > 0) {
         setTimeout(() => {
           if (isPerfectClear) {
@@ -496,21 +421,9 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
     });
   }, [getNextPiece, getUpcomingPieces, gameState.board]);
 
-  // 键盘控制 - 添加撤销/重做功能
+  // 键盘控制
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (gameState.paused || gameState.gameOver || !isWindowFocused) return;
-
-    if (event.ctrlKey && isUndoRedoEnabled) {
-      if (event.code === 'KeyZ' && !event.shiftKey) {
-        event.preventDefault();
-        handleUndo();
-        return;
-      } else if (event.code === 'KeyY' || (event.code === 'KeyZ' && event.shiftKey)) {
-        event.preventDefault();
-        handleRedo();
-        return;
-      }
-    }
 
     switch (event.key) {
       case 'ArrowLeft':
@@ -554,8 +467,9 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
         }
         break;
     }
-  }, [movePiece, hardDrop, rotatePieceClockwise, holdPiece, gameState.paused, gameState.gameOver, isWindowFocused, onBackToMenu, handleUndo, handleRedo]);
+  }, [movePiece, hardDrop, rotatePieceClockwise, holdPiece, gameState.paused, gameState.gameOver, isWindowFocused, onBackToMenu]);
 
+  // 游戏循环 - 使用新的重力系统
   useEffect(() => {
     if (gameState.paused || gameState.gameOver || !isWindowFocused || !gameStarted) {
       if (gameLoopRef.current) {
@@ -565,6 +479,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
       return;
     }
 
+    // 使用新的重力系统计算下降速度
     const dropInterval = calculateDropSpeed(gameState.lines);
     
     gameLoopRef.current = setInterval(() => {
@@ -597,6 +512,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
     };
   }, [gameState.lines, gameState.paused, gameState.gameOver, isWindowFocused, gameStarted, spawnNewPiece]);
 
+  // 检查是否需要生成新方块
   useEffect(() => {
     if (!gameState.currentPiece && !gameState.gameOver && !gameState.paused && gameStarted) {
       const timer = setTimeout(() => {
@@ -606,6 +522,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
     }
   }, [gameState.currentPiece, gameState.gameOver, gameState.paused, spawnNewPiece, gameStarted]);
 
+  // 键盘事件监听
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
@@ -614,7 +531,6 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
   const startGame = () => {
     debugLog.game('开始游戏');
     setGameStarted(true);
-    clearHistory(); // 清除历史记录
     wasPausedBeforeFocusLoss.current = false;
   };
 
@@ -625,14 +541,19 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
 
   const handleCountdownEnd = () => {
     debugLog.game('倒计时结束，游戏正式开始');
+    // 游戏逻辑在倒计时结束后才真正开始
   };
 
   const currentTime = Date.now();
   const elapsedTime = Math.floor((currentTime - gameState.startTime) / 1000);
+
+  // 获取重力信息用于显示
   const gravityInfo = getGravityInfo(gameState.lines);
   
+  // 生成用户显示名
   const getDisplayName = (): string => {
     if (user?.email) {
+      // 如果是邮箱格式，提取@前的部分作为用户名
       return user.email.includes('@') ? user.email.split('@')[0] : user.email;
     }
     return 'Player';
@@ -640,46 +561,18 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
 
   return (
     <div className="flex flex-col items-center p-4 bg-gray-900 min-h-screen">
-      {/* 返回菜单按钮和撤销/重做按钮 */}
+      {/* 返回菜单按钮 - 放在顶部 */}
       <div className="w-full max-w-6xl mb-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          {onBackToMenu && (
-            <Button
-              onClick={onBackToMenu}
-              variant="outline"
-              className="flex items-center gap-2 text-white border-gray-600 hover:bg-gray-800"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              返回菜单
-            </Button>
-          )}
-          
-          {gameStarted && isUndoRedoEnabled && (
-            <>
-              <Button
-                onClick={handleUndo}
-                variant="outline"
-                className="flex items-center gap-2 text-white border-gray-600 hover:bg-gray-800"
-                disabled={!canUndo || gameState.gameOver}
-                title="撤销 (Ctrl+Z)"
-              >
-                <Undo2 className="w-4 h-4" />
-                撤销
-              </Button>
-              
-              <Button
-                onClick={handleRedo}
-                variant="outline"
-                className="flex items-center gap-2 text-white border-gray-600 hover:bg-gray-800"
-                disabled={!canRedo || gameState.gameOver}
-                title="重做 (Ctrl+Y/Ctrl+Shift+Z)"
-              >
-                <Redo2 className="w-4 h-4" />
-                重做
-              </Button>
-            </>
-          )}
-        </div>
+        {onBackToMenu && (
+          <Button
+            onClick={onBackToMenu}
+            variant="outline"
+            className="flex items-center gap-2 text-white border-gray-600 hover:bg-gray-800"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            返回菜单
+          </Button>
+        )}
         
         <div className="text-white text-xl font-bold">
           俄罗斯方块
@@ -695,17 +588,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
             size="large" 
           />
           
-          {/* 成就动画显示区域 */}
-          <div className="relative min-h-[80px]">
-            {achievementText && (
-              <AchievementAnimation
-                achievement={achievementText}
-                onComplete={handleAchievementComplete}
-              />
-            )}
-          </div>
-          
-          {/* 游戏信息 */}
+          {/* 游戏信息 - 与游戏板底部对齐 */}
           <div className="flex-1 flex flex-col justify-end">
             <div className="bg-gray-800 p-4 rounded-lg text-white text-sm">
               <div className="space-y-2">
@@ -797,23 +680,26 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
             )}
           </div>
 
-          {/* 游戏板容器 */}
+          {/* 游戏板容器 - 相对定位以支持倒计时和失焦覆盖 */}
           <div className="relative">
             <EnhancedGameBoard
               board={gameState.board}
               currentPiece={gameState.currentPiece}
               ghostPiece={gameState.ghostPiece}
+              enableGhost={true}
               cellSize={30}
               clearingLines={gameState.clearingLines}
               showHiddenRows={true}
             />
             
+            {/* 倒计时只在游戏区域显示 */}
             <GameAreaCountdown
               show={gameStarted && !gameState.gameOver}
               onCountdownStart={handleCountdownStart}
               onCountdownEnd={handleCountdownEnd}
             />
             
+            {/* 失焦覆盖层 */}
             <OutOfFocusOverlay 
               show={!isWindowFocused && gameStarted && !gameState.gameOver}
             />
@@ -844,22 +730,10 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMod
             <div>Z 旋转</div>
             <div>C 暂存</div>
             <div>P 暂停</div>
-            <div>Ctrl+Z 撤销</div>
-            <div>Ctrl+Y 重做</div>
             <div>B 返回菜单</div>
           </div>
         </div>
       </div>
-      
-      {/* 成就检测器 */}
-      <AchievementDetector
-        linesCleared={0}
-        tSpinResult={null}
-        combo={gameState.combo}
-        b2b={gameState.b2b}
-        tetris={false}
-        onAchievement={handleAchievement}
-      />
     </div>
   );
 };

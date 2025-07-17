@@ -1,90 +1,85 @@
 
 import React from 'react';
-import { getBlockColor } from '@/utils/blockColors';
-import { PIECE_SHAPES } from '@/utils/pieceGeneration';
+import { TETROMINO_TYPES } from '@/utils/tetrisLogic';
+import { getTetrominoColor } from '@/utils/blockColors';
 import type { TetrominoType } from '@/utils/gameTypes';
 
 interface PiecePreviewProps {
   piece: TetrominoType | null;
-  title?: string;
+  title: string;
+  size?: 'small' | 'medium' | 'large';
   cellSize?: number;
-  size?: 'small' | 'medium' | 'large'; // For backward compatibility
 }
 
 const PiecePreview: React.FC<PiecePreviewProps> = ({ 
   piece, 
   title, 
-  cellSize = 30 // Dynamic size based on game mode
+  size = 'medium',
+  cellSize 
 }) => {
-  if (!piece) {
-    return (
-      <div className="w-20 h-16 border border-border rounded bg-muted flex items-center justify-center">
-        <span className="text-muted-foreground text-xs">空</span>
-      </div>
-    );
-  }
-
-  const shape = PIECE_SHAPES[piece.type] || piece.shape;
-  const color = getBlockColor(piece.type);
-
-  // Calculate bounding box
-  let minRow = shape.length, maxRow = -1;
-  let minCol = shape[0].length, maxCol = -1;
-  
-  for (let row = 0; row < shape.length; row++) {
-    for (let col = 0; col < shape[row].length; col++) {
-      if (shape[row][col] !== 0) {
-        minRow = Math.min(minRow, row);
-        maxRow = Math.max(maxRow, row);
-        minCol = Math.min(minCol, col);
-        maxCol = Math.max(maxCol, col);
-      }
+  const getCellSize = () => {
+    if (cellSize) return cellSize;
+    switch (size) {
+      case 'small': return 12;
+      case 'medium': return 16;
+      case 'large': return 20;
+      default: return 16;
     }
-  }
+  };
 
-  const pieceWidth = maxCol - minCol + 1;
-  const pieceHeight = maxRow - minRow + 1;
+  const actualCellSize = getCellSize();
 
-  return (
-    <div className="flex flex-col items-center">
-      {title && (
-        <h4 className="text-xs font-bold text-foreground mb-2">{title}</h4>
-      )}
-      <div 
-        className="flex justify-center items-center"
-        style={{ 
-          width: Math.max(cellSize * 4, pieceWidth * cellSize),
-          height: Math.max(cellSize * 2, pieceHeight * cellSize)
-        }}
-      >
+  const renderPiece = () => {
+    if (!piece) {
+      return (
         <div 
-          className="relative"
-          style={{
-            width: pieceWidth * cellSize,
-            height: pieceHeight * cellSize,
-            display: 'grid',
-            gridTemplateColumns: `repeat(${pieceWidth}, ${cellSize}px)`,
-            gridTemplateRows: `repeat(${pieceHeight}, ${cellSize}px)`,
+          className="bg-gray-700/30 border border-gray-600 rounded-sm"
+          style={{ 
+            width: actualCellSize * 4, 
+            height: actualCellSize * 2 
           }}
-        >
-          {shape.slice(minRow, maxRow + 1).map((row, rowIndex) =>
-            row.slice(minCol, maxCol + 1).map((cell, colIndex) => (
+        />
+      );
+    }
+
+    const shape = TETROMINO_TYPES[piece.type]?.shape || piece.shape;
+    const backgroundColor = getTetrominoColor(piece.type);
+
+    return (
+      <div className="relative">
+        {shape.map((row, y) => (
+          <div key={y} className="flex">
+            {row.map((cell, x) => (
               <div
-                key={`${rowIndex}-${colIndex}`}
-                className="guideline-block"
+                key={x}
+                className={`border-0 ${
+                  cell ? 'opacity-100' : 'opacity-0'
+                }`}
                 style={{
-                  backgroundColor: cell === 1 ? color : 'transparent',
-                  border: cell === 1 ? '2px solid #333' : 'none',
-                  borderRadius: cell === 1 ? '2px' : '0',
-                  boxShadow: cell === 1 ? 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.2)' : 'none',
-                  width: cellSize,
-                  height: cellSize,
-                  boxSizing: 'border-box',
+                  width: actualCellSize,
+                  height: actualCellSize,
+                  backgroundColor: cell ? backgroundColor : 'transparent',
+                  borderRadius: '2px',
+                  margin: '0.5px',
+                  boxShadow: cell ? 'inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.15)' : 'none'
                 }}
               />
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="p-2 rounded-lg">
+      {title && (
+        <h3 className="text-white text-xs mb-2 text-center font-bold opacity-90">
+          {title}
+        </h3>
+      )}
+      <div className="flex justify-center items-center min-h-[32px]">
+        {renderPiece()}
       </div>
     </div>
   );

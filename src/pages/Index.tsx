@@ -1,277 +1,267 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useWallpaperManager } from '@/hooks/useWallpaperManager';
-import { useMusicManager } from '@/hooks/useMusicManager';
-import NavigationBar from '@/components/NavigationBar';
-import MainMenu from '@/components/MainMenu';
-import TetrisGame from '@/components/TetrisGame';
-import SettingsMenu from '@/components/menus/SettingsMenu';
-import AdminPanel from '@/components/AdminPanel';
+import { useLanguage } from '@/contexts/LanguageContext';
+import GameLauncher from '@/components/GameLauncher';
 import MultiPlayerMenu from '@/components/menus/MultiPlayerMenu';
-import LeagueMenu from '@/components/menus/LeagueMenu';
+import SettingsMenu from '@/components/menus/SettingsMenu';
+import RankedMatchmakingSystem from '@/components/RankedMatchmakingSystem';
 import AuthModal from '@/components/AuthModal';
-import { Play, Zap, Trophy, Users } from 'lucide-react';
+import NavigationBar from '@/components/NavigationBar';
+import ReplaySystem from '@/components/ReplaySystem';
+import AdSpace from '@/components/AdSpace';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Play, Users, Trophy, Settings, LogIn } from 'lucide-react';
 import type { ViewType } from '@/types/navigation';
 
 const Index = () => {
-  const { user } = useAuth();
-  const { actualTheme } = useTheme();
+  const { user, isAuthenticated } = useAuth();
+  const { t } = useLanguage();
   const [currentView, setCurrentView] = useState<ViewType>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  
-  // 初始化资源管理器但不显示在UI上
-  useWallpaperManager();
-  useMusicManager();
 
-  // 检查是否为管理员
-  const isAdmin = user?.email === 'admin@tetris.com' || user?.isAdmin;
-
+  // Reset to main menu when user logs out
   useEffect(() => {
-    // 模拟认证检查
-    const checkAuth = async () => {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      setAuthLoading(false);
-    };
-    
-    checkAuth();
-  }, []);
+    if (!isAuthenticated && currentView !== 'home') {
+      setCurrentView('home');
+    }
+  }, [isAuthenticated, currentView]);
+
+  const handleBackToMenu = () => {
+    setCurrentView('home');
+  };
 
   const handleViewChange = (view: ViewType) => {
-    // 检查管理员权限
-    if (view === 'admin' && !isAdmin) {
-      console.log('Access denied: User is not admin');
+    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked')) {
+      setShowAuthModal(true);
       return;
     }
     setCurrentView(view);
   };
 
-  const handleAuthModalOpen = () => {
-    setShowAuthModal(true);
-  };
-
-  const handleGuestPlay = () => {
+  const handleGameModeStart = (gameType: string, gameMode: any) => {
+    console.log('Starting game directly with mode:', gameMode);
     setCurrentView('game');
+    // Store game mode for TetrisGame component
+    (window as any).selectedGameMode = gameMode;
   };
 
   const renderCurrentView = () => {
     switch (currentView) {
       case 'game':
-        return <TetrisGame onBackToMenu={() => setCurrentView('home')} />;
-      case 'settings':
-        return <SettingsMenu onBackToMenu={() => setCurrentView('home')} />;
-      case 'admin':
-        return isAdmin ? (
-          <AdminPanel onBackToMenu={() => setCurrentView('home')} />
-        ) : (
-          <Card className="max-w-md mx-auto mt-8">
-            <CardHeader>
-              <CardTitle>访问被拒绝</CardTitle>
-              <CardDescription>您没有管理员权限访问此页面</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                当前用户: {user?.email || '未登录'}
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                需要管理员账户 (admin@tetris.com) 才能访问管理面板
-              </p>
-            </CardContent>
-          </Card>
+        return (
+          <GameLauncher 
+            onBackToMenu={handleBackToMenu}
+          />
         );
       case 'ranked':
         return (
-          <MultiPlayerMenu 
-            onSelectMode={() => {}} 
-            onBack={() => setCurrentView('home')} 
+          <RankedMatchmakingSystem 
+            onStartMatch={() => setCurrentView('game')} 
+            onBack={handleBackToMenu}
           />
+        );
+      case 'settings':
+        return (
+          <SettingsMenu 
+            onBackToMenu={handleBackToMenu}
+          />
+        );
+      case 'replays':
+        return (
+          <div className="max-w-6xl mx-auto">
+            <ReplaySystem />
+          </div>
         );
       case 'profile':
         return (
-          <div className="container mx-auto px-4 py-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>用户资料</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>用户资料页面开发中...</p>
-              </CardContent>
-            </Card>
+          <div className="text-center p-8">
+            <h2 className="text-2xl font-bold mb-4">{t('nav.profile')}</h2>
+            <p>Profile page under development...</p>
+            <Button onClick={handleBackToMenu} className="mt-4">
+              {t('common.backToHome')}
+            </Button>
           </div>
         );
+      case 'home':
       default:
         return (
-          <div className="container mx-auto px-4 py-8">
+          <div className="space-y-12 animate-fade-in">
             {/* Hero Section */}
-            <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-game-gradient-primary bg-clip-text text-transparent">
-                Tetris Game
+            <div className="text-center space-y-6 py-12">
+              <h1 className="text-5xl md:text-7xl font-bold bg-game-gradient-primary bg-clip-text text-transparent">
+                {t('game.title')}
               </h1>
-              <p className="text-xl text-muted-foreground mb-8">
-                Classic gameplay, modern experience
+              <p className="text-xl md:text-2xl text-foreground/80 max-w-3xl mx-auto leading-relaxed">
+                {t('game.description')}
               </p>
-              
-              {/* Register & Start Playing Button - moved to below title */}
-              <div className="mb-8">
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  className="border-border text-muted-foreground hover:bg-muted hover:text-foreground font-semibold px-6 py-3 mr-4"
-                  onClick={handleAuthModalOpen}
-                >
-                  Register & Start Playing
-                </Button>
-              </div>
-              
-              <Button
+              {user && (
+                <div className="inline-block px-6 py-3 bg-game-gradient-primary rounded-full text-white font-medium shadow-lg">
+                  {t('common.welcome')}, {user.username}!
+                </div>
+              )}
+            </div>
+
+            {/* Quick Start Actions */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button 
                 size="lg"
-                onClick={handleGuestPlay}
-                className="bg-game-gradient-primary hover:opacity-90 text-white font-bold py-4 px-8 text-lg shadow-lg transform hover:scale-105 transition-all duration-200"
+                onClick={() => handleViewChange('game')}
+                className="bg-game-gradient-primary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
-                <Play className="w-6 h-6 mr-2" />
-                Start Guest Playing
+                <Play className="w-6 h-6 mr-3" />
+                {t('game.play')}
               </Button>
+              
+              <Button 
+                size="lg"
+                variant="outline"
+                onClick={() => handleViewChange('ranked')}
+                disabled={!isAuthenticated}
+                className="border-2 border-primary px-8 py-4 text-lg font-medium rounded-xl hover:bg-primary hover:text-primary-foreground transition-all duration-300"
+              >
+                <Trophy className="w-6 h-6 mr-3" />
+                {t('game.ranked')}
+              </Button>
+              
+              {!isAuthenticated && (
+                <Button 
+                  size="lg"
+                  onClick={() => setShowAuthModal(true)}
+                  className="bg-game-gradient-secondary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <LogIn className="w-6 h-6 mr-3" />
+                  {t('auth.login')} / {t('auth.register')}
+                </Button>
+              )}
             </div>
 
-            {/* Game Mode Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-card/50 border border-border">
-                <CardHeader className="text-center">
-                  <div className="text-4xl mb-2">🎯</div>
-                  <CardTitle className="text-lg">40 Lines</CardTitle>
-                  <CardDescription>Sprint mode</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="w-full bg-game-green hover:bg-game-green/80 text-white"
-                    onClick={() => setCurrentView('game')}
-                  >
-                    Play
-                  </Button>
+            {/* Game Modes Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', { id: 'sprint40', title: t('game.sprint40'), description: t('game.singlePlayerDesc') })}>
+                <CardContent className="p-8 text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto bg-game-blue/10 rounded-2xl flex items-center justify-center group-hover:bg-game-blue/20 transition-colors">
+                    <Play className="w-10 h-10 text-game-blue" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.sprint40')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('game.singlePlayerDesc')}</p>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-card/50 border border-border">
-                <CardHeader className="text-center">
-                  <div className="text-4xl mb-2">⚔️</div>
-                  <CardTitle className="text-lg">Ranked</CardTitle>
-                  <CardDescription>Competitive play</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="w-full bg-game-red hover:bg-game-red/80 text-white"
-                    onClick={() => setCurrentView('ranked')}
-                  >
-                    Battle
-                  </Button>
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', { id: 'ultra2min', title: t('game.ultra2min'), description: t('game.singlePlayerDesc') })}>
+                <CardContent className="p-8 text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto bg-game-orange/10 rounded-2xl flex items-center justify-center group-hover:bg-game-orange/20 transition-colors">
+                    <Trophy className="w-10 h-10 text-game-orange" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.ultra2min')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('game.singlePlayerDesc')}</p>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-card/50 border border-border">
-                <CardHeader className="text-center">
-                  <div className="text-4xl mb-2">🏆</div>
-                  <CardTitle className="text-lg">Leaderboard</CardTitle>
-                  <CardDescription>Top scores</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="w-full bg-game-orange hover:bg-game-orange/80 text-white"
-                    onClick={() => {}}
-                  >
-                    View
-                  </Button>
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', { id: 'endless', title: t('game.endless'), description: t('game.singlePlayerDesc') })}>
+                <CardContent className="p-8 text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto bg-game-green/10 rounded-2xl flex items-center justify-center group-hover:bg-game-green/20 transition-colors">
+                    <Settings className="w-10 h-10 text-game-green" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.endless')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('game.singlePlayerDesc')}</p>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-card/50 border border-border">
-                <CardHeader className="text-center">
-                  <div className="text-4xl mb-2">⚙️</div>
-                  <CardTitle className="text-lg">Settings</CardTitle>
-                  <CardDescription>Customize game</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="w-full bg-game-purple hover:bg-game-purple/80 text-white"
-                    onClick={() => setCurrentView('settings')}
-                  >
-                    Configure
-                  </Button>
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('ranked')}>
+                <CardContent className="p-8 text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto bg-game-purple/10 rounded-2xl flex items-center justify-center group-hover:bg-game-purple/20 transition-colors">
+                    <Users className="w-10 h-10 text-game-purple" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.ranked')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('game.rankedDesc')}</p>
+                    {!isAuthenticated && (
+                      <div className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
+                        {t('common.needLogin')}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Features Section */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <Card className="text-center p-6 hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <Zap className="w-12 h-12 mx-auto mb-4 text-primary" />
-                  <CardTitle>Lightning Fast</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    Optimized game engine ensuring smooth 60FPS gameplay with instant response
-                  </p>
-                </CardContent>
-              </Card>
+            {/* Platform Features */}
+            <div className="bg-card/30 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-border/50">
+              <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 bg-game-gradient-primary bg-clip-text text-transparent">
+                Platform Features
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-game-blue/10 rounded-full flex items-center justify-center">
+                    <Trophy className="w-8 h-8 text-game-blue" />
+                  </div>
+                  <h3 className="text-xl font-semibold">Professional Competition</h3>
+                  <p className="text-muted-foreground">Standard SRS system with T-Spin support</p>
+                </div>
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-game-orange/10 rounded-full flex items-center justify-center">
+                    <Users className="w-8 h-8 text-game-orange" />
+                  </div>
+                  <h3 className="text-xl font-semibold">Social Features</h3>
+                  <p className="text-muted-foreground">Multiplayer battles, room system, friend interactions</p>
+                </div>
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-game-green/10 rounded-full flex items-center justify-center">
+                    <Play className="w-8 h-8 text-game-green" />
+                  </div>
+                  <h3 className="text-xl font-semibold">Replay System</h3>
+                  <p className="text-muted-foreground">Record and share exciting moments, improve your skills</p>
+                </div>
+              </div>
+            </div>
 
-              <Card className="text-center p-6 hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <Trophy className="w-12 h-12 mx-auto mb-4 text-primary" />
-                  <CardTitle>Competitive</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    Complete ranking system to track your best scores and compete globally
-                  </p>
-                </CardContent>
-              </Card>
+            {/* Ready to Start */}
+            <div className="text-center space-y-6 py-8">
+              <h2 className="text-2xl md:text-3xl font-bold">Ready to Get Started?</h2>
+              <p className="text-lg text-muted-foreground">Join our gaming community and start your Tetris journey</p>
+              {!isAuthenticated && (
+                <Button 
+                  size="lg"
+                  onClick={() => setShowAuthModal(true)}
+                  className="bg-game-gradient-primary hover:opacity-90 text-white px-10 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  {t('auth.register')} & Start Playing
+                </Button>
+              )}
+            </div>
 
-              <Card className="text-center p-6 hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <Users className="w-12 h-12 mx-auto mb-4 text-primary" />
-                  <CardTitle>Multiplayer</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    Real-time multiplayer battles, enjoy intense block wars with friends
-                  </p>
-                </CardContent>
-              </Card>
+            {/* Ad Space */}
+            <div className="flex justify-center">
+              <AdSpace position="bottom" width={728} height={90} />
             </div>
           </div>
         );
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-      actualTheme === 'light' ? 'bg-gray-50' : 'bg-gray-900'
-    }`}>
+    <div className="min-h-screen bg-game-gradient-bg">
       <NavigationBar 
         currentView={currentView}
         onViewChange={handleViewChange}
-        onAuthModalOpen={handleAuthModalOpen}
+        onAuthModalOpen={() => setShowAuthModal(true)}
       />
-      
-      <main className="pt-4">
+      <main className="container mx-auto px-4 py-8">
         {renderCurrentView()}
       </main>
-      
+
+      {/* Auth Modal */}
       <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
       />
     </div>
   );

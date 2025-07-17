@@ -34,20 +34,27 @@ const GameController: React.FC<GameControllerProps> = ({
   const lastDropTime = useRef<number>(0);
   const LOCK_DELAY_TIME = 500;
   
-  const gameLogic = useGameLogic(gameMode.id);
+  const gameLogic = useGameLogic({
+    gameMode,
+    onGameEnd: (stats) => {
+      console.log('Game ended:', stats);
+    }
+  });
 
   const togglePause = useCallback(() => {
-    if (gameLogic.gameState.isPaused) {
+    if (gameLogic.isPaused) {
+      gameLogic.resumeGame();
       resumeGame();
     } else {
       gameLogic.pauseGame();
       pauseGame();
     }
-  }, [gameLogic.gameState.isPaused, gameLogic.pauseGame, pauseGame, resumeGame]);
+  }, [gameLogic.isPaused, gameLogic.pauseGame, gameLogic.resumeGame, pauseGame, resumeGame]);
 
   const handleReset = () => {
     gameLogic.resetGame();
     lastDropTime.current = 0;
+    setTimeout(() => gameLogic.spawnNewPiece(), 100);
     resetGame();
   };
 
@@ -60,41 +67,48 @@ const GameController: React.FC<GameControllerProps> = ({
 
   const keyboardControls = useKeyboardControls({
     gameSettings,
-    gameOver: gameLogic.gameState.gameOver,
-    paused: gameLogic.gameState.isPaused,
+    gameOver: gameLogic.gameOver,
+    paused: gameLogic.isPaused,
     onMoveLeft: () => gameLogic.movePiece(-1, 0),
     onMoveRight: () => gameLogic.movePiece(1, 0),
     onSoftDrop: () => {
-      gameLogic.movePiece(0, 1);
+      const moved = gameLogic.movePiece(0, 1);
+      if (moved) {
+        // Add soft drop score if needed
+      }
     },
     onHardDrop: gameLogic.hardDrop,
-    onRotateClockwise: () => gameLogic.rotatePiece('clockwise'),
-    onRotateCounterclockwise: () => gameLogic.rotatePiece('counterclockwise'),
-    onHold: gameLogic.holdPiece,
+    onRotateClockwise: gameLogic.rotatePieceClockwise,
+    onRotateCounterclockwise: gameLogic.rotatePieceCounterclockwise,
+    onHold: gameLogic.holdCurrentPiece,
     onPause: togglePause,
     onBackToMenu: handleBackToMenu
   });
 
   const gameLoop = useCallback((timestamp: number) => {
-    if (gameLogic.gameState.gameOver) return;
+    if (gameLogic.gameOver) return;
 
-    if (!gameLogic.gameState.isPaused) {
+    if (!gameLogic.isPaused) {
       keyboardControls.processHeldKeys(timestamp);
 
-      const dropSpeed = Math.max(50, 1000 - (gameLogic.gameState.level - 1) * 50);
+      const dropSpeed = Math.max(50, 1000 - (gameLogic.level - 1) * 50);
       if (timestamp - lastDropTime.current > dropSpeed) {
-        gameLogic.movePiece(0, 1);
+        const moved = gameLogic.movePiece(0, 1);
         lastDropTime.current = timestamp;
       }
     }
 
     gameLoopRef.current = requestAnimationFrame(gameLoop);
   }, [
-    gameLogic.gameState.gameOver, gameLogic.gameState.isPaused, gameLogic.gameState.level,
+    gameLogic.gameOver, gameLogic.isPaused, gameLogic.level,
     keyboardControls.processHeldKeys, gameLogic.movePiece
   ]);
 
   useEffect(() => {
+    if (!gameLogic.currentPiece && gameLogic.nextPieces.length > 0) {
+      setTimeout(() => gameLogic.spawnNewPiece(), 100);
+    }
+
     gameLoopRef.current = requestAnimationFrame(gameLoop);
 
     return () => {
@@ -102,7 +116,7 @@ const GameController: React.FC<GameControllerProps> = ({
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [gameLoop]);
+  }, [gameLoop, gameLogic.currentPiece, gameLogic.nextPieces, gameLogic.spawnNewPiece]);
 
   return (
     <>

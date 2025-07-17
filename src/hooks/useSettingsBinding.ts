@@ -28,14 +28,6 @@ export const useSettingsBinding = () => {
     sdf: userSettings.sdf,
     controls: userSettings.controls,
     ghostOpacity: userSettings.ghostOpacity,
-    enableWallpaper: userSettings.enableWallpaper,
-    wallpaperOpacity: userSettings.wallpaperOpacity || 100,
-    autoPlayMusic: userSettings.autoPlayMusic || false,
-    loopMusic: userSettings.loopMusic || true,
-    enableLineAnimation: userSettings.enableLineAnimation || true,
-    enableAchievementAnimation: userSettings.enableAchievementAnimation || true,
-    enableLandingEffect: userSettings.enableLandingEffect || true,
-    blockSkin: userSettings.blockSkin || 'wood'
   });
 
   const [tempSettings, setTempSettings] = useState<GameSettings>(() => convertToGameSettings(settings));
@@ -124,26 +116,7 @@ export const useSettingsBinding = () => {
   // 保存设置
   const commitSettings = useCallback(async () => {
     try {
-      await saveSettings({
-        enableGhost: tempSettings.enableGhost,
-        enableSound: tempSettings.enableSound,
-        masterVolume: tempSettings.masterVolume,
-        musicVolume: tempSettings.musicVolume,
-        backgroundMusic: tempSettings.backgroundMusic,
-        arr: tempSettings.arr,
-        das: tempSettings.das,
-        sdf: tempSettings.sdf,
-        controls: tempSettings.controls,
-        ghostOpacity: tempSettings.ghostOpacity,
-        enableWallpaper: tempSettings.enableWallpaper,
-        wallpaperOpacity: tempSettings.wallpaperOpacity,
-        autoPlayMusic: tempSettings.autoPlayMusic,
-        loopMusic: tempSettings.loopMusic,
-        enableLineAnimation: tempSettings.enableLineAnimation,
-        enableAchievementAnimation: tempSettings.enableAchievementAnimation,
-        enableLandingEffect: tempSettings.enableLandingEffect,
-        blockSkin: tempSettings.blockSkin
-      });
+      await saveSettings(tempSettings);
       setHasChanges(false);
       toast.success('设置已保存');
     } catch (error) {

@@ -1,9 +1,8 @@
 
 import React from 'react';
-import { getBlockColor } from '@/utils/blockColors';
+import { getCurrentSkin, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import type { GamePiece } from '@/utils/gameTypes';
-import AchievementDisplay from './AchievementDisplay';
 
 interface HoldPieceDisplayProps {
   holdPiece: GamePiece | null;
@@ -12,18 +11,19 @@ interface HoldPieceDisplayProps {
 
 const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold }) => {
   const { settings } = useUserSettings();
-  const cellSize = 30; // Dynamic size based on game mode
+  const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
 
   const renderHoldPiece = () => {
     if (!holdPiece) {
       return (
-        <div className="w-20 h-16 border border-border rounded bg-muted flex items-center justify-center">
-          <span className="text-muted-foreground text-xs">空</span>
+        <div className="w-16 h-16 border border-gray-600 rounded bg-gray-800 flex items-center justify-center">
+          <span className="text-gray-500 text-xs">空</span>
         </div>
       );
     }
 
     const { shape } = holdPiece.type;
+    const cellSize = 12;
 
     // 计算方块的边界框
     let minRow = shape.length, maxRow = -1;
@@ -44,12 +44,12 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     const pieceHeight = maxRow - minRow + 1;
 
     return (
-      <div className={`p-3 bg-muted rounded border border-border ${!canHold ? 'opacity-50' : ''}`}>
+      <div className={`p-2 bg-gray-800 rounded border border-gray-600 ${!canHold ? 'opacity-50' : ''}`}>
         <div 
           className="flex justify-center items-center"
           style={{ 
-            width: Math.max(84, pieceWidth * cellSize),
-            height: Math.max(84, pieceHeight * cellSize)
+            width: Math.max(64, pieceWidth * cellSize),
+            height: Math.max(48, pieceHeight * cellSize)
           }}
         >
           <div 
@@ -68,17 +68,16 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
                   return <div key={`${rowIndex}-${colIndex}`} />;
                 }
                 
-                const color = getBlockColor(holdPiece.type.type);
+                const color = getColorByTypeId(cell);
+                const blockStyle = currentSkin.getBlockStyle(color, false);
+                const blockClass = currentSkin.getBlockClass(color, false);
                 
                 return (
                   <div
                     key={`${rowIndex}-${colIndex}`}
-                    className={`guideline-block ${!canHold ? 'grayscale' : ''}`}
+                    className={`${blockClass} ${!canHold ? 'grayscale' : ''}`}
                     style={{
-                      backgroundColor: color,
-                      border: '2px solid #333',
-                      borderRadius: '2px',
-                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.2)',
+                      ...blockStyle,
                       width: cellSize,
                       height: cellSize,
                       opacity: canHold ? 1 : 0.6,
@@ -95,17 +94,14 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   };
 
   return (
-    <div className="p-3 rounded-lg w-32">
-      <h3 className="text-foreground text-xs font-bold mb-3 text-center">HOLD</h3>
+    <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
+      <h3 className="text-white text-sm font-bold mb-2 text-center">HOLD</h3>
       <div className="flex justify-center">
         {renderHoldPiece()}
       </div>
       {!canHold && (
-        <p className="text-destructive text-xs text-center mt-2">Used</p>
+        <p className="text-red-400 text-xs text-center mt-1">已使用</p>
       )}
-      
-      {/* Achievement Display Area */}
-      <AchievementDisplay className="w-full mt-3" />
     </div>
   );
 };

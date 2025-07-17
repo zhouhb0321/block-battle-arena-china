@@ -15,19 +15,15 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
   const [count, setCount] = useState(initialCount);
 
   useEffect(() => {
-    if (!isVisible) {
-      setCount(0);
-      return;
-    }
+    if (!isVisible) return;
 
-    // Only reset count when initialCount changes and we're visible
     setCount(initialCount);
     
     const timer = setInterval(() => {
       setCount(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          setTimeout(() => onComplete(), 0); // Use setTimeout to avoid state update conflicts
+          onComplete();
           return 0;
         }
         return prev - 1;
@@ -35,7 +31,7 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [initialCount, isVisible]); // Remove onComplete from deps to prevent infinite loop
+  }, [initialCount, onComplete, isVisible]);
 
   if (!isVisible || count <= 0) return null;
 

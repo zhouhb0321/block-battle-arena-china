@@ -99,7 +99,7 @@ export const BLOCK_SKINS: BlockSkin[] = [
       backgroundColor: isGhost ? 'transparent' : color,
       border: isGhost ? `2px dashed ${color}` : `2px solid ${adjustBrightness(color, -30)}`,
       opacity: isGhost ? 0.4 : 1,
-      borderRadius: '2px',
+      borderRadius: '1px',
       position: 'relative' as const,
       boxShadow: isGhost ? 'none' : `inset 0 0 0 1px ${adjustBrightness(color, -20)}`,
       color: color // 设置颜色给 CSS 伪元素使用

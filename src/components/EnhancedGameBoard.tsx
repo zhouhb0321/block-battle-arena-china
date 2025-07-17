@@ -1,9 +1,7 @@
-
 import React from 'react';
 import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from '@/utils/blockSkins';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getBlockStyle } from '@/utils/blockRenderer';
 import type { GamePiece } from '@/utils/gameTypes';
 
 interface EnhancedGameBoardProps {
@@ -22,15 +20,16 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   board,
   currentPiece,
   ghostPiece,
-  cellSize = 42,
-  showGrid = false,
-  showHiddenRows = false,
+  cellSize = 24,
+  showGrid = true,
+  showHiddenRows = true,
   isLockDelayActive = false,
   lockDelayResetCount = 0,
   clearingLines = []
 }) => {
   const { settings } = useUserSettings();
   const { actualTheme } = useTheme();
+  const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
 
   const createExtendedBoard = () => {
     const extendedBoard = board.map(row => [...row]);
@@ -44,7 +43,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             const boardY = ghostPiece.y + row;
             if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
               if (extendedBoard[boardY][boardX] === 0) {
-                extendedBoard[boardY][boardX] = `ghost-${ghostPiece.type.type}` as any;
+                const color = getColorByTypeId(shape[row][col]);
+                extendedBoard[boardY][boardX] = `ghost-${color}` as any;
               }
             }
           }
@@ -60,8 +60,9 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             const boardX = currentPiece.x + col;
             const boardY = currentPiece.y + row;
             if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
+              const color = getColorByTypeId(shape[row][col]);
               const prefix = isLockDelayActive ? 'lock-delay-' : 'solid-';
-              extendedBoard[boardY][boardX] = `${prefix}${currentPiece.type.type}` as any;
+              extendedBoard[boardY][boardX] = `${prefix}${color}` as any;
             }
           }
         }
@@ -74,19 +75,86 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   const extendedBoard = createExtendedBoard();
 
   const getCellStyle = (cellValue: number | string, rowIndex: number) => {
-    const isHidden = rowIndex < 3 && !showHiddenRows;
+    let cellStyle: React.CSSProperties = {};
+    let cellClass = '';
+    const isHidden = showHiddenRows && rowIndex < 3;
     const isClearing = clearingLines.includes(rowIndex);
-    
-    const config = {
-      cellSize,
-      isHidden: false, // Never hide blocks visually  
-      isClearing,
-      ghostOpacity: settings.ghostOpacity || 50,
-      theme: actualTheme,
-      isLockDelay: isLockDelayActive,
-    };
-    
-    return getBlockStyle(cellValue, config, settings);
+
+    if (typeof cellValue === 'string') {
+      if (cellValue.startsWith('ghost-')) {
+        const color = cellValue.replace('ghost-', '');
+        const ghostOpacity = (settings.ghostOpacity || 40) / 100 * 0.8;
+        
+        // 改进的幽灵方块样式 - 灰色边框，内部使用背景色的暗色版本
+        if (actualTheme === 'light') {
+          cellStyle = {
+            backgroundColor: `rgba(60, 60, 60, ${ghostOpacity * 0.3})`, // 暗色填充
+            border: `2px dashed #888888`,
+            borderRadius: '3px',
+            opacity: 1,
+          };
+        } else {
+          cellStyle = {
+            backgroundColor: `rgba(40, 40, 40, ${ghostOpacity * 0.4})`, // 深色主题下的暗色填充
+            border: `2px dashed #666666`,
+            borderRadius: '3px',
+            opacity: ghostOpacity + 0.3,
+          };
+        }
+        cellClass = 'ghost-block';
+      } else if (cellValue.startsWith('lock-delay-')) {
+        const color = cellValue.replace('lock-delay-', '');
+        cellStyle = currentSkin.getBlockStyle(color, false);
+        cellClass = `${currentSkin.getBlockClass(color, false)} lock-delay-flash`;
+      } else if (cellValue.startsWith('solid-')) {
+        const color = cellValue.replace('solid-', '');
+        cellStyle = currentSkin.getBlockStyle(color, false);
+        cellClass = currentSkin.getBlockClass(color, false);
+      }
+    } else if (cellValue !== 0) {
+      if (isGarbageBlock(cellValue)) {
+        cellStyle = {
+          backgroundColor: GARBAGE_COLOR,
+          border: `1px solid ${GARBAGE_COLOR}`,
+          opacity: isHidden ? 0.3 : 1,
+        };
+        cellClass = 'garbage-block';
+      } else {
+        const color = getColorByTypeId(cellValue);
+        cellStyle = currentSkin.getBlockStyle(color, false);
+        cellClass = currentSkin.getBlockClass(color, false);
+      }
+    } else {
+      if (isHidden) {
+        cellStyle = {
+          backgroundColor: 'transparent',
+          border: 'none',
+        };
+      } else {
+        if (actualTheme === 'light') {
+          cellStyle = {
+            backgroundColor: 'transparent',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
+          };
+        } else {
+          cellStyle = {
+            backgroundColor: 'transparent',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+          };
+        }
+      }
+      cellClass = 'empty-block';
+    }
+
+    if (isHidden) {
+      cellStyle.opacity = (cellStyle.opacity as number || 1) * 0.3;
+    }
+
+    if (isClearing) {
+      cellClass += ' clearing-line';
+    }
+
+    return { cellStyle, cellClass };
   };
 
   return (
@@ -99,52 +167,30 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       )}
       
       <div 
-        className="game-board relative"
+        className="game-board relative border-2 border-gray-600 bg-gray-900"
         style={{
           width: cellSize * 10,
-          height: cellSize * 23,
+          height: cellSize * (showHiddenRows ? 23 : 20),
           display: 'grid',
           gridTemplateColumns: `repeat(10, ${cellSize}px)`,
-          gridTemplateRows: `repeat(23, ${cellSize}px)`,
-          backgroundColor: actualTheme === 'light' ? '#ffffff' : '#1f2937',
+          gridTemplateRows: `repeat(${showHiddenRows ? 23 : 20}, ${cellSize}px)`,
         }}
       >
-        {extendedBoard.map((row, rowIndex) =>
+        {extendedBoard.map((row, rowIndex) => 
           row.map((cellValue, colIndex) => {
-            const isHiddenRow = rowIndex < 3;
-            const { style, className } = getCellStyle(cellValue, rowIndex);
-            
-            // Always show blocks clearly, including in hidden rows
-            const shouldHideEmptyCell = cellValue === 0 && isHiddenRow && !showHiddenRows;
-            
-            if (shouldHideEmptyCell) {
-              return (
-                <div
-                  key={`${rowIndex}-${colIndex}`}
-                  className="game-cell empty-hidden"
-                  style={{
-                    width: cellSize,
-                    height: cellSize,
-                    backgroundColor: 'transparent',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              );
-            }
+            const { cellStyle, cellClass } = getCellStyle(cellValue, rowIndex);
             
             return (
               <div
                 key={`${rowIndex}-${colIndex}`}
-                className={`game-cell ${className}`}
+                className={`game-cell ${cellClass} ${
+                  showHiddenRows && rowIndex < 3 ? 'hidden-row' : ''
+                } ${showGrid ? 'show-grid' : ''}`}
                 style={{
-                  ...style,
+                  ...cellStyle,
                   width: cellSize,
                   height: cellSize,
                   boxSizing: 'border-box',
-                  // Always show blocks clearly - full opacity for all blocks
-                  opacity: cellValue === 0 ? (shouldHideEmptyCell ? 0 : 1) : 1,
-                  // Ensure current piece stands out
-                  filter: className.includes('current-piece') ? 'brightness(1.1) saturate(1.2)' : undefined
                 }}
               />
             );
@@ -162,6 +208,10 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         .game-cell {
           position: relative;
           transition: all 0.1s ease;
+        }
+        
+        .show-grid .game-cell {
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .hidden-row {

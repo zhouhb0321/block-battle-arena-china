@@ -1,74 +1,33 @@
 
-// Official Tetris colors (tetriswiki.cn standard)
-export const BLOCK_COLORS = {
-  'I': '#00ffff', // Cyan - I-piece
-  'O': '#ffff00', // Yellow - O-piece  
-  'T': '#800080', // Purple - T-piece
-  'S': '#00ff00', // Green - S-piece
-  'Z': '#ff0000', // Red - Z-piece
-  'J': '#0000ff', // Blue - J-piece
-  'L': '#ff8000', // Orange - L-piece
-  'ghost': '#ffffff40', // Semi-transparent white for ghost pieces
-  'empty': 'transparent'
-} as const;
-
-export type BlockType = keyof typeof BLOCK_COLORS;
-
-/**
- * Get consistent color for a block type
- * This ensures all components use the same colors
- */
-export const getBlockColor = (blockType: string | null): string => {
-  if (!blockType) return BLOCK_COLORS.empty;
-  
-  // Normalize the block type (handle both uppercase and lowercase)
-  const normalizedType = blockType.toUpperCase() as BlockType;
-  
-  return BLOCK_COLORS[normalizedType] || BLOCK_COLORS.empty;
+// 统一的方块颜色配置
+export const TETROMINO_COLORS = {
+  I: '#4a9d9c', // 柔和的青色
+  O: '#c4a661', // 柔和的黄色
+  T: '#8b6bb1', // 柔和的紫色
+  S: '#6b9b6b', // 柔和的绿色
+  Z: '#b87575', // 柔和的红色
+  J: '#5d7fb8', // 柔和的蓝色
+  L: '#c4906b'  // 柔和的橙色
 };
 
-/**
- * Get ghost piece color with custom opacity
- */
-export const getGhostColor = (blockType: string | null, opacity: number = 0.3): string => {
-  const baseColor = getBlockColor(blockType);
-  if (baseColor === BLOCK_COLORS.empty) return BLOCK_COLORS.ghost;
-  
-  // Convert hex to rgba with opacity
-  const hex = baseColor.replace('#', '');
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+// 方块类型到颜色的映射（用于游戏板渲染）
+export const TETROMINO_TYPE_TO_COLOR: { [key: number]: string } = {
+  0: 'transparent', // 空格
+  1: TETROMINO_COLORS.I,
+  2: TETROMINO_COLORS.O,
+  3: TETROMINO_COLORS.T,
+  4: TETROMINO_COLORS.S,
+  5: TETROMINO_COLORS.Z,
+  6: TETROMINO_COLORS.J,
+  7: TETROMINO_COLORS.L
 };
 
-/**
- * Check if a color is valid
- */
-export const isValidBlockType = (blockType: string): blockType is BlockType => {
-  return blockType.toUpperCase() in BLOCK_COLORS;
+// 获取方块类型的颜色
+export const getTetrominoColor = (type: string): string => {
+  return TETROMINO_COLORS[type as keyof typeof TETROMINO_COLORS] || '#666666';
 };
 
-/**
- * Get all available block types
- */
-export const getAllBlockTypes = (): BlockType[] => {
-  return Object.keys(BLOCK_COLORS) as BlockType[];
+// 获取数字ID对应的颜色
+export const getBlockColor = (typeId: number): string => {
+  return TETROMINO_TYPE_TO_COLOR[typeId] || '#666666';
 };
-
-/**
- * Generate CSS custom properties for block colors
- * Useful for theming and CSS variables
- */
-export const generateBlockColorCSS = (): Record<string, string> => {
-  const cssVars: Record<string, string> = {};
-  
-  Object.entries(BLOCK_COLORS).forEach(([type, color]) => {
-    cssVars[`--block-${type.toLowerCase()}`] = color;
-  });
-  
-  return cssVars;
-};
-
-console.log('Block colors initialized:', BLOCK_COLORS);

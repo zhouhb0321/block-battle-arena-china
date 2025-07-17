@@ -1,29 +1,27 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Download, Share2, Trash2 } from 'lucide-react';
+import { Play, Trophy, Clock, Target } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import type { GameReplay } from '@/utils/gameTypes';
+import ReplayPlayer from './ReplayPlayer';
+import type { GameReplay, ReplayAction } from '@/utils/gameTypes';
 
-interface ReplaySystemProps {
-  onReplaySelect: (replay: GameReplay) => void;
-}
-
-const ReplaySystem: React.FC<ReplaySystemProps> = ({ onReplaySelect }) => {
+const ReplaySystem: React.FC = () => {
   const { user } = useAuth();
   const [replays, setReplays] = useState<GameReplay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedReplay, setSelectedReplay] = useState<GameReplay | null>(null);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   useEffect(() => {
-    fetchReplays();
+    loadReplays();
   }, [user]);
 
-  const fetchReplays = async () => {
+  const loadReplays = async () => {
     if (!user || user.isGuest) {
-      setReplays([]);
       setLoading(false);
       return;
     }
@@ -31,178 +29,213 @@ const ReplaySystem: React.FC<ReplaySystemProps> = ({ onReplaySelect }) => {
     try {
       const { data, error } = await supabase
         .from('game_replays_new')
-        .select('*')
-        .eq('user_id', user.id)
+        .select(`
+          *,
+          user_profiles!game_replays_new_user_id_fkey(username, avatar_url)
+        `)
+        .or(`user_id.eq.${user.id},opponent_id.eq.${user.id}`)
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading replays:', error);
+        return;
+      }
 
-      const formattedReplays: GameReplay[] = data.map(replay => ({
-        id: replay.id,
-        matchId: replay.id, // Using replay id as match id for single player
-        userId: replay.user_id,
-        gameType: 'single',
-        gameMode: replay.game_mode,
-        score: replay.final_score,
-        lines: replay.final_lines,
-        level: replay.final_level,
-        pps: replay.pps,
-        apm: replay.apm,
-        duration: replay.duration,
-        startTime: new Date(replay.created_at).getTime(),
-        endTime: new Date(replay.created_at).getTime() + (replay.duration * 1000),
-        actions: [],
-        finalBoard: [],
-        date: replay.created_at,
-        playerName: user.username || 'Player',
-        isPersonalBest: replay.is_personal_best || false,
-        metadata: {
-          version: '1.0',
-          settings: {
-            das: 167,
-            arr: 33,
-            sdf: 20,
-            controls: {
-              moveLeft: 'ArrowLeft',
-              moveRight: 'ArrowRight',
-              softDrop: 'ArrowDown',
-              hardDrop: 'Space',
-              rotateClockwise: 'ArrowUp',
-              rotateCounterclockwise: 'KeyZ',
-              rotate180: 'KeyA',
-              hold: 'KeyC',
-              pause: 'Escape',
-              backToMenu: 'KeyB'
-            },
-            enableGhost: true,
-            enableSound: true,
-            masterVolume: 50,
-            backgroundMusic: '',
-            musicVolume: 30,
-            ghostOpacity: 50,
-            enableWallpaper: true,
-            wallpaperOpacity: 100,
-            autoPlayMusic: false,
-            loopMusic: true,
-            enableLineAnimation: true,
-            enableAchievementAnimation: true,
-            enableLandingEffect: true,
-            blockSkin: 'wood'
-          }
-        }
-      }));
+      if (data) {
+        const formattedReplays: GameReplay[] = data.map(replay => {
+          const replayData = replay.replay_data as any;
+          const actions: ReplayAction[] = replayData?.actions || [];
+          const userProfile = replay.user_profiles as any;
+          
+          return {
+            id: replay.id,
+            matchId: replay.id,
+            userId: replay.user_id,
+            gameType: replay.game_mode,
+            gameMode: replay.game_mode,
+            score: replay.final_score,
+            lines: replay.final_lines,
+            level: replay.final_level,
+            pps: parseFloat(replay.pps.toString()),
+            apm: parseFloat(replay.apm.toString()),
+            duration: replay.duration,
+            startTime: new Date(replay.created_at).getTime(),
+            endTime: new Date(replay.created_at).getTime() + replay.duration,
+            actions: actions,
+            finalBoard: Array(20).fill(null).map(() => Array(10).fill(0)),
+            date: replay.created_at,
+            playerName: userProfile?.username || 'Unknown Player',
+            isPersonalBest: replay.is_personal_best || false,
+            metadata: {
+              version: '1.0',
+              settings: {
+                das: 167,
+                arr: 33,
+                sdf: 20,
+                controls: {
+                  moveLeft: 'ArrowLeft',
+                  moveRight: 'ArrowRight',
+                  softDrop: 'ArrowDown',
+                  hardDrop: 'Space',
+                  rotateClockwise: 'ArrowUp',
+                  rotateCounterclockwise: 'KeyZ',
+                  rotate180: 'KeyA',
+                  hold: 'KeyC',
+                  pause: 'Escape',
+                  backToMenu: 'KeyB'
+                },
+                enableGhost: true,
+                enableSound: true,
+                masterVolume: 50,
+                backgroundMusic: '',
+                musicVolume: 30,
+                ghostOpacity: 50
+              }
+            }
+          };
+        });
 
-      setReplays(formattedReplays);
+        setReplays(formattedReplays);
+      }
     } catch (error) {
-      console.error('Error fetching replays:', error);
-      toast.error('Failed to load replays');
+      console.error('Error loading replays:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteReplay = async (replayId: string) => {
-    if (!confirm('Are you sure you want to delete this replay?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('game_replays_new')
-        .delete()
-        .eq('id', replayId);
-
-      if (error) throw error;
-
-      setReplays(prev => prev.filter(r => r.id !== replayId));
-      toast.success('Replay deleted successfully');
-    } catch (error) {
-      console.error('Error deleting replay:', error);
-      toast.error('Failed to delete replay');
-    }
+  const handlePlayReplay = (replay: GameReplay) => {
+    setSelectedReplay(replay);
+    setIsPlayerOpen(true);
   };
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const formatDuration = (duration: number) => {
+    const minutes = Math.floor(duration / 60000);
+    const seconds = Math.floor((duration % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  const getGameModeLabel = (mode: string) => {
+    const modes: { [key: string]: string } = {
+      'sprint_40': '40行竞速',
+      'ultra_2min': '2分钟极限',
+      'endless': '无尽模式',
+      'multiplayer': '多人对战'
+    };
+    return modes[mode] || mode;
   };
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Loading Replays...</CardTitle>
-        </CardHeader>
-      </Card>
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">加载回放中...</p>
+        </div>
+      </div>
     );
   }
 
   if (!user || user.isGuest) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Replay System</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Please sign in to view and manage your replays.</p>
-        </CardContent>
-      </Card>
+      <div className="text-center p-8">
+        <h3 className="text-lg font-semibold mb-4">回放系统</h3>
+        <p className="text-gray-600 mb-4">回放功能仅对注册用户开放</p>
+        <p className="text-sm text-gray-500">请先登录或注册账户来使用回放功能</p>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Your Replays ({replays.length})</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {replays.length === 0 ? (
-          <p className="text-muted-foreground">No replays found. Play some games to generate replays!</p>
-        ) : (
-          replays.map(replay => (
-            <div key={replay.id} className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-semibold">{replay.gameMode}</h3>
-                  {replay.isPersonalBest && (
-                    <Badge variant="secondary">PB</Badge>
-                  )}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">游戏回放</h2>
+        <Button onClick={loadReplays} variant="outline" size="sm">
+          刷新
+        </Button>
+      </div>
+
+      {replays.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-8">
+            <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">暂无回放记录</h3>
+            <p className="text-gray-600">完成游戏后，您的回放记录将显示在这里</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {replays.map((replay) => (
+            <Card key={replay.id} className="hover:shadow-lg transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold">{replay.playerName}</h3>
+                      <Badge variant="secondary">
+                        {getGameModeLabel(replay.gameType)}
+                      </Badge>
+                      {replay.isPersonalBest && (
+                        <Badge className="bg-yellow-500 text-black">
+                          <Trophy className="w-3 h-3 mr-1" />
+                          PB
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="flex items-center gap-1">
+                        <Target className="w-4 h-4 text-blue-500" />
+                        <span>得分: {replay.score.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span>行数: {replay.lines}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4 text-green-500" />
+                        <span>时长: {formatDuration(replay.duration)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span>PPS: {replay.pps.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 text-xs text-gray-500">
+                      {new Date(replay.date).toLocaleDateString('zh-CN', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => handlePlayReplay(replay)}
+                    className="ml-4"
+                    size="sm"
+                  >
+                    <Play className="w-4 h-4 mr-1" />
+                    播放
+                  </Button>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
-                  <div>Score: {replay.score.toLocaleString()}</div>
-                  <div>Lines: {replay.lines}</div>
-                  <div>PPS: {replay.pps?.toFixed(2) || 0}</div>
-                  <div>Time: {formatDuration(replay.duration)}</div>
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {formatDate(replay.date || '')}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onReplaySelect(replay)}
-                >
-                  <Play className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDeleteReplay(replay.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <ReplayPlayer
+        replay={selectedReplay}
+        isOpen={isPlayerOpen}
+        onClose={() => {
+          setIsPlayerOpen(false);
+          setSelectedReplay(null);
+        }}
+      />
+    </div>
   );
 };
 

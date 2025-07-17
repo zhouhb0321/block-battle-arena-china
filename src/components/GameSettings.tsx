@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useGame } from '@/contexts/GameContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -74,15 +73,7 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
       masterVolume: 50,
       backgroundMusic: '',
       musicVolume: 30,
-      ghostOpacity: 50,
-      enableWallpaper: true,
-      wallpaperOpacity: 100,
-      autoPlayMusic: false,
-      loopMusic: true,
-      enableLineAnimation: true,
-      enableAchievementAnimation: true,
-      enableLandingEffect: true,
-      blockSkin: 'wood'
+      ghostOpacity: 50
     };
     setTempSettings(defaultSettings);
   };
