@@ -74,12 +74,12 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
   const extendedBoard = createExtendedBoard();
 
   const getCellStyle = (cellValue: number | string, rowIndex: number) => {
-    const isHidden = rowIndex < 3;
+    const isHidden = rowIndex < 3 && !showHiddenRows;
     const isClearing = clearingLines.includes(rowIndex);
     
     const config = {
       cellSize,
-      isHidden: false, // Always show blocks, even in hidden rows
+      isHidden: false, // Never hide blocks visually
       isClearing,
       ghostOpacity: settings.ghostOpacity || 50,
       theme: actualTheme,
@@ -113,10 +113,10 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             const isHiddenRow = rowIndex < 3;
             const { style, className } = getCellStyle(cellValue, rowIndex);
             
-            // Always show blocks in hidden rows, only hide empty cells
-            const shouldShowCell = cellValue !== 0;
+            // Always show blocks clearly, including in hidden rows
+            const shouldHideEmptyCell = cellValue === 0 && isHiddenRow && !showHiddenRows;
             
-            if (!shouldShowCell && isHiddenRow) {
+            if (shouldHideEmptyCell) {
               return (
                 <div
                   key={`${rowIndex}-${colIndex}`}
@@ -140,8 +140,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
                   width: cellSize,
                   height: cellSize,
                   boxSizing: 'border-box',
-                  // Remove opacity reduction for hidden row blocks
-                  opacity: cellValue === 0 ? (isHiddenRow ? 0 : 1) : 1
+                  // Always show blocks clearly - no opacity reduction
+                  opacity: cellValue === 0 ? (shouldHideEmptyCell ? 0 : 1) : 1
                 }}
               />
             );

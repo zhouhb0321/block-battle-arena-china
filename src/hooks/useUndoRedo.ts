@@ -24,8 +24,8 @@ export function useUndoRedo<T>(initialPresent: T, gameMode: string = ''): [T, Un
     future: []
   });
 
-  // 只有无尽模式支持撤销重做
-  const isEndlessMode = gameMode === 'endless';
+  // 只有无尽模式和马拉松模式支持撤销重做
+  const isEndlessMode = gameMode === 'endless' || gameMode === 'marathon';
   const canUndo = isEndlessMode && state.past.length > 0;
   const canRedo = isEndlessMode && state.future.length > 0;
 

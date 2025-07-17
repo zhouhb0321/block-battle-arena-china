@@ -36,9 +36,10 @@ import type { TetrominoType, GamePiece, GameState } from '@/utils/gameTypes';
 
 interface FixedTetrisGameProps {
   onBackToMenu?: () => void;
+  gameMode?: string;
 }
 
-const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
+const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu, gameMode = 'sprint' }) => {
   const { user } = useAuth();
   const isWindowFocused = useWindowFocus();
   const [gameStarted, setGameStarted] = useState(false);
@@ -623,7 +624,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             </Button>
           )}
           
-          {gameStarted && (
+          {gameStarted && (gameMode === 'marathon' || gameMode === 'endless') && (
             <>
               <Button
                 onClick={handleUndo}

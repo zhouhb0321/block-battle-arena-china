@@ -5,6 +5,7 @@ import { generatePiece, PIECE_COLORS } from '@/utils/pieceGeneration';
 import { performSRSRotation } from '@/utils/srsRotation';
 import { calculateScore, calculateLevel } from '@/utils/scoringSystem';
 import { detectTSpin } from '@/utils/tspinDetection';
+import { calculateDropSpeed } from '@/utils/gravitySystem';
 import { useUndoRedo } from './useUndoRedo';
 
 export interface Position {
@@ -60,7 +61,7 @@ const initialState: GameState = {
   gameOver: false,
   isPaused: false,
   lastMoveTime: 0,
-  dropTime: 1000,
+  dropTime: calculateDropSpeed(0), // Use gravity system
   lockDelay: 500,
   lockDelayTimer: 0,
   combo: 0,
@@ -260,6 +261,8 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
         nextPieces: newNextPieces,
         score: prevState.score + hardDropScore + (linesCleared * 100),
         lines: prevState.lines + linesCleared,
+        level: calculateLevel(prevState.lines + linesCleared),
+        dropTime: calculateDropSpeed(prevState.lines + linesCleared),
         canHold: true,
         statistics: newStatistics,
         pieces: prevState.pieces + 1
@@ -317,6 +320,26 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
       );
       
       if (rotationResult.success && rotationResult.newPiece) {
+        // Check for T-Spin after successful rotation
+        let tSpinBonus = 0;
+        if (prevState.currentPiece.type === 'T') {
+          const tSpin = detectTSpin(
+            prevState.board,
+            rotationResult.newPiece,
+            'rotate',
+            rotationResult.wasKicked || false
+          );
+          
+          if (tSpin) {
+            console.log(`${tSpin.type} detected!`, { 
+              position: { x: rotationResult.newPiece.x, y: rotationResult.newPiece.y },
+              rotation: rotationResult.newPiece.rotation,
+              wasKicked: rotationResult.wasKicked
+            });
+            // T-Spin detection bonus will be applied when lines are cleared
+          }
+        }
+        
         return {
           ...prevState,
           currentPiece: {
@@ -375,9 +398,21 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
   }, [spawnPiece]);
 
   const initializePieces = useCallback(() => {
-    // 生成完整的方块队列，确保在倒计时期间不会改变
-    const newPieces = Array(14).fill(null).map(() => generatePiece()); // 生成更多方块确保稳定
+    // 固定生成方块队列，确保在倒计时期间不会改变
+    const newPieces: any[] = [];
+    
+    // 预生成足够的方块，避免倒计时期间变化
+    for (let i = 0; i < 21; i++) { // 生成3个7-bag (21块)
+      newPieces.push(generatePiece());
+    }
+    
     const currentPiece = spawnPiece();
+    
+    console.log('Initialized pieces for game:', { 
+      currentPiece: currentPiece?.type, 
+      nextCount: newPieces.length,
+      first6Next: newPieces.slice(0, 6).map(p => p.type)
+    });
     
     return { currentPiece, nextPieces: newPieces };
   }, [spawnPiece]);

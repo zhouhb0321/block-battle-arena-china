@@ -56,12 +56,14 @@ export const getBlockStyle = (
   if (typeof cellValue === 'string') {
     if (cellValue.startsWith('ghost-')) {
       // 幽灵方块：白色2px虚线+发光
+      const pieceType = cellValue.replace('ghost-', '');
+      const baseColor = getBlockColor(pieceType);
       style = {
         backgroundColor: 'transparent',
-        border: '2px dashed #fff',
+        border: `2px dashed ${baseColor}`,
         borderRadius: '3px',
-        opacity: ghostOpacity / 100 * 0.8 + 0.2,
-        boxShadow: '0 0 8px 2px rgba(255,255,255,0.3)',
+        opacity: (ghostOpacity || 50) / 100,
+        boxShadow: `0 0 8px 2px ${baseColor}40`,
         zIndex: 2,
       };
       className = 'ghost-block';
@@ -91,17 +93,23 @@ export const getBlockStyle = (
       style = {
         backgroundColor: GARBAGE_COLOR,
         border: `1px solid ${GARBAGE_COLOR}`,
-        opacity: isHidden ? 0.3 : 1,
+        opacity: 1, // Always show garbage blocks clearly
       };
       className = 'garbage-block';
     } else {
-      const color = getBlockColor(cellValue);
+      // Convert piece type ID to color
+      const pieceTypeMap: { [key: number]: string } = {
+        1: 'I', 2: 'O', 3: 'T', 4: 'S', 5: 'Z', 6: 'J', 7: 'L'
+      };
+      const pieceType = pieceTypeMap[cellValue] || 'I';
+      const color = getBlockColor(pieceType);
+      
       style = {
         backgroundColor: color,
         border: `2px solid #333`,
         borderRadius: '2px',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.2)',
-        opacity: isHidden ? 0.7 : 1,
+        opacity: 1, // Always show solid blocks clearly
       };
       className = 'guideline-block';
     }

@@ -40,11 +40,21 @@ export const GameModeHandler: React.FC<GameModeHandlerProps> = ({
     onBackToMenu();
   };
 
-  // 总是跳过游戏模式选择器，直接使用默认模式或配置的模式
+  // 根据配置决定是显示选择器还是直接启动
   if (!gameConfig || !gameConfig.gameMode) {
-    // 如果没有配置模式，使用默认的40L模式
-    const defaultMode = { id: 'sprint40', displayName: '40行冲刺', description: '尽快消除40行方块', isTimeAttack: false, targetLines: 40 };
-    onModeReady(defaultMode);
+    // 游客模式：直接启动40L模式
+    const defaultMode = { 
+      id: 'sprint40', 
+      displayName: '40行冲刺', 
+      description: '尽快消除40行方块', 
+      isTimeAttack: false, 
+      targetLines: 40 
+    };
+    
+    useEffect(() => {
+      onModeReady(defaultMode);
+    }, []);
+    
     return null;
   }
 
