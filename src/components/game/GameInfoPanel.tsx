@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Pause } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +6,6 @@ import HoldPieceDisplay from '@/components/HoldPieceDisplay';
 import LineCleanAnimation from '@/components/LineCleanAnimation';
 import AchievementAnimation from '@/components/AchievementAnimation';
 import type { GamePiece } from '@/utils/gameTypes';
-
 interface GameInfoPanelProps {
   holdPiece: GamePiece | null;
   canHold: boolean;
@@ -24,7 +22,6 @@ interface GameInfoPanelProps {
   onAnimationComplete: () => void;
   onAchievementComplete: () => void;
 }
-
 const GameInfoPanel: React.FC<GameInfoPanelProps> = ({
   holdPiece,
   canHold,
@@ -41,32 +38,23 @@ const GameInfoPanel: React.FC<GameInfoPanelProps> = ({
   onAnimationComplete,
   onAchievementComplete
 }) => {
-  const { user } = useAuth();
-  const { actualTheme } = useTheme();
-
+  const {
+    user
+  } = useAuth();
+  const {
+    actualTheme
+  } = useTheme();
   const getPanelThemeClasses = () => {
-    return actualTheme === 'light' 
-      ? 'bg-white border-gray-300' 
-      : 'bg-gray-900 border-gray-700';
+    return actualTheme === 'light' ? 'bg-white border-gray-300' : 'bg-gray-900 border-gray-700';
   };
-
-  return (
-    <div className="flex flex-col gap-4 lg:w-60">
+  return <div className="flex flex-col gap-4 lg:w-60">
       <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
-        <HoldPieceDisplay 
-          holdPiece={holdPiece} 
-          canHold={canHold}
-        />
+        <HoldPieceDisplay holdPiece={holdPiece} canHold={canHold} />
       </div>
       
       {/* 成就动画显示区域 - 在Hold区域下方 */}
-      <div className="relative min-h-[100px]">
-        {achievementText && (
-          <AchievementAnimation
-            achievement={achievementText}
-            onComplete={onAchievementComplete}
-          />
-        )}
+      <div className="relative min-h-[100px] rounded-sm">
+        {achievementText && <AchievementAnimation achievement={achievementText} onComplete={onAchievementComplete} />}
       </div>
       
       {/* 游戏信息面板 */}
@@ -101,25 +89,17 @@ const GameInfoPanel: React.FC<GameInfoPanelProps> = ({
               </div>
             </div>
 
-            {isManuallyPaused && (
-              <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+            {isManuallyPaused && <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
                 <div className="text-center">
                   <Pause className="w-8 h-8 mx-auto mb-2" />
                   <div className="text-sm">游戏暂停</div>
                 </div>
-              </div>
-            )}
+              </div>}
           </div>
           
-          <LineCleanAnimation
-            isVisible={showAnimation}
-            text={animationText}
-            onComplete={onAnimationComplete}
-          />
+          <LineCleanAnimation isVisible={showAnimation} text={animationText} onComplete={onAnimationComplete} />
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default GameInfoPanel;
