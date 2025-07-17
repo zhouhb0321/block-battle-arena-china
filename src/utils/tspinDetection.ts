@@ -128,8 +128,11 @@ export const detectTSpin = (
   });
   // 至少3角被占用才算T-Spin
   if (occupiedCorners >= 3) {
-    // Mini判定：踢墙且前角占用<2
-    const isMini = wasKicked && frontCornersOccupied < 2;
+    // Mini判定：前角占用少于2个的情况（硬标准）
+    const isMini = frontCornersOccupied < 2;
+    
+    console.log(`T-Spin检测: 总角落=${occupiedCorners}, 前角=${frontCornersOccupied}, 踢墙=${wasKicked}, Mini=${isMini}`);
+    
     return {
       type: isMini ? 'Mini T-Spin' : 'T-Spin',
       isMini

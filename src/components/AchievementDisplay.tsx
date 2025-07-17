@@ -25,14 +25,14 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
       setCurrentAchievement(nextAchievement);
       setIsAnimating(true);
 
-      // 动画完成后清除成就
+      // 缩短显示时间，快速消失
       const timer = setTimeout(() => {
         setIsAnimating(false);
         setTimeout(() => {
           setCurrentAchievement(null);
           onAchievementComplete(nextAchievement.id);
-        }, 200);
-      }, 1800);
+        }, 150);
+      }, 1200); // 从1800ms减少到1200ms
 
       return () => clearTimeout(timer);
     }
@@ -41,17 +41,17 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
   const getAchievementColor = (type: Achievement['type']) => {
     switch (type) {
       case 'tetris':
-        return 'from-yellow-400 via-orange-500 to-red-500';
+        return 'text-yellow-400';
       case 'tspin':
-        return 'from-purple-400 via-pink-500 to-purple-600';
+        return 'text-purple-400';
       case 'combo':
-        return 'from-green-400 via-blue-500 to-green-600';
+        return 'text-green-400';
       case 'perfect':
-        return 'from-white via-yellow-300 to-white';
+        return 'text-white';
       case 'level':
-        return 'from-cyan-400 via-blue-500 to-cyan-600';
+        return 'text-cyan-400';
       default:
-        return 'from-gray-400 via-gray-500 to-gray-600';
+        return 'text-gray-400';
     }
   };
 
@@ -64,37 +64,45 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
       <div
         className={`
           absolute inset-0 flex items-center justify-center
-          transform transition-all duration-300 ease-out
-          ${isAnimating ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}
+          transform transition-all duration-500 ease-out
+          ${isAnimating ? 'scale-110 opacity-100' : 'scale-50 opacity-0'}
         `}
       >
         <div
           className={`
-            px-4 py-2 rounded-lg font-bold text-center
-            bg-gradient-to-r ${getAchievementColor(currentAchievement.type)}
-            text-white shadow-lg
-            transform transition-all duration-200
-            ${isAnimating ? 'animate-bounce' : ''}
+            px-6 py-3 font-bold text-center
+            ${getAchievementColor(currentAchievement.type)}
+            transform transition-all duration-300
+            ${isAnimating ? 'achievement-scale-up' : ''}
+            backdrop-blur-sm bg-transparent
+            border border-current/20 rounded-lg
+            drop-shadow-lg
           `}
         >
-          <div className="text-lg font-extrabold tracking-wide">
+          <div className="text-xl font-extrabold tracking-wide uppercase">
             {currentAchievement.text}
           </div>
         </div>
       </div>
 
       <style>{`
-        @keyframes achievement-glow {
-          0%, 100% { 
-            filter: brightness(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+        @keyframes achievement-scale-up {
+          0% { 
+            transform: scale(0.5);
+            opacity: 0;
           }
           50% { 
-            filter: brightness(1.2) drop-shadow(0 0 16px rgba(255, 255, 255, 0.6));
+            transform: scale(1.2);
+            opacity: 1;
+          }
+          100% { 
+            transform: scale(1);
+            opacity: 1;
           }
         }
         
-        .animate-bounce {
-          animation: achievement-glow 0.6s ease-in-out, bounce 0.8s ease-in-out;
+        .achievement-scale-up {
+          animation: achievement-scale-up 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
       `}</style>
     </div>
