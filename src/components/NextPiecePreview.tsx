@@ -13,23 +13,23 @@ const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({
   compact = false 
 }) => {
   const displayCount = compact ? 4 : 5;  // Show 4 pieces in compact mode
-  const pieceSize = compact ? 20 : 28;
+  const pieceSize = compact ? 40 : 56;
 
   return (
-    <div className={`p-2 rounded-lg ${compact ? 'w-24' : 'w-full'}`}>
+    <div className={`p-2 rounded-lg ${compact ? 'w-48' : 'w-full'}`}>
       <h3 className="text-foreground text-xs font-bold mb-2 text-center">NEXT</h3>
       <div className="space-y-1">
         {nextPieces.slice(0, displayCount).map((piece, index) => (
           <div 
             key={index} 
-            className={`flex justify-center ${compact ? 'p-0.5' : 'p-1'} ${
+            className={`flex justify-center ${compact ? 'p-1' : 'p-2'} ${
               index === 0 ? 'bg-muted/50 rounded' : ''
             }`}
           >
             <PiecePreview 
               piece={piece.type} 
               title=""
-              cellSize={compact ? 10 : 20}  // Smaller cells for compact mode
+              cellSize={compact ? 20 : 40}  // Doubled cell size
             />
           </div>
         ))}
