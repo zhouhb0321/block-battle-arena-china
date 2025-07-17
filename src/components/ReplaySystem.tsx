@@ -69,30 +69,31 @@ const ReplaySystem: React.FC = () => {
             isPersonalBest: replay.is_personal_best || false,
             metadata: {
               version: '1.0',
-              settings: {
-                das: 167,
-                arr: 33,
-                sdf: 20,
-                controls: {
-                  moveLeft: 'ArrowLeft',
-                  moveRight: 'ArrowRight',
-                  softDrop: 'ArrowDown',
-                  hardDrop: 'Space',
-                  rotateClockwise: 'ArrowUp',
-                  rotateCounterclockwise: 'KeyZ',
-                  rotate180: 'KeyA',
-                  hold: 'KeyC',
-                  pause: 'Escape',
-                  backToMenu: 'KeyB'
-                },
-                enableGhost: true,
-                enableSound: true,
-                masterVolume: 50,
-                backgroundMusic: '',
-                musicVolume: 30,
-                ghostOpacity: 50,
-                enableWallpaper: true
-              }
+            settings: {
+              das: 167,
+              arr: 33,
+              sdf: 20,
+              controls: {
+                moveLeft: 'ArrowLeft',
+                moveRight: 'ArrowRight',
+                softDrop: 'ArrowDown',
+                hardDrop: 'Space',
+                rotateClockwise: 'ArrowUp',
+                rotateCounterclockwise: 'KeyZ',
+                rotate180: 'KeyA',
+                hold: 'KeyC',
+                pause: 'Escape',
+                backToMenu: 'KeyB'
+              },
+              enableGhost: true,
+              enableSound: true,
+              masterVolume: 50,
+              backgroundMusic: '',
+              musicVolume: 30,
+              ghostOpacity: 50,
+              enableWallpaper: true,
+              undoSteps: 50
+            }
             }
           };
         });

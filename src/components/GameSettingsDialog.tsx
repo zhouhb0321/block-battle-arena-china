@@ -81,7 +81,8 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
       backgroundMusic: '',
       musicVolume: 30,
       ghostOpacity: 50,
-      enableWallpaper: true
+      enableWallpaper: true,
+      undoSteps: 50
     };
     
     setTempSettings(defaultSettings);

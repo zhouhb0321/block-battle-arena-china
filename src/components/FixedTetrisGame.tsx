@@ -66,7 +66,8 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     ghostPiece: null,
     attack: 0,
     pps: 0,
-    apm: 0
+    apm: 0,
+    achievements: []
   });
 
   // 处理窗口焦点变化

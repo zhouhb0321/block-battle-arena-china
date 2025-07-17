@@ -757,6 +757,7 @@ export type Database = {
           master_volume: number
           music_volume: number | null
           sdf: number
+          undo_steps: number | null
           updated_at: string
           user_id: string
           wallpaper_opacity: number | null
@@ -782,6 +783,7 @@ export type Database = {
           master_volume?: number
           music_volume?: number | null
           sdf?: number
+          undo_steps?: number | null
           updated_at?: string
           user_id: string
           wallpaper_opacity?: number | null
@@ -807,6 +809,7 @@ export type Database = {
           master_volume?: number
           music_volume?: number | null
           sdf?: number
+          undo_steps?: number | null
           updated_at?: string
           user_id?: string
           wallpaper_opacity?: number | null

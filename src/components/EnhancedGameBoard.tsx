@@ -61,8 +61,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             const boardY = currentPiece.y + row;
             if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
               const color = getColorByTypeId(shape[row][col]);
-              const prefix = isLockDelayActive ? 'lock-delay-' : 'solid-';
-              extendedBoard[boardY][boardX] = `${prefix}${color}` as any;
+              // 保持一致的颜色显示，无论是否在锁定延迟状态
+              extendedBoard[boardY][boardX] = color as any;
             }
           }
         }
@@ -102,14 +102,6 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
           };
         }
         cellClass = 'ghost-block';
-      } else if (cellValue.startsWith('lock-delay-')) {
-        const color = cellValue.replace('lock-delay-', '');
-        cellStyle = currentSkin.getBlockStyle(color, false);
-        cellClass = `${currentSkin.getBlockClass(color, false)} lock-delay-flash`;
-      } else if (cellValue.startsWith('solid-')) {
-        const color = cellValue.replace('solid-', '');
-        cellStyle = currentSkin.getBlockStyle(color, false);
-        cellClass = currentSkin.getBlockClass(color, false);
       }
     } else if (cellValue !== 0) {
       if (isGarbageBlock(cellValue)) {

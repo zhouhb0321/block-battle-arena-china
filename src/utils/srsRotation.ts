@@ -3,28 +3,37 @@ import type { GamePiece } from './gameTypes';
 import { rotatePiece } from './pieceGeneration';
 import { isValidPosition } from './tetrisCore';
 
-// SRS标准旋转中心点（以左上角为(0,0)）
-// I: (1.5, 0.5)  O: (0.5, 0.5)  其它: (1,1)
-// rotatePiece需以此为基准旋转
+// 标准SRS踢墙系统 - 基于Hard Drop Wiki
+// 参考: https://harddrop.com/wiki/SRS
 export const getKickTests = (pieceType: string, rotation: number, newRotation: number): { x: number; y: number }[] => {
-  // SRS规定：0->R(1), R->2(2), 2->L(3), L->0(0)
   const from = rotation % 4;
   const to = newRotation % 4;
+  
+  // 确定旋转方向和踢墙表索引
   let idx = 0;
-  if (from === 0 && to === 1) idx = 0;
-  else if (from === 1 && to === 2) idx = 1;
-  else if (from === 2 && to === 3) idx = 2;
-  else if (from === 3 && to === 0) idx = 3;
-  else if (from === 1 && to === 0) idx = 1;
-  else if (from === 2 && to === 1) idx = 2;
-  else if (from === 3 && to === 2) idx = 3;
-  else if (from === 0 && to === 3) idx = 0;
+  
+  // 顺时针旋转 (0->1, 1->2, 2->3, 3->0)
+  if ((from === 0 && to === 1) || (from === 1 && to === 2) || 
+      (from === 2 && to === 3) || (from === 3 && to === 0)) {
+    if (from === 0 && to === 1) idx = 0; // 0->R
+    else if (from === 1 && to === 2) idx = 1; // R->2
+    else if (from === 2 && to === 3) idx = 2; // 2->L
+    else if (from === 3 && to === 0) idx = 3; // L->0
+  }
+  // 逆时针旋转 (0->3, 3->2, 2->1, 1->0)
+  else {
+    if (from === 1 && to === 0) idx = 4; // R->0
+    else if (from === 2 && to === 1) idx = 5; // 2->R
+    else if (from === 3 && to === 2) idx = 6; // L->2
+    else if (from === 0 && to === 3) idx = 7; // 0->L
+  }
+  
   if (pieceType === 'I') {
-    return SRS_I_KICK_TABLE[idx];
+    return SRS_I_KICK_TABLE[idx] || [{ x: 0, y: 0 }];
   } else if (pieceType === 'O') {
-    return [{ x: 0, y: 0 }];
+    return [{ x: 0, y: 0 }]; // O块不需要踢墙
   } else {
-    return SRS_KICK_TABLE[idx];
+    return SRS_KICK_TABLE[idx] || [{ x: 0, y: 0 }];
   }
 };
 

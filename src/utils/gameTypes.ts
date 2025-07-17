@@ -20,6 +20,7 @@ export interface GameState {
   endTime: number | null;
   ghostPiece: GamePiece | null;
   clearingLines: number[];
+  achievements: any[];
 }
 
 export interface Piece {
@@ -77,6 +78,7 @@ export interface GameSettings {
   musicVolume: number;
   ghostOpacity: number;
   enableWallpaper: boolean;
+  undoSteps: number;
 }
 
 export interface AdContent {
