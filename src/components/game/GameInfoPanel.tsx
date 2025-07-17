@@ -53,7 +53,7 @@ const GameInfoPanel: React.FC<GameInfoPanelProps> = ({
       </div>
       
       {/* 成就动画显示区域 - 在Hold区域下方 */}
-      <div className="relative min-h-[100px] rounded-sm">
+      <div className="relative min-h-[100px] rounded-bl-sm ">
         {achievementText && <AchievementAnimation achievement={achievementText} onComplete={onAchievementComplete} />}
       </div>
       
