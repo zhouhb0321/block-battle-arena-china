@@ -12,7 +12,7 @@ interface HoldPieceDisplayProps {
 
 const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold }) => {
   const { settings } = useUserSettings();
-  const cellSize = 42; // Unified size with game board
+  const cellSize = 30; // Dynamic size based on game mode
 
   const renderHoldPiece = () => {
     if (!holdPiece) {

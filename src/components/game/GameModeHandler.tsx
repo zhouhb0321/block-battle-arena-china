@@ -40,15 +40,14 @@ export const GameModeHandler: React.FC<GameModeHandlerProps> = ({
     onBackToMenu();
   };
 
-  // 如果已经有配置的模式，不显示选择器
-  if (gameConfig && gameConfig.gameMode) {
+  // 总是跳过游戏模式选择器，直接使用默认模式或配置的模式
+  if (!gameConfig || !gameConfig.gameMode) {
+    // 如果没有配置模式，使用默认的40L模式
+    const defaultMode = { id: 'sprint40', displayName: '40行冲刺', description: '尽快消除40行方块', isTimeAttack: false, targetLines: 40 };
+    onModeReady(defaultMode);
     return null;
   }
 
-  return (
-    <GameModeSelector
-      onModeSelect={handleModeSelect}
-      onBack={handleBackToModeSelector}
-    />
-  );
+  // 如果有配置的模式，直接使用
+  return null;
 };

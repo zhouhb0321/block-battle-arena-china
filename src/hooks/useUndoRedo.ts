@@ -17,17 +17,21 @@ export interface UndoRedoActions<T> {
 
 const MAX_HISTORY_LENGTH = 50;
 
-export function useUndoRedo<T>(initialPresent: T): [T, UndoRedoActions<T>] {
+export function useUndoRedo<T>(initialPresent: T, gameMode: string = ''): [T, UndoRedoActions<T>] {
   const [state, setState] = useState<UndoRedoState<T>>({
     past: [],
     present: initialPresent,
     future: []
   });
 
-  const canUndo = state.past.length > 0;
-  const canRedo = state.future.length > 0;
+  // 只有无尽模式支持撤销重做
+  const isEndlessMode = gameMode === 'endless';
+  const canUndo = isEndlessMode && state.past.length > 0;
+  const canRedo = isEndlessMode && state.future.length > 0;
 
   const undo = useCallback(() => {
+    if (!isEndlessMode) return;
+    
     setState((currentState) => {
       if (currentState.past.length === 0) return currentState;
       
@@ -40,9 +44,11 @@ export function useUndoRedo<T>(initialPresent: T): [T, UndoRedoActions<T>] {
         future: [currentState.present, ...currentState.future]
       };
     });
-  }, []);
+  }, [isEndlessMode]);
 
   const redo = useCallback(() => {
+    if (!isEndlessMode) return;
+    
     setState((currentState) => {
       if (currentState.future.length === 0) return currentState;
       
@@ -55,9 +61,10 @@ export function useUndoRedo<T>(initialPresent: T): [T, UndoRedoActions<T>] {
         future: newFuture
       };
     });
-  }, []);
+  }, [isEndlessMode]);
 
   const set = useCallback((newPresent: T) => {
+    if (!isEndlessMode) return;
     setState((currentState) => {
       if (currentState.present === newPresent) return currentState;
       
@@ -73,7 +80,7 @@ export function useUndoRedo<T>(initialPresent: T): [T, UndoRedoActions<T>] {
         future: []
       };
     });
-  }, []);
+  }, [isEndlessMode]);
 
   const reset = useCallback((newPresent: T) => {
     setState({

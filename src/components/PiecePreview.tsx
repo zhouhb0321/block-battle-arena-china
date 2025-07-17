@@ -14,7 +14,7 @@ interface PiecePreviewProps {
 const PiecePreview: React.FC<PiecePreviewProps> = ({ 
   piece, 
   title, 
-  cellSize = 42 // Unified size with game board
+  cellSize = 30 // Dynamic size based on game mode
 }) => {
   if (!piece) {
     return (

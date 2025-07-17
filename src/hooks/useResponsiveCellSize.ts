@@ -8,11 +8,11 @@ interface UseResponsiveCellSizeOptions {
 }
 
 export const useResponsiveCellSize = ({ 
-  minSize = 26, 
-  maxSize = 30, 
+  minSize = 24, 
+  maxSize = 36, 
   isMultiplayer = false 
 }: UseResponsiveCellSizeOptions = {}) => {
-  const [cellSize, setCellSize] = useState(28);
+  const [cellSize, setCellSize] = useState(30);
 
   useEffect(() => {
     const calculateCellSize = () => {
@@ -21,16 +21,17 @@ export const useResponsiveCellSize = ({
       
       // For multiplayer, use smaller sizes to fit both boards
       if (isMultiplayer) {
-        if (width < 1400) return Math.max(minSize - 4, 22);
-        if (width < 1600) return Math.max(minSize - 2, 24);
-        return minSize;
+        if (width < 1200) return 24;
+        if (width < 1400) return 26;
+        if (width < 1600) return 28;
+        return 30;
       }
       
-      // Single player responsive sizing
-      if (width < 768) return minSize;
-      if (width < 1024) return minSize + 1;
-      if (width < 1280) return minSize + 2;
-      if (width < 1536) return maxSize - 1;
+      // Single player responsive sizing - larger sizes
+      if (width < 768) return 28;
+      if (width < 1024) return 30;
+      if (width < 1280) return 32;
+      if (width < 1536) return 34;
       return maxSize;
     };
 

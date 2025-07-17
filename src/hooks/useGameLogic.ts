@@ -374,17 +374,25 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
     });
   }, [spawnPiece]);
 
+  const initializePieces = useCallback(() => {
+    // 生成完整的方块队列，确保在倒计时期间不会改变
+    const newPieces = Array(14).fill(null).map(() => generatePiece()); // 生成更多方块确保稳定
+    const currentPiece = spawnPiece();
+    
+    return { currentPiece, nextPieces: newPieces };
+  }, [spawnPiece]);
+
   const startGame = useCallback(() => {
     console.log('Starting new game');
-    const newPieces = Array(6).fill(null).map(() => generatePiece());  // Generate 6 pieces for proper queue
+    const { currentPiece, nextPieces } = initializePieces();
     
     setGameState({
       ...initialState,
-      currentPiece: spawnPiece(),
-      nextPieces: newPieces,
+      currentPiece,
+      nextPieces,
       startTime: Date.now()
     });
-  }, [spawnPiece]);
+  }, [initializePieces]);
 
   const pauseGame = useCallback(() => {
     setGameState(prevState => ({

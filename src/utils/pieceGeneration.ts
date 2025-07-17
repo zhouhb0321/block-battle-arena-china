@@ -49,10 +49,10 @@ export const generatePieceType = (): TetrominoType => {
 
 // Seven-bag piece generator to ensure fair distribution
 let currentBag: string[] = [];
+let isInitialized = false;
 
 const generateSevenBag = (): string[] => {
   const pieces = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
-  const bag: string[] = [];
   
   for (let i = pieces.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -62,8 +62,18 @@ const generateSevenBag = (): string[] => {
   return pieces;
 };
 
+// Initialize the bag system
+export const initializePieceBag = () => {
+  currentBag = generateSevenBag();
+  isInitialized = true;
+};
+
 // Generate piece using 7-bag algorithm
 export const generatePiece = () => {
+  if (!isInitialized) {
+    initializePieceBag();
+  }
+  
   if (currentBag.length === 0) {
     currentBag = generateSevenBag();
   }

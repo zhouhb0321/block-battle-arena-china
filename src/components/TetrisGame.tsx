@@ -97,12 +97,15 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
 };
 
 const TetrisGame: React.FC<TetrisGameProps> = (props) => {
-  // Default to 40L mode for guest playing
-  const defaultGameMode = GAME_MODES.find(mode => mode.id === '40lines') || GAME_MODES[0];
+  // Default to 40L mode for quick start
+  const defaultGameMode = GAME_MODES.find(mode => mode.id === 'sprint40') || GAME_MODES[0];
+  
+  // 如果没有传入gameConfig，创建一个默认配置直接启动40L模式
+  const gameConfigWithDefault = props.gameConfig || { gameMode: defaultGameMode };
 
   return (
     <TetrisGameProvider gameMode={defaultGameMode}>
-      <TetrisGameContent {...props} />
+      <TetrisGameContent {...props} gameConfig={gameConfigWithDefault} />
     </TetrisGameProvider>
   );
 };

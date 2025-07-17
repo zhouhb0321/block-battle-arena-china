@@ -13,7 +13,7 @@ const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({
   compact = false 
 }) => {
   const displayCount = compact ? 4 : 5;
-  const cellSize = 42; // Unified size with game board
+  const cellSize = compact ? 24 : 30; // Dynamic size based on game mode
 
   return (
     <div className={`p-3 rounded-lg ${compact ? 'w-56' : 'w-full'}`}>
