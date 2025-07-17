@@ -321,7 +321,6 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
       
       if (rotationResult.success && rotationResult.newPiece) {
         // Check for T-Spin after successful rotation
-        let tSpinBonus = 0;
         if (prevState.currentPiece.type === 'T') {
           const tSpin = detectTSpin(
             prevState.board,
@@ -336,7 +335,7 @@ export const useGameLogic = (gameMode: string = 'marathon') => {
               rotation: rotationResult.newPiece.rotation,
               wasKicked: rotationResult.wasKicked
             });
-            // T-Spin detection bonus will be applied when lines are cleared
+            // Store T-Spin state for scoring when piece locks
           }
         }
         

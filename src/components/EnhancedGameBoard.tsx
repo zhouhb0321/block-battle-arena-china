@@ -79,10 +79,11 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
     
     const config = {
       cellSize,
-      isHidden: false, // Never hide blocks visually
+      isHidden: false, // Never hide blocks visually  
       isClearing,
       ghostOpacity: settings.ghostOpacity || 50,
       theme: actualTheme,
+      isLockDelay: isLockDelayActive,
     };
     
     return getBlockStyle(cellValue, config, settings);
@@ -140,8 +141,10 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
                   width: cellSize,
                   height: cellSize,
                   boxSizing: 'border-box',
-                  // Always show blocks clearly - no opacity reduction
-                  opacity: cellValue === 0 ? (shouldHideEmptyCell ? 0 : 1) : 1
+                  // Always show blocks clearly - full opacity for all blocks
+                  opacity: cellValue === 0 ? (shouldHideEmptyCell ? 0 : 1) : 1,
+                  // Ensure current piece stands out
+                  filter: className.includes('current-piece') ? 'brightness(1.1) saturate(1.2)' : undefined
                 }}
               />
             );

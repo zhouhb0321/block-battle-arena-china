@@ -1,13 +1,13 @@
 
-// Official Tetris Guideline colors (harddrop.com/wiki/Tetris_Guideline)
+// Official Tetris colors (tetriswiki.cn standard)
 export const BLOCK_COLORS = {
-  'I': '#00f0f0', // Cyan - I-piece
-  'O': '#f0f000', // Yellow - O-piece
+  'I': '#00ffff', // Cyan - I-piece
+  'O': '#ffff00', // Yellow - O-piece  
   'T': '#800080', // Purple - T-piece
-  'S': '#00f000', // Green - S-piece
-  'Z': '#f00000', // Red - Z-piece
-  'J': '#0000f0', // Blue - J-piece
-  'L': '#ffa500', // Orange - L-piece
+  'S': '#00ff00', // Green - S-piece
+  'Z': '#ff0000', // Red - Z-piece
+  'J': '#0000ff', // Blue - J-piece
+  'L': '#ff8000', // Orange - L-piece
   'ghost': '#ffffff40', // Semi-transparent white for ghost pieces
   'empty': 'transparent'
 } as const;
