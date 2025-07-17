@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useKeyboardControls } from './useKeyboardControls';
 import { useUserSettings } from './useUserSettings';
 import { useWindowFocus } from './useWindowFocus';
+import { useGameState } from './useGameState';
+import { useAchievements } from './useAchievements';
 import { debugLog } from '@/utils/debugLogger';
 import { 
   createEmptyBoard, 
@@ -29,9 +31,10 @@ interface UseGameLogicProps {
   gameMode: GameMode;
   onGameEnd: (stats: GameStats) => void;
   onSpecialClear?: (clearType: string, lines: number) => void;
+  onAchievement?: (text: string, type: 'tetris' | 'tspin' | 'combo' | 'perfect' | 'level') => void;
 }
 
-export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLogicProps) => {
+export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievement }: UseGameLogicProps) => {
   const [board, setBoard] = useState<Board>(createEmptyBoard());
   const [currentPiece, setCurrentPiece] = useState<GamePiece | null>(null);
   const [nextPieces, setNextPieces] = useState<GamePiece[]>([]);
@@ -49,12 +52,23 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
   const [isHardDropping, setIsHardDropping] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameInitialized, setGameInitialized] = useState(false);
+  const [comboCount, setComboCount] = useState(0);
+  const [b2bCount, setB2bCount] = useState(0);
 
   // 锁定延迟相关状态 - 增加延迟时间和改进机制
   const [isLockDelayActive, setIsLockDelayActive] = useState(false);
   const [lockDelayResetCount, setLockDelayResetCount] = useState(0);
   
   const { settings } = useUserSettings();
+  const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
+  
+  // 撤销重做功能 - 仅单人模式
+  const isSinglePlayer = gameMode.id === 'marathon' || gameMode.id === 'endless';
+  const maxUndoSteps = settings.undoSteps || 50;
+  const gameStateManager = useGameState({
+    maxHistorySize: maxUndoSteps,
+    enabled: isSinglePlayer
+  });
   const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
   
   const gameStartTime = useRef<number>(Date.now());
@@ -199,11 +213,19 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
 
     const newBoard = placePiece(board, currentPiece);
 
+    // 保存状态用于撤销功能
+    if (isSinglePlayer) {
+      gameStateManager.saveState(board, currentPiece, score, lines, level);
+    }
+
     // Check for T-Spin before clearing lines
     const isTSpin = currentPiece.type.type === 'T' && lastTSpinCheck.current && 
                    checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked);
 
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
+    
+    // 检查是否为完美消除
+    const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
     
     setBoard(clearedBoard);
     
@@ -212,15 +234,47 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
       const newLevel = Math.floor(newLines / 10) + 1;
       let lineScore = 0;
       
+      // Combo计数
+      setComboCount(prev => prev + 1);
+      
       let clearType = '';
+      let isSpecialClear = false;
+      
       if (isTSpin) {
         clearType = `tspin_${linesCleared === 3 ? 'triple' : linesCleared === 2 ? 'double' : 'single'}`;
         lineScore = [800, 1200, 1600][linesCleared - 1] * level;
+        isSpecialClear = true;
+        
+        // 显示T-Spin成就
+        const isMini = lastTSpinCheck.current?.wasKicked === false;
+        showTSpin(linesCleared, isMini, b2bCount > 0);
+        setB2bCount(prev => prev + 1);
       } else if (linesCleared === 4) {
         clearType = 'tetris';
         lineScore = 800 * level;
+        isSpecialClear = true;
+        
+        // 显示Tetris成就
+        showTetris(false, b2bCount > 0);
+        setB2bCount(prev => prev + 1);
       } else {
         lineScore = [100, 300, 500][linesCleared - 1] * level;
+        setB2bCount(0); // 非特殊消除重置B2B
+      }
+      
+      // Combo 成就
+      if (comboCount > 0 && comboCount % 2 === 0) {
+        showCombo(comboCount);
+      }
+      
+      // Perfect Clear 成就
+      if (isPerfectClear) {
+        showPerfectClear();
+      }
+      
+      // Level up 成就
+      if (newLevel > level) {
+        showLevelUp(newLevel);
       }
       
       setLines(newLines);
@@ -232,12 +286,18 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
         clearType,
         newLines,
         newLevel,
-        lineScore
+        lineScore,
+        combo: comboCount,
+        b2b: b2bCount,
+        isPerfectClear
       });
       
       if (onSpecialClear && (clearType || linesCleared >= 4)) {
         onSpecialClear(clearType || 'tetris', linesCleared);
       }
+    } else {
+      // 没有消除行时重置combo
+      setComboCount(0);
     }
 
     lastTSpinCheck.current = null;
@@ -258,9 +318,14 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
       setCurrentPiece(newPiece);
       if (dx !== 0) {
         totalActions.current++;
-        // 左右移动时重置锁定延迟
-        if (resetLockDelay()) {
+        // 左右移动时重置锁定延迟 - 改进的逻辑
+        if (isLockDelayActive && resetLockDelay()) {
           clearLockDelayTimer();
+          // 重新检查是否需要开始锁定延迟
+          const testPiece = { ...newPiece, y: newPiece.y + 1 };
+          if (!isValidPosition(board, testPiece)) {
+            startLockDelay();
+          }
         }
       }
       return true;
@@ -270,7 +335,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer, startLockDelay]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer, startLockDelay, isLockDelayActive]);
 
   
 
@@ -521,11 +586,14 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     setGameStarted(false);
     setGameInitialized(false);
     setLockDelayResetCount(0);
+    setComboCount(0);
+    setB2bCount(0);
     clearLockDelayTimer();
+    gameStateManager.clearHistory();
     totalPieces.current = 0;
     totalActions.current = 0;
     gameStartTime.current = Date.now();
-  }, [clearLockDelayTimer]);
+  }, [clearLockDelayTimer, gameStateManager]);
 
   const pauseGame = useCallback(() => {
     setIsPaused(true);
@@ -596,10 +664,33 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear }: UseGameLog
     spawnNewPiece,
     lockPiece,
     initializeForCountdown,
-    // Placeholder methods for compatibility
-    undoMove: () => {},
-    redoMove: () => {},
-    canUndo: false,
-    canRedo: false
+    // 撤销重做功能
+    undoMove: useCallback(() => {
+      if (!isSinglePlayer) return;
+      const snapshot = gameStateManager.undo();
+      if (snapshot) {
+        setBoard(snapshot.board);
+        setCurrentPiece(snapshot.currentPiece);
+        setScore(snapshot.score);
+        setLines(snapshot.lines);
+        setLevel(snapshot.level);
+      }
+    }, [isSinglePlayer, gameStateManager]),
+    redoMove: useCallback(() => {
+      if (!isSinglePlayer) return;
+      const snapshot = gameStateManager.redo();
+      if (snapshot) {
+        setBoard(snapshot.board);
+        setCurrentPiece(snapshot.currentPiece);
+        setScore(snapshot.score);
+        setLines(snapshot.lines);
+        setLevel(snapshot.level);
+      }
+    }, [isSinglePlayer, gameStateManager]),
+    canUndo: isSinglePlayer && gameStateManager.canUndo,
+    canRedo: isSinglePlayer && gameStateManager.canRedo,
+    // 成就系统
+    achievements,
+    removeAchievement
   };
 };

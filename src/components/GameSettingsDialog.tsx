@@ -183,16 +183,8 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
           </DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue="timing" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 bg-gray-800">
-            <TabsTrigger value="timing" className="data-[state=active]:bg-blue-600">
-              <Gamepad2 className="w-4 h-4 mr-2" />
-              手感
-            </TabsTrigger>
-            <TabsTrigger value="controls" className="data-[state=active]:bg-blue-600">
-              <Keyboard className="w-4 h-4 mr-2" />
-              键位
-            </TabsTrigger>
+        <Tabs defaultValue="visual" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 bg-gray-800">
             <TabsTrigger value="visual" className="data-[state=active]:bg-blue-600">
               <Eye className="w-4 h-4 mr-2" />
               视觉
@@ -205,25 +197,13 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
               <Music className="w-4 h-4 mr-2" />
               音乐
             </TabsTrigger>
+            <TabsTrigger value="undoredo" className="data-[state=active]:bg-blue-600">
+              <Settings className="w-4 h-4 mr-2" />
+              撤销重做
+            </TabsTrigger>
           </TabsList>
           
           <div className="mt-6">
-            <TabsContent value="timing" className="space-y-4">
-              <TimingTab
-                settings={tempSettings}
-                onSettingChange={handleSettingChange}
-              />
-            </TabsContent>
-            
-            <TabsContent value="controls" className="space-y-4">
-              <ControlsTab
-                settings={tempSettings}
-                recordingKey={recordingKey}
-                onKeyRecord={handleKeyRecord}
-                onSettingChange={handleSettingChange}
-              />
-            </TabsContent>
-            
             <TabsContent value="visual" className="space-y-4">
               <VisualTab
                 settings={tempSettings}
@@ -243,6 +223,13 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
                 settings={tempSettings}
                 onSettingChange={handleSettingChange}
               />
+            </TabsContent>
+            
+            <TabsContent value="undoredo" className="space-y-4">
+              <div className="p-4 bg-gray-800 rounded-lg">
+                <h3 className="text-lg font-semibold mb-4">撤销重做设置</h3>
+                <p className="text-sm text-gray-400">撤销重做功能仅在单人模式下可用，可在用户设置中配置。</p>
+              </div>
             </TabsContent>
           </div>
         </Tabs>

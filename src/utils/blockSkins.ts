@@ -130,8 +130,8 @@ export const isGarbageBlock = (cellValue: number | string): boolean => {
   return cellValue === 8 || cellValue === GARBAGE_COLOR;
 };
 
-// 根据方块类型编号获取颜色
+// 根据方块类型编号获取颜色 - 使用标准颜色
 export const getColorByTypeId = (typeId: number): string => {
-  const colors = ['', '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000'];
+  const colors = ['', '#00C4D4', '#F4D03F', '#A569BD', '#58D68D', '#E74C3C', '#5DADE2', '#F39C12'];
   return colors[typeId] || '#666666';
 };

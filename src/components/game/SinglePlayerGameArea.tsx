@@ -34,6 +34,12 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { actualTheme } = useTheme();
   const { gameLogic, gameSettings } = useTetrisGame();
   
+  const handleAchievementComplete = (id: string) => {
+    if (gameLogic.removeAchievement) {
+      gameLogic.removeAchievement(id);
+    }
+  };
+  
   const [showCountdown, setShowCountdown] = useState(true);
   const [gameReallyStarted, setGameReallyStarted] = useState(false);
   const [animationText, setAnimationText] = useState('');
@@ -198,8 +204,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           {/* 成就显示区域 */}
           <div className={`p-2 rounded-lg border ${getPanelThemeClasses()}`}>
             <AchievementDisplay
-              achievements={[]}
-              onAchievementComplete={() => {}}
+              achievements={gameLogic.achievements || []}
+              onAchievementComplete={handleAchievementComplete}
             />
           </div>
           

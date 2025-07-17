@@ -95,7 +95,7 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
         {/* 成就显示区域 */}
         <div className="bg-gray-900 p-2 rounded-lg border border-gray-700">
           <AchievementDisplay
-            achievements={[]}
+            achievements={gameState.achievements || []}
             onAchievementComplete={() => {}}
           />
         </div>

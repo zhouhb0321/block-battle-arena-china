@@ -17,13 +17,13 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     if (!holdPiece) {
       return (
         <div className="w-16 h-16 border border-gray-600 rounded bg-gray-800 flex items-center justify-center">
-          <span className="text-gray-500 text-xs">空</span>
+          <div className="w-8 h-8 border border-dashed border-gray-500 rounded opacity-50"></div>
         </div>
       );
     }
 
     const { shape } = holdPiece.type;
-    const cellSize = 12;
+    const cellSize = 24; // 统一使用24px方块大小
 
     // 计算方块的边界框
     let minRow = shape.length, maxRow = -1;
@@ -99,9 +99,6 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
       <div className="flex justify-center">
         {renderHoldPiece()}
       </div>
-      {!canHold && (
-        <p className="text-red-400 text-xs text-center mt-1">已使用</p>
-      )}
     </div>
   );
 };

@@ -26,6 +26,7 @@ export interface UserSettings {
   ghostOpacity: number;
   blockSkin?: string;
   enableWallpaper: boolean;
+  undoSteps: number;
 }
 
 const DEFAULT_GUEST_SETTINGS: UserSettings = {
@@ -52,6 +53,7 @@ const DEFAULT_GUEST_SETTINGS: UserSettings = {
   ghostOpacity: 50,
   blockSkin: 'wood',
   enableWallpaper: true,
+  undoSteps: 50,
 };
 
 const useLocalStorage = <T>(key: string, initialValue: T) => {
@@ -118,6 +120,7 @@ export const useUserSettings = () => {
           ghostOpacity: data.ghost_opacity ?? 50,
           blockSkin: data.block_skin ?? 'wood',
           enableWallpaper: data.enable_wallpaper ?? true,
+          undoSteps: data.undo_steps ?? 50,
         };
         setSettings(cloudSettings);
         window.localStorage.setItem('userSettings', JSON.stringify(cloudSettings));
@@ -157,6 +160,7 @@ export const useUserSettings = () => {
         ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
         enableWallpaper: newSettings.enableWallpaper !== undefined ? newSettings.enableWallpaper : prevSettings.enableWallpaper,
+        undoSteps: newSettings.undoSteps !== undefined ? newSettings.undoSteps : prevSettings.undoSteps,
       };
       
       // Guests only save locally
@@ -180,6 +184,7 @@ export const useUserSettings = () => {
         back_to_menu: mergedSettings.controls.backToMenu,
         block_skin: mergedSettings.blockSkin || 'wood',
         enable_wallpaper: mergedSettings.enableWallpaper,
+        undo_steps: mergedSettings.undoSteps,
       };
       
       supabase
@@ -218,6 +223,7 @@ export const useUserSettings = () => {
         ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
         enableWallpaper: newSettings.enableWallpaper !== undefined ? newSettings.enableWallpaper : prevSettings.enableWallpaper,
+        undoSteps: newSettings.undoSteps !== undefined ? newSettings.undoSteps : prevSettings.undoSteps,
       };
       
       // Guests auto-save locally
