@@ -73,7 +73,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
       masterVolume: 50,
       backgroundMusic: '',
       musicVolume: 30,
-      ghostOpacity: 50
+      ghostOpacity: 50,
+      enableWallpaper: true
     };
     setTempSettings(defaultSettings);
   };

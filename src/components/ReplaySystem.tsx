@@ -90,7 +90,8 @@ const ReplaySystem: React.FC = () => {
                 masterVolume: 50,
                 backgroundMusic: '',
                 musicVolume: 30,
-                ghostOpacity: 50
+                ghostOpacity: 50,
+                enableWallpaper: true
               }
             }
           };

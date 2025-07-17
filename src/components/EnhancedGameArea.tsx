@@ -4,6 +4,7 @@ import GameBoard from './GameBoard';
 import NextPiecePreview from './NextPiecePreview';
 import HoldPieceDisplay from './HoldPieceDisplay';
 import TimeChallengeClock from './TimeChallengeClock';
+import AchievementDisplay from './AchievementDisplay';
 import type { GameState, GameSettings, GameMode } from '@/utils/gameTypes';
 
 interface EnhancedGameAreaProps {
@@ -80,7 +81,7 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
           board={gameState.board}
           currentPiece={gameState.currentPiece}
           ghostPiece={gameSettings.enableGhost ? gameState.ghostPiece : null}
-          cellSize={30}
+          cellSize={24}
         />
       </div>
 
@@ -90,6 +91,14 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
           holdPiece={gameState.holdPiece}
           canHold={gameState.canHold}
         />
+        
+        {/* 成就显示区域 */}
+        <div className="bg-gray-900 p-2 rounded-lg border border-gray-700">
+          <AchievementDisplay
+            achievements={[]}
+            onAchievementComplete={() => {}}
+          />
+        </div>
         
         {/* 详细统计信息 */}
         <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
@@ -105,18 +114,6 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
           </div>
         </div>
 
-        {/* 操作提示 */}
-        <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
-          <h3 className="text-white text-sm font-bold mb-2 text-center">操作提示</h3>
-          <div className="text-white text-xs space-y-1">
-            <div>← → 移动</div>
-            <div>↓ 软降</div>
-            <div>空格 硬降</div>
-            <div>↑ 旋转</div>
-            <div>C 暂存</div>
-            <div>P 暂停</div>
-          </div>
-        </div>
       </div>
     </div>
   );

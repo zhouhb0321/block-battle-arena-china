@@ -686,8 +686,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
               board={gameState.board}
               currentPiece={gameState.currentPiece}
               ghostPiece={gameState.ghostPiece}
-              enableGhost={true}
-              cellSize={30}
+              cellSize={32}
               clearingLines={gameState.clearingLines}
               showHiddenRows={true}
             />

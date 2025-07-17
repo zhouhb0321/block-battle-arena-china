@@ -76,6 +76,7 @@ export interface GameSettings {
   backgroundMusic: string;
   musicVolume: number;
   ghostOpacity: number;
+  enableWallpaper: boolean;
 }
 
 export interface AdContent {

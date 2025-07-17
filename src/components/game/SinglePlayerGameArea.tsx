@@ -10,6 +10,7 @@ import HoldPieceDisplay from '@/components/HoldPieceDisplay';
 import NextPiecePreview from '@/components/NextPiecePreview';
 import LineCleanAnimation from '@/components/LineCleanAnimation';
 import OutOfFocusOverlay from '@/components/OutOfFocusOverlay';
+import AchievementDisplay from '@/components/AchievementDisplay';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Pause, Play } from 'lucide-react';
 import { useTetrisGame } from './TetrisGameProvider';
@@ -194,6 +195,14 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             />
           </div>
           
+          {/* 成就显示区域 */}
+          <div className={`p-2 rounded-lg border ${getPanelThemeClasses()}`}>
+            <AchievementDisplay
+              achievements={[]}
+              onAchievementComplete={() => {}}
+            />
+          </div>
+          
           {/* 游戏信息面板 - 与游戏板底部对齐 */}
           <div className="flex-1 flex flex-col justify-end">
             <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
@@ -252,6 +261,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               board={gameLogic.board}
               currentPiece={gameLogic.currentPiece}
               ghostPiece={gameLogic.ghostPiece}
+              cellSize={32}
             />
           </div>
           
@@ -280,18 +290,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             />
           </div>
           
-          {/* 操作提示 */}
-          <div className={`mt-4 p-3 rounded-lg border ${getPanelThemeClasses()}`}>
-            <h3 className="text-sm font-bold mb-2 text-center">操作提示</h3>
-            <div className="text-xs space-y-1">
-              <div>← → 移动</div>
-              <div>↓ 软降</div>
-              <div>空格 硬降</div>
-              <div>↑ 旋转</div>
-              <div>C 暂存</div>
-              <div>P 暂停</div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
