@@ -42,8 +42,8 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
       );
     }
 
-    const shape = TETROMINO_TYPES[piece.type]?.shape || piece.shape;
-    const backgroundColor = getTetrominoColor(piece.type);
+    const shape = piece.shape;
+    const backgroundColor = piece.color;
 
     return (
       <div className="relative">

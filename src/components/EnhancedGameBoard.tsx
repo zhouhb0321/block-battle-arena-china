@@ -43,7 +43,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             const boardY = ghostPiece.y + row;
             if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
               if (extendedBoard[boardY][boardX] === 0) {
-                const color = getColorByTypeId(shape[row][col]);
+                const color = ghostPiece.type.color;
                 extendedBoard[boardY][boardX] = `ghost-${color}` as any;
               }
             }
@@ -60,8 +60,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             const boardX = currentPiece.x + col;
             const boardY = currentPiece.y + row;
             if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
-              const color = getColorByTypeId(shape[row][col]);
-              // 保持一致的颜色显示，无论是否在锁定延迟状态
+              const color = currentPiece.type.color;
+              // 保持一致的颜色显示，直接使用piece的颜色
               extendedBoard[boardY][boardX] = color as any;
             }
           }
@@ -102,6 +102,10 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
           };
         }
         cellClass = 'ghost-block';
+      } else if (cellValue.startsWith('#')) {
+        // 直接使用颜色值（来自当前方块）
+        cellStyle = currentSkin.getBlockStyle(cellValue, false);
+        cellClass = currentSkin.getBlockClass(cellValue, false);
       }
     } else if (cellValue !== 0) {
       if (isGarbageBlock(cellValue)) {
@@ -112,6 +116,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
         };
         cellClass = 'garbage-block';
       } else {
+        // 使用数字ID映射的颜色（来自已落地的方块）
         const color = getColorByTypeId(cellValue);
         cellStyle = currentSkin.getBlockStyle(color, false);
         cellClass = currentSkin.getBlockClass(color, false);

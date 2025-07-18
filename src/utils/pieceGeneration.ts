@@ -1,11 +1,11 @@
 
 import type { TetrominoType, GamePiece } from './gameTypes';
 
-// 柔和的方块颜色 - 降低亮度和饱和度，减少视觉刺激
+// 标准鲜明方块颜色 - 确保在所有主题下都清晰可见，与blockColors.ts保持一致
 export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
   I: {
     shape: [[1, 1, 1, 1]],
-    color: '#4a9d9c', // 柔和的青色
+    color: '#00FFFF', // 亮青色
     name: 'I',
     type: 'I'
   },
@@ -14,7 +14,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 1],
       [1, 1]
     ],
-    color: '#c4a661', // 柔和的黄色
+    color: '#FFFF00', // 亮黄色
     name: 'O',
     type: 'O'
   },
@@ -23,7 +23,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [0, 1, 0],
       [1, 1, 1]
     ],
-    color: '#8b6bb1', // 柔和的紫色
+    color: '#AA00FF', // 亮紫色
     name: 'T',
     type: 'T'
   },
@@ -32,7 +32,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [0, 1, 1],
       [1, 1, 0]
     ],
-    color: '#6b9b6b', // 柔和的绿色
+    color: '#00FF00', // 亮绿色
     name: 'S',
     type: 'S'
   },
@@ -41,7 +41,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 1, 0],
       [0, 1, 1]
     ],
-    color: '#b87575', // 柔和的红色
+    color: '#FF0000', // 亮红色
     name: 'Z',
     type: 'Z'
   },
@@ -50,7 +50,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [1, 0, 0],
       [1, 1, 1]
     ],
-    color: '#5d7fb8', // 柔和的蓝色
+    color: '#0088FF', // 亮蓝色
     name: 'J',
     type: 'J'
   },
@@ -59,7 +59,7 @@ export const TETROMINO_TYPES: { [key: string]: TetrominoType } = {
       [0, 0, 1],
       [1, 1, 1]
     ],
-    color: '#c4906b', // 柔和的橙色
+    color: '#FF8800', // 亮橙色
     name: 'L',
     type: 'L'
   }
