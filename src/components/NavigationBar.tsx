@@ -87,6 +87,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               <UserMenu 
                 onSettingsClick={() => onViewChange('settings')}
                 onProfileClick={() => onViewChange('profile')}
+                onAdminPanelClick={() => onViewChange('admin')}
               />
             ) : (
               <Button onClick={onAuthModalOpen} className="flex items-center gap-2">

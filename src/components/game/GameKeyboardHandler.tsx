@@ -62,6 +62,7 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
       debugLog.debug('Keyboard: Rotate counter-clockwise');
       gameLogic.rotatePieceCounterclockwise();
     },
+    onRotate180: rotate180,
     onHold: () => {
       debugLog.debug('Keyboard: Hold piece');
       gameLogic.holdCurrentPiece();
@@ -78,8 +79,14 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
       debugLog.debug('Keyboard: Back to menu');
       onBackToMenu();
     },
-    onUndo,
-    onRedo,
+    onUndo: onUndo ? () => {
+      debugLog.debug('Keyboard: Undo move', { canUndo });
+      onUndo();
+    } : undefined,
+    onRedo: onRedo ? () => {
+      debugLog.debug('Keyboard: Redo move', { canRedo });
+      onRedo();
+    } : undefined,
     canUndo,
     canRedo
   });

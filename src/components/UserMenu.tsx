@@ -10,15 +10,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, LogOut, Settings, Trophy } from 'lucide-react';
+import { User, LogOut, Settings, Trophy, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface UserMenuProps {
   onSettingsClick: () => void;
   onProfileClick?: () => void;
+  onAdminPanelClick?: () => void;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick, onAdminPanelClick }) => {
   const { user, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -86,6 +87,19 @@ const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick }) 
           <Trophy className="mr-2 h-4 w-4" />
           排行榜
         </DropdownMenuItem>
+        
+        {user.isAdmin && onAdminPanelClick && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={onAdminPanelClick}
+              className="text-purple-600 focus:text-purple-600"
+            >
+              <Shield className="mr-2 h-4 w-4" />
+              管理面板
+            </DropdownMenuItem>
+          </>
+        )}
         
         <DropdownMenuSeparator />
         

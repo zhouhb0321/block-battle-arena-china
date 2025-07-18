@@ -78,8 +78,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const createExtendedUser = (baseUser: User, profile?: UserProfile | null): ExtendedUser => {
-    const isAdmin = baseUser.email === 'admin@tetris.com';
+    // 管理员检查：既检查邮箱又检查数据库中的user_type字段
+    const isAdmin = baseUser.email === 'admin@tetris.com' || profile?.user_type === 'admin';
     const isPremium = profile?.user_type === 'premium';
+    
+    debugLog.auth('创建扩展用户对象', { 
+      email: '[REDACTED]', 
+      userType: profile?.user_type, 
+      isAdmin,
+      isPremium 
+    });
     
     return {
       ...baseUser,

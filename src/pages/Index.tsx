@@ -9,6 +9,7 @@ import RankedMatchmakingSystem from '@/components/RankedMatchmakingSystem';
 import AuthModal from '@/components/AuthModal';
 import NavigationBar from '@/components/NavigationBar';
 import ReplaySystem from '@/components/ReplaySystem';
+import AdminPanel from '@/components/AdminPanel';
 import AdSpace from '@/components/AdSpace';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,7 @@ const Index = () => {
   };
 
   const handleViewChange = (view: ViewType) => {
-    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked')) {
+    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked' || view === 'admin')) {
       setShowAuthModal(true);
       return;
     }
@@ -74,6 +75,8 @@ const Index = () => {
             <ReplaySystem />
           </div>
         );
+      case 'admin':
+        return <AdminPanel />;
       case 'profile':
         return (
           <div className="text-center p-8">

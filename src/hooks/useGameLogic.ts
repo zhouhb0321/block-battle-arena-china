@@ -63,12 +63,21 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
   
   // 撤销重做功能 - 仅单人模式
-  const isSinglePlayer = gameMode.id === 'marathon' || gameMode.id === 'endless';
+  const isSinglePlayer = gameMode.id === 'marathon' || gameMode.id === 'endless' || gameMode.id === 'sprint40' || gameMode.id === 'ultra2min';
   const maxUndoSteps = settings.undoSteps || 50;
   const gameStateManager = useGameState({
     maxHistorySize: maxUndoSteps,
     enabled: isSinglePlayer
   });
+  
+  // 添加调试日志
+  useEffect(() => {
+    debugLog.game('游戏模式变更', { 
+      gameMode: gameMode.id, 
+      isSinglePlayer, 
+      maxUndoSteps 
+    });
+  }, [gameMode.id, isSinglePlayer, maxUndoSteps]);
   const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
   
   const gameStartTime = useRef<number>(Date.now());
@@ -318,14 +327,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setCurrentPiece(newPiece);
       if (dx !== 0) {
         totalActions.current++;
-        // 左右移动时重置锁定延迟 - 改进的逻辑
-        if (isLockDelayActive && resetLockDelay()) {
-          clearLockDelayTimer();
-          // 重新检查是否需要开始锁定延迟
-          const testPiece = { ...newPiece, y: newPiece.y + 1 };
-          if (!isValidPosition(board, testPiece)) {
-            startLockDelay();
-          }
+        // 简化锁定延迟重置逻辑 - 避免位置跳回问题
+        if (isLockDelayActive) {
+          resetLockDelay();
         }
       }
       return true;
@@ -335,7 +339,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer, startLockDelay, isLockDelayActive]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, isLockDelayActive, startLockDelay]);
 
   
 
@@ -666,25 +670,39 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     initializeForCountdown,
     // 撤销重做功能
     undoMove: useCallback(() => {
-      if (!isSinglePlayer) return;
+      debugLog.game('撤销操作', { isSinglePlayer, canUndo: gameStateManager.canUndo });
+      if (!isSinglePlayer) {
+        debugLog.warn('非单人模式，无法撤销');
+        return;
+      }
       const snapshot = gameStateManager.undo();
       if (snapshot) {
+        debugLog.game('撤销成功', snapshot);
         setBoard(snapshot.board);
         setCurrentPiece(snapshot.currentPiece);
         setScore(snapshot.score);
         setLines(snapshot.lines);
         setLevel(snapshot.level);
+      } else {
+        debugLog.warn('撤销失败：无可撤销状态');
       }
     }, [isSinglePlayer, gameStateManager]),
     redoMove: useCallback(() => {
-      if (!isSinglePlayer) return;
+      debugLog.game('重做操作', { isSinglePlayer, canRedo: gameStateManager.canRedo });
+      if (!isSinglePlayer) {
+        debugLog.warn('非单人模式，无法重做');
+        return;
+      }
       const snapshot = gameStateManager.redo();
       if (snapshot) {
+        debugLog.game('重做成功', snapshot);
         setBoard(snapshot.board);
         setCurrentPiece(snapshot.currentPiece);
         setScore(snapshot.score);
         setLines(snapshot.lines);
         setLevel(snapshot.level);
+      } else {
+        debugLog.warn('重做失败：无可重做状态');
       }
     }, [isSinglePlayer, gameStateManager]),
     canUndo: isSinglePlayer && gameStateManager.canUndo,
