@@ -156,7 +156,16 @@ export const translations = {
     'common.success': '成功',
     'common.yes': '是',
     'common.no': '否',
-    'common.enter': '进入'
+    'common.enter': '进入',
+    
+    // 用户信息
+    'user.profile': '个人资料',
+    'user.settings': '设置',
+    'user.leaderboard': '排行榜',
+    'user.logout': '退出登录',
+    'user.logging_out': '退出中...',
+    'user.level': '等级',
+    'user.admin_panel': '管理面板'
   },
   en: {
     // Auth
@@ -308,7 +317,16 @@ export const translations = {
     'common.success': 'Success',
     'common.yes': 'Yes',
     'common.no': 'No',
-    'common.enter': 'Enter'
+    'common.enter': 'Enter',
+    
+    // User info
+    'user.profile': 'Profile',
+    'user.settings': 'Settings', 
+    'user.leaderboard': 'Leaderboard',
+    'user.logout': 'Logout',
+    'user.logging_out': 'Logging out...',
+    'user.level': 'Level',
+    'user.admin_panel': 'Admin Panel'
   },
   es: {
     // Auth
@@ -430,7 +448,16 @@ export const translations = {
     'common.error': 'Error',
     'common.success': 'Éxito',
     'common.yes': 'Sí',
-    'common.no': 'No'
+    'common.no': 'No',
+    
+    // User info
+    'user.profile': 'Perfil',
+    'user.settings': 'Configuración',
+    'user.leaderboard': 'Tabla de Posiciones',
+    'user.logout': 'Cerrar Sesión',
+    'user.logging_out': 'Cerrando sesión...',
+    'user.level': 'Nivel',
+    'user.admin_panel': 'Panel de Administración'
   },
   'zh-TW': {
     // Auth

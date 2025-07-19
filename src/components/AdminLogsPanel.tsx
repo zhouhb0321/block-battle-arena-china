@@ -1,191 +1,131 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Search, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Clock, User, GamepadIcon, AlertCircle } from 'lucide-react';
 
-interface SessionLog {
+interface LogEntry {
   id: string;
-  username: string;
-  session_type: string;
-  game_mode?: string;
-  created_at: string;
-  session_data: any;
-}
-
-interface AdminLog {
-  id: string;
-  admin_user_id: string;
-  action_type: string;
-  target_username?: string;
-  details: any;
-  created_at: string;
+  timestamp: string;
+  event_message: string;
+  error_severity?: string;
 }
 
 const AdminLogsPanel: React.FC = () => {
-  const { user } = useAuth();
-  const [sessionLogs, setSessionLogs] = useState<SessionLog[]>([]);
-  const [adminLogs, setAdminLogs] = useState<AdminLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [severityFilter, setSeverityFilter] = useState<'all' | 'ERROR' | 'LOG'>('all');
 
-  useEffect(() => {
-    if (user?.isAdmin) {
-      loadLogs();
-    }
-  }, [user]);
-
-  const loadLogs = async () => {
+  const fetchLogs = async () => {
+    setLoading(true);
     try {
-      // Load session logs
-      const { data: sessionData } = await supabase
-        .from('user_session_logs')
-        .select('*')
+      // 使用 admin_activity_logs 作为示例日志表
+      const { data, error } = await supabase
+        .from('admin_activity_logs')
+        .select('id, created_at, action_type, details')
         .order('created_at', { ascending: false })
         .limit(100);
+      
+      if (error) {
+        console.error('获取日志失败:', error);
+        return;
+      }
 
-      // Load admin logs
-      const { data: adminData } = await supabase
-        .from('admin_activity_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const formattedLogs: LogEntry[] = data?.map((log: any) => ({
+        id: log.id,
+        timestamp: log.created_at,
+        event_message: `${log.action_type}: ${JSON.stringify(log.details)}`,
+        error_severity: 'LOG',
+      })) || [];
 
-      setSessionLogs(sessionData || []);
-      setAdminLogs(adminData || []);
+      setLogs(formattedLogs);
     } catch (error) {
-      console.error('Error loading logs:', error);
+      console.error('获取日志异常:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('zh-CN');
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const filteredLogs = logs.filter(log => {
+    const matchesSearch = searchTerm === '' || 
+      log.event_message.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSeverity = severityFilter === 'all' || log.error_severity === severityFilter;
+    return matchesSearch && matchesSeverity;
+  });
+
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(parseInt(timestamp) / 1000).toLocaleString();
   };
-
-  const getSessionTypeIcon = (type: string) => {
-    switch (type) {
-      case 'login':
-        return <User className="w-4 h-4 text-green-500" />;
-      case 'logout':
-        return <User className="w-4 h-4 text-red-500" />;
-      case 'game_start':
-        return <GamepadIcon className="w-4 h-4 text-blue-500" />;
-      case 'game_end':
-        return <GamepadIcon className="w-4 h-4 text-gray-500" />;
-      default:
-        return <AlertCircle className="w-4 h-4 text-gray-500" />;
-    }
-  };
-
-  const getSessionTypeBadge = (type: string) => {
-    const variants = {
-      login: 'bg-green-100 text-green-800',
-      logout: 'bg-red-100 text-red-800',
-      game_start: 'bg-blue-100 text-blue-800',
-      game_end: 'bg-gray-100 text-gray-800'
-    };
-    return variants[type as keyof typeof variants] || 'bg-gray-100 text-gray-800';
-  };
-
-  if (!user?.isAdmin) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <p className="text-center text-red-600">没有权限访问日志系统</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
-            <p>加载日志中...</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="sessions" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="sessions">用户会话日志</TabsTrigger>
-          <TabsTrigger value="admin">管理员操作日志</TabsTrigger>
-        </TabsList>
+      <div className="flex gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="搜索日志..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        
+        <Select value={severityFilter} onValueChange={(value: any) => setSeverityFilter(value)}>
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="严重程度" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部</SelectItem>
+            <SelectItem value="ERROR">错误</SelectItem>
+            <SelectItem value="LOG">日志</SelectItem>
+          </SelectContent>
+        </Select>
 
-        <TabsContent value="sessions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                用户会话日志
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {sessionLogs.map((log) => (
-                  <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      {getSessionTypeIcon(log.session_type)}
-                      <div>
-                        <div className="font-medium">{log.username}</div>
-                        <div className="text-sm text-gray-500">
-                          {formatDate(log.created_at)}
-                          {log.game_mode && ` · ${log.game_mode}`}
-                        </div>
-                      </div>
-                    </div>
-                    <Badge className={getSessionTypeBadge(log.session_type)}>
-                      {log.session_type}
-                    </Badge>
-                  </div>
-                ))}
-                {sessionLogs.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">暂无会话日志</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Button onClick={fetchLogs} disabled={loading} variant="outline">
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          刷新
+        </Button>
+      </div>
 
-        <TabsContent value="admin" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                管理员操作日志
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {adminLogs.map((log) => (
-                  <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <div className="font-medium">{log.action_type}</div>
-                      <div className="text-sm text-gray-500">
-                        {formatDate(log.created_at)}
-                        {log.target_username && ` · 目标用户: ${log.target_username}`}
-                      </div>
-                    </div>
-                    <Badge variant="outline">管理员操作</Badge>
-                  </div>
-                ))}
-                {adminLogs.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">暂无管理员日志</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <ScrollArea className="h-[500px] border rounded">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-40">时间</TableHead>
+              <TableHead className="w-24">级别</TableHead>
+              <TableHead>消息</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredLogs.map((log) => (
+              <TableRow key={log.id}>
+                <TableCell className="font-mono text-xs">
+                  {formatTimestamp(log.timestamp)}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={log.error_severity === 'ERROR' ? 'destructive' : 'default'}>
+                    {log.error_severity || 'LOG'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-mono text-sm">{log.event_message}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+      
+      <div className="text-sm text-muted-foreground">
+        显示 {filteredLogs.length} 条日志记录
+      </div>
     </div>
   );
 };

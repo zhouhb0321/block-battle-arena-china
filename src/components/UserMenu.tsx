@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,6 +22,7 @@ interface UserMenuProps {
 
 const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick, onAdminPanelClick }) => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   if (!user) return null;
@@ -62,9 +64,9 @@ const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick, on
               <p className="text-xs text-muted-foreground">{user.email}</p>
             )}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>等级 {user.rating}</span>
+              <span>{t('user.level')} {user.rating}</span>
               {user.isPremium && (
-                <span className="bg-gold text-white px-1 rounded text-xs">VIP</span>
+                <span className="bg-game-purple text-white px-1 rounded text-xs">VIP</span>
               )}
             </div>
           </div>
@@ -74,18 +76,18 @@ const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick, on
         {onProfileClick && (
           <DropdownMenuItem onClick={onProfileClick}>
             <User className="mr-2 h-4 w-4" />
-            个人资料
+            {t('user.profile')}
           </DropdownMenuItem>
         )}
         
         <DropdownMenuItem onClick={onSettingsClick}>
           <Settings className="mr-2 h-4 w-4" />
-          设置
+          {t('user.settings')}
         </DropdownMenuItem>
         
         <DropdownMenuItem>
           <Trophy className="mr-2 h-4 w-4" />
-          排行榜
+          {t('user.leaderboard')}
         </DropdownMenuItem>
         
         {user.isAdmin && onAdminPanelClick && (
@@ -104,7 +106,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick, on
               className="text-purple-600 focus:text-purple-600"
             >
               <Shield className="mr-2 h-4 w-4" />
-              管理面板
+              {t('user.admin_panel')}
             </DropdownMenuItem>
           </>
         )}
@@ -117,7 +119,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick, on
           className="text-red-600 focus:text-red-600"
         >
           <LogOut className="mr-2 h-4 w-4" />
-          {isLoggingOut ? '退出中...' : '退出登录'}
+          {isLoggingOut ? t('user.logging_out') : t('user.logout')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

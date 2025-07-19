@@ -83,7 +83,7 @@ const getTCorners = (piece: GamePiece): { x: number; y: number }[] => {
   ];
 };
 
-// 标准SRS T-Spin检测函数（完全对齐Hard Drop Wiki和SRS标准）
+// 标准SRS T-Spin检测函数（修复版本）
 export const detectTSpin = (
   board: number[][],
   piece: GamePiece,
@@ -94,50 +94,72 @@ export const detectTSpin = (
   if (piece.type.type !== 'T') {
     return null;
   }
+  
   // 只有旋转动作才能触发T-Spin
   if (lastMove !== 'rotate') {
     return null;
   }
-  // SRS中心点（T块3x3正中）
+  
+  console.log(`T-Spin检测开始: 位置(${piece.x}, ${piece.y}), 旋转${piece.rotation * 90}度`);
+  
+  // SRS标准：T块中心点位置
   const centerX = piece.x + 1;
   const centerY = piece.y + 1;
-  // 四角坐标
+  
+  // 四个角落的坐标（相对于中心点）
   const corners = [
-    { x: centerX - 1, y: centerY - 1 }, // 左上
-    { x: centerX + 1, y: centerY - 1 }, // 右上
-    { x: centerX - 1, y: centerY + 1 }, // 左下
-    { x: centerX + 1, y: centerY + 1 }  // 右下
+    { x: centerX - 1, y: centerY - 1 }, // 左上 (0)
+    { x: centerX + 1, y: centerY - 1 }, // 右上 (1) 
+    { x: centerX - 1, y: centerY + 1 }, // 左下 (2)
+    { x: centerX + 1, y: centerY + 1 }  // 右下 (3)
   ];
-  // 检查四角占用
+  
+  // 根据旋转状态确定前角（T块朝向的两个角）
+  const rotation = piece.rotation % 4;
+  let frontCornerIndices: number[] = [];
+  
+  if (rotation === 0) frontCornerIndices = [0, 1]; // 朝上 - 上方两角
+  else if (rotation === 1) frontCornerIndices = [1, 3]; // 朝右 - 右方两角
+  else if (rotation === 2) frontCornerIndices = [2, 3]; // 朝下 - 下方两角  
+  else if (rotation === 3) frontCornerIndices = [0, 2]; // 朝左 - 左方两角
+  
+  // 检查每个角落的占用状态
   let occupiedCorners = 0;
   let frontCornersOccupied = 0;
-  // 前角索引（T块朝向的两角）
-  const rotation = piece.rotation % 4;
-  let frontCornerIdx: number[] = [];
-  if (rotation === 0) frontCornerIdx = [0, 1]; // 朝上
-  else if (rotation === 1) frontCornerIdx = [1, 3]; // 朝右
-  else if (rotation === 2) frontCornerIdx = [2, 3]; // 朝下
-  else if (rotation === 3) frontCornerIdx = [0, 2]; // 朝左
+  
   corners.forEach((corner, idx) => {
-    const isOccupied =
-      corner.x < 0 || corner.x >= 10 || corner.y < 0 || corner.y >= board.length || board[corner.y][corner.x] !== 0;
+    // 检查边界外或有方块都算占用
+    const isOccupied = corner.x < 0 || corner.x >= 10 || 
+                      corner.y < 0 || corner.y >= board.length || 
+                      board[corner.y][corner.x] !== 0;
+    
     if (isOccupied) {
       occupiedCorners++;
-      if (frontCornerIdx.includes(idx)) frontCornersOccupied++;
+      if (frontCornerIndices.includes(idx)) {
+        frontCornersOccupied++;
+      }
     }
+    
+    console.log(`角落${idx} (${corner.x}, ${corner.y}): ${isOccupied ? '占用' : '空闲'} ${frontCornerIndices.includes(idx) ? '[前角]' : '[后角]'}`);
   });
-  // 至少3角被占用才算T-Spin
+  
+  console.log(`T-Spin检测结果: 总占用角落=${occupiedCorners}, 前角占用=${frontCornersOccupied}`);
+  
+  // T-Spin判定：至少3个角落被占用
   if (occupiedCorners >= 3) {
-    // Mini判定：前角占用少于2个的情况（硬标准）
+    // Mini T-Spin判定：前角占用数量少于2个
     const isMini = frontCornersOccupied < 2;
     
-    console.log(`T-Spin检测: 总角落=${occupiedCorners}, 前角=${frontCornersOccupied}, 踢墙=${wasKicked}, Mini=${isMini}`);
-    
-    return {
+    const result: TSpin = {
       type: isMini ? 'Mini T-Spin' : 'T-Spin',
       isMini
     };
+    
+    console.log(`✅ T-Spin确认: ${result.type}, Mini=${isMini}, 踢墙=${wasKicked}`);
+    return result;
   }
+  
+  console.log(`❌ 不是T-Spin: 角落占用不足`);
   return null;
 };
 

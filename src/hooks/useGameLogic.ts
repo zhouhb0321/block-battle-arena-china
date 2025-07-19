@@ -331,11 +331,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setCurrentPiece(newPiece);
       if (dx !== 0) {
         totalActions.current++;
-        // 仅在水平移动时重置锁定延迟，避免跳回问题
-        if (isLockDelayActive && lockDelayResetCount < MAX_LOCK_RESETS) {
-          clearLockDelayTimer();
-          setLockDelayResetCount(prev => prev + 1);
-        }
+        // 简化锁定延迟重置逻辑，防止位置跳回
+        setLockDelayResetCount(prev => Math.min(prev + 1, MAX_LOCK_RESETS));
       }
       return true;
     } else if (dy > 0) {
@@ -344,7 +341,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, isLockDelayActive, lockDelayResetCount, clearLockDelayTimer, startLockDelay]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay]);
 
   
 

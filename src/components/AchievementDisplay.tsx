@@ -26,14 +26,15 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
       setCurrentAchievement(nextAchievement);
       setIsAnimating(true);
 
-      // 快速显示成就 (300-500ms)
+      // 优化显示时长：300ms显示 + 100ms退出动画 = 总共400ms
       const timer = setTimeout(() => {
         setIsAnimating(false);
+        // 立即开始退出动画
         setTimeout(() => {
           setCurrentAchievement(null);
           onAchievementComplete(nextAchievement.id);
-        }, 100); // 退出动画100ms
-      }, 400); // 主显示400ms
+        }, 50); // 快速退出
+      }, 300); // 显示300ms
 
       return () => clearTimeout(timer);
     }
@@ -71,17 +72,17 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
       >
         <div
           className={`
-            px-4 py-2 font-bold text-center
+            px-3 py-2 font-bold text-center
             ${getAchievementColor(currentAchievement.type)}
-            transform transition-all duration-200
+            transform transition-all duration-150
             ${isAnimating ? 'achievement-scale-up' : ''}
-            backdrop-blur-sm bg-transparent
-            border border-current/20 rounded-lg
+            backdrop-blur-sm bg-black/10 dark:bg-white/10
+            border border-current/30 rounded-lg
             drop-shadow-lg
-            whitespace-nowrap
+            whitespace-nowrap max-w-fit
           `}
         >
-          <div className="text-lg font-extrabold tracking-wide uppercase">
+          <div className="text-base font-extrabold tracking-wider uppercase leading-none">
             {currentAchievement.text}
           </div>
         </div>

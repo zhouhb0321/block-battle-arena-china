@@ -37,14 +37,14 @@
 
     --radius: 0.5rem;
 
-    /* Gaming theme colors */
-    --game-purple: 262 83% 58%;
-    --game-blue: 217 91% 60%;
-    --game-orange: 25 95% 53%;
-    --game-green: 142 76% 36%;
-    --game-red: 0 84% 60%;
-    --game-yellow: 45 93% 58%;
-    --game-cyan: 180 100% 50%;
+    /* Gaming theme colors - 降低饱和度和亮度 */
+    --game-purple: 262 60% 45%;
+    --game-blue: 217 70% 50%;
+    --game-orange: 25 75% 45%;
+    --game-green: 142 60% 35%;
+    --game-red: 0 70% 50%;
+    --game-yellow: 45 75% 48%;
+    --game-cyan: 180 75% 45%;
     --game-gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(217 91% 60%));
     --game-gradient-secondary: linear-gradient(135deg, hsl(25 95% 53%), hsl(142 76% 36%));
     --game-gradient-bg: linear-gradient(135deg, hsl(262 83% 58% / 0.1), hsl(217 91% 60% / 0.1));
@@ -99,11 +99,11 @@
     --input: 215 28% 17%;
     --ring: 262 83% 58%;
 
-    /* Gaming theme colors for dark mode */
-    --game-purple: 262 83% 58%;
-    --game-blue: 217 91% 60%;
-    --game-orange: 25 95% 53%;
-    --game-green: 142 76% 36%;
+    /* Gaming theme colors for dark mode - 保持稍高对比度 */
+    --game-purple: 262 70% 55%;
+    --game-blue: 217 75% 55%;
+    --game-orange: 25 80% 50%;
+    --game-green: 142 65% 40%;
     --game-gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(217 91% 60%));
     --game-gradient-secondary: linear-gradient(135deg, hsl(25 95% 53%), hsl(142 76% 36%));
     --game-gradient-bg: linear-gradient(135deg, hsl(262 83% 58% / 0.2), hsl(217 91% 60% / 0.1));

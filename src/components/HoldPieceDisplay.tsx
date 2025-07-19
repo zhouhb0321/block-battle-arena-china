@@ -16,14 +16,14 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   const renderHoldPiece = () => {
     if (!holdPiece) {
       return (
-        <div className="w-16 h-16 border border-gray-600 rounded bg-gray-800 flex items-center justify-center">
-          <div className="w-8 h-8 border border-dashed border-gray-500 rounded opacity-50"></div>
+        <div className="w-20 h-20 border border-border rounded bg-card flex items-center justify-center">
+          <div className="w-8 h-8 border border-dashed border-muted-foreground/30 rounded opacity-50"></div>
         </div>
       );
     }
 
     const { shape } = holdPiece.type;
-    const cellSize = 24; // 统一使用24px方块大小
+    const cellSize = 16; // 增大方块尺寸保持一致性
 
     // 计算方块的边界框
     let minRow = shape.length, maxRow = -1;
@@ -44,12 +44,12 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     const pieceHeight = maxRow - minRow + 1;
 
     return (
-      <div className={`p-2 bg-gray-800 rounded border border-gray-600 ${!canHold ? 'opacity-50' : ''}`}>
+      <div className={`p-2 bg-card rounded border border-border ${!canHold ? 'opacity-50' : ''}`}>
         <div 
           className="flex justify-center items-center"
           style={{ 
-            width: Math.max(64, pieceWidth * cellSize),
-            height: Math.max(48, pieceHeight * cellSize)
+            width: Math.max(80, pieceWidth * cellSize),
+            height: Math.max(64, pieceHeight * cellSize)
           }}
         >
           <div 
@@ -95,8 +95,8 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   };
 
   return (
-    <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
-      <h3 className="text-white text-sm font-bold mb-2 text-center">HOLD</h3>
+    <div className="bg-card p-3 rounded-lg border border-border">
+      <h3 className="text-foreground text-sm font-bold mb-2 text-center">HOLD</h3>
       <div className="flex justify-center">
         {renderHoldPiece()}
       </div>
