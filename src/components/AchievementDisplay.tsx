@@ -22,17 +22,18 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
   useEffect(() => {
     if (achievements.length > 0 && !currentAchievement) {
       const nextAchievement = achievements[0];
+      console.log('显示新成就:', nextAchievement.text, nextAchievement.type);
       setCurrentAchievement(nextAchievement);
       setIsAnimating(true);
 
-      // 缩短显示时间，快速消失
+      // 快速显示成就 (300-500ms)
       const timer = setTimeout(() => {
         setIsAnimating(false);
         setTimeout(() => {
           setCurrentAchievement(null);
           onAchievementComplete(nextAchievement.id);
-        }, 150);
-      }, 1200); // 从1800ms减少到1200ms
+        }, 100); // 退出动画100ms
+      }, 400); // 主显示400ms
 
       return () => clearTimeout(timer);
     }
@@ -102,7 +103,7 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
         }
         
         .achievement-scale-up {
-          animation: achievement-scale-up 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          animation: achievement-scale-up 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
       `}</style>
     </div>

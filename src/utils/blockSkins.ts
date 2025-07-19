@@ -130,8 +130,9 @@ export const isGarbageBlock = (cellValue: number | string): boolean => {
   return cellValue === 8 || cellValue === GARBAGE_COLOR;
 };
 
-// 根据方块类型编号获取颜色 - 与 blockColors.ts 保持一致
+// 根据方块类型编号获取颜色 - 与 blockColors.ts 完全一致
 export const getColorByTypeId = (typeId: number): string => {
+  // 确保与 TETROMINO_COLORS 一致的映射
   const colors = ['', '#00FFFF', '#FFFF00', '#AA00FF', '#00FF00', '#FF0000', '#0088FF', '#FF8800'];
   return colors[typeId] || '#666666';
 };

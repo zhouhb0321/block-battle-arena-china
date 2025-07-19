@@ -60,9 +60,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
             const boardX = currentPiece.x + col;
             const boardY = currentPiece.y + row;
             if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
-              const color = currentPiece.type.color;
-              // 保持一致的颜色显示，直接使用piece的颜色
-              extendedBoard[boardY][boardX] = color as any;
+              // 直接使用piece的颜色，确保一致性
+              extendedBoard[boardY][boardX] = currentPiece.type.color as any;
             }
           }
         }
