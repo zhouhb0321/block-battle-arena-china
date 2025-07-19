@@ -93,8 +93,13 @@ const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick, on
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={() => {
-                console.log('点击管理面板按钮', { isAdmin: user.isAdmin, hasCallback: !!onAdminPanelClick });
-                onAdminPanelClick();
+                console.log('用户菜单管理面板按钮点击', { 
+                  isAdmin: user.isAdmin, 
+                  hasCallback: !!onAdminPanelClick,
+                  email: user.email,
+                  isPremium: user.isPremium
+                });
+                onAdminPanelClick?.();
               }}
               className="text-purple-600 focus:text-purple-600"
             >

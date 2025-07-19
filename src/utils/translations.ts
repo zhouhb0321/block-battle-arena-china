@@ -34,6 +34,7 @@ export const translations = {
     'nav.multiplayer': '多人游戏',
     'nav.settings': '设置',
     'nav.leaderboard': '排行榜',
+    'nav.backToMenu': '返回菜单',
     
     // 游戏相关
     'game.title': '俄罗斯方块',
@@ -93,6 +94,11 @@ export const translations = {
     'game.time': '时间',
     'game.next': '下一个',
     'game.hold': '暂存',
+    'game.gameOver': '游戏结束',
+    'game.gameOverDescription': '本局游戏已结束',
+    'game.levelComplete': '等级完成',
+    'game.endlessComplete': '继续挑战',
+    'game.continue': '继续',
     
     // 设置相关
     'settings.title': '游戏设置',

@@ -244,7 +244,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       let lineScore = 0;
       
       // Combo计数
-      setComboCount(prev => prev + 1);
+      const newComboCount = comboCount + 1;
+      setComboCount(newComboCount);
       
       let clearType = '';
       let isSpecialClear = false;
@@ -254,8 +255,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         lineScore = [800, 1200, 1600][linesCleared - 1] * level;
         isSpecialClear = true;
         
+        // 检查是否为Mini T-Spin
+        const tspinResult = lastTSpinCheck.current ? checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked) : null;
+        const isMini = tspinResult?.isMini || false;
+        
         // 显示T-Spin成就
-        const isMini = lastTSpinCheck.current?.wasKicked === false;
         showTSpin(linesCleared, isMini, b2bCount > 0);
         setB2bCount(prev => prev + 1);
       } else if (linesCleared === 4) {
@@ -271,9 +275,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         setB2bCount(0); // 非特殊消除重置B2B
       }
       
-      // Combo 成就
-      if (comboCount > 0 && comboCount % 2 === 0) {
-        showCombo(comboCount);
+      // Combo 成就 - 每3连击显示一次
+      if (newComboCount >= 3 && newComboCount % 3 === 0) {
+        showCombo(newComboCount);
       }
       
       // Perfect Clear 成就
@@ -327,9 +331,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setCurrentPiece(newPiece);
       if (dx !== 0) {
         totalActions.current++;
-        // 简化锁定延迟重置逻辑 - 避免位置跳回问题
-        if (isLockDelayActive) {
-          resetLockDelay();
+        // 仅在水平移动时重置锁定延迟，避免跳回问题
+        if (isLockDelayActive && lockDelayResetCount < MAX_LOCK_RESETS) {
+          clearLockDelayTimer();
+          setLockDelayResetCount(prev => prev + 1);
         }
       }
       return true;
@@ -339,7 +344,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, isLockDelayActive, startLockDelay]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, isLockDelayActive, lockDelayResetCount, clearLockDelayTimer, startLockDelay]);
 
   
 
@@ -600,16 +605,22 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   }, [clearLockDelayTimer, gameStateManager]);
 
   const pauseGame = useCallback(() => {
-    setIsPaused(true);
-    setIsManuallyPaused(true);
-    setWasManuallyPaused(true);
-  }, [setWasManuallyPaused]);
+    debugLog.game('暂停游戏', { isPaused, isManuallyPaused });
+    if (!isPaused) {
+      setIsPaused(true);
+      setIsManuallyPaused(true);
+      setWasManuallyPaused(true);
+    }
+  }, [isPaused, isManuallyPaused, setWasManuallyPaused]);
 
   const resumeGame = useCallback(() => {
-    setIsPaused(false);
-    setIsManuallyPaused(false);
-    setWasManuallyPaused(false);
-  }, [setWasManuallyPaused]);
+    debugLog.game('恢复游戏', { isPaused, isManuallyPaused });
+    if (isPaused && isManuallyPaused) {
+      setIsPaused(false);
+      setIsManuallyPaused(false);
+      setWasManuallyPaused(false);
+    }
+  }, [isPaused, isManuallyPaused, setWasManuallyPaused]);
 
   const ghostPiece = currentPiece ? {
     ...currentPiece,

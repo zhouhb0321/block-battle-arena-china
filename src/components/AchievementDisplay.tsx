@@ -65,22 +65,23 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
       <div
         className={`
           absolute inset-0 flex items-center justify-center
-          transform transition-all duration-500 ease-out
+          transform transition-all duration-300 ease-out
           ${isAnimating ? 'scale-110 opacity-100' : 'scale-50 opacity-0'}
         `}
       >
         <div
           className={`
-            px-6 py-3 font-bold text-center
+            px-4 py-2 font-bold text-center
             ${getAchievementColor(currentAchievement.type)}
-            transform transition-all duration-300
+            transform transition-all duration-200
             ${isAnimating ? 'achievement-scale-up' : ''}
             backdrop-blur-sm bg-transparent
             border border-current/20 rounded-lg
             drop-shadow-lg
+            whitespace-nowrap
           `}
         >
-          <div className="text-xl font-extrabold tracking-wide uppercase">
+          <div className="text-lg font-extrabold tracking-wide uppercase">
             {currentAchievement.text}
           </div>
         </div>
@@ -103,7 +104,7 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
         }
         
         .achievement-scale-up {
-          animation: achievement-scale-up 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          animation: achievement-scale-up 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
       `}</style>
     </div>

@@ -29,18 +29,18 @@ export const useAchievements = () => {
     setAchievements([]);
   }, []);
 
-  // 便捷方法
+  // 便捷方法 - 简化成就文本格式
   const showTetris = useCallback((isTSpin = false, isB2B = false) => {
-    let text = isTSpin ? 'T-SPIN QUAD' : 'TETRIS';
-    if (isB2B) text = `${text} B2B`;
+    let text = isTSpin ? 'T4' : 'TETRIS';
+    if (isB2B) text = `B2B ${text}`;
     addAchievement(text, 'tetris');
   }, [addAchievement]);
 
   const showTSpin = useCallback((lines: number, isMini = false, isB2B = false) => {
-    const miniText = isMini ? 'MINI ' : '';
-    const lineText = lines === 1 ? 'SINGLE' : lines === 2 ? 'DOUBLE' : 'TRIPLE';
-    let text = `T-SPIN ${miniText}${lineText}`;
-    if (isB2B) text = `${text} B2B`;
+    // 简化格式：T1 (T-Spin Single), T2 (T-Spin Double), T3 (T-Spin Triple)
+    let text = `T${lines}`;
+    if (isMini) text = `MINI ${text}`;
+    if (isB2B) text = `B2B ${text}`;
     addAchievement(text, 'tspin');
   }, [addAchievement]);
 

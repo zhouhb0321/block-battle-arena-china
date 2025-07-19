@@ -11,6 +11,7 @@ import NextPiecePreview from '@/components/NextPiecePreview';
 import LineCleanAnimation from '@/components/LineCleanAnimation';
 import OutOfFocusOverlay from '@/components/OutOfFocusOverlay';
 import AchievementDisplay from '@/components/AchievementDisplay';
+import GameOverDialog from '@/components/GameOverDialog';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Pause, Play } from 'lucide-react';
 import { useTetrisGame } from './TetrisGameProvider';
@@ -44,6 +45,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const [gameReallyStarted, setGameReallyStarted] = useState(false);
   const [animationText, setAnimationText] = useState('');
   const [showAnimation, setShowAnimation] = useState(false);
+  const [showGameOverDialog, setShowGameOverDialog] = useState(false);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
   const handleCountdownComplete = () => {
@@ -98,9 +100,9 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     }
   }, [gameReallyStarted]);
 
-  // 处理游戏结束
+  // 处理游戏结束 - 显示对话框而不是立即跳转
   useEffect(() => {
-    if (gameLogic.gameOver) {
+    if (gameLogic.gameOver && !showGameOverDialog) {
       const finalStats = {
         score: gameLogic.score,
         lines: gameLogic.lines,
@@ -120,9 +122,10 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         });
       }
       
-      onGameEnd(finalStats);
+      // 显示游戏结束对话框而不是立即调用onGameEnd
+      setShowGameOverDialog(true);
     }
-  }, [gameLogic.gameOver, gameLogic.score, gameLogic.lines, gameLogic.level, gameLogic.time, gameLogic.pps, gameLogic.apm, gameMode.id, user, logUserSession, onGameEnd]);
+  }, [gameLogic.gameOver, gameLogic.score, gameLogic.lines, gameLogic.level, gameLogic.time, gameLogic.pps, gameLogic.apm, gameMode.id, user, logUserSession, showGameOverDialog]);
 
   const getThemeClasses = () => {
     return actualTheme === 'light' 
@@ -298,6 +301,40 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           
         </div>
       </div>
+
+      {/* 游戏结束对话框 */}
+      <GameOverDialog
+        isOpen={showGameOverDialog}
+        onRestart={() => {
+          setShowGameOverDialog(false);
+          gameLogic.resetGame();
+          setShowCountdown(true);
+          setGameReallyStarted(false);
+        }}
+        onContinue={gameMode.id === 'endless' ? () => {
+          setShowGameOverDialog(false);
+          gameLogic.resetGame();
+          gameLogic.startGame();
+        } : undefined}
+        onBackToMenu={() => {
+          setShowGameOverDialog(false);
+          onGameEnd({
+            score: gameLogic.score,
+            lines: gameLogic.lines,
+            level: gameLogic.level,
+            time: gameLogic.time,
+            pps: gameLogic.pps,
+            apm: gameLogic.apm,
+            gameMode: gameMode.id
+          });
+        }}
+        score={gameLogic.score}
+        lines={gameLogic.lines}
+        level={gameLogic.level}
+        time={gameLogic.time}
+        gameMode={gameMode.displayName}
+        isEndlessMode={gameMode.id === 'endless'}
+      />
     </div>
   );
 };

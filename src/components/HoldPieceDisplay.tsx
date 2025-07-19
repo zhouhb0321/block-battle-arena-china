@@ -68,7 +68,8 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
                   return <div key={`${rowIndex}-${colIndex}`} />;
                 }
                 
-                const color = getColorByTypeId(cell);
+                // 直接使用Hold方块的原始颜色
+                const color = holdPiece.type.color;
                 const blockStyle = currentSkin.getBlockStyle(color, false);
                 const blockClass = currentSkin.getBlockClass(color, false);
                 

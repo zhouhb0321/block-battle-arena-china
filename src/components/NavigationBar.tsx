@@ -70,7 +70,10 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             {user?.isAdmin && (
               <Button
                 variant={currentView === 'admin' ? 'default' : 'ghost'}
-                onClick={() => onViewChange('admin')}
+                onClick={() => {
+                  console.log('导航栏管理面板按钮点击', { user: user.isAdmin });
+                  onViewChange('admin');
+                }}
                 className="flex items-center gap-2 text-game-purple"
               >
                 <Shield className="w-4 h-4" />
