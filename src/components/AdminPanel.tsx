@@ -1,15 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, GamepadIcon, DollarSign, Megaphone, Activity } from 'lucide-react';
+import { Users, GamepadIcon, DollarSign, Megaphone, Activity, AlertCircle } from 'lucide-react';
 import AdminLogsPanel from './AdminLogsPanel';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [users, setUsers] = useState<any[]>([]);
   const [gameStats, setGameStats] = useState({
     totalGames: 0,
@@ -18,24 +21,41 @@ const AdminPanel: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
 
+  const typedUser = user as (typeof user & { isAdmin?: boolean });
+
   useEffect(() => {
-    if (user?.isAdmin) {
+    console.log('AdminPanel 渲染:', { 
+      user: user?.email, 
+      isAdmin: typedUser?.isAdmin 
+    });
+    
+    if (typedUser?.isAdmin) {
       loadAdminData();
     }
-  }, [user]);
+  }, [user, typedUser?.isAdmin]);
 
   const loadAdminData = async () => {
     try {
+      console.log('开始加载管理数据...');
+      
       // 加载用户数据
-      const { data: usersData } = await supabase
+      const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
+      if (usersError) {
+        console.error('加载用户数据失败:', usersError);
+      }
+
       // 加载游戏统计
-      const { data: gamesData } = await supabase
+      const { data: gamesData, error: gamesError } = await supabase
         .from('game_matches')
         .select('id');
+
+      if (gamesError) {
+        console.error('加载游戏数据失败:', gamesError);
+      }
 
       setUsers(usersData || []);
       setGameStats({
@@ -43,19 +63,28 @@ const AdminPanel: React.FC = () => {
         activeUsers: usersData?.filter(u => u.games_played > 0).length || 0,
         totalUsers: usersData?.length || 0
       });
+      
+      console.log('管理数据加载完成:', {
+        users: usersData?.length || 0,
+        games: gamesData?.length || 0
+      });
     } catch (error) {
-      console.error('Error loading admin data:', error);
+      console.error('加载管理数据时发生错误:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!user?.isAdmin) {
+  // 检查管理员权限
+  if (!typedUser?.isAdmin) {
+    console.log('非管理员用户访问管理面板:', user?.email);
     return (
       <div className="container mx-auto p-6">
         <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-red-600">您没有管理员权限访问此页面。</p>
+          <CardContent className="pt-6 text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">{t('accessDenied')}</h2>
+            <p className="text-muted-foreground">{t('adminAccessRequired')}</p>
           </CardContent>
         </Card>
       </div>
@@ -66,8 +95,8 @@ const AdminPanel: React.FC = () => {
     return (
       <div className="container mx-auto p-6">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
-          <p>加载管理面板...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <p>{t('loadingAdminPanel')}</p>
         </div>
       </div>
     );
@@ -76,9 +105,9 @@ const AdminPanel: React.FC = () => {
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">管理员面板</h1>
-        <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-          管理员权限
+        <h1 className="text-3xl font-bold">{t('adminPanel')}</h1>
+        <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
+          {t('adminAccess')}
         </Badge>
       </div>
 
@@ -86,39 +115,39 @@ const AdminPanel: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">总用户数</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('totalUsers')}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{gameStats.totalUsers}</div>
             <p className="text-xs text-muted-foreground">
-              活跃用户: {gameStats.activeUsers}
+              {t('activeUsers')}: {gameStats.activeUsers}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">总游戏数</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('totalGames')}</CardTitle>
             <GamepadIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{gameStats.totalGames}</div>
             <p className="text-xs text-muted-foreground">
-              已完成的游戏
+              {t('completedGames')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">系统状态</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('systemStatus')}</CardTitle>
             <div className="h-2 w-2 bg-green-500 rounded-full"></div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">正常</div>
+            <div className="text-2xl font-bold text-green-600">{t('normal')}</div>
             <p className="text-xs text-muted-foreground">
-              所有服务运行正常
+              {t('allServicesRunning')}
             </p>
           </CardContent>
         </Card>
@@ -126,17 +155,17 @@ const AdminPanel: React.FC = () => {
 
       <Tabs defaultValue="users" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="users">用户管理</TabsTrigger>
-          <TabsTrigger value="logs">系统日志</TabsTrigger>
-          <TabsTrigger value="games">游戏记录</TabsTrigger>
-          <TabsTrigger value="revenue">收入管理</TabsTrigger>
-          <TabsTrigger value="ads">广告管理</TabsTrigger>
+          <TabsTrigger value="users">{t('userManagement')}</TabsTrigger>
+          <TabsTrigger value="logs">{t('systemLogs')}</TabsTrigger>
+          <TabsTrigger value="games">{t('gameRecords')}</TabsTrigger>
+          <TabsTrigger value="revenue">{t('revenueManagement')}</TabsTrigger>
+          <TabsTrigger value="ads">{t('adManagement')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>用户列表</CardTitle>
+              <CardTitle>{t('userList')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -144,9 +173,9 @@ const AdminPanel: React.FC = () => {
                   <div key={user.id} className="flex items-center justify-between p-4 border rounded">
                     <div>
                       <div className="font-medium">{user.username}</div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                      <div className="text-xs text-gray-400">
-                        等级: {user.rating} | 游戏: {user.games_played} | 胜率: {user.games_played > 0 ? ((user.games_won / user.games_played) * 100).toFixed(1) : 0}%
+                      <div className="text-sm text-muted-foreground">{user.email}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {t('level')}: {user.rating} | {t('games')}: {user.games_played} | {t('winRate')}: {user.games_played > 0 ? ((user.games_won / user.games_played) * 100).toFixed(1) : 0}%
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -154,7 +183,7 @@ const AdminPanel: React.FC = () => {
                         <Badge variant="secondary">VIP</Badge>
                       )}
                       {user.email === 'admin@tetris.com' && (
-                        <Badge variant="destructive">管理员</Badge>
+                        <Badge variant="destructive">{t('admin')}</Badge>
                       )}
                     </div>
                   </div>
@@ -169,7 +198,7 @@ const AdminPanel: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="w-5 h-5" />
-                系统日志
+                {t('systemLogs')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -181,10 +210,10 @@ const AdminPanel: React.FC = () => {
         <TabsContent value="games" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>游戏记录管理</CardTitle>
+              <CardTitle>{t('gameRecordManagement')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">游戏记录功能开发中...</p>
+              <p className="text-muted-foreground">{t('gameRecordFeatureInDevelopment')}</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -192,10 +221,10 @@ const AdminPanel: React.FC = () => {
         <TabsContent value="revenue" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>收入管理</CardTitle>
+              <CardTitle>{t('revenueManagement')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">收入管理功能开发中...</p>
+              <p className="text-muted-foreground">{t('revenueManagementFeatureInDevelopment')}</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -203,10 +232,10 @@ const AdminPanel: React.FC = () => {
         <TabsContent value="ads" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>广告管理</CardTitle>
+              <CardTitle>{t('adManagement')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">广告管理功能开发中...</p>
+              <p className="text-muted-foreground">{t('adManagementFeatureInDevelopment')}</p>
             </CardContent>
           </Card>
         </TabsContent>

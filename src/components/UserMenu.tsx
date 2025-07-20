@@ -7,122 +7,97 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, LogOut, Settings, Trophy, Shield } from 'lucide-react';
-import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { User, Settings, LogOut, Shield, Trophy } from 'lucide-react';
+import UserProfileSettings from './UserProfileSettings';
 
-interface UserMenuProps {
-  onSettingsClick: () => void;
-  onProfileClick?: () => void;
-  onAdminPanelClick?: () => void;
+interface User extends User {
+  isAdmin?: boolean;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onSettingsClick, onProfileClick, onAdminPanelClick }) => {
-  const { user, logout } = useAuth();
+interface UserMenuProps {
+  onNavigate: (page: string) => void;
+}
+
+const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
+  const { user, signOut } = useAuth();
   const { t } = useLanguage();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   if (!user) return null;
 
-  const handleLogout = async () => {
-    try {
-      setIsLoggingOut(true);
-      await logout();
-      toast.success('已成功退出登录');
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast.error('退出登录失败');
-    } finally {
-      setIsLoggingOut(false);
-    }
+  const typedUser = user as User & { isAdmin?: boolean };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
-  const getUserInitials = (username: string) => {
-    return username.slice(0, 2).toUpperCase();
+  const getUserLevel = () => {
+    // 模拟用户等级计算
+    return Math.floor(Math.random() * 50) + 1;
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={user.avatar} alt={user.username} />
-            <AvatarFallback className="bg-blue-500 text-white">
-              {getUserInitials(user.username || 'User')}
-            </AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <div className="flex items-center justify-start gap-2 p-2">
-          <div className="flex flex-col space-y-1 leading-none">
-            <p className="font-medium text-sm">{user.username}</p>
-            {!user.isGuest && (
-              <p className="text-xs text-muted-foreground">{user.email}</p>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+            <User className="w-4 h-4" />
+            <span className="hidden sm:inline text-sm">{user.email}</span>
+            {typedUser.isAdmin && (
+              <Badge variant="destructive" className="text-xs px-1 py-0">
+                {t('admin')}
+              </Badge>
             )}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{t('user.level')} {user.rating}</span>
-              {user.isPremium && (
-                <span className="bg-game-purple text-white px-1 rounded text-xs">VIP</span>
-              )}
-            </div>
-          </div>
-        </div>
-        <DropdownMenuSeparator />
-        
-        {onProfileClick && (
-          <DropdownMenuItem onClick={onProfileClick}>
-            <User className="mr-2 h-4 w-4" />
-            {t('user.profile')}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="flex flex-col">
+            <span className="font-medium">{user.email}</span>
+            <span className="text-sm text-muted-foreground">
+              {t('level')} {getUserLevel()}
+            </span>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem onClick={() => setShowProfileSettings(true)}>
+            <Settings className="w-4 h-4 mr-2" />
+            {t('userProfile')}
           </DropdownMenuItem>
-        )}
-        
-        <DropdownMenuItem onClick={onSettingsClick}>
-          <Settings className="mr-2 h-4 w-4" />
-          {t('user.settings')}
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem>
-          <Trophy className="mr-2 h-4 w-4" />
-          {t('user.leaderboard')}
-        </DropdownMenuItem>
-        
-        {user.isAdmin && onAdminPanelClick && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={() => {
-                console.log('用户菜单管理面板按钮点击', { 
-                  isAdmin: user.isAdmin, 
-                  hasCallback: !!onAdminPanelClick,
-                  email: user.email,
-                  isPremium: user.isPremium
-                });
-                onAdminPanelClick?.();
-              }}
-              className="text-purple-600 focus:text-purple-600"
-            >
-              <Shield className="mr-2 h-4 w-4" />
-              {t('user.admin_panel')}
-            </DropdownMenuItem>
-          </>
-        )}
-        
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuItem 
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          className="text-red-600 focus:text-red-600"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          {isLoggingOut ? t('user.logging_out') : t('user.logout')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          
+          <DropdownMenuItem onClick={() => onNavigate('leaderboard')}>
+            <Trophy className="w-4 h-4 mr-2" />
+            {t('leaderboard')}
+          </DropdownMenuItem>
+          
+          {typedUser.isAdmin && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onNavigate('admin')}>
+                <Shield className="w-4 h-4 mr-2" />
+                {t('adminPanel')}
+              </DropdownMenuItem>
+            </>
+          )}
+          
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleSignOut}>
+            <LogOut className="w-4 h-4 mr-2" />
+            {t('signOut')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {showProfileSettings && (
+        <UserProfileSettings 
+          onClose={() => setShowProfileSettings(false)} 
+        />
+      )}
+    </>
   );
 };
 

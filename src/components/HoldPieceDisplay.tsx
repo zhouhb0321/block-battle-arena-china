@@ -16,14 +16,14 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   const renderHoldPiece = () => {
     if (!holdPiece) {
       return (
-        <div className="w-20 h-20 border border-border rounded bg-card flex items-center justify-center">
-          <div className="w-8 h-8 border border-dashed border-muted-foreground/30 rounded opacity-50"></div>
+        <div className="w-24 h-24 border border-border rounded bg-card flex items-center justify-center">
+          <div className="w-10 h-10 border border-dashed border-muted-foreground/30 rounded opacity-50"></div>
         </div>
       );
     }
 
     const { shape } = holdPiece.type;
-    const cellSize = 16; // 增大方块尺寸保持一致性
+    const cellSize = 24; // 增大到24px与主游戏区域保持一致
 
     // 计算方块的边界框
     let minRow = shape.length, maxRow = -1;
@@ -44,12 +44,12 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     const pieceHeight = maxRow - minRow + 1;
 
     return (
-      <div className={`p-2 bg-card rounded border border-border ${!canHold ? 'opacity-50' : ''}`}>
+      <div className={`p-3 bg-card rounded border border-border ${!canHold ? 'opacity-50' : ''}`}>
         <div 
           className="flex justify-center items-center"
           style={{ 
-            width: Math.max(80, pieceWidth * cellSize),
-            height: Math.max(64, pieceHeight * cellSize)
+            width: Math.max(96, pieceWidth * cellSize),
+            height: Math.max(72, pieceHeight * cellSize)
           }}
         >
           <div 
@@ -68,7 +68,6 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
                   return <div key={`${rowIndex}-${colIndex}`} />;
                 }
                 
-                // 直接使用Hold方块的原始颜色
                 const color = holdPiece.type.color;
                 const blockStyle = currentSkin.getBlockStyle(color, false);
                 const blockClass = currentSkin.getBlockClass(color, false);
@@ -95,8 +94,8 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   };
 
   return (
-    <div className="bg-card p-3 rounded-lg border border-border">
-      <h3 className="text-foreground text-sm font-bold mb-2 text-center">HOLD</h3>
+    <div className="bg-card p-4 rounded-lg border border-border">
+      <h3 className="text-foreground text-sm font-bold mb-3 text-center">HOLD</h3>
       <div className="flex justify-center">
         {renderHoldPiece()}
       </div>

@@ -55,7 +55,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const [comboCount, setComboCount] = useState(0);
   const [b2bCount, setB2bCount] = useState(0);
 
-  // 锁定延迟相关状态 - 增加延迟时间和改进机制
+  // 锁定延迟相关状态
   const [isLockDelayActive, setIsLockDelayActive] = useState(false);
   const [lockDelayResetCount, setLockDelayResetCount] = useState(0);
   
@@ -70,14 +70,6 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     enabled: isSinglePlayer
   });
   
-  // 添加调试日志
-  useEffect(() => {
-    debugLog.game('游戏模式变更', { 
-      gameMode: gameMode.id, 
-      isSinglePlayer, 
-      maxUndoSteps 
-    });
-  }, [gameMode.id, isSinglePlayer, maxUndoSteps]);
   const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
   
   const gameStartTime = useRef<number>(Date.now());
@@ -87,16 +79,15 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const lockDelayTimer = useRef<NodeJS.Timeout | null>(null);
   const lastTSpinCheck = useRef<{ piece: GamePiece; board: Board; wasKicked: boolean } | null>(null);
 
-  // 增强的锁定延迟设置
-  const LOCK_DELAY_TIME = 1000; // 增加到1000ms的标准锁定延迟
-  const MAX_LOCK_RESETS = 15; // 最大重置次数
+  const LOCK_DELAY_TIME = 1000;
+  const MAX_LOCK_RESETS = 15;
 
   // Helper function to create a GamePiece from TetrominoType
   const createGamePiece = useCallback((pieceType: TetrominoType): GamePiece => {
     return createNewPiece(pieceType);
   }, []);
 
-  // 智能失焦处理 - 区分手动暂停和自动失焦暂停
+  // 智能失焦处理
   useEffect(() => {
     if (!gameStarted || gameOver) return;
 
@@ -113,12 +104,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }
   }, [isWindowFocused, isPaused, isManuallyPaused, gameStarted, gameOver]);
 
-  // 立即初始化方块队列 - 在倒计时开始时调用
+  // 立即初始化方块队列
   const initializePieces = useCallback(() => {
     debugLog.game('Initializing pieces for countdown start');
     resetSevenBag();
     
-    // 生成7个方块：1个当前方块 + 6个NEXT方块
     const allPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
     
     setCurrentPiece(allPieces[0]);
@@ -140,7 +130,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setIsLockDelayActive(false);
   }, []);
 
-  // 重置锁定延迟 - 改进的重置机制
+  // 重置锁定延迟
   const resetLockDelay = useCallback(() => {
     if (lockDelayResetCount >= MAX_LOCK_RESETS) {
       debugLog.game('锁定延迟重置次数已达上限，强制锁定');
@@ -153,14 +143,13 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     return true;
   }, [clearLockDelayTimer, lockDelayResetCount]);
 
-  // 开始锁定延迟 - 改进的锁定延迟逻辑
+  // 开始锁定延迟
   const startLockDelay = useCallback(() => {
     if (!currentPiece || isLockDelayActive) return;
     
-    // 检查方块是否真的无法下移
     const testPiece = { ...currentPiece, y: currentPiece.y + 1 };
     if (isValidPosition(board, testPiece)) {
-      return; // 方块还能下移，不需要锁定延迟
+      return;
     }
     
     setIsLockDelayActive(true);
@@ -190,14 +179,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setCurrentPiece(newPiece);
     setNextPieces(newNextPieces);
     setCanHold(true);
-    setLockDelayResetCount(0); // 重置锁定延迟计数
+    setLockDelayResetCount(0);
     clearLockDelayTimer();
     totalPieces.current++;
-
-    debugLog.game('New piece spawned', {
-      piece: newPiece.type.type,
-      totalPieces: totalPieces.current
-    });
 
     if (!isValidPosition(board, newPiece)) {
       debugLog.game('Game over - no valid position for new piece');
@@ -222,18 +206,15 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
 
     const newBoard = placePiece(board, currentPiece);
 
-    // 保存状态用于撤销功能
     if (isSinglePlayer) {
       gameStateManager.saveState(board, currentPiece, score, lines, level);
     }
 
-    // Check for T-Spin before clearing lines
     const isTSpin = currentPiece.type.type === 'T' && lastTSpinCheck.current && 
                    checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked);
 
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     
-    // 检查是否为完美消除
     const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
     
     setBoard(clearedBoard);
@@ -243,7 +224,6 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       const newLevel = Math.floor(newLines / 10) + 1;
       let lineScore = 0;
       
-      // Combo计数
       const newComboCount = comboCount + 1;
       setComboCount(newComboCount);
       
@@ -255,11 +235,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         lineScore = [800, 1200, 1600][linesCleared - 1] * level;
         isSpecialClear = true;
         
-        // 检查是否为Mini T-Spin
         const tspinResult = lastTSpinCheck.current ? checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked) : null;
         const isMini = tspinResult?.isMini || false;
         
-        // 显示T-Spin成就
         showTSpin(linesCleared, isMini, b2bCount > 0);
         setB2bCount(prev => prev + 1);
       } else if (linesCleared === 4) {
@@ -267,25 +245,21 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         lineScore = 800 * level;
         isSpecialClear = true;
         
-        // 显示Tetris成就
         showTetris(false, b2bCount > 0);
         setB2bCount(prev => prev + 1);
       } else {
         lineScore = [100, 300, 500][linesCleared - 1] * level;
-        setB2bCount(0); // 非特殊消除重置B2B
+        setB2bCount(0);
       }
       
-      // Combo 成就 - 每3连击显示一次
       if (newComboCount >= 3 && newComboCount % 3 === 0) {
         showCombo(newComboCount);
       }
       
-      // Perfect Clear 成就
       if (isPerfectClear) {
         showPerfectClear();
       }
       
-      // Level up 成就
       if (newLevel > level) {
         showLevelUp(newLevel);
       }
@@ -294,22 +268,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setLevel(newLevel);
       setScore(prev => prev + lineScore);
       
-      debugLog.game('Lines cleared', {
-        linesCleared,
-        clearType,
-        newLines,
-        newLevel,
-        lineScore,
-        combo: comboCount,
-        b2b: b2bCount,
-        isPerfectClear
-      });
-      
       if (onSpecialClear && (clearType || linesCleared >= 4)) {
         onSpecialClear(clearType || 'tetris', linesCleared);
       }
     } else {
-      // 没有消除行时重置combo
       setComboCount(0);
     }
 
@@ -331,56 +293,18 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setCurrentPiece(newPiece);
       if (dx !== 0) {
         totalActions.current++;
-        // 简化锁定延迟重置逻辑，防止位置跳回
-        setLockDelayResetCount(prev => Math.min(prev + 1, MAX_LOCK_RESETS));
+        // 简化锁定延迟重置，避免位置回跳
+        if (resetLockDelay()) {
+          clearLockDelayTimer();
+        }
       }
       return true;
     } else if (dy > 0) {
-      // 方块无法下移时开始锁定延迟
       startLockDelay();
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay]);
-
-  
-
-  // Game timer
-  useEffect(() => {
-    if (gameOver || isPaused || !isWindowFocused || !gameStarted) return;
-
-    const timer = setInterval(() => {
-      setTime(prev => prev + 1);
-      
-      const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
-      if (elapsedTime > 0) {
-        setPps(totalPieces.current / elapsedTime);
-        setApm((totalActions.current / elapsedTime) * 60);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [gameOver, isPaused, isWindowFocused, gameStarted]);
-
-  // Auto drop logic - 修复自动下落
-  useEffect(() => {
-    if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
-
-    const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
-    
-    debugLog.debug('Setting drop timer', { dropInterval, level });
-    
-    dropTimer.current = setTimeout(() => {
-      debugLog.debug('Auto drop triggered');
-      movePiece(0, 1);
-    }, dropInterval);
-
-    return () => {
-      if (dropTimer.current) {
-        clearTimeout(dropTimer.current);
-      }
-    };
-  }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted, movePiece]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay, resetLockDelay, clearLockDelayTimer]);
 
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
@@ -388,7 +312,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     debugLog.game('Hard drop initiated', { currentPiece: currentPiece.type.type });
     
     setIsHardDropping(true);
-    clearLockDelayTimer(); // 硬降时清除锁定延迟
+    clearLockDelayTimer();
     
     const dropY = calculateDropPosition(board, currentPiece);
     const dropDistance = dropY - currentPiece.y;
@@ -429,13 +353,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setTimeout(spawnNewPiece, 16);
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lines, level, onSpecialClear, spawnNewPiece, clearLockDelayTimer]);
 
-  // 使用SRS旋转系统的顺时针旋转
   const rotatePieceClockwise = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
     debugLog.game('尝试顺时针旋转', { piece: currentPiece.type.type });
 
-    // 存储当前状态用于T-Spin检测
     lastTSpinCheck.current = {
       piece: { ...currentPiece },
       board: board.map(row => [...row]),
@@ -448,12 +370,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setCurrentPiece(srsResult.newPiece);
       totalActions.current++;
       
-      // 更新T-Spin检测状态
       if (lastTSpinCheck.current) {
         lastTSpinCheck.current.wasKicked = srsResult.wasKicked;
       }
       
-      // 旋转时重置锁定延迟
       if (resetLockDelay()) {
         clearLockDelayTimer();
       }
@@ -465,7 +385,6 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer]);
 
-  // 使用SRS旋转系统的逆时针旋转
   const rotatePieceCounterclockwise = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
@@ -498,7 +417,6 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, resetLockDelay, clearLockDelayTimer]);
 
-  // 180度旋转
   const rotatePiece180 = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
@@ -534,7 +452,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const holdCurrentPiece = useCallback(() => {
     if (!currentPiece || !canHold || gameOver || isPaused || isHardDropping || !gameStarted) return;
 
-    clearLockDelayTimer(); // 暂存时清除锁定延迟
+    clearLockDelayTimer();
 
     if (holdPiece === null) {
       setHoldPiece(currentPiece);
@@ -553,20 +471,62 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     totalActions.current++;
   }, [currentPiece, holdPiece, canHold, gameOver, isPaused, isHardDropping, spawnNewPiece, gameStarted, clearLockDelayTimer]);
 
-  
-  
+  useEffect(() => {
+    if (!gameStarted || gameOver) return;
+
+    if (!isWindowFocused && !isPaused) {
+      if (!isManuallyPaused) {
+        setIsPaused(true);
+        debugLog.game('窗口失焦，自动暂停游戏');
+      }
+    } else if (isWindowFocused && isPaused && !isManuallyPaused) {
+      setIsPaused(false);
+      debugLog.game('窗口重获焦点，自动恢复游戏');
+    }
+  }, [isWindowFocused, isPaused, isManuallyPaused, gameStarted, gameOver]);
+
+  useEffect(() => {
+    if (gameOver || isPaused || !isWindowFocused || !gameStarted) return;
+
+    const timer = setInterval(() => {
+      setTime(prev => prev + 1);
+      
+      const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
+      if (elapsedTime > 0) {
+        setPps(totalPieces.current / elapsedTime);
+        setApm((totalActions.current / elapsedTime) * 60);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameOver, isPaused, isWindowFocused, gameStarted]);
+
+  useEffect(() => {
+    if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
+
+    const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+    
+    dropTimer.current = setTimeout(() => {
+      movePiece(0, 1);
+    }, dropInterval);
+
+    return () => {
+      if (dropTimer.current) {
+        clearTimeout(dropTimer.current);
+      }
+    };
+  }, [currentPiece, level, gameOver, isPaused, isWindowFocused, isHardDropping, gameStarted, movePiece]);
+
   const startGame = useCallback(() => {
     debugLog.game('Starting game logic...');
     setGameStarted(true);
     gameStartTime.current = Date.now();
     
-    // 如果还没有初始化方块，现在初始化
     if (!gameInitialized) {
       initializePieces();
     }
   }, [initializePieces, gameInitialized]);
 
-  // 倒计时开始时就初始化方块 - 新增的函数
   const initializeForCountdown = useCallback(() => {
     debugLog.game('Initializing for countdown start');
     initializePieces();
@@ -676,7 +636,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     spawnNewPiece,
     lockPiece,
     initializeForCountdown,
-    // 撤销重做功能
+    // 撤销重做功能 - 修复Ctrl+Z
     undoMove: useCallback(() => {
       debugLog.game('撤销操作', { isSinglePlayer, canUndo: gameStateManager.canUndo });
       if (!isSinglePlayer) {
@@ -691,10 +651,12 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         setScore(snapshot.score);
         setLines(snapshot.lines);
         setLevel(snapshot.level);
+        clearLockDelayTimer(); // 撤销时清除锁定延迟
+        setLockDelayResetCount(0); // 重置锁定延迟计数
       } else {
         debugLog.warn('撤销失败：无可撤销状态');
       }
-    }, [isSinglePlayer, gameStateManager]),
+    }, [isSinglePlayer, gameStateManager, clearLockDelayTimer]),
     redoMove: useCallback(() => {
       debugLog.game('重做操作', { isSinglePlayer, canRedo: gameStateManager.canRedo });
       if (!isSinglePlayer) {
@@ -709,10 +671,12 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         setScore(snapshot.score);
         setLines(snapshot.lines);
         setLevel(snapshot.level);
+        clearLockDelayTimer(); // 重做时清除锁定延迟
+        setLockDelayResetCount(0); // 重置锁定延迟计数
       } else {
         debugLog.warn('重做失败：无可重做状态');
       }
-    }, [isSinglePlayer, gameStateManager]),
+    }, [isSinglePlayer, gameStateManager, clearLockDelayTimer]),
     canUndo: isSinglePlayer && gameStateManager.canUndo,
     canRedo: isSinglePlayer && gameStateManager.canRedo,
     // 成就系统
