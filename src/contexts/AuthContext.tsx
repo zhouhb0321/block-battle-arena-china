@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,57 +38,88 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 获取用户完整信息的函数
+  const fetchUserProfile = async (authUser: User) => {
+    try {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('username, user_type, email')
+        .eq('id', authUser.id)
+        .single();
+      
+      const isGuest = authUser.email?.includes('@guest.local') || false;
+      let isAdmin = false;
+      let username = authUser.email?.split('@')[0] || 'User';
+      
+      if (profile) {
+        username = profile.username || username;
+        // 检查是否为管理员：用户类型为admin或邮箱为admin@tetris.com
+        isAdmin = profile.user_type === 'admin' || profile.email === 'admin@tetris.com';
+        
+        debugLog.auth('用户档案获取成功', { 
+          email: profile.email, 
+          userType: profile.user_type, 
+          isAdmin 
+        });
+      } else {
+        // 如果没有找到档案，至少检查邮箱
+        isAdmin = authUser.email === 'admin@tetris.com';
+        debugLog.auth('未找到用户档案，使用默认值', { 
+          email: authUser.email, 
+          isAdmin 
+        });
+      }
+      
+      const extendedUser: ExtendedUser = {
+        ...authUser,
+        isAdmin,
+        isGuest,
+        username
+      };
+      
+      debugLog.auth('用户信息设置完成', { 
+        userId: authUser.id, 
+        email: authUser.email,
+        isAdmin,
+        isGuest,
+        username
+      });
+      
+      return extendedUser;
+    } catch (error) {
+      debugLog.error('获取用户档案失败', error);
+      // 发生错误时的回退逻辑
+      return {
+        ...authUser,
+        isAdmin: authUser.email === 'admin@tetris.com',
+        isGuest: authUser.email?.includes('@guest.local') || false,
+        username: authUser.email?.split('@')[0] || 'User'
+      } as ExtendedUser;
+    }
+  };
+
   useEffect(() => {
     debugLog.auth('初始化认证状态...');
     
     // 设置认证状态监听器
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         debugLog.auth('认证状态变化', { event, hasSession: !!session });
         
         setSession(session);
         
         if (session?.user) {
-          const isAdmin = session.user.email === 'admin@tetris.com';
-          const isGuest = session.user.email?.includes('@guest.local') || false;
-          
-          // 获取用户资料以获取用户名
-          let username = session.user.email?.split('@')[0];
-          try {
-            const { data: profile } = await supabase
-              .from('user_profiles')
-              .select('username')
-              .eq('id', session.user.id)
-              .single();
-            
-            if (profile?.username) {
-              username = profile.username;
-            }
-          } catch (error) {
-            debugLog.auth('获取用户资料失败', error);
-          }
-          
-          const userWithExtras: ExtendedUser = {
-            ...session.user,
-            isAdmin,
-            isGuest,
-            username
-          };
-          
-          setUser(userWithExtras);
-          debugLog.auth('用户认证成功', { 
-            userId: session.user.id, 
-            email: session.user.email,
-            isAdmin,
-            isGuest,
-            username
-          });
+          // 延迟获取用户档案以避免认证回调中的递归
+          setTimeout(async () => {
+            const extendedUser = await fetchUserProfile(session.user);
+            setUser(extendedUser);
+            setLoading(false);
+          }, 0);
         } else {
           setUser(null);
+          setLoading(false);
           debugLog.auth('用户已登出');
         }
-        
-        setLoading(false);
       }
     );
 
@@ -97,20 +127,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         debugLog.error('获取会话失败', error);
+        setLoading(false);
       } else if (session) {
         debugLog.auth('发现现有会话', { userId: session.user.id });
-        // 会话处理会在onAuthStateChange中进行
+        // 获取用户完整信息
+        setTimeout(async () => {
+          const extendedUser = await fetchUserProfile(session.user);
+          setUser(extendedUser);
+          setSession(session);
+          setLoading(false);
+        }, 0);
       } else {
         debugLog.auth('无有效会话');
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    debugLog.auth('尝试登录', { email });
+    debugLog.auth('尝试登录', { email: email.replace(/(.{2}).*(@.*)/, '$1***$2') });
     
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -120,7 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) {
       debugLog.error('登录失败', error);
     } else {
-      debugLog.auth('登录成功', { email });
+      debugLog.auth('登录成功', { email: email.replace(/(.{2}).*(@.*)/, '$1***$2') });
     }
     
     return { error };
