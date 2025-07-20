@@ -88,9 +88,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             <LanguageSelector />
             {isAuthenticated && user ? (
               <UserMenu 
-                onSettingsClick={() => onViewChange('settings')}
-                onProfileClick={() => onViewChange('profile')}
-                onAdminPanelClick={() => onViewChange('admin')}
+                onNavigate={onViewChange}
               />
             ) : (
               <Button onClick={onAuthModalOpen} className="flex items-center gap-2">

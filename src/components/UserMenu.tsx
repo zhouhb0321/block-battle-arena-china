@@ -12,12 +12,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, LogOut, Shield, Trophy } from 'lucide-react';
+import { User, Settings, LogOut, Shield, Trophy, CreditCard } from 'lucide-react';
 import UserProfileSettings from './UserProfileSettings';
-
-interface User extends User {
-  isAdmin?: boolean;
-}
+import SubscriptionPlans from './SubscriptionPlans';
 
 interface UserMenuProps {
   onNavigate: (page: string) => void;
@@ -27,10 +24,9 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
 
   if (!user) return null;
-
-  const typedUser = user as User & { isAdmin?: boolean };
 
   const handleSignOut = async () => {
     await signOut();
@@ -47,17 +43,24 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="flex items-center space-x-2">
             <User className="w-4 h-4" />
-            <span className="hidden sm:inline text-sm">{user.email}</span>
-            {typedUser.isAdmin && (
+            <span className="hidden sm:inline text-sm">
+              {user.username || user.email}
+            </span>
+            {user.isAdmin && (
               <Badge variant="destructive" className="text-xs px-1 py-0">
                 {t('admin')}
+              </Badge>
+            )}
+            {user.isGuest && (
+              <Badge variant="secondary" className="text-xs px-1 py-0">
+                Guest
               </Badge>
             )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="flex flex-col">
-            <span className="font-medium">{user.email}</span>
+            <span className="font-medium">{user.username || user.email}</span>
             <span className="text-sm text-muted-foreground">
               {t('level')} {getUserLevel()}
             </span>
@@ -69,12 +72,19 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
             {t('userProfile')}
           </DropdownMenuItem>
           
+          {!user.isGuest && (
+            <DropdownMenuItem onClick={() => setShowSubscriptionPlans(true)}>
+              <CreditCard className="w-4 h-4 mr-2" />
+              {t('premium')}
+            </DropdownMenuItem>
+          )}
+          
           <DropdownMenuItem onClick={() => onNavigate('leaderboard')}>
             <Trophy className="w-4 h-4 mr-2" />
             {t('leaderboard')}
           </DropdownMenuItem>
           
-          {typedUser.isAdmin && (
+          {user.isAdmin && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onNavigate('admin')}>
@@ -95,6 +105,12 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
       {showProfileSettings && (
         <UserProfileSettings 
           onClose={() => setShowProfileSettings(false)} 
+        />
+      )}
+
+      {showSubscriptionPlans && (
+        <SubscriptionPlans 
+          onClose={() => setShowSubscriptionPlans(false)} 
         />
       )}
     </>
