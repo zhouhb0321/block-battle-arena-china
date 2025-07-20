@@ -1,4 +1,143 @@
-import { Translations } from '@/types/language';
+// Translation types
+type GameTranslations = {
+  title: string;
+  newGame: string;
+  pause: string;
+  resume: string;
+  gameOver: string;
+  score: string;
+  level: string;
+  lines: string;
+  next: string;
+  hold: string;
+  start: string;
+  restart: string;
+  backToMenu: string;
+  youWin: string;
+  tryAgain: string;
+  finalScore: string;
+  wellDone: string;
+  congratulations: string;
+  enterYourName: string;
+  submitScore: string;
+  highScores: string;
+  name: string;
+  date: string;
+  loading: string;
+  noScores: string;
+  controls: string;
+  moveLeft: string;
+  moveRight: string;
+  softDrop: string;
+  hardDrop: string;
+  rotateClockwise: string;
+  rotateCounterclockwise: string;
+  rotate180: string;
+  holdPiece: string;
+  pauseGame: string;
+  backToMainMenu: string;
+  music: string;
+  soundEffects: string;
+  ghostPiece: string;
+  blockSkins: string;
+  background: string;
+  volume: string;
+  masterVolume: string;
+  musicVolume: string;
+  soundEffectsVolume: string;
+  gameSettings: string;
+  audioSettings: string;
+  visualSettings: string;
+  gameplaySettings: string;
+  generalSettings: string;
+  language: string;
+  theme: string;
+  arr: string;
+  das: string;
+  sdf: string;
+  ghostOpacity: string;
+  enableWallpaper: string;
+  undoSteps: string;
+};
+
+type NavTranslations = {
+  play: string;
+  multiplayer: string;
+  settings: string;
+  login: string;
+  profile: string;
+  admin: string;
+  logout: string;
+  register: string;
+  home: string;
+  game: string;
+  ranked: string;
+};
+
+type AuthTranslations = {
+  login: string;
+  register: string;
+  logout: string;
+  email: string;
+  password: string;
+  username: string;
+  loginSuccess: string;
+  registerSuccess: string;
+  logoutSuccess: string;
+  loginFailed: string;
+  registerFailed: string;
+  logoutFailed: string;
+  guestLogin: string;
+  guestLoginSuccess: string;
+  guestLoginFailed: string;
+  forgotPassword: string;
+  resetPassword: string;
+  resetPasswordSuccess: string;
+  resetPasswordFailed: string;
+  confirmPassword: string;
+  passwordsDoNotMatch: string;
+};
+
+type LanguageTranslations = {
+  game: GameTranslations;
+  nav: NavTranslations;
+  auth: AuthTranslations;
+  premium: string;
+  subscribe: string;
+  admin: string;
+  adminPanel: string;
+  adminAccess: string;
+  level: string;
+  userProfile: string;
+  leaderboard: string;
+  signOut: string;
+  accessDenied: string;
+  adminAccessRequired: string;
+  loadingAdminPanel: string;
+  totalUsers: string;
+  activeUsers: string;
+  totalGames: string;
+  completedGames: string;
+  systemStatus: string;
+  normal: string;
+  allServicesRunning: string;
+  userManagement: string;
+  systemLogs: string;
+  gameRecords: string;
+  revenueManagement: string;
+  adManagement: string;
+  userList: string;
+  games: string;
+  winRate: string;
+  gameRecordManagement: string;
+  gameRecordFeatureInDevelopment: string;
+  revenueManagementFeatureInDevelopment: string;
+  adManagementFeatureInDevelopment: string;
+};
+
+type Translations = {
+  [key in 'en' | 'zh' | 'ja']: LanguageTranslations;
+};
 
 export const translations: Translations = {
   en: {

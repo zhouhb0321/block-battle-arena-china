@@ -240,6 +240,60 @@ export type Database = {
         }
         Relationships: []
       }
+      friend_requests: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          receiver_id: string
+          sender_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          receiver_id: string
+          sender_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          receiver_id?: string
+          sender_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      friendships: {
+        Row: {
+          created_at: string
+          friend_id: string
+          id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          id?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       game_matches: {
         Row: {
           created_at: string
@@ -589,6 +643,102 @@ export type Database = {
         }
         Relationships: []
       }
+      private_messages: {
+        Row: {
+          content: string
+          conversation_id: string | null
+          created_at: string
+          id: string
+          is_read: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
+      stranger_message_counts: {
+        Row: {
+          id: string
+          last_message_at: string | null
+          message_count: number | null
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          id?: string
+          last_message_at?: string | null
+          message_count?: number | null
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          id?: string
+          last_message_at?: string | null
+          message_count?: number | null
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
+      subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          friend_limit: number | null
+          id: string
+          stripe_customer_id: string | null
+          subscribed: boolean
+          subscription_end: string | null
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string | null
+          username_changes_used: number | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          friend_limit?: number | null
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+          username_changes_used?: number | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          friend_limit?: number | null
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+          username_changes_used?: number | null
+        }
+        Relationships: []
+      }
       user_best_records: {
         Row: {
           achieved_at: string | null
@@ -646,17 +796,20 @@ export type Database = {
           best_pps: number
           created_at: string
           email: string
+          friend_limit: number | null
           games_played: number
           games_won: number
           id: string
           rank: string
           rating: number
+          subscription_tier: string | null
           total_lines: number
           total_score: number
           updated_at: string
           user_type: string | null
           username: string
           username_changes_count: number | null
+          username_changes_used: number | null
           username_last_changed_at: string | null
         }
         Insert: {
@@ -665,17 +818,20 @@ export type Database = {
           best_pps?: number
           created_at?: string
           email: string
+          friend_limit?: number | null
           games_played?: number
           games_won?: number
           id: string
           rank?: string
           rating?: number
+          subscription_tier?: string | null
           total_lines?: number
           total_score?: number
           updated_at?: string
           user_type?: string | null
           username: string
           username_changes_count?: number | null
+          username_changes_used?: number | null
           username_last_changed_at?: string | null
         }
         Update: {
@@ -684,17 +840,20 @@ export type Database = {
           best_pps?: number
           created_at?: string
           email?: string
+          friend_limit?: number | null
           games_played?: number
           games_won?: number
           id?: string
           rank?: string
           rating?: number
+          subscription_tier?: string | null
           total_lines?: number
           total_score?: number
           updated_at?: string
           user_type?: string | null
           username?: string
           username_changes_count?: number | null
+          username_changes_used?: number | null
           username_last_changed_at?: string | null
         }
         Relationships: []
