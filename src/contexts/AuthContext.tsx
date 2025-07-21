@@ -38,14 +38,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 获取用户完整信息的函数
+  // 获取用户完整信息的函数 - 修复管理员检查逻辑
   const fetchUserProfile = async (authUser: User) => {
     try {
-      const { data: profile } = await supabase
+      debugLog.auth('开始获取用户档案', { userId: authUser.id, email: authUser.email });
+      
+      const { data: profile, error } = await supabase
         .from('user_profiles')
         .select('username, user_type, email')
         .eq('id', authUser.id)
         .single();
+      
+      if (error) {
+        debugLog.error('获取用户档案失败', error);
+        throw error;
+      }
       
       const isGuest = authUser.email?.includes('@guest.local') || false;
       let isAdmin = false;
@@ -53,18 +60,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (profile) {
         username = profile.username || username;
-        // 检查是否为管理员：用户类型为admin或邮箱为admin@tetris.com
-        isAdmin = profile.user_type === 'admin' || profile.email === 'admin@tetris.com';
+        
+        // 修复管理员检查逻辑 - 明确的检查条件
+        isAdmin = (profile.user_type === 'admin') || 
+                 (profile.email === 'admin@tetris.com') || 
+                 (authUser.email === 'admin@tetris.com');
         
         debugLog.auth('用户档案获取成功', { 
           email: profile.email, 
           userType: profile.user_type, 
-          isAdmin 
+          isAdmin,
+          username 
         });
       } else {
-        // 如果没有找到档案，至少检查邮箱
+        // 如果没有档案，检查邮箱
         isAdmin = authUser.email === 'admin@tetris.com';
-        debugLog.auth('未找到用户档案，使用默认值', { 
+        debugLog.auth('未找到用户档案，使用邮箱检查管理员权限', { 
           email: authUser.email, 
           isAdmin 
         });
@@ -87,11 +98,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return extendedUser;
     } catch (error) {
-      debugLog.error('获取用户档案失败', error);
-      // 发生错误时的回退逻辑
+      debugLog.error('获取用户档案时发生错误', error);
+      // 错误回退：仅通过邮箱检查管理员权限
+      const isAdmin = authUser.email === 'admin@tetris.com';
+      debugLog.auth('使用回退逻辑设置管理员权限', { email: authUser.email, isAdmin });
+      
       return {
         ...authUser,
-        isAdmin: authUser.email === 'admin@tetris.com',
+        isAdmin,
         isGuest: authUser.email?.includes('@guest.local') || false,
         username: authUser.email?.split('@')[0] || 'User'
       } as ExtendedUser;
@@ -109,11 +123,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         
         if (session?.user) {
-          // 延迟获取用户档案以避免认证回调中的递归
+          // 使用 setTimeout 避免递归调用
           setTimeout(async () => {
-            const extendedUser = await fetchUserProfile(session.user);
-            setUser(extendedUser);
-            setLoading(false);
+            try {
+              const extendedUser = await fetchUserProfile(session.user);
+              setUser(extendedUser);
+              setLoading(false);
+            } catch (error) {
+              debugLog.error('设置用户信息失败', error);
+              setLoading(false);
+            }
           }, 0);
         } else {
           setUser(null);
@@ -130,12 +149,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
       } else if (session) {
         debugLog.auth('发现现有会话', { userId: session.user.id });
-        // 获取用户完整信息
+        // 使用 setTimeout 避免递归调用
         setTimeout(async () => {
-          const extendedUser = await fetchUserProfile(session.user);
-          setUser(extendedUser);
-          setSession(session);
-          setLoading(false);
+          try {
+            const extendedUser = await fetchUserProfile(session.user);
+            setUser(extendedUser);
+            setSession(session);
+            setLoading(false);
+          } catch (error) {
+            debugLog.error('初始化用户信息失败', error);
+            setLoading(false);
+          }
         }, 0);
       } else {
         debugLog.auth('无有效会话');

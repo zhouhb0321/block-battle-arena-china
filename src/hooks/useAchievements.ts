@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 
 export interface Achievement {
@@ -29,23 +30,31 @@ export const useAchievements = () => {
     setAchievements([]);
   }, []);
 
-  // 便捷方法 - 简化成就文本格式
+  // 便捷方法 - 修复格式并简化
   const showTetris = useCallback((isTSpin = false, isB2B = false) => {
-    let text = isTSpin ? 'T4' : 'TETRIS';
+    let text = isTSpin ? 'T-SPIN TETRIS' : 'TETRIS';
     if (isB2B) text = `B2B ${text}`;
     addAchievement(text, 'tetris');
   }, [addAchievement]);
 
   const showTSpin = useCallback((lines: number, isMini = false, isB2B = false) => {
-    // 简化格式：T1 (T-Spin Single), T2 (T-Spin Double), T3 (T-Spin Triple)
-    let text = `T${lines}`;
-    if (isMini) text = `MINI ${text}`;
+    let text = '';
+    if (isMini) {
+      text = `MINI T-SPIN`;
+      if (lines > 0) text += ` ${lines === 1 ? 'SINGLE' : lines === 2 ? 'DOUBLE' : 'TRIPLE'}`;
+    } else {
+      text = `T-SPIN`;
+      if (lines > 0) text += ` ${lines === 1 ? 'SINGLE' : lines === 2 ? 'DOUBLE' : 'TRIPLE'}`;
+    }
     if (isB2B) text = `B2B ${text}`;
     addAchievement(text, 'tspin');
   }, [addAchievement]);
 
+  // 修复Combo显示 - 每次combo都显示，最大100
   const showCombo = useCallback((comboCount: number) => {
-    addAchievement(`${comboCount} COMBO`, 'combo');
+    if (comboCount > 0 && comboCount <= 100) {
+      addAchievement(`COMBO ${comboCount}`, 'combo');
+    }
   }, [addAchievement]);
 
   const showPerfectClear = useCallback(() => {
