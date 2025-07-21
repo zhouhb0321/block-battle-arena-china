@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { Check, Star, Zap, Crown } from 'lucide-react';
+import { Check, Star, Zap, Crown, X } from 'lucide-react';
 
 interface PricingPlan {
   id: string;
@@ -26,9 +26,9 @@ const SubscriptionPlans: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   const plans: PricingPlan[] = [
     {
-      id: 'basic',
-      name: 'Basic',
-      price: 4.99,
+      id: 'basic-monthly',
+      name: 'Basic Monthly',
+      price: 2.5,
       currency: 'USD',
       interval: 'month',
       icon: <Star className="w-6 h-6" />,
@@ -40,36 +40,19 @@ const SubscriptionPlans: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       ]
     },
     {
-      id: 'premium',
-      name: 'Premium',
-      price: 9.99,
+      id: 'basic-yearly',
+      name: 'Basic Yearly',
+      price: 25,
       currency: 'USD',
-      interval: 'month',
+      interval: 'year',
       popular: true,
       icon: <Zap className="w-6 h-6" />,
       features: [
         'All Basic features',
+        'Save 17% vs monthly',
         'Advanced statistics',
         'Premium themes & skins',
-        'Unlimited replays',
-        'Priority support',
-        'Custom keybindings'
-      ]
-    },
-    {
-      id: 'pro',
-      name: 'Pro',
-      price: 19.99,
-      currency: 'USD',
-      interval: 'month',
-      icon: <Crown className="w-6 h-6" />,
-      features: [
-        'All Premium features',
-        'Tournament access',
-        'Detailed analytics',
-        'Custom game modes',
-        'API access',
-        'White-label options'
+        'Priority support'
       ]
     }
   ];
@@ -103,11 +86,13 @@ const SubscriptionPlans: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-background rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-background rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">{t('premium')} Plans</h2>
-            <Button variant="ghost" onClick={onClose}>×</Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
           </div>
           <p className="text-muted-foreground mt-2">
             Unlock premium features and enhance your Tetris experience
@@ -115,7 +100,7 @@ const SubscriptionPlans: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </div>
 
         <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {plans.map((plan) => (
               <Card 
                 key={plan.id} 
@@ -123,7 +108,7 @@ const SubscriptionPlans: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               >
                 {plan.popular && (
                   <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                    Most Popular
+                    Recommended
                   </Badge>
                 )}
                 
@@ -163,9 +148,12 @@ const SubscriptionPlans: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             ))}
           </div>
 
-          <div className="mt-8 text-center text-sm text-muted-foreground">
+          <div className="mt-8 text-center text-sm text-muted-foreground space-y-2">
             <p>All plans include a 7-day free trial. Cancel anytime.</p>
             <p>Secure payment processing by Stripe.</p>
+            <Button variant="ghost" onClick={onClose} className="mt-4">
+              Close
+            </Button>
           </div>
         </div>
       </div>

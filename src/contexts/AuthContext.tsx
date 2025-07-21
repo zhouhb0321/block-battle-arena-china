@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', authUser.id)
         .single();
       
-      if (error) {
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
         debugLog.error('获取用户档案失败', error);
         throw error;
       }
@@ -58,13 +58,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let isAdmin = false;
       let username = authUser.email?.split('@')[0] || 'User';
       
+      // 优先检查邮箱是否为管理员邮箱
+      if (authUser.email === 'admin@tetris.com') {
+        isAdmin = true;
+        debugLog.auth('通过邮箱识别为管理员', { email: authUser.email });
+      }
+      
       if (profile) {
         username = profile.username || username;
         
-        // 修复管理员检查逻辑 - 明确的检查条件
-        isAdmin = (profile.user_type === 'admin') || 
-                 (profile.email === 'admin@tetris.com') || 
-                 (authUser.email === 'admin@tetris.com');
+        // 检查数据库中的用户类型
+        if (profile.user_type === 'admin') {
+          isAdmin = true;
+        }
         
         debugLog.auth('用户档案获取成功', { 
           email: profile.email, 
@@ -73,9 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           username 
         });
       } else {
-        // 如果没有档案，检查邮箱
-        isAdmin = authUser.email === 'admin@tetris.com';
-        debugLog.auth('未找到用户档案，使用邮箱检查管理员权限', { 
+        debugLog.auth('未找到用户档案，使用默认设置', { 
           email: authUser.email, 
           isAdmin 
         });
@@ -99,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return extendedUser;
     } catch (error) {
       debugLog.error('获取用户档案时发生错误', error);
-      // 错误回退：仅通过邮箱检查管理员权限
+      // 错误回退：通过邮箱检查管理员权限
       const isAdmin = authUser.email === 'admin@tetris.com';
       debugLog.auth('使用回退逻辑设置管理员权限', { email: authUser.email, isAdmin });
       
@@ -117,50 +121,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // 设置认证状态监听器
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         debugLog.auth('认证状态变化', { event, hasSession: !!session });
         
         setSession(session);
         
         if (session?.user) {
-          // 使用 setTimeout 避免递归调用
-          setTimeout(async () => {
-            try {
-              const extendedUser = await fetchUserProfile(session.user);
-              setUser(extendedUser);
-              setLoading(false);
-            } catch (error) {
-              debugLog.error('设置用户信息失败', error);
-              setLoading(false);
-            }
-          }, 0);
+          try {
+            const extendedUser = await fetchUserProfile(session.user);
+            setUser(extendedUser);
+            debugLog.auth('用户状态更新完成', { 
+              isAdmin: extendedUser.isAdmin,
+              email: extendedUser.email 
+            });
+          } catch (error) {
+            debugLog.error('设置用户信息失败', error);
+          }
         } else {
           setUser(null);
-          setLoading(false);
           debugLog.auth('用户已登出');
         }
+        setLoading(false);
       }
     );
 
     // 检查现有会话
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (error) {
         debugLog.error('获取会话失败', error);
         setLoading(false);
       } else if (session) {
         debugLog.auth('发现现有会话', { userId: session.user.id });
-        // 使用 setTimeout 避免递归调用
-        setTimeout(async () => {
-          try {
-            const extendedUser = await fetchUserProfile(session.user);
-            setUser(extendedUser);
-            setSession(session);
-            setLoading(false);
-          } catch (error) {
-            debugLog.error('初始化用户信息失败', error);
-            setLoading(false);
-          }
-        }, 0);
+        try {
+          const extendedUser = await fetchUserProfile(session.user);
+          setUser(extendedUser);
+          setSession(session);
+          debugLog.auth('初始会话处理完成', { 
+            isAdmin: extendedUser.isAdmin,
+            email: extendedUser.email 
+          });
+        } catch (error) {
+          debugLog.error('初始化用户信息失败', error);
+        }
+        setLoading(false);
       } else {
         debugLog.auth('无有效会话');
         setLoading(false);

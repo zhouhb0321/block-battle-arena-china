@@ -28,16 +28,16 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
       setCurrentAchievement(nextAchievement);
       setIsVisible(true);
 
-      // 实现快速闪现：100ms显示 + 100ms消失
+      // 改进显示时间：500ms显示 + 200ms消失
       const hideTimer = setTimeout(() => {
         setIsVisible(false);
         
-        // 100ms消失动画后完全移除
+        // 200ms消失动画后完全移除
         setTimeout(() => {
           setCurrentAchievement(null);
           onAchievementComplete(nextAchievement.id);
-        }, 100);
-      }, 100);
+        }, 200);
+      }, 500);
 
       return () => clearTimeout(hideTimer);
     }
@@ -46,42 +46,49 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
   const getAchievementColor = (type: Achievement['type']) => {
     switch (type) {
       case 'tetris':
-        return 'text-yellow-300 border-yellow-400/60 bg-yellow-400/15 shadow-yellow-400/20';
+        return 'text-yellow-300 border-yellow-400/80 bg-yellow-400/25 shadow-yellow-400/40';
       case 'tspin':
-        return 'text-purple-300 border-purple-400/60 bg-purple-400/15 shadow-purple-400/20';
+        return 'text-purple-300 border-purple-400/80 bg-purple-400/25 shadow-purple-400/40';
       case 'combo':
-        return 'text-green-300 border-green-400/60 bg-green-400/15 shadow-green-400/20';
+        return 'text-green-300 border-green-400/80 bg-green-400/25 shadow-green-400/40';
       case 'perfect':
-        return 'text-white border-white/60 bg-white/15 shadow-white/20';
+        return 'text-white border-white/80 bg-white/25 shadow-white/40';
       case 'level':
-        return 'text-cyan-300 border-cyan-400/60 bg-cyan-400/15 shadow-cyan-400/20';
+        return 'text-cyan-300 border-cyan-400/80 bg-cyan-400/25 shadow-cyan-400/40';
       default:
-        return 'text-gray-300 border-gray-400/60 bg-gray-400/15 shadow-gray-400/20';
+        return 'text-gray-300 border-gray-400/80 bg-gray-400/25 shadow-gray-400/40';
     }
   };
 
   if (!currentAchievement) {
-    return <div className="h-12 w-full" />; // 占位符保持布局稳定
+    return <div className="h-16 w-full" />; // 增加占位符高度
   }
 
   return (
-    <div className="h-12 w-full flex items-center justify-center relative overflow-hidden">
+    <div className="h-16 w-full flex items-center justify-center relative overflow-hidden">
       <div
         className={`
           absolute inset-0 flex items-center justify-center
-          transform transition-all duration-100 ease-out
-          ${isVisible ? 'scale-110 opacity-100 translate-y-0' : 'scale-90 opacity-0 translate-y-1'}
+          transform transition-all duration-200 ease-out
+          ${isVisible 
+            ? 'scale-125 opacity-100 translate-y-0 animate-bounce' 
+            : 'scale-90 opacity-0 translate-y-2'
+          }
         `}
       >
         <div
           className={`
-            px-6 py-2 font-bold text-center text-lg
+            px-8 py-3 font-bold text-center text-xl
             ${getAchievementColor(currentAchievement.type)}
-            border-2 rounded-lg backdrop-blur-sm
+            border-2 rounded-xl backdrop-blur-md
             drop-shadow-2xl whitespace-nowrap
-            transform transition-all duration-100
-            shadow-lg
+            transform transition-all duration-200
+            shadow-2xl
+            ${isVisible ? 'animate-pulse' : ''}
           `}
+          style={{
+            animation: isVisible ? 'bounce 0.6s ease-in-out, pulse 1s ease-in-out infinite' : undefined
+          }}
         >
           {currentAchievement.text}
         </div>

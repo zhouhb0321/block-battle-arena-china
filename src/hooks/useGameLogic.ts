@@ -252,7 +252,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         setB2bCount(0);
       }
       
-      if (newComboCount >= 3 && newComboCount % 3 === 0) {
+      // 修复：每次combo都显示，最大到100
+      if (newComboCount >= 1 && newComboCount <= 100) {
         showCombo(newComboCount);
       }
       
@@ -277,7 +278,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
 
     lastTSpinCheck.current = null;
     spawnNewPiece();
-  }, [currentPiece, board, lines, level, spawnNewPiece, onSpecialClear, clearLockDelayTimer]);
+  }, [currentPiece, board, lines, level, spawnNewPiece, onSpecialClear, clearLockDelayTimer, comboCount, b2bCount, showTSpin, showTetris, showCombo, showPerfectClear, showLevelUp]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return false;
