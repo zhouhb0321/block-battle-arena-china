@@ -48,18 +48,12 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
           .eq('position', position)
           .eq('is_active', true);
 
-        // 只有在字段存在的情况下才添加过滤条件
-        if (region) {
-          query = query.or(`region.is.null,region.eq.${region}`);
-        }
-        if (language) {
-          query = query.or(`language.is.null,language.eq.${language}`);
-        }
+        // 简化查询逻辑，先获取所有广告，然后在前端过滤
+        // 这样可以避免复杂的 OR 查询语法问题
 
         const { data, error } = await query
           .gte('end_date', new Date().toISOString())
-          .order('created_at', { ascending: false })
-          .limit(1);
+          .order('created_at', { ascending: false });
 
         if (error) {
           console.error('Error fetching ad:', error);
@@ -67,28 +61,38 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
         }
 
         if (data && data.length > 0) {
-          const ad = data[0];
-          setAdContent({
-            id: ad.id,
-            title: ad.title,
-            description: ad.content,
-            imageUrl: ad.image_url || '',
-            clickUrl: ad.target_url || '',
-            targetUrl: ad.target_url || '',
-            isActive: ad.is_active,
-            region: region,
-            language: language,
-            startDate: ad.start_date,
-            endDate: ad.end_date,
-            clicks: ad.clicks,
-            impressions: ad.impressions
+          // 在前端过滤匹配地区和语言的广告
+          const filteredAds = data.filter(ad => {
+            // 如果广告没有设置地区或语言限制，或者匹配当前用户的地区/语言
+            const regionMatch = !ad.region || ad.region === region;
+            const languageMatch = !ad.language || ad.language === language;
+            return regionMatch && languageMatch;
           });
 
-          // 更新展示次数
-          await supabase
-            .from('advertisements')
-            .update({ impressions: (ad.impressions || 0) + 1 })
-            .eq('id', ad.id);
+          if (filteredAds.length > 0) {
+            const ad = filteredAds[0];
+            setAdContent({
+              id: ad.id,
+              title: ad.title,
+              description: ad.content,
+              imageUrl: ad.image_url || '',
+              clickUrl: ad.target_url || '',
+              targetUrl: ad.target_url || '',
+              isActive: ad.is_active,
+              region: region,
+              language: language,
+              startDate: ad.start_date,
+              endDate: ad.end_date,
+              clicks: ad.clicks,
+              impressions: ad.impressions
+            });
+
+            // 更新展示次数
+            await supabase
+              .from('advertisements')
+              .update({ impressions: (ad.impressions || 0) + 1 })
+              .eq('id', ad.id);
+          }
         }
       } catch (error) {
         console.error('Error loading ad:', error);
