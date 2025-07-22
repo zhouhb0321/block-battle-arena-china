@@ -22,6 +22,15 @@ const Index = () => {
   const [currentView, setCurrentView] = useState<ViewType>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // 调试管理员状态
+  useEffect(() => {
+    console.log('Index页面用户状态更新:', { 
+      user: user?.email, 
+      isAdmin: user?.isAdmin, 
+      isAuthenticated 
+    });
+  }, [user, isAuthenticated]);
+
   // Reset to main menu when user logs out
   useEffect(() => {
     if (!isAuthenticated && currentView !== 'home') {
@@ -34,10 +43,19 @@ const Index = () => {
   };
 
   const handleViewChange = (view: ViewType) => {
+    console.log('视图切换请求:', { view, isAuthenticated, isAdmin: user?.isAdmin });
+    
     if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked' || view === 'admin')) {
       setShowAuthModal(true);
       return;
     }
+    
+    // 管理员权限检查
+    if (view === 'admin' && !user?.isAdmin) {
+      console.log('非管理员用户尝试访问管理面板');
+      return;
+    }
+    
     setCurrentView(view);
   };
 

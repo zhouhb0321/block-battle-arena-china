@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      const isGuest = authUser.email?.includes('@guest.local') || false;
+      const isGuest = authUser.email?.includes('@example.com') && authUser.email?.startsWith('guest_') || false;
       let isAdmin = false;
       let username = authUser.email?.split('@')[0] || 'User';
       
@@ -110,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return {
         ...authUser,
         isAdmin,
-        isGuest: authUser.email?.includes('@guest.local') || false,
+        isGuest: authUser.email?.includes('@example.com') && authUser.email?.startsWith('guest_') || false,
         username: authUser.email?.split('@')[0] || 'User'
       } as ExtendedUser;
     }
@@ -225,7 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginAsGuest = async () => {
-    const guestEmail = `guest_${Date.now()}@guest.local`;
+    const guestEmail = `guest_${Date.now()}@example.com`;
     const guestPassword = Math.random().toString(36).substring(2, 15);
     
     debugLog.auth('游客登录', { guestEmail });

@@ -42,13 +42,21 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
       try {
         const { region, language } = getUserLocale();
         
-        const { data, error } = await supabase
+        let query = supabase
           .from('advertisements')
           .select('*')
           .eq('position', position)
-          .eq('is_active', true)
-          .or(`region.is.null,region.eq.${region}`)
-          .or(`language.is.null,language.eq.${language}`)
+          .eq('is_active', true);
+
+        // 只有在字段存在的情况下才添加过滤条件
+        if (region) {
+          query = query.or(`region.is.null,region.eq.${region}`);
+        }
+        if (language) {
+          query = query.or(`language.is.null,language.eq.${language}`);
+        }
+
+        const { data, error } = await query
           .gte('end_date', new Date().toISOString())
           .order('created_at', { ascending: false })
           .limit(1);

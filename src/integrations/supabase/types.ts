@@ -60,7 +60,9 @@ export type Database = {
           image_url: string | null
           impressions: number
           is_active: boolean
+          language: string | null
           position: string
+          region: string | null
           start_date: string | null
           target_url: string | null
           title: string
@@ -74,7 +76,9 @@ export type Database = {
           image_url?: string | null
           impressions?: number
           is_active?: boolean
+          language?: string | null
           position: string
+          region?: string | null
           start_date?: string | null
           target_url?: string | null
           title: string
@@ -88,7 +92,9 @@ export type Database = {
           image_url?: string | null
           impressions?: number
           is_active?: boolean
+          language?: string | null
           position?: string
+          region?: string | null
           start_date?: string | null
           target_url?: string | null
           title?: string
