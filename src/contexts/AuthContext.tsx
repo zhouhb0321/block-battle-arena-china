@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      const isGuest = authUser.email?.includes('@example.com') && authUser.email?.startsWith('guest_') || false;
+      const isGuest = authUser.email?.includes('@guest.local') || authUser.email?.includes('@example.com') && authUser.email?.startsWith('guest_') || false;
       let isAdmin = false;
       let username = authUser.email?.split('@')[0] || 'User';
       
@@ -79,9 +80,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           username 
         });
       } else {
+        // 为访客用户生成用户名
+        if (isGuest) {
+          username = `Guest_${Date.now().toString().slice(-6)}`;
+        }
+        
         debugLog.auth('未找到用户档案，使用默认设置', { 
           email: authUser.email, 
-          isAdmin 
+          isAdmin,
+          isGuest,
+          username
         });
       }
       
@@ -105,13 +113,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       debugLog.error('获取用户档案时发生错误', error);
       // 错误回退：通过邮箱检查管理员权限
       const isAdmin = authUser.email === 'admin@tetris.com';
+      const isGuest = authUser.email?.includes('@guest.local') || authUser.email?.includes('@example.com') && authUser.email?.startsWith('guest_') || false;
       debugLog.auth('使用回退逻辑设置管理员权限', { email: authUser.email, isAdmin });
       
       return {
         ...authUser,
         isAdmin,
-        isGuest: authUser.email?.includes('@example.com') && authUser.email?.startsWith('guest_') || false,
-        username: authUser.email?.split('@')[0] || 'User'
+        isGuest,
+        username: isGuest ? `Guest_${Date.now().toString().slice(-6)}` : authUser.email?.split('@')[0] || 'User'
       } as ExtendedUser;
     }
   };
@@ -225,21 +234,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginAsGuest = async () => {
-    const guestEmail = `guest_${Date.now()}@example.com`;
+    // 使用更安全的域名格式
+    const guestEmail = `guest_${Date.now()}@guest.local`;
     const guestPassword = Math.random().toString(36).substring(2, 15);
+    const guestUsername = `Guest_${Date.now().toString().slice(-6)}`;
     
     debugLog.auth('游客登录', { guestEmail });
     
-    const { error } = await supabase.auth.signUp({
-      email: guestEmail,
-      password: guestPassword,
-      options: {
-        data: { username: `Guest_${Date.now().toString().slice(-6)}` }
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: guestEmail,
+        password: guestPassword,
+        options: {
+          data: { username: guestUsername },
+          emailRedirectTo: undefined // 访客不需要邮箱验证
+        }
+      });
+      
+      if (error) {
+        debugLog.error('游客登录失败', error);
+        throw error;
       }
-    });
-    
-    if (error) {
-      debugLog.error('游客登录失败', error);
+      
+      debugLog.auth('游客登录成功', { guestEmail, guestUsername });
+    } catch (error) {
+      debugLog.error('游客登录异常', error);
       throw error;
     }
   };
