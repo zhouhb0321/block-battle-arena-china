@@ -234,31 +234,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginAsGuest = async () => {
-    // 使用更安全的域名格式
-    const guestEmail = `guest_${Date.now()}@guest.local`;
-    const guestPassword = Math.random().toString(36).substring(2, 15);
+    // 不使用 Supabase 认证，直接创建本地访客用户
+    const guestId = `guest_${Date.now()}`;
     const guestUsername = `Guest_${Date.now().toString().slice(-6)}`;
+    const guestEmail = `${guestId}@example.com`;
     
-    debugLog.auth('游客登录', { guestEmail });
+    debugLog.auth('创建本地访客用户', { guestId, guestUsername });
     
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // 创建本地访客用户对象
+      const guestUser: ExtendedUser = {
+        id: guestId,
         email: guestEmail,
-        password: guestPassword,
-        options: {
-          data: { username: guestUsername },
-          emailRedirectTo: undefined // 访客不需要邮箱验证
-        }
-      });
+        aud: 'authenticated',
+        role: 'authenticated',
+        email_confirmed_at: new Date().toISOString(),
+        phone: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_anonymous: true,
+        app_metadata: { provider: 'guest', providers: ['guest'] },
+        user_metadata: { username: guestUsername },
+        identities: [],
+        isAdmin: false,
+        isGuest: true,
+        username: guestUsername
+      };
+
+      // 创建本地会话对象
+      const guestSession = {
+        access_token: `guest_token_${Date.now()}`,
+        refresh_token: `guest_refresh_${Date.now()}`,
+        expires_in: 24 * 60 * 60, // 24小时
+        expires_at: Date.now() / 1000 + 24 * 60 * 60,
+        token_type: 'bearer',
+        user: guestUser
+      };
+
+      setUser(guestUser);
+      setSession(guestSession as any);
       
-      if (error) {
-        debugLog.error('游客登录失败', error);
-        throw error;
-      }
-      
-      debugLog.auth('游客登录成功', { guestEmail, guestUsername });
+      debugLog.auth('访客用户创建成功', { guestId, guestUsername });
     } catch (error) {
-      debugLog.error('游客登录异常', error);
+      debugLog.error('创建访客用户失败', error);
       throw error;
     }
   };
