@@ -273,6 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(guestUser);
       setSession(guestSession as any);
+      setLoading(false); // 重要：设置loading为false以确保isAuthenticated正确计算
       
       debugLog.auth('访客用户创建成功', { guestId, guestUsername });
     } catch (error) {
