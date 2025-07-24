@@ -35,7 +35,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
     try {
       if (isLogin) {
-        await login(email, password);
+        const { error } = await login(email, password);
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            toast.error('邮箱或密码错误');
+          } else if (error.message.includes('Email not confirmed')) {
+            toast.error('请先验证邮箱');
+          } else {
+            toast.error(error.message || '登录失败，请重试');
+          }
+          return;
+        }
         toast.success('登录成功！');
       } else {
         if (!username) {
@@ -43,21 +53,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           setLoading(false);
           return;
         }
-        await register(email, password, username);
-        toast.success('注册成功！');
+        const { error } = await register(email, password, username);
+        if (error) {
+          if (error.message.includes('User already registered')) {
+            toast.error('用户已存在');
+          } else if (error.message.includes('Email not confirmed')) {
+            toast.error('请检查邮箱验证链接');
+          } else {
+            toast.error(error.message || '注册失败，请重试');
+          }
+          return;
+        }
+        toast.success('注册成功！请检查邮箱验证链接');
       }
       onClose();
     } catch (error: any) {
       console.error('Authentication failed:', error);
-      if (error.message.includes('Invalid login credentials')) {
-        toast.error('邮箱或密码错误');
-      } else if (error.message.includes('Email not confirmed')) {
-        toast.error('请先验证邮箱');
-      } else if (error.message.includes('User already registered')) {
-        toast.error('用户已存在');
-      } else {
-        toast.error(error.message || '操作失败，请重试');
-      }
+      toast.error('网络错误，请重试');
     } finally {
       setLoading(false);
     }

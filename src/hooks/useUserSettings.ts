@@ -163,41 +163,48 @@ export const useUserSettings = () => {
         undoSteps: newSettings.undoSteps !== undefined ? newSettings.undoSteps : prevSettings.undoSteps,
       };
       
-      // Guests only save locally
-      if (!user || user.isGuest || !user.id) {
+      // 先保存到本地存储（访客和注册用户都需要）
+      try {
         window.localStorage.setItem('userSettings', JSON.stringify(mergedSettings));
-        return mergedSettings;
+        console.log('设置已保存到本地存储');
+      } catch (error) {
+        console.error('保存到本地存储失败:', error);
       }
       
-      // Logged in users sync to cloud
-      const dbSettings = {
-        enable_ghost: mergedSettings.enableGhost,
-        enable_sound: mergedSettings.enableSound,
-        master_volume: mergedSettings.masterVolume,
-        music_volume: mergedSettings.musicVolume,
-        background_music: mergedSettings.backgroundMusic,
-        arr: mergedSettings.arr,
-        das: mergedSettings.das,
-        sdf: mergedSettings.sdf,
-        controls: mergedSettings.controls,
-        ghost_opacity: mergedSettings.ghostOpacity,
-        back_to_menu: mergedSettings.controls.backToMenu,
-        block_skin: mergedSettings.blockSkin || 'wood',
-        enable_wallpaper: mergedSettings.enableWallpaper,
-        undo_steps: mergedSettings.undoSteps,
-      };
+      // 只有注册用户才同步到云端
+      if (user && !user.isGuest && user.id) {
+        const dbSettings = {
+          enable_ghost: mergedSettings.enableGhost,
+          enable_sound: mergedSettings.enableSound,
+          master_volume: mergedSettings.masterVolume,
+          music_volume: mergedSettings.musicVolume,
+          background_music: mergedSettings.backgroundMusic,
+          arr: mergedSettings.arr,
+          das: mergedSettings.das,
+          sdf: mergedSettings.sdf,
+          controls: mergedSettings.controls,
+          ghost_opacity: mergedSettings.ghostOpacity,
+          back_to_menu: mergedSettings.controls.backToMenu,
+          block_skin: mergedSettings.blockSkin || 'wood',
+          enable_wallpaper: mergedSettings.enableWallpaper,
+          undo_steps: mergedSettings.undoSteps,
+        };
+        
+        supabase
+          .from('user_settings')
+          .update(dbSettings)
+          .eq('user_id', user.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error('Failed to save cloud settings:', error);
+            } else {
+              console.log('设置已同步到云端');
+            }
+          });
+      } else {
+        console.log('访客用户设置仅保存到本地');
+      }
       
-      supabase
-        .from('user_settings')
-        .update(dbSettings)
-        .eq('user_id', user.id)
-        .then(({ error }) => {
-          if (error) {
-            console.error('Failed to save cloud settings:', error);
-          }
-        });
-      
-      window.localStorage.setItem('userSettings', JSON.stringify(mergedSettings));
       return mergedSettings;
     });
   }, [setSettings, user]);

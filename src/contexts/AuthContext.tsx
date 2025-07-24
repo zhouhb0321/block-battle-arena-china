@@ -154,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // 检查现有会话
+    // 检查现有会话 - 不自动创建访客用户
     supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (error) {
         debugLog.error('获取会话失败', error);
@@ -174,8 +174,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setLoading(false);
       } else {
-        debugLog.auth('无有效会话');
+        debugLog.auth('无有效会话，等待用户手动登录');
         setLoading(false);
+        // 移除自动创建访客用户 - 让用户主动选择登录方式
       }
     });
 
