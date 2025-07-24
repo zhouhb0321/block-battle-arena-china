@@ -252,8 +252,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         setB2bCount(0);
       }
       
-      // 修复：每次combo都显示，最大到100
-      if (newComboCount >= 1 && newComboCount <= 100) {
+      // 修复：只在combo大于1时显示，避免单行消除显示combo
+      if (newComboCount > 1 && newComboCount <= 100) {
         showCombo(newComboCount);
       }
       
@@ -327,32 +327,13 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setScore(prev => prev + dropDistance * 2);
     totalActions.current++;
     
-    const droppedPiece = { ...currentPiece, y: dropY };
-    
-    const newBoard = placePiece(board, droppedPiece);
-    const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
-    
-    setBoard(clearedBoard);
-    
-    if (linesCleared > 0) {
-      const newLines = lines + linesCleared;
-      const newLevel = Math.floor(newLines / 10) + 1;
-      const lineScore = linesCleared === 4 ? 800 * level : [100, 300, 500][linesCleared - 1] * level;
-      
-      setLines(newLines);
-      setLevel(newLevel);
-      setScore(prev => prev + lineScore);
-      
-      if (onSpecialClear && linesCleared >= 4) {
-        onSpecialClear('tetris', linesCleared);
-      }
-    }
-    
-    setCurrentPiece(null);
+    // 立即设置方块到最终位置并锁定
+    setCurrentPiece({ ...currentPiece, y: dropY });
     setIsHardDropping(false);
     
-    setTimeout(spawnNewPiece, 16);
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lines, level, onSpecialClear, spawnNewPiece, clearLockDelayTimer]);
+    // 立即锁定方块
+    setTimeout(() => lockPiece(), 16);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lockPiece, clearLockDelayTimer]);
 
   const rotatePieceClockwise = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;

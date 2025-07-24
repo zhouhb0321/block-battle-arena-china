@@ -28,16 +28,16 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
       setCurrentAchievement(nextAchievement);
       setIsVisible(true);
 
-      // 改进显示时间：500ms显示 + 200ms消失
+      // 修复：更短的显示时间，快速闪现
       const hideTimer = setTimeout(() => {
         setIsVisible(false);
         
-        // 200ms消失动画后完全移除
+        // 150ms消失动画后完全移除
         setTimeout(() => {
           setCurrentAchievement(null);
           onAchievementComplete(nextAchievement.id);
-        }, 200);
-      }, 500);
+        }, 150);
+      }, 800);
 
       return () => clearTimeout(hideTimer);
     }
