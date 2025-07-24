@@ -23,7 +23,8 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
       setCount(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          onComplete();
+          // Use setTimeout to defer onComplete call to avoid setState during render
+          setTimeout(() => onComplete(), 0);
           return 0;
         }
         return prev - 1;
