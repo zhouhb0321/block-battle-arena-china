@@ -24,11 +24,24 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
 
-  // 检查现有用户登录状态
+  // 检查现有用户登录状态 - 使用角色系统
   useEffect(() => {
-    if (user?.email === 'admin@tetris.com') {
-      onAuthenticated();
-    }
+    const checkAdminStatus = async () => {
+      if (user?.isAdmin) {
+        // Verify admin role in database
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin');
+          
+        if (roles && roles.length > 0) {
+          onAuthenticated();
+        }
+      }
+    };
+    
+    checkAdminStatus();
   }, [user, onAuthenticated]);
 
   // 检查是否被锁定
@@ -105,12 +118,16 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
     try {
       console.log('尝试管理员登录:', { email, password: password ? '***' : '' });
       
-      // 验证是否为管理员邮箱
-      if (email !== 'admin@tetris.com') {
-        throw new Error('无效的管理员账户');
+      // Enhanced input validation
+      if (!email || !password) {
+        throw new Error('请输入邮箱和密码');
       }
 
-      // 使用Supabase认证
+      if (password.length < 8) {
+        throw new Error('密码长度至少8位');
+      }
+
+      // 使用Supabase认证 - 不限制特定邮箱，让角色系统处理
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -122,19 +139,48 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         console.error('认证错误:', authError);
         handleFailedAttempt();
         
+        // Log security event
+        await supabase.from('security_events').insert({
+          event_type: 'admin_login_failed',
+          event_data: { email, error: authError.message },
+          user_agent: navigator.userAgent
+        });
+        
         if (authError.message.includes('Invalid login credentials')) {
           throw new Error('邮箱或密码错误。请检查您的登录信息');
         } else if (authError.message.includes('Email not confirmed')) {
           throw new Error('邮箱未验证。请先验证邮箱');
         } else if (authError.message.includes('User not found')) {
-          throw new Error('管理员账户不存在。请联系系统管理员');
+          throw new Error('用户账户不存在。请联系系统管理员');
         } else {
           throw new Error(`登录失败: ${authError.message}`);
         }
       }
 
       if (data?.user) {
-        console.log('登录成功，准备发送MFA验证码');
+        // Check if user has admin role
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .eq('role', 'admin');
+
+        if (!roles || roles.length === 0) {
+          handleFailedAttempt();
+          await supabase.auth.signOut(); // Sign out non-admin user
+          throw new Error('您没有管理员权限');
+        }
+
+        console.log('管理员权限验证成功，准备发送MFA验证码');
+        
+        // Log successful admin login
+        await supabase.from('security_events').insert({
+          user_id: data.user.id,
+          event_type: 'admin_login_success',
+          event_data: { email },
+          user_agent: navigator.userAgent
+        });
+        
         // 发送MFA验证码
         await sendMFACode(email);
         setStep('mfa');
@@ -255,7 +301,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         <Alert className="mb-4 border-blue-200">
           <CheckCircle className="h-4 w-4" />
           <AlertDescription className="text-blue-700">
-            请使用 admin@tetris.com 账户登录管理面板
+            请使用具有管理员权限的账户登录管理面板
           </AlertDescription>
         </Alert>
 
@@ -268,9 +314,9 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@tetris.com"
+                placeholder="请输入管理员邮箱"
                 required
-                disabled
+                disabled={loading}
               />
             </div>
             <div>
@@ -337,7 +383,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
             <li>• 不要在公共设备上登录</li>
             <li>• 登录失败3次将锁定30分钟</li>
             <li>• 会话将在4小时后自动过期</li>
-            <li>• 请确保 admin@tetris.com 账户已在系统中创建</li>
+            <li>• 请确保您的账户具有管理员权限</li>
           </ul>
         </div>
       </CardContent>

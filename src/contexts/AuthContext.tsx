@@ -8,6 +8,8 @@ interface ExtendedUser extends User {
   isAdmin?: boolean;
   isGuest?: boolean;
   username?: string;
+  roles?: string[];
+  user_type?: string;
 }
 
 interface AuthContextType {
@@ -39,52 +41,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 获取用户完整信息的函数 - 修复管理员检查逻辑
+  // Log security events
+  const logSecurityEvent = async (eventType: string, eventData: any) => {
+    try {
+      await supabase
+        .from('security_events')
+        .insert({
+          user_id: eventData.user_id || user?.id,
+          event_type: eventType,
+          event_data: eventData,
+          ip_address: null, // Client-side can't get real IP
+          user_agent: navigator.userAgent
+        });
+    } catch (error) {
+      console.warn('Failed to log security event:', error);
+    }
+  };
+
+  // 获取用户完整信息的函数 - 使用角色系统
   const fetchUserProfile = async (authUser: User) => {
     try {
       debugLog.auth('开始获取用户档案', { userId: authUser.id, email: authUser.email });
       
-      const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('username, user_type, email')
-        .eq('id', authUser.id)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
-        debugLog.error('获取用户档案失败', error);
-        throw error;
-      }
-      
+      // Fetch user profile and roles in parallel
+      const [profileResult, rolesResult] = await Promise.all([
+        supabase
+          .from('user_profiles')
+          .select('username, user_type, email')
+          .eq('id', authUser.id)
+          .single(),
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', authUser.id)
+      ]);
+
+      const profile = profileResult.data;
+      const roles = rolesResult.data?.map(r => r.role) || [];
+      const isAdmin = roles.includes('admin');
       const isGuest = authUser.email?.includes('@guest.local') || authUser.email?.includes('@example.com') && authUser.email?.startsWith('guest_') || false;
-      let isAdmin = false;
       let username = authUser.email?.split('@')[0] || 'User';
-      
-      // 优先检查邮箱是否为管理员邮箱
-      if (authUser.email === 'admin@tetris.com') {
-        isAdmin = true;
-        debugLog.auth('通过邮箱识别为管理员', { email: authUser.email });
-      }
       
       if (profile) {
         username = profile.username || username;
-        
-        // 检查数据库中的用户类型
-        if (profile.user_type === 'admin') {
-          isAdmin = true;
-        }
-        
         debugLog.auth('用户档案获取成功', { 
           email: profile.email, 
           userType: profile.user_type, 
           isAdmin,
-          username 
+          username,
+          roles
         });
-      } else {
+      } else if (isGuest) {
         // 为访客用户生成用户名
-        if (isGuest) {
-          username = `Guest_${Date.now().toString().slice(-6)}`;
-        }
-        
+        username = `Guest_${Date.now().toString().slice(-6)}`;
         debugLog.auth('未找到用户档案，使用默认设置', { 
           email: authUser.email, 
           isAdmin,
@@ -92,12 +101,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           username
         });
       }
+
+      // Log security event for successful login
+      await logSecurityEvent('user_login', {
+        user_id: authUser.id,
+        email: authUser.email,
+        roles: roles,
+        timestamp: new Date().toISOString()
+      });
       
       const extendedUser: ExtendedUser = {
         ...authUser,
         isAdmin,
         isGuest,
-        username
+        username,
+        roles,
+        user_type: profile?.user_type || 'regular'
       };
       
       debugLog.auth('用户信息设置完成', { 
@@ -105,22 +124,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: authUser.email,
         isAdmin,
         isGuest,
-        username
+        username,
+        roles
       });
       
       return extendedUser;
     } catch (error) {
       debugLog.error('获取用户档案时发生错误', error);
-      // 错误回退：通过邮箱检查管理员权限
-      const isAdmin = authUser.email === 'admin@tetris.com';
+      
+      // Log failed profile fetch
+      await logSecurityEvent('profile_fetch_failed', {
+        user_id: authUser.id,
+        email: authUser.email,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+      
+      // 错误回退：基本用户权限
       const isGuest = authUser.email?.includes('@guest.local') || authUser.email?.includes('@example.com') && authUser.email?.startsWith('guest_') || false;
-      debugLog.auth('使用回退逻辑设置管理员权限', { email: authUser.email, isAdmin });
+      debugLog.auth('使用回退逻辑设置用户权限', { email: authUser.email, isGuest });
       
       return {
         ...authUser,
-        isAdmin,
+        isAdmin: false, // Default to no admin access on error
         isGuest,
-        username: isGuest ? `Guest_${Date.now().toString().slice(-6)}` : authUser.email?.split('@')[0] || 'User'
+        username: isGuest ? `Guest_${Date.now().toString().slice(-6)}` : authUser.email?.split('@')[0] || 'User',
+        roles: [],
+        user_type: 'regular'
       } as ExtendedUser;
     }
   };
@@ -184,41 +214,121 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    debugLog.auth('尝试登录', { email: email.replace(/(.{2}).*(@.*)/, '$1***$2') });
-    
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) {
-      debugLog.error('登录失败', error);
-    } else {
-      debugLog.auth('登录成功', { email: email.replace(/(.{2}).*(@.*)/, '$1***$2') });
+    // Input validation
+    if (!email || !password) {
+      const error = new Error('Email and password are required');
+      debugLog.error('登录验证失败', error);
+      return { error };
     }
     
-    return { error };
+    if (password.length < 8) {
+      const error = new Error('Password must be at least 8 characters long');
+      debugLog.error('密码长度不足', error);
+      return { error };
+    }
+
+    debugLog.auth('尝试登录', { email: email.replace(/(.{2}).*(@.*)/, '$1***$2') });
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        debugLog.error('登录失败', error);
+        // Log failed login attempt
+        await logSecurityEvent('login_failed', {
+          email,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        debugLog.auth('登录成功', { email: email.replace(/(.{2}).*(@.*)/, '$1***$2') });
+      }
+      
+      return { error };
+    } catch (error) {
+      debugLog.error('登录过程发生错误', error);
+      return { error };
+    }
   };
 
   const register = async (email: string, password: string, username?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: username ? { username } : undefined
-      }
-    });
-    
-    if (error) {
-      debugLog.error('注册失败', error);
-    } else {
-      debugLog.auth('注册成功', { email, username });
+    // Input validation
+    if (!email || !password) {
+      const error = new Error('Email and password are required');
+      debugLog.error('注册验证失败', error);
+      return { error };
     }
     
-    return { error };
+    if (password.length < 8) {
+      const error = new Error('Password must be at least 8 characters long');
+      debugLog.error('密码长度不足', error);
+      return { error };
+    }
+    
+    // Basic password strength check
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+      const error = new Error('Password must contain uppercase, lowercase, and numbers');
+      debugLog.error('密码强度不足', error);
+      return { error };
+    }
+    
+    // Username validation
+    if (username && (username.length < 3 || username.length > 20)) {
+      const error = new Error('Username must be between 3 and 20 characters');
+      debugLog.error('用户名长度不符', error);
+      return { error };
+    }
+    
+    if (username && !/^[a-zA-Z0-9_-]+$/.test(username)) {
+      const error = new Error('Username can only contain letters, numbers, underscores, and hyphens');
+      debugLog.error('用户名格式不符', error);
+      return { error };
+    }
+
+    const redirectUrl = `${window.location.origin}/`;
+    
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: username ? { username } : undefined
+        }
+      });
+      
+      if (error) {
+        debugLog.error('注册失败', error);
+        // Log failed registration attempt
+        await logSecurityEvent('registration_failed', {
+          email,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        debugLog.auth('注册成功', { email, username });
+        // Log successful registration
+        if (data.user) {
+          await logSecurityEvent('user_registered', {
+            user_id: data.user.id,
+            email,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+      
+      return { error };
+    } catch (error) {
+      debugLog.error('注册过程发生错误', error);
+      return { error };
+    }
   };
 
   const signUp = async (email: string, password: string) => {
@@ -230,8 +340,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    debugLog.auth('用户登出');
-    await supabase.auth.signOut();
+    try {
+      // Log logout event
+      if (user) {
+        await logSecurityEvent('user_logout', {
+          user_id: user.id,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      debugLog.auth('用户登出');
+      await supabase.auth.signOut();
+    } catch (error) {
+      debugLog.error('登出过程发生错误', error);
+      throw error;
+    }
   };
 
   const loginAsGuest = async () => {
