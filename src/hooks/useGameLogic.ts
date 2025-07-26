@@ -295,9 +295,12 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       totalActions.current++;
       
       if (dx !== 0) {
-        // 水平移动时重置锁定延迟
-        if (resetLockDelay()) {
-          clearLockDelayTimer();
+        // 只有在方块已经触底时，才允许重置锁定延迟，防止漂移
+        const belowPiece = { ...newPiece, y: newPiece.y + 1 };
+        if (!isValidPosition(board, belowPiece)) {
+          if (resetLockDelay()) {
+            clearLockDelayTimer();
+          }
         }
       }
       return true;
@@ -337,11 +340,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setBoard(newBoard);
     setCurrentPiece(droppedPiece);
     
-    // 短暂延迟后锁定，确保渲染完成
-    setTimeout(() => {
-      setIsHardDropping(false);
-      lockPiece();
-    }, 50);
+    // 立即锁定方块，去除setTimeout
+    setIsHardDropping(false);
+    lockPiece();
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lockPiece, clearLockDelayTimer]);
 
   const rotatePieceClockwise = useCallback(() => {
