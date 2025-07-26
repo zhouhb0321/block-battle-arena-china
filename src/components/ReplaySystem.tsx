@@ -92,7 +92,8 @@ const ReplaySystem: React.FC = () => {
               musicVolume: 30,
               ghostOpacity: 50,
               enableWallpaper: true,
-              undoSteps: 50
+              undoSteps: 50,
+              wallpaperChangeInterval: 120
             }
             }
           };

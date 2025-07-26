@@ -1009,6 +1009,7 @@ export type Database = {
           undo_steps: number | null
           updated_at: string
           user_id: string
+          wallpaper_change_interval: number | null
           wallpaper_opacity: number | null
         }
         Insert: {
@@ -1035,6 +1036,7 @@ export type Database = {
           undo_steps?: number | null
           updated_at?: string
           user_id: string
+          wallpaper_change_interval?: number | null
           wallpaper_opacity?: number | null
         }
         Update: {
@@ -1061,6 +1063,7 @@ export type Database = {
           undo_steps?: number | null
           updated_at?: string
           user_id?: string
+          wallpaper_change_interval?: number | null
           wallpaper_opacity?: number | null
         }
         Relationships: []

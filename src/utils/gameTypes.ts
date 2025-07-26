@@ -79,6 +79,7 @@ export interface GameSettings {
   ghostOpacity: number;
   enableWallpaper: boolean;
   undoSteps: number;
+  wallpaperChangeInterval: number;
 }
 
 export interface AdContent {

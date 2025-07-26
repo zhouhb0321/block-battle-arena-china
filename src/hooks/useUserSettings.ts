@@ -27,6 +27,7 @@ export interface UserSettings {
   blockSkin?: string;
   enableWallpaper: boolean;
   undoSteps: number;
+  wallpaperChangeInterval: number;
 }
 
 const DEFAULT_GUEST_SETTINGS: UserSettings = {
@@ -54,6 +55,7 @@ const DEFAULT_GUEST_SETTINGS: UserSettings = {
   blockSkin: 'wood',
   enableWallpaper: true,
   undoSteps: 50,
+  wallpaperChangeInterval: 120,
 };
 
 const useLocalStorage = <T>(key: string, initialValue: T) => {
@@ -121,6 +123,7 @@ export const useUserSettings = () => {
           blockSkin: data.block_skin ?? 'wood',
           enableWallpaper: data.enable_wallpaper ?? true,
           undoSteps: data.undo_steps ?? 50,
+          wallpaperChangeInterval: data.wallpaper_change_interval ?? 120,
         };
         setSettings(cloudSettings);
         window.localStorage.setItem('userSettings', JSON.stringify(cloudSettings));
@@ -161,6 +164,7 @@ export const useUserSettings = () => {
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
         enableWallpaper: newSettings.enableWallpaper !== undefined ? newSettings.enableWallpaper : prevSettings.enableWallpaper,
         undoSteps: newSettings.undoSteps !== undefined ? newSettings.undoSteps : prevSettings.undoSteps,
+        wallpaperChangeInterval: newSettings.wallpaperChangeInterval !== undefined ? newSettings.wallpaperChangeInterval : prevSettings.wallpaperChangeInterval,
       };
       
       // 先保存到本地存储（访客和注册用户都需要）
@@ -188,6 +192,7 @@ export const useUserSettings = () => {
           block_skin: mergedSettings.blockSkin || 'wood',
           enable_wallpaper: mergedSettings.enableWallpaper,
           undo_steps: mergedSettings.undoSteps,
+          wallpaper_change_interval: mergedSettings.wallpaperChangeInterval,
         };
         
         supabase
@@ -231,6 +236,7 @@ export const useUserSettings = () => {
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
         enableWallpaper: newSettings.enableWallpaper !== undefined ? newSettings.enableWallpaper : prevSettings.enableWallpaper,
         undoSteps: newSettings.undoSteps !== undefined ? newSettings.undoSteps : prevSettings.undoSteps,
+        wallpaperChangeInterval: newSettings.wallpaperChangeInterval !== undefined ? newSettings.wallpaperChangeInterval : prevSettings.wallpaperChangeInterval,
       };
       
       // Guests auto-save locally

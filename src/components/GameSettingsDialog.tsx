@@ -82,7 +82,8 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
       musicVolume: 30,
       ghostOpacity: 50,
       enableWallpaper: true,
-      undoSteps: 50
+      undoSteps: 50,
+      wallpaperChangeInterval: 120
     };
     
     setTempSettings(defaultSettings);

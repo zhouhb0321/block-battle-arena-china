@@ -32,6 +32,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     ghostOpacity: userSettings.ghostOpacity,
     enableWallpaper: userSettings.enableWallpaper,
     undoSteps: userSettings.undoSteps,
+    wallpaperChangeInterval: userSettings.wallpaperChangeInterval,
   });
 
   const [gameSettings, setGameSettings] = useState<GameSettings>(() => convertToGameSettings(settings));

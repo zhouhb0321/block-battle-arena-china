@@ -12,17 +12,16 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
   const [nextWallpaper, setNextWallpaper] = useState<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // 可用的风景壁纸列表 - 用户需要将图片放在 public/wallpapers/ 目录下
+  // 可用的壁纸列表 - 用户需要将图片放在 public/wallpapers/ 目录下
   const availableWallpapers = [
-    '/wallpapers/landscape1.jpg',
-    '/wallpapers/landscape2.jpg', 
-    '/wallpapers/landscape3.jpg',
-    '/wallpapers/landscape4.jpg',
-    '/wallpapers/landscape5.jpg',
-    '/wallpapers/mountain1.jpg',
-    '/wallpapers/mountain2.jpg',
-    '/wallpapers/forest1.jpg',
-    '/wallpapers/forest2.jpg',
+    '/wallpapers/wallpaper1.jpg',
+    '/wallpapers/wallpaper2.jpg',
+    '/wallpapers/wallpaper3.jpg',
+    '/wallpapers/wallpaper4.jpg',
+    '/wallpapers/wallpaper5.jpg',
+    '/wallpapers/wallpaper6.jpg',
+    '/wallpapers/wallpaper7.jpg',
+    '/wallpapers/wallpaper8.jpg',
     '/wallpapers/sunset1.jpg'
   ];
 
@@ -98,13 +97,13 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
       return;
     }
 
-    // 随机2-3分钟切换
-    const switchInterval = (120 + Math.random() * 60) * 1000; // 2-3分钟
+    // 使用用户设置的切换间隔
+    const switchInterval = (settings.wallpaperChangeInterval || 120) * 1000;
     
     const timer = setInterval(switchWallpaper, switchInterval);
     
     return () => clearInterval(timer);
-  }, [settings.enableWallpaper, switchWallpaper]);
+  }, [settings.enableWallpaper, settings, switchWallpaper]);
 
   return (
     <div className="relative min-h-screen w-full">

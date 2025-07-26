@@ -257,37 +257,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string, password: string, username?: string) => {
     // Input validation
     if (!email || !password) {
-      const error = new Error('Email and password are required');
+      const error = new Error('邮箱和密码不能为空');
       debugLog.error('注册验证失败', error);
       return { error };
     }
     
-    if (password.length < 8) {
-      const error = new Error('Password must be at least 8 characters long');
+    if (password.length < 6) {
+      const error = new Error('密码长度至少6位');
       debugLog.error('密码长度不足', error);
       return { error };
     }
     
-    // Basic password strength check
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumbers = /\d/.test(password);
+    // 放宽密码强度要求，支持已有用户
+    const hasLetterOrNumber = /[a-zA-Z0-9]/.test(password);
     
-    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
-      const error = new Error('Password must contain uppercase, lowercase, and numbers');
-      debugLog.error('密码强度不足', error);
+    if (!hasLetterOrNumber) {
+      const error = new Error('密码必须包含字母或数字');
+      debugLog.error('密码格式不符', error);
       return { error };
     }
     
     // Username validation
     if (username && (username.length < 3 || username.length > 20)) {
-      const error = new Error('Username must be between 3 and 20 characters');
+      const error = new Error('用户名长度必须在3-20个字符之间');
       debugLog.error('用户名长度不符', error);
       return { error };
     }
     
     if (username && !/^[a-zA-Z0-9_-]+$/.test(username)) {
-      const error = new Error('Username can only contain letters, numbers, underscores, and hyphens');
+      const error = new Error('用户名只能包含字母、数字、下划线和连字符');
       debugLog.error('用户名格式不符', error);
       return { error };
     }

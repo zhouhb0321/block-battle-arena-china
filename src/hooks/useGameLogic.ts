@@ -292,10 +292,13 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     
     if (isValidPosition(board, newPiece)) {
       setCurrentPiece(newPiece);
+      totalActions.current++;
+      
       if (dx !== 0) {
-        totalActions.current++;
         // 水平移动时重置锁定延迟
-        resetLockDelay();
+        if (resetLockDelay()) {
+          clearLockDelayTimer();
+        }
       }
       return true;
     } else if (dy > 0) {
@@ -304,7 +307,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay, resetLockDelay]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay, resetLockDelay, clearLockDelayTimer]);
 
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
@@ -326,13 +329,19 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setScore(prev => prev + dropDistance * 2);
     totalActions.current++;
     
-    // 直接锁定方块到最终位置
+    // 直接更新方块位置到最终位置并立即锁定
     const droppedPiece = { ...currentPiece, y: dropY };
+    
+    // 先更新 board 状态，确保方块正确放置
+    const newBoard = placePiece(board, droppedPiece);
+    setBoard(newBoard);
     setCurrentPiece(droppedPiece);
     
-    // 立即锁定，不延迟
-    setIsHardDropping(false);
-    lockPiece();
+    // 短暂延迟后锁定，确保渲染完成
+    setTimeout(() => {
+      setIsHardDropping(false);
+      lockPiece();
+    }, 50);
   }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lockPiece, clearLockDelayTimer]);
 
   const rotatePieceClockwise = useCallback(() => {
