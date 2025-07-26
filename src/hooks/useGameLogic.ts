@@ -71,7 +71,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   });
   
   const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
-  
+
   const gameStartTime = useRef<number>(Date.now());
   const totalPieces = useRef<number>(0);
   const totalActions = useRef<number>(0);
@@ -295,9 +295,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       totalActions.current++;
       
       if (dx !== 0) {
-        // 只有在方块已经触底时，才允许重置锁定延迟，防止漂移
-        const belowPiece = { ...newPiece, y: newPiece.y + 1 };
-        if (!isValidPosition(board, belowPiece)) {
+        // 检查当前方块是否已经触底，只有在触底时才允许重置锁定延迟
+        const belowCurrentPiece = { ...currentPiece, y: currentPiece.y + 1 };
+        if (!isValidPosition(board, belowCurrentPiece)) {
           if (resetLockDelay()) {
             clearLockDelayTimer();
           }
@@ -332,18 +332,31 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setScore(prev => prev + dropDistance * 2);
     totalActions.current++;
     
-    // 直接更新方块位置到最终位置并立即锁定
+    // 直接锁定方块到最终位置，不设置currentPiece
     const droppedPiece = { ...currentPiece, y: dropY };
-    
-    // 先更新 board 状态，确保方块正确放置
     const newBoard = placePiece(board, droppedPiece);
     setBoard(newBoard);
-    setCurrentPiece(droppedPiece);
     
-    // 立即锁定方块，去除setTimeout
+    // 立即锁定方块，不设置currentPiece
     setIsHardDropping(false);
-    lockPiece();
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, lockPiece, clearLockDelayTimer]);
+    
+    // 直接处理锁定逻辑，不通过lockPiece
+    const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
+    setBoard(clearedBoard);
+    
+    if (linesCleared > 0) {
+      const newLines = lines + linesCleared;
+      const newLevel = Math.floor(newLines / 10) + 1;
+      const lineScore = [100, 300, 500, 800][linesCleared - 1] * level;
+      
+      setLines(newLines);
+      setLevel(newLevel);
+      setScore(prev => prev + lineScore);
+    }
+    
+    // 生成新方块
+    spawnNewPiece();
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, clearLockDelayTimer, lines, level, spawnNewPiece]);
 
   const rotatePieceClockwise = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
