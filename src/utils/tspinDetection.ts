@@ -4,6 +4,7 @@ import type { GamePiece } from './gameTypes';
 export interface TSpin {
   type: 'T-Spin' | 'Mini T-Spin';
   isMini: boolean;
+  level: 'T1' | 'T2' | 'T3'; // 添加T-Spin级别
 }
 
 // T块在标准SRS下每个旋转状态的实际形状定义
@@ -100,7 +101,7 @@ export const detectTSpin = (
     return null;
   }
   
-  console.log(`T-Spin检测开始: 位置(${piece.x}, ${piece.y}), 旋转${piece.rotation * 90}度`);
+  console.log(`T-Spin检测开始: 位置(${piece.x}, ${piece.y}), 旋转${piece.rotation * 90}度, 踢墙=${wasKicked}`);
   
   // SRS标准：T块中心点位置
   const centerX = piece.x + 1;
@@ -150,12 +151,23 @@ export const detectTSpin = (
     // Mini T-Spin判定：前角占用数量少于2个
     const isMini = frontCornersOccupied < 2;
     
+    // 确定T-Spin级别
+    let level: 'T1' | 'T2' | 'T3';
+    if (occupiedCorners === 3) {
+      level = 'T1';
+    } else if (occupiedCorners === 4 && frontCornersOccupied === 2) {
+      level = 'T2';
+    } else {
+      level = 'T3';
+    }
+    
     const result: TSpin = {
       type: isMini ? 'Mini T-Spin' : 'T-Spin',
-      isMini
+      isMini,
+      level
     };
     
-    console.log(`✅ T-Spin确认: ${result.type}, Mini=${isMini}, 踢墙=${wasKicked}`);
+    console.log(`✅ T-Spin确认: ${result.type} ${result.level}, Mini=${isMini}, 踢墙=${wasKicked}`);
     return result;
   }
   

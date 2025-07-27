@@ -159,21 +159,6 @@ const Index = () => {
               )}
             </div>
 
-            {/* 音乐播放器 */}
-            <div className="max-w-md mx-auto">
-              <Card className="bg-card/50 backdrop-blur-sm border-0">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Music className="w-5 h-5" />
-                    背景音乐
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <EnhancedMusicPlayer autoPlay={false} />
-                </CardContent>
-              </Card>
-            </div>
-
             {/* Game Modes Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
               <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', { id: 'sprint40', title: t('game.sprint40'), description: t('game.singlePlayerDesc') })}>

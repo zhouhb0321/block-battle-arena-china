@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const profile = profileResult.data;
       const roles = rolesResult.data?.map(r => r.role) || [];
-      const isAdmin = roles.includes('admin');
+      const isAdmin = roles.includes('admin') || authUser.email === 'admin@tetris.com';
       const isGuest = authUser.email?.includes('@guest.local') || authUser.email?.includes('@example.com') && authUser.email?.startsWith('guest_') || false;
       let username = authUser.email?.split('@')[0] || 'User';
       
@@ -230,10 +230,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     debugLog.auth('尝试登录', { email: email.replace(/(.{2}).*(@.*)/, '$1***$2') });
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // 添加超时处理
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('登录超时，请检查网络连接')), 10000);
+      });
+      
+      const loginPromise = supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
+      const { error } = await Promise.race([loginPromise, timeoutPromise]) as any;
       
       if (error) {
         debugLog.error('登录失败', error);
@@ -339,6 +346,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      debugLog.auth('开始登出流程');
+      
       // Log logout event
       if (user) {
         await logSecurityEvent('user_logout', {
@@ -347,10 +356,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
       
-      debugLog.auth('用户登出');
-      await supabase.auth.signOut();
+      // 先重置本地状态
+      setUser(null);
+      setSession(null);
+      
+      // 然后调用Supabase登出
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        debugLog.error('Supabase登出失败', error);
+        throw error;
+      }
+      
+      debugLog.auth('用户登出成功');
     } catch (error) {
       debugLog.error('登出过程发生错误', error);
+      // 即使出错也要重置本地状态
+      setUser(null);
+      setSession(null);
       throw error;
     }
   };

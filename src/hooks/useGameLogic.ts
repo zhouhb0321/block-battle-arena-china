@@ -295,9 +295,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       totalActions.current++;
       
       if (dx !== 0) {
-        // 检查当前方块是否已经触底，只有在触底时才允许重置锁定延迟
-        const belowCurrentPiece = { ...currentPiece, y: currentPiece.y + 1 };
-        if (!isValidPosition(board, belowCurrentPiece)) {
+        // 修复：只有在方块已经触底且移动后仍然触底时，才重置锁定延迟
+        const belowNewPiece = { ...newPiece, y: newPiece.y + 1 };
+        if (!isValidPosition(board, belowNewPiece)) {
           if (resetLockDelay()) {
             clearLockDelayTimer();
           }
