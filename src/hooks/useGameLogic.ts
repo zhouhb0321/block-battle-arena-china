@@ -237,8 +237,16 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         
         const tspinResult = lastTSpinCheck.current ? checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked) : null;
         const isMini = tspinResult?.isMini || false;
+        const tspinLevel = tspinResult?.level || 'T1';
         
-        showTSpin(linesCleared, isMini, b2bCount > 0);
+        // 修复：根据实际消除行数显示正确的T-Spin类型
+        if (linesCleared === 2) {
+          showTSpin(2, isMini, b2bCount > 0); // T-Spin Double
+        } else if (linesCleared === 3) {
+          showTSpin(3, isMini, b2bCount > 0); // T-Spin Triple
+        } else {
+          showTSpin(1, isMini, b2bCount > 0); // T-Spin Single
+        }
         setB2bCount(prev => prev + 1);
       } else if (linesCleared === 4) {
         clearType = 'tetris';
@@ -606,7 +614,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   };
 
   return {
-    // State properties
+    // 游戏状态
     board,
     currentPiece,
     nextPieces,
@@ -617,23 +625,21 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     level,
     gameOver,
     isPaused,
-    isManuallyPaused,
     time,
     pps,
     apm,
-    ghostPiece,
-    isHardDropping,
-    gameState,
+    gameStarted,
     gameInitialized,
-    isLockDelayActive,
-    lockDelayResetCount,
-    // Action methods
+    comboCount,
+    b2bCount,
+    achievements,
+    
+    // 游戏控制
     startGame,
-    resetGame,
     pauseGame,
     resumeGame,
+    resetGame,
     movePiece,
-    hardDrop,
     rotatePieceClockwise,
     rotatePieceCounterclockwise,
     rotatePiece180,
@@ -641,51 +647,18 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     spawnNewPiece,
     lockPiece,
     initializeForCountdown,
-    // 撤销重做功能 - 修复Ctrl+Z
-    undoMove: useCallback(() => {
-      debugLog.game('撤销操作', { isSinglePlayer, canUndo: gameStateManager.canUndo });
-      if (!isSinglePlayer) {
-        debugLog.warn('非单人模式，无法撤销');
-        return;
-      }
-      const snapshot = gameStateManager.undo();
-      if (snapshot) {
-        debugLog.game('撤销成功', snapshot);
-        setBoard(snapshot.board);
-        setCurrentPiece(snapshot.currentPiece);
-        setScore(snapshot.score);
-        setLines(snapshot.lines);
-        setLevel(snapshot.level);
-        clearLockDelayTimer(); // 撤销时清除锁定延迟
-        setLockDelayResetCount(0); // 重置锁定延迟计数
-      } else {
-        debugLog.warn('撤销失败：无可撤销状态');
-      }
-    }, [isSinglePlayer, gameStateManager, clearLockDelayTimer]),
-    redoMove: useCallback(() => {
-      debugLog.game('重做操作', { isSinglePlayer, canRedo: gameStateManager.canRedo });
-      if (!isSinglePlayer) {
-        debugLog.warn('非单人模式，无法重做');
-        return;
-      }
-      const snapshot = gameStateManager.redo();
-      if (snapshot) {
-        debugLog.game('重做成功', snapshot);
-        setBoard(snapshot.board);
-        setCurrentPiece(snapshot.currentPiece);
-        setScore(snapshot.score);
-        setLines(snapshot.lines);
-        setLevel(snapshot.level);
-        clearLockDelayTimer(); // 重做时清除锁定延迟
-        setLockDelayResetCount(0); // 重置锁定延迟计数
-      } else {
-        debugLog.warn('重做失败：无可重做状态');
-      }
-    }, [isSinglePlayer, gameStateManager, clearLockDelayTimer]),
-    canUndo: isSinglePlayer && gameStateManager.canUndo,
-    canRedo: isSinglePlayer && gameStateManager.canRedo,
-    // 成就系统
-    achievements,
-    removeAchievement
+    // 撤销重放功能（仅单人模式）
+    canUndo: isSinglePlayer && gameStateManager.canUndo(),
+    canRedo: isSinglePlayer && gameStateManager.canRedo(),
+    undo: isSinglePlayer ? gameStateManager.undo : () => {},
+    redo: isSinglePlayer ? gameStateManager.redo : () => {},
+    clearHistory: isSinglePlayer ? gameStateManager.clearHistory : () => {},
+    
+    // 其他
+    spawnNewPiece,
+    lockPiece,
+    isValidPosition,
+    isGameOver,
+    getGameStats
   };
 };

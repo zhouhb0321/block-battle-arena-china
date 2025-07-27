@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionLogger } from '@/hooks/useSessionLogger';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -13,9 +13,15 @@ import OutOfFocusOverlay from '@/components/OutOfFocusOverlay';
 import AchievementDisplay from '@/components/AchievementDisplay';
 import GameOverDialog from '@/components/GameOverDialog';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Pause, Play } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Undo2, Redo2 } from 'lucide-react';
 import { useTetrisGame } from './TetrisGameProvider';
 import type { GameMode } from '@/utils/gameTypes';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RotateCcw, RotateCw } from 'lucide-react';
+import GameStats from '@/components/GameStats';
+import { useGameLogic } from '@/hooks/useGameLogic';
+import { useGameControls } from '@/hooks/useGameControls';
+import { useUserSettings } from '@/hooks/useUserSettings';
 
 interface SinglePlayerGameAreaProps {
   gameMode: GameMode;
@@ -47,6 +53,48 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const [showAnimation, setShowAnimation] = useState(false);
   const [showGameOverDialog, setShowGameOverDialog] = useState(false);
   const gameContainerRef = useRef<HTMLDivElement>(null);
+
+  const { settings } = useUserSettings();
+  
+  const gameLogic = useGameLogic({
+    gameMode,
+    onGameEnd,
+    onSpecialClear: (clearType, lines) => {
+      console.log(`特殊消除: ${clearType}, 行数: ${lines}`);
+    }
+  });
+
+  const { handleKeyDown, handleKeyUp } = useGameControls(gameLogic);
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      handleKeyDown(e);
+    };
+
+    const handleKeyRelease = (e: KeyboardEvent) => {
+      handleKeyUp(e);
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    document.addEventListener('keyup', handleKeyRelease);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+      document.removeEventListener('keyup', handleKeyRelease);
+    };
+  }, [handleKeyDown, handleKeyUp]);
+
+  const handleUndo = useCallback(() => {
+    if (gameLogic.canUndo) {
+      gameLogic.undo();
+    }
+  }, [gameLogic]);
+
+  const handleRedo = useCallback(() => {
+    if (gameLogic.canRedo) {
+      gameLogic.redo();
+    }
+  }, [gameLogic]);
 
   const handleCountdownComplete = () => {
     debugLog.game('Countdown completed, starting game...');

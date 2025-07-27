@@ -47,6 +47,9 @@ export const useAchievements = () => {
       if (lines > 0) text += ` ${lines === 1 ? 'SINGLE' : lines === 2 ? 'DOUBLE' : 'TRIPLE'}`;
     }
     if (isB2B) text = `B2B ${text}`;
+    
+    // 修复：确保成就实时更新
+    console.log(`显示T-Spin成就: ${text}, 消除行数: ${lines}`);
     addAchievement(text, 'tspin');
   }, [addAchievement]);
 

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,12 +15,18 @@ interface MusicTrack {
 
 interface EnhancedMusicPlayerProps {
   autoPlay?: boolean;
-  className?: string;
+  onVolumeChange?: (volume: number) => void;
+  onMuteChange?: (muted: boolean) => void;
+  initialVolume?: number;
+  initialMuted?: boolean;
 }
 
-const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
+const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({ 
   autoPlay = false,
-  className = ''
+  onVolumeChange,
+  onMuteChange,
+  initialVolume = 70,
+  initialMuted = false
 }) => {
   const { settings, updateSettings } = useUserSettings();
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -30,6 +36,8 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
   const [isShuffled, setIsShuffled] = useState(true);
   const [playOrder, setPlayOrder] = useState<number[]>([]);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [volume, setVolume] = useState(70); // 新增音量状态
+  const [isMuted, setIsMuted] = useState(false); // 新增静音状态
 
   // 默认音乐列表 - 只保留存在的文件
   const defaultTracks: MusicTrack[] = [
@@ -174,6 +182,51 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
       handlePlay();
     }
   }, [autoPlay, availableTracks.length, settings.enableSound, hasUserInteracted]);
+
+  // 自动播放功能
+  useEffect(() => {
+    if (autoPlay && availableTracks.length > 0 && !hasUserInteracted) {
+      const timer = setTimeout(() => {
+        if (audioRef.current && !isPlaying) {
+          handlePlay(); // 使用 handlePlay 替代 playMusic
+        }
+      }, 1000); // 延迟1秒自动播放
+      
+      return () => clearTimeout(timer);
+    }
+  }, [autoPlay, availableTracks, hasUserInteracted, isPlaying]);
+
+  // 鼠标滚轮音量控制
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -5 : 5;
+    const newVolume = Math.max(0, Math.min(100, volume + delta));
+    setVolume(newVolume);
+    
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume / 100;
+    }
+    
+    // 保存音量设置
+    if (onVolumeChange) {
+      onVolumeChange(newVolume);
+    }
+  }, [volume, onVolumeChange]);
+
+  // 静音切换
+  const toggleMute = useCallback(() => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    
+    if (audioRef.current) {
+      audioRef.current.muted = newMuted;
+    }
+    
+    // 保存静音设置
+    if (onMuteChange) {
+      onMuteChange(newMuted);
+    }
+  }, [isMuted, onMuteChange]);
 
   const currentTrackData = availableTracks[currentTrack];
 
