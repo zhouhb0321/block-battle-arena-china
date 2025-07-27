@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,12 +16,45 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({ onBack }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
+
+  // Check rate limiting on component mount
+  useEffect(() => {
+    const checkRateLimit = () => {
+      const lastResetTime = localStorage.getItem('last_password_reset');
+      if (lastResetTime) {
+        const timeSinceLastReset = Date.now() - parseInt(lastResetTime);
+        const cooldownPeriod = 60 * 1000; // 1 minute cooldown
+        
+        if (timeSinceLastReset < cooldownPeriod) {
+          setRateLimited(true);
+          // Set timer to remove rate limit
+          const remainingTime = cooldownPeriod - timeSinceLastReset;
+          setTimeout(() => setRateLimited(false), remainingTime);
+        }
+      }
+    };
+    
+    checkRateLimit();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email) {
       toast.error('请输入邮箱地址');
+      return;
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error('请输入有效的邮箱地址');
+      return;
+    }
+
+    if (rateLimited) {
+      toast.error('请求过于频繁，请稍后再试');
       return;
     }
 
@@ -36,11 +69,22 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({ onBack }) => {
         throw error;
       }
 
+      // Set rate limiting
+      localStorage.setItem('last_password_reset', Date.now().toString());
+      setRateLimited(true);
+      setTimeout(() => setRateLimited(false), 60 * 1000); // 1 minute cooldown
+
       setSent(true);
       toast.success('密码重置邮件已发送，请检查您的邮箱');
     } catch (error: any) {
       console.error('Password reset error:', error);
-      toast.error('发送重置邮件失败，请重试');
+      if (error.message.includes('rate limit')) {
+        toast.error('请求过于频繁，请稍后再试');
+        setRateLimited(true);
+        setTimeout(() => setRateLimited(false), 60 * 1000);
+      } else {
+        toast.error('发送重置邮件失败，请重试');
+      }
     } finally {
       setLoading(false);
     }

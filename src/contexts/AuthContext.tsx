@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const profile = profileResult.data;
       const roles = rolesResult.data?.map(r => r.role) || [];
-      const isAdmin = roles.includes('admin') || authUser.email === 'admin@tetris.com';
+      const isAdmin = roles.includes('admin');
       const isGuest = authUser.email?.includes('@guest.local') || authUser.email?.includes('@example.com') && authUser.email?.startsWith('guest_') || false;
       let username = authUser.email?.split('@')[0] || 'User';
       
@@ -226,6 +226,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       debugLog.error('密码长度不足', error);
       return { error };
     }
+    
+    // Enhanced password strength validation
+    const hasLowercase = /[a-z]/.test(password);
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (!(hasLowercase && hasUppercase && hasNumber && hasSpecialChar)) {
+      const error = new Error('Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character');
+      debugLog.error('密码强度不足', error);
+      return { error };
+    }
 
     debugLog.auth('尝试登录', { email: email.replace(/(.{2}).*(@.*)/, '$1***$2') });
     
@@ -269,18 +281,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error };
     }
     
-    if (password.length < 6) {
-      const error = new Error('密码长度至少6位');
+    if (password.length < 8) {
+      const error = new Error('密码长度至少8位');
       debugLog.error('密码长度不足', error);
       return { error };
     }
     
-    // 放宽密码强度要求，支持已有用户
-    const hasLetterOrNumber = /[a-zA-Z0-9]/.test(password);
+    // Enhanced password strength validation  
+    const hasLowercase = /[a-z]/.test(password);
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
     
-    if (!hasLetterOrNumber) {
-      const error = new Error('密码必须包含字母或数字');
-      debugLog.error('密码格式不符', error);
+    if (!(hasLowercase && hasUppercase && hasNumber && hasSpecialChar)) {
+      const error = new Error('密码必须包含大小写字母、数字和特殊字符');
+      debugLog.error('密码强度不足', error);
       return { error };
     }
     

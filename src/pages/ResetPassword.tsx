@@ -63,8 +63,19 @@ const ResetPassword: React.FC = () => {
       return;
     }
     
-    if (password.length < 6) {
-      toast.error('密码长度至少为6位');
+    if (password.length < 8) {
+      toast.error('密码长度至少为8位');
+      return;
+    }
+
+    // Enhanced password strength validation
+    const hasLowercase = /[a-z]/.test(password);
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (!(hasLowercase && hasUppercase && hasNumber && hasSpecialChar)) {
+      toast.error('密码必须包含大小写字母、数字和特殊字符');
       return;
     }
 
@@ -147,7 +158,7 @@ const ResetPassword: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
             
@@ -160,7 +171,7 @@ const ResetPassword: React.FC = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
             

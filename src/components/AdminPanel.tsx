@@ -30,8 +30,18 @@ const AdminPanel: React.FC = () => {
       isAdmin: typedUser?.isAdmin 
     });
     
+    // Only load admin data if user is confirmed admin
     if (typedUser?.isAdmin) {
       loadAdminData();
+    } else {
+      // Clear any existing data if user is not admin
+      setUsers([]);
+      setGameStats({
+        totalGames: 0,
+        activeUsers: 0,
+        totalUsers: 0
+      });
+      setLoading(false);
     }
   }, [user, typedUser?.isAdmin]);
 

@@ -11,6 +11,16 @@ interface UserProfileSettingsProps {
   onClose: () => void;
 }
 
+// Sanitization function to prevent XSS
+const sanitizeText = (text: string | null | undefined): string => {
+  if (!text) return '';
+  return text
+    .replace(/[<>]/g, '') // Remove potential HTML tags
+    .replace(/javascript:/gi, '') // Remove javascript: URLs
+    .replace(/on\w+=/gi, '') // Remove event handlers
+    .trim();
+};
+
 const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) => {
   const { user } = useAuth();
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -177,7 +187,7 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
                   }
                 />
               </div>
-              <p className="text-lg font-semibold">{userProfile.username}</p>
+              <p className="text-lg font-semibold">{sanitizeText(userProfile.username)}</p>
             </div>
 
             <div className="space-y-2">
@@ -185,7 +195,7 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
                 <Mail className="w-4 h-4 text-gray-500" />
                 <span className="text-sm font-medium text-gray-700">邮箱</span>
               </div>
-              <p className="text-lg">{userProfile.email}</p>
+              <p className="text-lg">{sanitizeText(userProfile.email)}</p>
             </div>
           </div>
 

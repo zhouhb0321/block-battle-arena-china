@@ -51,12 +51,19 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
     if (savedLockout) {
       try {
         const lockoutData = JSON.parse(savedLockout);
-        if (Date.now() < lockoutData.until) {
-          setLockoutTime(lockoutData.until);
+        // Validate the parsed data structure
+        if (lockoutData && typeof lockoutData.until === 'number' && lockoutData.until > 0) {
+          if (Date.now() < lockoutData.until) {
+            setLockoutTime(lockoutData.until);
+          } else {
+            localStorage.removeItem(lockoutKey);
+          }
         } else {
+          console.warn('Invalid lockout data structure');
           localStorage.removeItem(lockoutKey);
         }
-      } catch {
+      } catch (error) {
+        console.error('Failed to parse lockout data:', error);
         localStorage.removeItem(lockoutKey);
       }
     }
@@ -208,7 +215,22 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         throw new Error('验证码已过期，请重新登录');
       }
 
-      const mfaData = JSON.parse(savedMFA);
+      let mfaData;
+      try {
+        mfaData = JSON.parse(savedMFA);
+        // Validate MFA data structure
+        if (!mfaData || 
+            typeof mfaData.code !== 'string' || 
+            typeof mfaData.email !== 'string' || 
+            typeof mfaData.expires !== 'number') {
+          throw new Error('Invalid MFA data structure');
+        }
+      } catch (parseError) {
+        console.error('Failed to parse MFA data:', parseError);
+        localStorage.removeItem('admin_mfa_code');
+        throw new Error('验证码数据无效，请重新登录');
+      }
+
       if (Date.now() > mfaData.expires) {
         localStorage.removeItem('admin_mfa_code');
         throw new Error('验证码已过期，请重新登录');

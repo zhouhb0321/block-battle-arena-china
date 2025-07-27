@@ -69,7 +69,31 @@ const UsernameChangeDialog: React.FC<UsernameChangeDialogProps> = ({ trigger }) 
       return;
     }
 
-    if (newUsername.trim() === userProfile?.username) {
+    const trimmedUsername = newUsername.trim();
+
+    // Comprehensive username validation
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 20) {
+      toast.error('用户名长度必须在3-20个字符之间');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmedUsername)) {
+      toast.error('用户名只能包含字母、数字、下划线和连字符');
+      return;
+    }
+
+    // Check for forbidden patterns
+    const forbiddenPatterns = [
+      /^admin/i, /^root/i, /^system/i, /^null$/i, /^undefined$/i,
+      /^guest/i, /^test/i, /^demo/i, /fuck|shit|damn/i
+    ];
+    
+    if (forbiddenPatterns.some(pattern => pattern.test(trimmedUsername))) {
+      toast.error('用户名包含不允许的内容');
+      return;
+    }
+
+    if (trimmedUsername === userProfile?.username) {
       toast.error('新用户名不能与当前用户名相同');
       return;
     }
@@ -86,7 +110,7 @@ const UsernameChangeDialog: React.FC<UsernameChangeDialogProps> = ({ trigger }) 
       const { data: existingUser, error: checkError } = await supabase
         .from('user_profiles')
         .select('id')
-        .eq('username', newUsername.trim())
+        .eq('username', trimmedUsername)
         .neq('id', user.id)
         .maybeSingle();
 
@@ -105,7 +129,7 @@ const UsernameChangeDialog: React.FC<UsernameChangeDialogProps> = ({ trigger }) 
       const { error: updateError } = await supabase
         .from('user_profiles')
         .update({
-          username: newUsername.trim(),
+          username: trimmedUsername,
           username_changes_count: (userProfile?.username_changes_count || 0) + 1,
           username_last_changed_at: new Date().toISOString()
         })

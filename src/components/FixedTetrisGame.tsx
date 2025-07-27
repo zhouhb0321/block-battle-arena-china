@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import EnhancedGameBoard from './EnhancedGameBoard';
 import GameAreaCountdown from './GameAreaCountdown';
@@ -105,24 +105,26 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
     }
   }, [sevenBag, nextBag, bagIndex]);
 
-  // 获取接下来的方块预览
-  const getUpcomingPieces = useCallback((): GamePiece[] => {
-    const upcoming: GamePiece[] = [];
-    let currentBag = sevenBag;
-    let currentNextBag = nextBag;
-    let currentIndex = bagIndex;
-    
-    for (let i = 0; i < 6; i++) {
-      if (currentIndex >= currentBag.length) {
-        currentBag = currentNextBag;
-        currentNextBag = generateSevenBag();
-        currentIndex = 0;
+  // 获取接下来的方块预览 - 使用useMemo优化性能
+  const getUpcomingPieces = useMemo(() => {
+    return (): GamePiece[] => {
+      const upcoming: GamePiece[] = [];
+      let currentBag = sevenBag;
+      let currentNextBag = nextBag;
+      let currentIndex = bagIndex;
+      
+      for (let i = 0; i < 6; i++) {
+        if (currentIndex >= currentBag.length) {
+          currentBag = currentNextBag;
+          currentNextBag = generateSevenBag();
+          currentIndex = 0;
+        }
+        upcoming.push(createNewPiece(currentBag[currentIndex]));
+        currentIndex++;
       }
-      upcoming.push(createNewPiece(currentBag[currentIndex]));
-      currentIndex++;
-    }
-    
-    return upcoming;
+      
+      return upcoming;
+    };
   }, [sevenBag, nextBag, bagIndex]);
 
   // 初始化方块队列 - 在倒计时开始时就调用
