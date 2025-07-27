@@ -39,7 +39,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { user } = useAuth();
   const { logUserSession } = useSessionLogger();
   const { actualTheme } = useTheme();
-  const { gameLogic, gameSettings } = useTetrisGame();
+ // const { gameLogic, gameSettings } = useTetrisGame();
   
   const handleAchievementComplete = (id: string) => {
     if (gameLogic.removeAchievement) {
