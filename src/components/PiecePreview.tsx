@@ -2,6 +2,8 @@
 import React from 'react';
 import { TETROMINO_TYPES } from '@/utils/tetrisLogic';
 import { getTetrominoColor } from '@/utils/blockColors';
+import { getCurrentSkin } from '@/utils/blockSkins';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import type { TetrominoType } from '@/utils/gameTypes';
 
 interface PiecePreviewProps {
@@ -17,6 +19,9 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
   size = 'medium',
   cellSize 
 }) => {
+  const { settings } = useUserSettings();
+  const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
+
   const getCellSize = () => {
     if (cellSize) return cellSize;
     switch (size) {
@@ -49,22 +54,27 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
       <div className="relative">
         {shape.map((row, y) => (
           <div key={y} className="flex">
-            {row.map((cell, x) => (
-              <div
-                key={x}
-                className={`border-0 ${
-                  cell ? 'opacity-100' : 'opacity-0'
-                }`}
-                style={{
-                  width: actualCellSize,
-                  height: actualCellSize,
-                  backgroundColor: cell ? backgroundColor : 'transparent',
-                  borderRadius: '2px',
-                  margin: '0.5px',
-                  boxShadow: cell ? 'inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.15)' : 'none'
-                }}
-              />
-            ))}
+            {row.map((cell, x) => {
+              if (!cell) {
+                return <div key={x} style={{ width: actualCellSize, height: actualCellSize }} />;
+              }
+
+              const blockStyle = currentSkin.getBlockStyle(backgroundColor, false);
+              const blockClass = currentSkin.getBlockClass(backgroundColor, false);
+
+              return (
+                <div
+                  key={x}
+                  className={`${blockClass} border-0`}
+                  style={{
+                    ...blockStyle,
+                    width: actualCellSize,
+                    height: actualCellSize,
+                    margin: '0.5px',
+                  }}
+                />
+              );
+            })}
           </div>
         ))}
       </div>

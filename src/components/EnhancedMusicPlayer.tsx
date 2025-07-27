@@ -31,37 +31,13 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
   const [playOrder, setPlayOrder] = useState<number[]>([]);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
-  // 默认音乐列表
+  // 默认音乐列表 - 只保留存在的文件
   const defaultTracks: MusicTrack[] = [
     {
       id: 'wotlk-main',
       title: 'WotLK Main Title',
       filename: 'WotLK_main_title.mp3',
       url: '/music/WotLK_main_title.mp3'
-    },
-    {
-      id: 'tetris-theme-a',
-      title: 'Tetris Theme A',
-      filename: 'tetris-theme-a.mp3',
-      url: '/music/tetris-theme-a.mp3'
-    },
-    {
-      id: 'tetris-theme-b',
-      title: 'Tetris Theme B', 
-      filename: 'tetris-theme-b.mp3',
-      url: '/music/tetris-theme-b.mp3'
-    },
-    {
-      id: 'korobeiniki',
-      title: 'Korobeiniki (Traditional)',
-      filename: 'korobeiniki.mp3',
-      url: '/music/korobeiniki.mp3'
-    },
-    {
-      id: 'electronic-beat',
-      title: 'Electronic Beat',
-      filename: 'electronic-beat.mp3',
-      url: '/music/electronic-beat.mp3'
     }
   ];
 
@@ -77,7 +53,7 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
     });
   };
 
-  // 初始化可用音轨
+  // 初始化可用音轨 - 简化版本
   useEffect(() => {
     const initializeAudioTracks = async () => {
       console.log('正在检查可用音乐文件...');

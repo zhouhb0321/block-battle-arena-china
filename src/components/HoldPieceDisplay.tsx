@@ -23,7 +23,7 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     }
 
     const { shape } = holdPiece.type;
-    const cellSize = 24; // 增大到24px与主游戏区域保持一致
+    const cellSize = 20; // 调整为20px，与Next区保持一致
 
     // 计算方块的边界框
     let minRow = shape.length, maxRow = -1;
@@ -44,12 +44,12 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     const pieceHeight = maxRow - minRow + 1;
 
     return (
-      <div className={`p-3 bg-card rounded border border-border ${!canHold ? 'opacity-50' : ''}`}>
+      <div className={`p-2 bg-card rounded border border-border ${!canHold ? 'opacity-50' : ''}`}>
         <div 
           className="flex justify-center items-center"
           style={{ 
-            width: Math.max(96, pieceWidth * cellSize),
-            height: Math.max(72, pieceHeight * cellSize)
+            width: Math.max(80, pieceWidth * cellSize),
+            height: Math.max(60, pieceHeight * cellSize)
           }}
         >
           <div 

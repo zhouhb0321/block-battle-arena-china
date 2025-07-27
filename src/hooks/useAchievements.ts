@@ -53,6 +53,7 @@ export const useAchievements = () => {
   // 修复Combo显示 - 每次combo都显示，最大100
   const showCombo = useCallback((comboCount: number) => {
     if (comboCount > 0 && comboCount <= 100) {
+      // 修复：显示正确的combo格式
       addAchievement(`COMBO ${comboCount}`, 'combo');
     }
   }, [addAchievement]);

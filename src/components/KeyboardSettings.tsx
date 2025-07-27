@@ -258,7 +258,7 @@ const KeyboardSettings: React.FC = () => {
           )}
 
           {/* 按键提示 */}
-          <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="bg-muted/50 p-4 rounded-lg border">
             <h4 className="font-semibold mb-2">按键说明</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
               <div>• <strong>左移/右移</strong>：控制方块左右移动</div>
@@ -275,14 +275,14 @@ const KeyboardSettings: React.FC = () => {
 
           {/* 当前录制状态 */}
           {recordingKey && (
-            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+            <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-lg">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="bg-yellow-100">
+                <Badge variant="outline" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
                   录制中
                 </Badge>
                 <span>正在为 <strong>{keyLabels[recordingKey as keyof typeof keyLabels].label}</strong> 录制按键...</span>
               </div>
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-sm text-muted-foreground mt-2">
                 请按下您想要设置的按键，或等待5秒自动取消。如与其他按键冲突将自动交换。
               </p>
             </div>
