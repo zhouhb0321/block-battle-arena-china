@@ -74,8 +74,8 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       <GameKeyboardHandler
         gameStarted={gameStarted}
         onBackToMenu={handleBackToMenu}
-        onUndo={gameLogic.undoMove}
-        onRedo={gameLogic.redoMove}
+        onUndo={gameLogic.undo}
+        onRedo={gameLogic.redo}
         canUndo={gameLogic.canUndo}
         canRedo={gameLogic.canRedo}
       />
@@ -90,7 +90,7 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       />
       
       <OutOfFocusOverlay 
-        show={gameLogic.gameState.paused && gameStarted && !gameLogic.gameState.gameOver} 
+        show={gameLogic.isPaused && gameStarted && !gameLogic.gameOver} 
       />
     </div>
   );

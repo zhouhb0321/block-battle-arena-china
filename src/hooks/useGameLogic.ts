@@ -237,7 +237,6 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         
         const tspinResult = lastTSpinCheck.current ? checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked) : null;
         const isMini = tspinResult?.isMini || false;
-        const tspinLevel = tspinResult?.level || 'T1';
         
         // 修复：根据实际消除行数显示正确的T-Spin类型
         if (linesCleared === 2) {
@@ -648,17 +647,36 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     lockPiece,
     initializeForCountdown,
     // 撤销重放功能（仅单人模式）
-    canUndo: isSinglePlayer && gameStateManager.canUndo(),
-    canRedo: isSinglePlayer && gameStateManager.canRedo(),
+    canUndo: isSinglePlayer ? gameStateManager.canUndo : false,
+    canRedo: isSinglePlayer ? gameStateManager.canRedo : false,
     undo: isSinglePlayer ? gameStateManager.undo : () => {},
     redo: isSinglePlayer ? gameStateManager.redo : () => {},
     clearHistory: isSinglePlayer ? gameStateManager.clearHistory : () => {},
     
+    // 硬降功能
+    hardDrop,
+    
+    // 幻影方块
+    ghostPiece,
+    
+    // 手动暂停状态
+    isManuallyPaused,
+    
+    // 成就移除功能
+    removeAchievement,
+    
     // 其他
-    spawnNewPiece,
-    lockPiece,
     isValidPosition,
-    isGameOver,
-    getGameStats
+    
+    // 游戏统计
+    getGameStats: () => ({
+      score,
+      lines,
+      level,
+      time,
+      pps,
+      apm,
+      gameMode: gameMode.id
+    })
   };
 };

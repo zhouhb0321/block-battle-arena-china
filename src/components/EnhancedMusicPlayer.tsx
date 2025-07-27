@@ -231,7 +231,7 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
   const currentTrackData = availableTracks[currentTrack];
 
   return (
-    <Card className={`w-full ${className}`}>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Music className="w-4 h-4" />

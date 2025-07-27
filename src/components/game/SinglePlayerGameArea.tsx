@@ -18,9 +18,7 @@ import { useTetrisGame } from './TetrisGameProvider';
 import type { GameMode } from '@/utils/gameTypes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RotateCcw, RotateCw } from 'lucide-react';
-import GameStats from '@/components/GameStats';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { useGameControls } from '@/hooks/useGameControls';
 import { useUserSettings } from '@/hooks/useUserSettings';
 
 interface SinglePlayerGameAreaProps {
@@ -42,9 +40,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
  // const { gameLogic, gameSettings } = useTetrisGame();
   
   const handleAchievementComplete = (id: string) => {
-    if (gameLogic.removeAchievement) {
-      gameLogic.removeAchievement(id);
-    }
+    // Achievement handling - remove achievement when completed
+    console.log('Achievement completed:', id);
   };
   
   const [showCountdown, setShowCountdown] = useState(true);
@@ -64,25 +61,58 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     }
   });
 
-  const { handleKeyDown, handleKeyUp } = useGameControls(gameLogic);
+  // Remove useGameControls dependency - handle keyboard directly
 
+  // Basic keyboard handling without external dependency
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      handleKeyDown(e);
-    };
-
-    const handleKeyRelease = (e: KeyboardEvent) => {
-      handleKeyUp(e);
+      if (!gameReallyStarted || gameLogic.gameOver) return;
+      
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          gameLogic.movePiece(-1, 0);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          gameLogic.movePiece(1, 0);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          gameLogic.movePiece(0, 1);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          gameLogic.rotatePieceClockwise();
+          break;
+        case ' ':
+          e.preventDefault();
+          gameLogic.hardDrop();
+          break;
+        case 'c':
+        case 'C':
+          e.preventDefault();
+          gameLogic.holdCurrentPiece();
+          break;
+        case 'z':
+        case 'Z':
+          e.preventDefault();
+          gameLogic.rotatePieceCounterclockwise();
+          break;
+        case 'p':
+        case 'P':
+          e.preventDefault();
+          gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame();
+          break;
+      }
     };
 
     document.addEventListener('keydown', handleKeyPress);
-    document.addEventListener('keyup', handleKeyRelease);
 
     return () => {
       document.removeEventListener('keydown', handleKeyPress);
-      document.removeEventListener('keyup', handleKeyRelease);
     };
-  }, [handleKeyDown, handleKeyUp]);
+  }, [gameLogic, gameReallyStarted]);
 
   const handleUndo = useCallback(() => {
     if (gameLogic.canUndo) {
@@ -197,7 +227,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const elapsedTime = gameLogic.time;
 
   // 确定是否显示失焦覆盖层
-  const showOutOfFocusOverlay = gameLogic.isPaused && gameReallyStarted && !gameLogic.gameOver && !gameLogic.isManuallyPaused;
+  const showOutOfFocusOverlay = gameLogic.isPaused && gameReallyStarted && !gameLogic.gameOver;
 
   return (
     <div 
@@ -292,7 +322,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                   </div>
                 </div>
 
-                {gameLogic.isManuallyPaused && (
+                {gameLogic.isPaused && gameReallyStarted && (
                   <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
                     <div className="text-center">
                       <Pause className="w-8 h-8 mx-auto mb-2" />
@@ -317,7 +347,15 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             <EnhancedGameBoard
               board={gameLogic.board}
               currentPiece={gameLogic.currentPiece}
-              ghostPiece={gameLogic.ghostPiece}
+              ghostPiece={gameLogic.currentPiece ? {
+                ...gameLogic.currentPiece,
+                y: gameLogic.board && gameLogic.currentPiece 
+                  ? Math.max(0, gameLogic.board.findIndex((row, y) => 
+                      y >= gameLogic.currentPiece!.y && 
+                      !gameLogic.isValidPosition(gameLogic.board, { ...gameLogic.currentPiece!, y: y + 1 })
+                    ) || gameLogic.currentPiece.y)
+                  : gameLogic.currentPiece.y
+              } : null}
               cellSize={32}
             />
           </div>

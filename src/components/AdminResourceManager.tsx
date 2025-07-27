@@ -41,7 +41,7 @@ const AdminResourceManager: React.FC = () => {
   const [uploadingMusic, setUploadingMusic] = useState(false);
   const [uploadingWallpaper, setUploadingWallpaper] = useState(false);
   const [currentPlayingMusic, setCurrentPlayingMusic] = useState<string | null>(null);
-  const [audioRef] = useState<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   
   const musicFileInputRef = useRef<HTMLInputElement>(null);
   const wallpaperFileInputRef = useRef<HTMLInputElement>(null);
@@ -77,7 +77,7 @@ const AdminResourceManager: React.FC = () => {
   // 检查图片文件是否存在
   const checkImageExists = (url: string): Promise<boolean> => {
     return new Promise((resolve) => {
-      const img = new Image();
+      const img = document.createElement('img');
       img.onload = () => resolve(true);
       img.onerror = () => resolve(false);
       img.src = url;
@@ -130,9 +130,9 @@ const AdminResourceManager: React.FC = () => {
 
   // 播放音乐
   const playMusic = (url: string) => {
-    if (audioRef) {
-      audioRef.src = url;
-      audioRef.play().then(() => {
+    if (audioRef.current) {
+      audioRef.current.src = url;
+      audioRef.current.play().then(() => {
         setCurrentPlayingMusic(url);
       }).catch(console.error);
     }
@@ -140,8 +140,8 @@ const AdminResourceManager: React.FC = () => {
 
   // 暂停音乐
   const pauseMusic = () => {
-    if (audioRef) {
-      audioRef.pause();
+    if (audioRef.current) {
+      audioRef.current.pause();
       setCurrentPlayingMusic(null);
     }
   };
