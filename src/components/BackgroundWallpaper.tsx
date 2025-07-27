@@ -22,7 +22,13 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
     '/wallpapers/wallpaper6.jpg',
     '/wallpapers/wallpaper7.jpg',
     '/wallpapers/wallpaper8.jpg',
-    '/wallpapers/sunset1.jpg'
+    '/wallpapers/sunset1.jpg',
+    '/wallpapers/forest.jpg',
+    '/wallpapers/mountain.jpg',
+    '/wallpapers/ocean.jpg',
+    '/wallpapers/city.jpg',
+    '/wallpapers/space.jpg',
+    '/wallpapers/abstract.jpg'
   ];
 
   // 检查图片是否存在

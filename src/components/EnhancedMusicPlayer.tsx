@@ -56,6 +56,12 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
       title: 'Korobeiniki (Traditional)',
       filename: 'korobeiniki.mp3',
       url: '/music/korobeiniki.mp3'
+    },
+    {
+      id: 'electronic-beat',
+      title: 'Electronic Beat',
+      filename: 'electronic-beat.mp3',
+      url: '/music/electronic-beat.mp3'
     }
   ];
 

@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, GamepadIcon, DollarSign, Megaphone, Activity, AlertCircle } from 'lucide-react';
+import { Users, GamepadIcon, DollarSign, Megaphone, Activity, AlertCircle, FolderOpen } from 'lucide-react';
 import AdminLogsPanel from './AdminLogsPanel';
+import AdminResourceManager from './AdminResourceManager';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -160,6 +161,10 @@ const AdminPanel: React.FC = () => {
           <TabsTrigger value="games">{t('gameRecords')}</TabsTrigger>
           <TabsTrigger value="revenue">{t('revenueManagement')}</TabsTrigger>
           <TabsTrigger value="ads">{t('adManagement')}</TabsTrigger>
+          <TabsTrigger value="resources" className="flex items-center gap-2">
+            <FolderOpen className="w-4 h-4" />
+            资源管理
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4">
@@ -238,6 +243,10 @@ const AdminPanel: React.FC = () => {
               <p className="text-muted-foreground">{t('adManagementFeatureInDevelopment')}</p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="resources" className="space-y-4">
+          <AdminResourceManager />
         </TabsContent>
       </Tabs>
     </div>

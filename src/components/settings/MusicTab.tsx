@@ -5,6 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import MusicPlayer from '@/components/MusicPlayer';
+import EnhancedMusicPlayer from '@/components/EnhancedMusicPlayer';
 import type { GameSettings } from '@/utils/gameTypes';
 
 interface MusicTabProps {
@@ -35,14 +36,7 @@ const MusicTab: React.FC<MusicTabProps> = ({ settings, onSettingChange }) => {
           {/* 音乐播放器 */}
           <div className="space-y-2">
             <Label>背景音乐播放器</Label>
-            <MusicPlayer
-              volume={settings.musicVolume}
-              onVolumeChange={(volume) => onSettingChange('musicVolume', volume)}
-              selectedTrack={settings.backgroundMusic}
-              onTrackChange={(trackId) => onSettingChange('backgroundMusic', trackId)}
-              autoPlay={true}
-              shuffle={false}
-            />
+            <EnhancedMusicPlayer autoPlay={false} />
           </div>
         </CardContent>
       </Card>

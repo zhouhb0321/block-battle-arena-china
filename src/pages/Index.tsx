@@ -11,9 +11,10 @@ import NavigationBar from '@/components/NavigationBar';
 import ReplaySystem from '@/components/ReplaySystem';
 import AdminPanel from '@/components/AdminPanel';
 import AdSpace from '@/components/AdSpace';
-import { Card, CardContent } from '@/components/ui/card';
+import EnhancedMusicPlayer from '@/components/EnhancedMusicPlayer';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Users, Trophy, Settings, LogIn } from 'lucide-react';
+import { Play, Users, Trophy, Settings, LogIn, Music } from 'lucide-react';
 import type { ViewType } from '@/types/navigation';
 
 const Index = () => {
@@ -156,6 +157,21 @@ const Index = () => {
                   {t('auth.login')} / {t('auth.register')}
                 </Button>
               )}
+            </div>
+
+            {/* 音乐播放器 */}
+            <div className="max-w-md mx-auto">
+              <Card className="bg-card/50 backdrop-blur-sm border-0">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Music className="w-5 h-5" />
+                    背景音乐
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <EnhancedMusicPlayer autoPlay={false} />
+                </CardContent>
+              </Card>
             </div>
 
             {/* Game Modes Grid */}
