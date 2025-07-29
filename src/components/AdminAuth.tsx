@@ -282,13 +282,32 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
           // Don't fail the login for logging errors
         }
         
-        // 发送MFA验证码
-        try {
-          await sendMFACode(email);
-          setStep('mfa');
-        } catch (mfaError) {
-          console.error('MFA发送失败:', mfaError);
-          throw new Error('发送验证码失败，请重试');
+        // 开发模式：添加跳过MFA选项
+        const isDevMode = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' ||
+                         process.env.NODE_ENV === 'development';
+        
+        if (isDevMode) {
+          // 在开发模式下直接认证成功，跳过MFA
+          setStep('verified');
+          // 设置管理员会话
+          const adminSession = {
+            email,
+            authenticated: true,
+            timestamp: Date.now(),
+            expires: Date.now() + (4 * 60 * 60 * 1000) // 4小时有效期
+          };
+          localStorage.setItem('admin_session', JSON.stringify(adminSession));
+          onAuthenticated();
+        } else {
+          // 生产环境发送MFA验证码
+          try {
+            await sendMFACode(email);
+            setStep('mfa');
+          } catch (mfaError) {
+            console.error('MFA发送失败:', mfaError);
+            throw new Error('发送验证码失败，请重试');
+          }
         }
       } else {
         throw new Error('登录失败，请重试');

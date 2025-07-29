@@ -391,41 +391,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginAsGuest = async () => {
     try {
-      const guestEmail = `guest_${Date.now()}@example.com`;
-      const guestPassword = 'GuestPassword123!';
+      // 生成本地访客用户，不通过Supabase注册
+      const guestId = `guest_${Date.now()}`;
+      const guestUsername = `Guest_${Date.now().toString().slice(-6)}`;
       
-      const { data, error } = await supabase.auth.signUp({
-        email: guestEmail,
-        password: guestPassword,
-        options: {
-          data: {
-            username: `Guest_${Date.now().toString().slice(-6)}`,
-          }
-        }
-      });
+      // 创建本地访客用户对象
+      const guestUser: ExtendedUser = {
+        id: guestId,
+        aud: 'local',
+        role: 'authenticated',
+        email: `${guestId}@local.guest`,
+        user_metadata: {
+          username: guestUsername,
+        },
+        identities: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+        app_metadata: {},
+        isGuest: true,
+        username: guestUsername,
+        roles: [],
+        user_type: 'guest'
+      };
       
-      if (error) {
-        debugLog.auth('访客登录失败', error);
-        throw error;
-      }
+      // 创建访客会话
+      const guestSession = {
+        access_token: `local_guest_token_${guestId}`,
+        refresh_token: `local_guest_refresh_${guestId}`,
+        expires_in: 3600, // 1小时
+        token_type: 'bearer',
+        user: guestUser
+      };
       
-      debugLog.auth('访客登录成功', { user: data.user?.email });
+      // 更新状态
+      setUser(guestUser);
+      setSession(guestSession as any);
       
-      // Create user profile for guest
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: data.user.id,
-            email: guestEmail,
-            username: `Guest_${Date.now().toString().slice(-6)}`,
-            user_type: 'guest'
-          });
-        
-        if (profileError) {
-          debugLog.error('创建访客档案失败', profileError);
-        }
-      }
+      debugLog.auth('本地访客登录成功', { userId: guestId, username: guestUsername });
     } catch (error) {
       debugLog.error('访客登录过程中发生错误', error);
       throw error;
