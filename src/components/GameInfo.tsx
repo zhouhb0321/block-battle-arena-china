@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Share2, Pause, Play, Settings } from 'lucide-react';
@@ -107,6 +106,16 @@ const GameInfo: React.FC<GameInfoProps> = ({
               size="sm" 
               onClick={onSettings}
               className="bg-gray-600 hover:bg-gray-700 text-white border-gray-500"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          )}
+          {/* 游戏进行中时，设置按钮变为灰色不可用状态 */}
+          {onSettings && gameStarted && !paused && (
+            <Button 
+              size="sm" 
+              disabled
+              className="bg-gray-500 text-gray-300 cursor-not-allowed"
             >
               <Settings className="w-4 h-4" />
             </Button>
