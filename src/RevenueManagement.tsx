@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Subscriber {
   id: string;
@@ -13,31 +14,10 @@ interface Subscriber {
 }
 
 const RevenueManagement: React.FC = () => {
-  const [subscribers] = useState<Subscriber[]>([
-    {
-      id: 'sub001',
-      username: 'player1',
-      email: 'player1@example.com',
-      subscriptionLevel: 'premium',
-      status: 'active',
-      startDate: '2023-01-15',
-      endDate: '2023-07-15',
-      lastPayment: '2023-06-15',
-      totalSpent: 60
-    },
-    {
-      id: 'sub002',
-      username: 'player2',
-      email: 'player2@example.com',
-      subscriptionLevel: 'vip',
-      status: 'active',
-      startDate: '2023-03-20',
-      endDate: '2023-09-20',
-      lastPayment: '2023-06-20',
-      totalSpent: 150
-    }
-  ]);
-
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [filteredSubscribers, setFilteredSubscribers] = useState<Subscriber[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const [revenueData] = useState({
     monthly: [
       { month: '2023-01', revenue: 12000 },
@@ -62,6 +42,68 @@ const RevenueManagement: React.FC = () => {
     conversionRate: 12.5
   });
 
+  // 模拟从 subscribers 表获取数据
+  useEffect(() => {
+    const fetchSubscribers = async () => {
+      setLoading(true);
+      
+      // 模拟从 subscribers 表获取数据
+      // 在实际应用中，这里会是真实的API调用
+      const mockSubscribers: Subscriber[] = [
+        {
+          id: 'sub001',
+          username: 'player1',
+          email: 'player1@example.com',
+          subscriptionLevel: 'premium',
+          status: 'active',
+          startDate: '2023-01-15',
+          endDate: '2023-07-15',
+          lastPayment: '2023-06-15',
+          totalSpent: 60
+        },
+        {
+          id: 'sub002',
+          username: 'player2',
+          email: 'player2@example.com',
+          subscriptionLevel: 'vip',
+          status: 'active',
+          startDate: '2023-03-20',
+          endDate: '2023-09-20',
+          lastPayment: '2023-06-20',
+          totalSpent: 150
+        },
+        {
+          id: 'sub003',
+          username: 'player3',
+          email: 'player3@example.com',
+          subscriptionLevel: 'basic',
+          status: 'expired',
+          startDate: '2023-01-10',
+          endDate: '2023-04-10',
+          lastPayment: '2023-03-10',
+          totalSpent: 30
+        },
+        {
+          id: 'sub004',
+          username: 'player4',
+          email: 'player4@example.com',
+          subscriptionLevel: 'premium',
+          status: 'cancelled',
+          startDate: '2022-12-01',
+          endDate: '2023-03-01',
+          lastPayment: '2023-02-01',
+          totalSpent: 90
+        }
+      ];
+      
+      setSubscribers(mockSubscribers);
+      setFilteredSubscribers(mockSubscribers);
+      setLoading(false);
+    };
+    
+    fetchSubscribers();
+  }, []);
+
   const handleAdjustSubscription = (userId: string) => {
     // 实际项目中这里会调用API调整用户订阅状态
     console.log('调整用户订阅状态:', userId);
@@ -73,6 +115,43 @@ const RevenueManagement: React.FC = () => {
     console.log('执行批量操作');
     alert('执行批量操作');
   };
+
+  const handleRenewalReminder = (userId: string) => {
+    // 实际项目中这里会发送续费提醒
+    console.log('发送续费提醒给用户:', userId);
+    alert(`已向用户 ${userId} 发送续费提醒`);
+  };
+
+  const getSubscriptionLevelName = (level: string) => {
+    switch (level) {
+      case 'basic': return '基础版';
+      case 'premium': return '高级版';
+      case 'vip': return 'VIP版';
+      default: return level;
+    }
+  };
+
+  const getStatusClassName = (status: string) => {
+    switch (status) {
+      case 'active': return 'status-active';
+      case 'expired': return 'status-expired';
+      case 'cancelled': return 'status-cancelled';
+      default: return '';
+    }
+  };
+
+  const getStatusDisplayName = (status: string) => {
+    switch (status) {
+      case 'active': return '活跃';
+      case 'expired': return '已过期';
+      case 'cancelled': return '已取消';
+      default: return status;
+    }
+  };
+
+  if (loading) {
+    return <div>加载订阅用户数据中...</div>;
+  }
 
   return (
     <div className="revenue-management">
@@ -115,14 +194,14 @@ const RevenueManagement: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {subscribers.map(subscriber => (
+            {filteredSubscribers.map(subscriber => (
               <tr key={subscriber.id}>
                 <td>{subscriber.username}</td>
                 <td>{subscriber.email}</td>
-                <td>{subscriber.subscriptionLevel}</td>
+                <td>{getSubscriptionLevelName(subscriber.subscriptionLevel)}</td>
                 <td>
-                  <span className={`status ${subscriber.status}`}>
-                    {subscriber.status}
+                  <span className={`status ${getStatusClassName(subscriber.status)}`}>
+                    {getStatusDisplayName(subscriber.status)}
                   </span>
                 </td>
                 <td>{subscriber.startDate}</td>
@@ -130,9 +209,20 @@ const RevenueManagement: React.FC = () => {
                 <td>{subscriber.lastPayment}</td>
                 <td>¥{subscriber.totalSpent}</td>
                 <td>
-                  <button onClick={() => handleAdjustSubscription(subscriber.id)}>
-                    调整权益
-                  </button>
+                  <div className="action-buttons">
+                    <button 
+                      onClick={() => handleAdjustSubscription(subscriber.id)}
+                      className="btn btn-small btn-primary"
+                    >
+                      调整权益
+                    </button>
+                    <button 
+                      onClick={() => handleRenewalReminder(subscriber.id)}
+                      className="btn btn-small btn-secondary"
+                    >
+                      续费提醒
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -140,7 +230,7 @@ const RevenueManagement: React.FC = () => {
         </table>
         
         <div className="batch-operations">
-          <button onClick={handleBatchOperation}>批量操作用户权益</button>
+          <button onClick={handleBatchOperation} className="btn btn-primary">批量操作用户权益</button>
         </div>
       </div>
       
@@ -153,12 +243,18 @@ const RevenueManagement: React.FC = () => {
             <h4>月度收入趋势</h4>
             <div className="chart-placeholder">
               {/* 实际项目中这里会是一个图表组件 */}
-              <p>月度收入趋势图 (占位符)</p>
-              <ul>
+              <div className="chart-bars">
                 {revenueData.monthly.map((data, index) => (
-                  <li key={index}>{data.month}: ¥{data.revenue}</li>
+                  <div key={index} className="chart-bar">
+                    <div 
+                      className="bar-fill" 
+                      style={{ height: `${(data.revenue / 25000) * 100}%` }}
+                    ></div>
+                    <div className="bar-label">{data.month}</div>
+                    <div className="bar-value">¥{data.revenue}</div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
           
@@ -166,12 +262,38 @@ const RevenueManagement: React.FC = () => {
             <h4>收入来源分布</h4>
             <div className="chart-placeholder">
               {/* 实际项目中这里会是一个图表组件 */}
-              <p>收入来源分布图 (占位符)</p>
-              <ul>
+              <div className="pie-chart">
                 {revenueData.sources.map((source, index) => (
-                  <li key={index}>{source.source}: {source.percentage}% (¥{source.amount})</li>
+                  <div key={index} className="pie-slice">
+                    <div className="slice-info">
+                      <span className="slice-name">{source.source}</span>
+                      <span className="slice-value">{source.percentage}% (¥{source.amount})</span>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="revenue-stats">
+          <h4>用户付费行为分析</h4>
+          <div className="behavior-stats">
+            <div className="stat-item">
+              <h5>平均订阅时长</h5>
+              <p>4.2个月</p>
+            </div>
+            <div className="stat-item">
+              <h5>付费用户占比</h5>
+              <p>24.5%</p>
+            </div>
+            <div className="stat-item">
+              <h5>月活跃付费用户</h5>
+              <p>890人</p>
+            </div>
+            <div className="stat-item">
+              <h5>客单价</h5>
+              <p>¥78.5</p>
             </div>
           </div>
         </div>

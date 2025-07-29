@@ -1,0 +1,155 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 98%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+
+    /* Gaming theme colors - 降低饱和度和亮度 */
+    --game-purple: 262 60% 45%;
+    --game-blue: 217 70% 50%;
+    --game-orange: 25 75% 45%;
+    --game-green: 142 60% 35%;
+    --game-red: 0 70% 50%;
+    --game-yellow: 45 75% 48%;
+    --game-cyan: 180 75% 45%;
+    --game-gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(217 91% 60%));
+    --game-gradient-secondary: linear-gradient(135deg, hsl(25 95% 53%), hsl(142 76% 36%));
+    --game-gradient-bg: linear-gradient(135deg, hsl(262 83% 58% / 0.1), hsl(217 91% 60% / 0.1));
+
+    /* Light theme game area optimizations */
+    --game-board-bg: 0 0% 97%;
+    --game-panel-bg: 0 0% 95%;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+
+    --popover: 224 71% 4%;
+    --popover-foreground: 213 31% 91%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 215 28% 17%;
+    --secondary-foreground: 213 31% 91%;
+
+    --muted: 215 28% 17%;
+    --muted-foreground: 217 10% 65%;
+
+    --accent: 215 28% 17%;
+    --accent-foreground: 213 31% 91%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 262 83% 58%;
+
+    /* Gaming theme colors for dark mode - 保持稍高对比度 */
+    --game-purple: 262 70% 55%;
+    --game-blue: 217 75% 55%;
+    --game-orange: 25 80% 50%;
+    --game-green: 142 65% 40%;
+    --game-gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(217 91% 60%));
+    --game-gradient-secondary: linear-gradient(135deg, hsl(25 95% 53%), hsl(142 76% 36%));
+    --game-gradient-bg: linear-gradient(135deg, hsl(262 83% 58% / 0.2), hsl(217 91% 60% / 0.1));
+
+    /* Dark theme game area */
+    --game-board-bg: 224 71% 4%;
+    --game-panel-bg: 215 28% 17%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Game board specific styles for light theme optimization */
+@layer components {
+  .game-board-light {
+    background-color: hsl(var(--game-board-bg));
+  }
+  
+  .game-panel-light {
+    background-color: hsl(var(--game-panel-bg));
+    border: 1px solid hsl(var(--border));
+  }
+  
+  .dark .game-board-light {
+    background-color: hsl(var(--game-board-bg));
+  }
+  
+  .dark .game-panel-light {
+    background-color: hsl(var(--game-panel-bg));
+    border: 1px solid hsl(var(--border));
+  }
+}

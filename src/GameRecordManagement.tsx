@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GameRecord {
   id: number;
@@ -17,39 +18,10 @@ interface GameRecord {
 }
 
 const GameRecordManagement: React.FC = () => {
-  const [gameRecords] = useState<GameRecord[]>([
-    {
-      id: 1,
-      startTime: '2023-06-01 10:00:00',
-      endTime: '2023-06-01 10:15:30',
-      gameMode: 'classic',
-      duration: 930,
-      player: 'player1',
-      playerId: 'user001',
-      score: 15000,
-      level: 5,
-      lines: 42,
-      pps: 2.1,
-      apm: 120,
-      result: 'win'
-    },
-    {
-      id: 2,
-      startTime: '2023-06-01 11:30:00',
-      endTime: '2023-06-01 11:42:15',
-      gameMode: 'battle',
-      duration: 735,
-      player: 'player2',
-      playerId: 'user002',
-      score: 22500,
-      level: 7,
-      lines: 68,
-      pps: 3.2,
-      apm: 180,
-      result: 'win'
-    }
-  ]);
-
+  const [gameRecords, setGameRecords] = useState<GameRecord[]>([]);
+  const [filteredRecords, setFilteredRecords] = useState<GameRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const [searchParams, setSearchParams] = useState({
     player: '',
     gameMode: 'all',
@@ -58,6 +30,140 @@ const GameRecordManagement: React.FC = () => {
     scoreMin: '',
     scoreMax: ''
   });
+
+  // 模拟从不同表获取游戏数据
+  useEffect(() => {
+    const fetchGameRecords = async () => {
+      setLoading(true);
+      
+      // 模拟从 game_matches, game_replays, user_session_logs 表整合数据
+      // 在实际应用中，这里会是真实的API调用
+      const mockRecords: GameRecord[] = [
+        {
+          id: 1,
+          startTime: '2023-06-01 10:00:00',
+          endTime: '2023-06-01 10:15:30',
+          gameMode: 'classic',
+          duration: 930,
+          player: 'player1',
+          playerId: 'user001',
+          score: 15000,
+          level: 5,
+          lines: 42,
+          pps: 2.1,
+          apm: 120,
+          result: 'win'
+        },
+        {
+          id: 2,
+          startTime: '2023-06-01 11:30:00',
+          endTime: '2023-06-01 11:42:15',
+          gameMode: 'battle',
+          duration: 735,
+          player: 'player2',
+          playerId: 'user002',
+          score: 22500,
+          level: 7,
+          lines: 68,
+          pps: 3.2,
+          apm: 180,
+          result: 'win'
+        },
+        {
+          id: 3,
+          startTime: '2023-06-02 14:20:00',
+          endTime: '2023-06-02 14:35:45',
+          gameMode: 'marathon',
+          duration: 945,
+          player: 'player3',
+          playerId: 'user003',
+          score: 31200,
+          level: 9,
+          lines: 92,
+          pps: 2.8,
+          apm: 165,
+          result: 'win'
+        },
+        {
+          id: 4,
+          startTime: '2023-06-02 16:10:00',
+          endTime: '2023-06-02 16:22:30',
+          gameMode: 'challenge',
+          duration: 750,
+          player: 'player1',
+          playerId: 'user001',
+          score: 18750,
+          level: 6,
+          lines: 55,
+          pps: 2.4,
+          apm: 140,
+          result: 'incomplete'
+        },
+        {
+          id: 5,
+          startTime: '2023-06-03 09:45:00',
+          endTime: '2023-06-03 10:05:15',
+          gameMode: 'classic',
+          duration: 1215,
+          player: 'player4',
+          playerId: 'user004',
+          score: 27800,
+          level: 8,
+          lines: 81,
+          pps: 3.0,
+          apm: 175,
+          result: 'win'
+        }
+      ];
+      
+      setGameRecords(mockRecords);
+      setFilteredRecords(mockRecords);
+      setLoading(false);
+    };
+    
+    fetchGameRecords();
+  }, []);
+
+  // 应用筛选条件
+  useEffect(() => {
+    let result = [...gameRecords];
+    
+    // 按玩家搜索
+    if (searchParams.player) {
+      result = result.filter(record => 
+        record.player.toLowerCase().includes(searchParams.player.toLowerCase())
+      );
+    }
+    
+    // 按游戏模式筛选
+    if (searchParams.gameMode !== 'all') {
+      result = result.filter(record => record.gameMode === searchParams.gameMode);
+    }
+    
+    // 按时间范围查询
+    if (searchParams.startDate && searchParams.endDate) {
+      result = result.filter(record => {
+        const recordDate = new Date(record.startTime);
+        const startDate = new Date(searchParams.startDate);
+        const endDate = new Date(searchParams.endDate);
+        endDate.setDate(endDate.getDate() + 1); // 包含结束日期当天
+        return recordDate >= startDate && recordDate <= endDate;
+      });
+    }
+    
+    // 按成绩范围筛选
+    if (searchParams.scoreMin) {
+      const minScore = parseInt(searchParams.scoreMin);
+      result = result.filter(record => record.score >= minScore);
+    }
+    
+    if (searchParams.scoreMax) {
+      const maxScore = parseInt(searchParams.scoreMax);
+      result = result.filter(record => record.score <= maxScore);
+    }
+    
+    setFilteredRecords(result);
+  }, [searchParams, gameRecords]);
 
   // 游戏模式统计
   const gameModeStats = [
@@ -84,8 +190,7 @@ const GameRecordManagement: React.FC = () => {
   ];
 
   const handleSearch = () => {
-    // 实际项目中这里会调用API进行搜索
-    console.log('搜索游戏记录:', searchParams);
+    // 搜索逻辑已在useEffect中实现
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -95,6 +200,29 @@ const GameRecordManagement: React.FC = () => {
       [name]: value
     }));
   };
+
+  const getGameModeDisplayName = (mode: string) => {
+    switch (mode) {
+      case 'classic': return '经典模式';
+      case 'battle': return '对战模式';
+      case 'challenge': return '挑战模式';
+      case 'marathon': return '马拉松模式';
+      default: return mode;
+    }
+  };
+
+  const getResultDisplayName = (result: string) => {
+    switch (result) {
+      case 'win': return '胜利';
+      case 'lose': return '失败';
+      case 'incomplete': return '未完成';
+      default: return result;
+    }
+  };
+
+  if (loading) {
+    return <div>加载游戏记录中...</div>;
+  }
 
   return (
     <div className="game-record-management">
@@ -109,11 +237,13 @@ const GameRecordManagement: React.FC = () => {
             placeholder="按玩家搜索"
             value={searchParams.player}
             onChange={handleInputChange}
+            className="form-input"
           />
           <select 
             name="gameMode" 
             value={searchParams.gameMode}
             onChange={handleInputChange}
+            className="form-select"
           >
             <option value="all">所有游戏模式</option>
             <option value="classic">经典模式</option>
@@ -126,14 +256,16 @@ const GameRecordManagement: React.FC = () => {
             name="startDate"
             value={searchParams.startDate}
             onChange={handleInputChange}
+            className="form-input"
           />
           <input
             type="date"
             name="endDate"
             value={searchParams.endDate}
             onChange={handleInputChange}
+            className="form-input"
           />
-          <button onClick={handleSearch}>搜索</button>
+          <button onClick={handleSearch} className="btn btn-primary">搜索</button>
         </div>
         
         <div className="filter-row">
@@ -143,6 +275,7 @@ const GameRecordManagement: React.FC = () => {
             placeholder="最低成绩"
             value={searchParams.scoreMin}
             onChange={handleInputChange}
+            className="form-input"
           />
           <input
             type="number"
@@ -150,6 +283,7 @@ const GameRecordManagement: React.FC = () => {
             placeholder="最高成绩"
             value={searchParams.scoreMax}
             onChange={handleInputChange}
+            className="form-input"
           />
         </div>
       </div>
@@ -174,11 +308,11 @@ const GameRecordManagement: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {gameRecords.map(record => (
+            {filteredRecords.map(record => (
               <tr key={record.id}>
                 <td>{record.startTime}</td>
                 <td>{record.endTime}</td>
-                <td>{record.gameMode}</td>
+                <td>{getGameModeDisplayName(record.gameMode)}</td>
                 <td>{record.player}</td>
                 <td>{Math.floor(record.duration / 60)}分{record.duration % 60}秒</td>
                 <td>{record.score}</td>
@@ -186,11 +320,15 @@ const GameRecordManagement: React.FC = () => {
                 <td>{record.lines}</td>
                 <td>{record.pps.toFixed(2)}</td>
                 <td>{record.apm.toFixed(0)}</td>
-                <td>{record.result}</td>
+                <td>{getResultDisplayName(record.result)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        
+        {filteredRecords.length === 0 && (
+          <div className="no-results">未找到匹配的游戏记录</div>
+        )}
       </div>
       
       {/* 统计分析区域 */}
