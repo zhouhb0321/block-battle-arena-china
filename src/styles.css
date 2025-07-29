@@ -216,14 +216,21 @@ h1 {
   flex-wrap: wrap;
 }
 
+<<<<<<< HEAD
 .form-input,
 .form-select,
 .form-textarea {
+=======
+.filter-row input,
+.filter-row select,
+.filter-row button {
+>>>>>>> abf7476 (add wallpaper)
   padding: 8px 12px;
   border-radius: 4px;
   border: 1px solid #ddd;
 }
 
+<<<<<<< HEAD
 .form-textarea {
   min-height: 80px;
   resize: vertical;
@@ -269,6 +276,19 @@ h1 {
   background: #bd2130;
 }
 
+=======
+.filter-row button {
+  background: #007bff;
+  color: white;
+  cursor: pointer;
+  border: none;
+}
+
+.filter-row button:hover {
+  background: #0056b3;
+}
+
+>>>>>>> abf7476 (add wallpaper)
 .log-table-container {
   overflow-x: auto;
 }
@@ -357,12 +377,15 @@ h1 {
   font-weight: 600;
 }
 
+<<<<<<< HEAD
 .no-results {
   text-align: center;
   padding: 2rem;
   color: #6c757d;
 }
 
+=======
+>>>>>>> abf7476 (add wallpaper)
 .game-analytics {
   margin-top: 2rem;
 }
@@ -419,12 +442,17 @@ h1 {
 }
 
 .revenue-management h2,
+<<<<<<< HEAD
 .revenue-management h3,
 .revenue-management h4 {
   color: #333;
 }
 
 .revenue-management h2 {
+=======
+.revenue-management h3 {
+  color: #333;
+>>>>>>> abf7476 (add wallpaper)
   border-bottom: 2px solid #667eea;
   padding-bottom: 0.5rem;
   margin-top: 0;
@@ -481,41 +509,80 @@ h1 {
   font-weight: 500;
 }
 
+<<<<<<< HEAD
 .status-active {
+=======
+.status.active {
+>>>>>>> abf7476 (add wallpaper)
   background: #d4edda;
   color: #155724;
 }
 
+<<<<<<< HEAD
 .status-expired {
+=======
+.status.expired {
+>>>>>>> abf7476 (add wallpaper)
   background: #f8d7da;
   color: #721c24;
 }
 
+<<<<<<< HEAD
 .status-cancelled {
+=======
+.status.cancelled {
+>>>>>>> abf7476 (add wallpaper)
   background: #f8d7da;
   color: #721c24;
 }
 
+<<<<<<< HEAD
 .status-paused {
+=======
+.status.paused {
+>>>>>>> abf7476 (add wallpaper)
   background: #fff3cd;
   color: #856404;
 }
 
+<<<<<<< HEAD
 .status-scheduled {
+=======
+.status.scheduled {
+>>>>>>> abf7476 (add wallpaper)
   background: #cce5ff;
   color: #004085;
 }
 
+<<<<<<< HEAD
 .action-buttons {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
 }
 
+=======
+>>>>>>> abf7476 (add wallpaper)
 .batch-operations {
   margin-top: 1rem;
 }
 
+<<<<<<< HEAD
+=======
+.batch-operations button {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.batch-operations button:hover {
+  background: #218838;
+}
+
+>>>>>>> abf7476 (add wallpaper)
 .revenue-charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -531,6 +598,7 @@ h1 {
 
 .chart-placeholder {
   height: 200px;
+<<<<<<< HEAD
   background: white;
   border-radius: 4px;
   margin-top: 1rem;
@@ -626,6 +694,14 @@ h1 {
   font-size: 1.2rem;
   font-weight: bold;
   color: #007bff;
+=======
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 4px;
+  margin-top: 1rem;
+>>>>>>> abf7476 (add wallpaper)
 }
 
 /* 广告管理样式 */
@@ -634,12 +710,17 @@ h1 {
 }
 
 .advertising-management h2,
+<<<<<<< HEAD
 .advertising-management h3,
 .advertising-management h4 {
   color: #333;
 }
 
 .advertising-management h2 {
+=======
+.advertising-management h3 {
+  color: #333;
+>>>>>>> abf7476 (add wallpaper)
   border-bottom: 2px solid #667eea;
   padding-bottom: 0.5rem;
   margin-top: 0;
@@ -652,8 +733,43 @@ h1 {
   margin-bottom: 2rem;
 }
 
+<<<<<<< HEAD
 .ad-list {
   margin-bottom: 2rem;
+=======
+.form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.form-row input,
+.form-row select,
+.form-row textarea {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  flex: 1;
+  min-width: 200px;
+}
+
+.form-row textarea {
+  min-height: 100px;
+}
+
+.ad-form button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ad-form button:hover {
+  background: #0056b3;
+>>>>>>> abf7476 (add wallpaper)
 }
 
 .ad-table {
@@ -674,7 +790,11 @@ h1 {
 }
 
 .ad-regional-stats {
+<<<<<<< HEAD
   margin-bottom: 2rem;
+=======
+  margin-top: 2rem;
+>>>>>>> abf7476 (add wallpaper)
 }
 
 .stats-container {
@@ -684,6 +804,7 @@ h1 {
   margin-top: 1rem;
 }
 
+<<<<<<< HEAD
 .ad-performance-analysis {
   margin-top: 2rem;
 }
@@ -714,6 +835,8 @@ h1 {
   color: #007bff;
 }
 
+=======
+>>>>>>> abf7476 (add wallpaper)
 /* 数据库优化样式 */
 .database-optimization {
   text-align: left;
@@ -769,6 +892,7 @@ h1 {
   overflow-x: auto;
   margin: 0;
   white-space: pre-wrap;
+<<<<<<< HEAD
   font-size: 0.85rem;
   line-height: 1.4;
 }
@@ -791,4 +915,6 @@ h1 {
 
 .optimization-benefits li {
   margin-bottom: 0.5rem;
+=======
+>>>>>>> abf7476 (add wallpaper)
 }

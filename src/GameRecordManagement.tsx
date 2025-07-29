@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+=======
+import React, { useState } from 'react';
+>>>>>>> abf7476 (add wallpaper)
 
 interface GameRecord {
   id: number;
@@ -18,10 +22,46 @@ interface GameRecord {
 }
 
 const GameRecordManagement: React.FC = () => {
+<<<<<<< HEAD
   const [gameRecords, setGameRecords] = useState<GameRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<GameRecord[]>([]);
   const [loading, setLoading] = useState(true);
   
+=======
+  const [gameRecords] = useState<GameRecord[]>([
+    {
+      id: 1,
+      startTime: '2023-06-01 10:00:00',
+      endTime: '2023-06-01 10:15:30',
+      gameMode: 'classic',
+      duration: 930,
+      player: 'player1',
+      playerId: 'user001',
+      score: 15000,
+      level: 5,
+      lines: 42,
+      pps: 2.1,
+      apm: 120,
+      result: 'win'
+    },
+    {
+      id: 2,
+      startTime: '2023-06-01 11:30:00',
+      endTime: '2023-06-01 11:42:15',
+      gameMode: 'battle',
+      duration: 735,
+      player: 'player2',
+      playerId: 'user002',
+      score: 22500,
+      level: 7,
+      lines: 68,
+      pps: 3.2,
+      apm: 180,
+      result: 'win'
+    }
+  ]);
+
+>>>>>>> abf7476 (add wallpaper)
   const [searchParams, setSearchParams] = useState({
     player: '',
     gameMode: 'all',
@@ -31,6 +71,7 @@ const GameRecordManagement: React.FC = () => {
     scoreMax: ''
   });
 
+<<<<<<< HEAD
   // 模拟从不同表获取游戏数据
   useEffect(() => {
     const fetchGameRecords = async () => {
@@ -165,6 +206,8 @@ const GameRecordManagement: React.FC = () => {
     setFilteredRecords(result);
   }, [searchParams, gameRecords]);
 
+=======
+>>>>>>> abf7476 (add wallpaper)
   // 游戏模式统计
   const gameModeStats = [
     { mode: '经典模式', count: 42, percentage: 45 },
@@ -190,7 +233,12 @@ const GameRecordManagement: React.FC = () => {
   ];
 
   const handleSearch = () => {
+<<<<<<< HEAD
     // 搜索逻辑已在useEffect中实现
+=======
+    // 实际项目中这里会调用API进行搜索
+    console.log('搜索游戏记录:', searchParams);
+>>>>>>> abf7476 (add wallpaper)
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -201,6 +249,7 @@ const GameRecordManagement: React.FC = () => {
     }));
   };
 
+<<<<<<< HEAD
   const getGameModeDisplayName = (mode: string) => {
     switch (mode) {
       case 'classic': return '经典模式';
@@ -224,6 +273,8 @@ const GameRecordManagement: React.FC = () => {
     return <div>加载游戏记录中...</div>;
   }
 
+=======
+>>>>>>> abf7476 (add wallpaper)
   return (
     <div className="game-record-management">
       <h2>游戏记录管理</h2>
@@ -237,13 +288,19 @@ const GameRecordManagement: React.FC = () => {
             placeholder="按玩家搜索"
             value={searchParams.player}
             onChange={handleInputChange}
+<<<<<<< HEAD
             className="form-input"
+=======
+>>>>>>> abf7476 (add wallpaper)
           />
           <select 
             name="gameMode" 
             value={searchParams.gameMode}
             onChange={handleInputChange}
+<<<<<<< HEAD
             className="form-select"
+=======
+>>>>>>> abf7476 (add wallpaper)
           >
             <option value="all">所有游戏模式</option>
             <option value="classic">经典模式</option>
@@ -256,16 +313,24 @@ const GameRecordManagement: React.FC = () => {
             name="startDate"
             value={searchParams.startDate}
             onChange={handleInputChange}
+<<<<<<< HEAD
             className="form-input"
+=======
+>>>>>>> abf7476 (add wallpaper)
           />
           <input
             type="date"
             name="endDate"
             value={searchParams.endDate}
             onChange={handleInputChange}
+<<<<<<< HEAD
             className="form-input"
           />
           <button onClick={handleSearch} className="btn btn-primary">搜索</button>
+=======
+          />
+          <button onClick={handleSearch}>搜索</button>
+>>>>>>> abf7476 (add wallpaper)
         </div>
         
         <div className="filter-row">
@@ -275,7 +340,10 @@ const GameRecordManagement: React.FC = () => {
             placeholder="最低成绩"
             value={searchParams.scoreMin}
             onChange={handleInputChange}
+<<<<<<< HEAD
             className="form-input"
+=======
+>>>>>>> abf7476 (add wallpaper)
           />
           <input
             type="number"
@@ -283,7 +351,10 @@ const GameRecordManagement: React.FC = () => {
             placeholder="最高成绩"
             value={searchParams.scoreMax}
             onChange={handleInputChange}
+<<<<<<< HEAD
             className="form-input"
+=======
+>>>>>>> abf7476 (add wallpaper)
           />
         </div>
       </div>
@@ -308,11 +379,19 @@ const GameRecordManagement: React.FC = () => {
             </tr>
           </thead>
           <tbody>
+<<<<<<< HEAD
             {filteredRecords.map(record => (
               <tr key={record.id}>
                 <td>{record.startTime}</td>
                 <td>{record.endTime}</td>
                 <td>{getGameModeDisplayName(record.gameMode)}</td>
+=======
+            {gameRecords.map(record => (
+              <tr key={record.id}>
+                <td>{record.startTime}</td>
+                <td>{record.endTime}</td>
+                <td>{record.gameMode}</td>
+>>>>>>> abf7476 (add wallpaper)
                 <td>{record.player}</td>
                 <td>{Math.floor(record.duration / 60)}分{record.duration % 60}秒</td>
                 <td>{record.score}</td>
@@ -320,15 +399,22 @@ const GameRecordManagement: React.FC = () => {
                 <td>{record.lines}</td>
                 <td>{record.pps.toFixed(2)}</td>
                 <td>{record.apm.toFixed(0)}</td>
+<<<<<<< HEAD
                 <td>{getResultDisplayName(record.result)}</td>
+=======
+                <td>{record.result}</td>
+>>>>>>> abf7476 (add wallpaper)
               </tr>
             ))}
           </tbody>
         </table>
+<<<<<<< HEAD
         
         {filteredRecords.length === 0 && (
           <div className="no-results">未找到匹配的游戏记录</div>
         )}
+=======
+>>>>>>> abf7476 (add wallpaper)
       </div>
       
       {/* 统计分析区域 */}
