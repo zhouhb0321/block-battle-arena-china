@@ -1,495 +1,365 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-=======
-import React, { useState } from 'react';
->>>>>>> abf7476 (add wallpaper)
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 interface Advertisement {
   id: string;
   title: string;
   content: string;
-  startTime: string;
-  endTime: string;
-  position: 'top' | 'bottom' | 'sidebar' | 'popup';
-  status: 'active' | 'paused' | 'scheduled' | 'expired';
+  start_date: string;
+  end_date: string;
+  position: string;
+  region: string;
+  language: string;
+  is_active: boolean;
   impressions: number;
   clicks: number;
-  ctr: number; // Click-through rate
-  revenue: number;
-  targetRegions: string[];
-  languages: string[];
+  target_url?: string;
+  image_url?: string;
 }
 
 const AdvertisingManagement: React.FC = () => {
-<<<<<<< HEAD
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
-  
-=======
-  const [ads, setAds] = useState<Advertisement[]>([
-    {
-      id: 'ad001',
-      title: '夏季特惠',
-      content: '限时优惠，升级VIP仅需¥99/月',
-      startTime: '2023-06-01',
-      endTime: '2023-06-30',
-      position: 'top',
-      status: 'active',
-      impressions: 15000,
-      clicks: 300,
-      ctr: 2.0,
-      revenue: 1200,
-      targetRegions: ['北京', '上海', '广州'],
-      languages: ['zh']
-    }
-  ]);
-
->>>>>>> abf7476 (add wallpaper)
-  const [newAd, setNewAd] = useState<Omit<Advertisement, 'id' | 'impressions' | 'clicks' | 'ctr' | 'revenue'>>({
+  const [formData, setFormData] = useState({
     title: '',
     content: '',
-    startTime: '',
-    endTime: '',
-    position: 'top',
-    status: 'scheduled',
-    targetRegions: [],
-    languages: ['zh']
+    start_date: '',
+    end_date: '',
+    position: 'header',
+    region: '全球',
+    language: 'zh',
+    target_url: '',
+    image_url: ''
   });
+  const { toast } = useToast();
 
-<<<<<<< HEAD
-  // 模拟从 advertisements 表获取数据
   useEffect(() => {
-    const fetchAds = async () => {
-      setLoading(true);
-      
-      // 模拟从 advertisements 表获取数据
-      // 在实际应用中，这里会是真实的API调用
-      const mockAds: Advertisement[] = [
-        {
-          id: 'ad001',
-          title: '夏季特惠',
-          content: '限时优惠，升级VIP仅需¥99/月',
-          startTime: '2023-06-01',
-          endTime: '2023-06-30',
-          position: 'top',
-          status: 'active',
-          impressions: 15000,
-          clicks: 300,
-          ctr: 2.0,
-          revenue: 1200,
-          targetRegions: ['北京', '上海', '广州'],
-          languages: ['zh']
-        },
-        {
-          id: 'ad002',
-          title: '新用户专享',
-          content: '新用户注册即送7天VIP体验',
-          startTime: '2023-06-10',
-          endTime: '2023-07-10',
-          position: 'sidebar',
-          status: 'active',
-          impressions: 8500,
-          clicks: 425,
-          ctr: 5.0,
-          revenue: 0,
-          targetRegions: ['全国'],
-          languages: ['zh']
-        },
-        {
-          id: 'ad003',
-          title: '周年庆典',
-          content: '平台上线一周年，多重好礼等你拿',
-          startTime: '2023-07-01',
-          endTime: '2023-07-07',
-          position: 'popup',
-          status: 'scheduled',
-          impressions: 0,
-          clicks: 0,
-          ctr: 0,
-          revenue: 0,
-          targetRegions: ['全国'],
-          languages: ['zh', 'en']
-        }
-      ];
-      
-      setAds(mockAds);
-      setLoading(false);
-    };
-    
     fetchAds();
   }, []);
 
-  const handleCreateAd = () => {
-    if (!newAd.title || !newAd.content || !newAd.startTime || !newAd.endTime) {
-      alert('请填写所有必填字段');
+  const fetchAds = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('advertisements')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAds(data || []);
+    } catch (error) {
+      console.error('Error fetching ads:', error);
+      toast({
+        title: "错误",
+        description: "获取广告数据失败",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateAd = async () => {
+    if (!formData.title || !formData.content || !formData.start_date || !formData.end_date) {
+      toast({
+        title: "错误",
+        description: "请填写所有必填字段",
+        variant: "destructive"
+      });
       return;
     }
-    
-    // 实际项目中这里会调用API创建广告
-    const newAdWithId: Advertisement = {
-      ...newAd,
-      id: `ad${String(ads.length + 1).padStart(3, '0')}`,
-      impressions: 0,
-      clicks: 0,
-      ctr: 0,
-      revenue: 0
-    };
-    
-    setAds([...ads, newAdWithId]);
-    setNewAd({
-      title: '',
-      content: '',
-      startTime: '',
-      endTime: '',
-      position: 'top',
-      status: 'scheduled',
-      targetRegions: [],
-      languages: ['zh']
-    });
-    
-    console.log('创建新广告:', newAd);
-    alert('广告创建成功');
-  };
 
-  const handleUpdateAd = (id: string) => {
-    // 实际项目中这里会调用API更新广告
-    console.log('更新广告:', id);
-    alert(`更新广告 ${id}`);
-  };
+    try {
+      const { error } = await supabase
+        .from('advertisements')
+        .insert([{
+          ...formData,
+          is_active: true,
+          impressions: 0,
+          clicks: 0
+        }]);
 
-  const handleDeleteAd = (id: string) => {
-    // 实际项目中这里会调用API删除广告
-    setAds(ads.filter(ad => ad.id !== id));
-    console.log('删除广告:', id);
-    alert(`删除广告 ${id}`);
-=======
-  const handleCreateAd = () => {
-    // 实际项目中这里会调用API创建广告
-    console.log('创建新广告:', newAd);
-    alert('创建新广告');
->>>>>>> abf7476 (add wallpaper)
-  };
+      if (error) throw error;
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewAd(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+      toast({
+        title: "成功",
+        description: "广告创建成功"
+      });
 
-<<<<<<< HEAD
-  const handleTargetRegionsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const regions = e.target.value.split(',').map(region => region.trim());
-    setNewAd(prev => ({
-      ...prev,
-      targetRegions: regions
-    }));
-  };
+      setFormData({
+        title: '',
+        content: '',
+        start_date: '',
+        end_date: '',
+        position: 'header',
+        region: '全球',
+        language: 'zh',
+        target_url: '',
+        image_url: ''
+      });
 
-  const handleLanguagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const languages = e.target.value.split(',').map(lang => lang.trim());
-    setNewAd(prev => ({
-      ...prev,
-      languages: languages
-    }));
-  };
-
-  const getPositionDisplayName = (position: string) => {
-    switch (position) {
-      case 'top': return '顶部';
-      case 'bottom': return '底部';
-      case 'sidebar': return '侧边栏';
-      case 'popup': return '弹窗';
-      default: return position;
+      fetchAds();
+    } catch (error) {
+      console.error('Error creating ad:', error);
+      toast({
+        title: "错误",
+        description: "创建广告失败",
+        variant: "destructive"
+      });
     }
   };
 
-  const getStatusClassName = (status: string) => {
-    switch (status) {
-      case 'active': return 'status-active';
-      case 'paused': return 'status-paused';
-      case 'scheduled': return 'status-scheduled';
-      case 'expired': return 'status-expired';
-      default: return '';
+  const handleToggleAd = async (id: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('advertisements')
+        .update({ is_active: !isActive })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "成功",
+        description: `广告已${!isActive ? '启用' : '停用'}`
+      });
+
+      fetchAds();
+    } catch (error) {
+      console.error('Error toggling ad:', error);
+      toast({
+        title: "错误",
+        description: "操作失败",
+        variant: "destructive"
+      });
     }
   };
 
-  const getStatusDisplayName = (status: string) => {
-    switch (status) {
-      case 'active': return '投放中';
-      case 'paused': return '已暂停';
-      case 'scheduled': return '计划中';
-      case 'expired': return '已过期';
-      default: return status;
-    }
+  const getStatusBadge = (isActive: boolean, startDate: string, endDate: string) => {
+    const now = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (!isActive) return <Badge variant="secondary">已停用</Badge>;
+    if (now < start) return <Badge variant="outline">计划中</Badge>;
+    if (now > end) return <Badge variant="destructive">已过期</Badge>;
+    return <Badge variant="default">投放中</Badge>;
+  };
+
+  const calculateCTR = (clicks: number, impressions: number) => {
+    return impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : '0.00';
   };
 
   if (loading) {
-    return <div>加载广告数据中...</div>;
+    return <div className="flex justify-center p-8">加载广告数据中...</div>;
   }
 
-=======
-  const handlePositionChange = (position: Advertisement['position']) => {
-    setNewAd(prev => ({
-      ...prev,
-      position
-    }));
-  };
-
->>>>>>> abf7476 (add wallpaper)
   return (
-    <div className="advertising-management">
-      <h2>广告管理</h2>
-      
-      {/* 广告创建/编辑表单 */}
-      <div className="ad-form">
-        <h3>创建/编辑广告</h3>
-        <div className="form-row">
-          <input
-            type="text"
-            name="title"
-            placeholder="广告标题"
-            value={newAd.title}
-            onChange={handleInputChange}
-<<<<<<< HEAD
-            className="form-input"
-=======
->>>>>>> abf7476 (add wallpaper)
-          />
-          <select 
-            name="position" 
-            value={newAd.position}
-<<<<<<< HEAD
-            onChange={handleInputChange}
-            className="form-select"
-=======
-            onChange={(e) => handlePositionChange(e.target.value as Advertisement['position'])}
->>>>>>> abf7476 (add wallpaper)
-          >
-            <option value="top">顶部</option>
-            <option value="bottom">底部</option>
-            <option value="sidebar">侧边栏</option>
-            <option value="popup">弹窗</option>
-          </select>
-        </div>
-        
-        <div className="form-row">
-          <textarea
-            name="content"
-            placeholder="广告内容"
-            value={newAd.content}
-            onChange={handleInputChange}
-<<<<<<< HEAD
-            className="form-textarea"
-=======
->>>>>>> abf7476 (add wallpaper)
-          />
-        </div>
-        
-        <div className="form-row">
-          <input
-            type="date"
-            name="startTime"
-            value={newAd.startTime}
-            onChange={handleInputChange}
-<<<<<<< HEAD
-            className="form-input"
-=======
->>>>>>> abf7476 (add wallpaper)
-          />
-          <input
-            type="date"
-            name="endTime"
-            value={newAd.endTime}
-            onChange={handleInputChange}
-<<<<<<< HEAD
-            className="form-input"
-=======
->>>>>>> abf7476 (add wallpaper)
-          />
-        </div>
-        
-        <div className="form-row">
-          <input
-            type="text"
-<<<<<<< HEAD
-            placeholder="目标地区 (用逗号分隔，如: 北京,上海,广州)"
-            value={newAd.targetRegions.join(', ')}
-            onChange={handleTargetRegionsChange}
-            className="form-input"
-          />
-          <input
-            type="text"
-            placeholder="语言 (用逗号分隔，如: zh,en)"
-            value={newAd.languages.join(', ')}
-            onChange={handleLanguagesChange}
-            className="form-input"
-          />
-        </div>
-        
-        <button onClick={handleCreateAd} className="btn btn-primary">保存广告</button>
-=======
-            placeholder="目标地区 (用逗号分隔)"
-            onChange={(e) => setNewAd(prev => ({
-              ...prev,
-              targetRegions: e.target.value.split(',').map(region => region.trim())
-            }))}
-          />
-          <input
-            type="text"
-            placeholder="语言 (用逗号分隔)"
-            defaultValue="zh"
-            onChange={(e) => setNewAd(prev => ({
-              ...prev,
-              languages: e.target.value.split(',').map(lang => lang.trim())
-            }))}
-          />
-        </div>
-        
-        <button onClick={handleCreateAd}>保存广告</button>
->>>>>>> abf7476 (add wallpaper)
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">广告管理</h2>
       </div>
-      
-      {/* 广告列表和效果分析 */}
-      <div className="ad-list">
-        <h3>广告列表与效果分析</h3>
-        <table className="ad-table">
-          <thead>
-            <tr>
-              <th>广告标题</th>
-              <th>展示位置</th>
-              <th>状态</th>
-              <th>展示次数</th>
-              <th>点击次数</th>
-              <th>点击率 (CTR)</th>
-              <th>收入</th>
-              <th>目标地区</th>
-              <th>时间段</th>
-<<<<<<< HEAD
-              <th>操作</th>
-=======
->>>>>>> abf7476 (add wallpaper)
-            </tr>
-          </thead>
-          <tbody>
-            {ads.map(ad => (
-              <tr key={ad.id}>
-                <td>{ad.title}</td>
-<<<<<<< HEAD
-                <td>{getPositionDisplayName(ad.position)}</td>
-                <td>
-                  <span className={`status ${getStatusClassName(ad.status)}`}>
-                    {getStatusDisplayName(ad.status)}
-                  </span>
-                </td>
-                <td>{ad.impressions.toLocaleString()}</td>
-                <td>{ad.clicks.toLocaleString()}</td>
-=======
-                <td>{ad.position}</td>
-                <td>
-                  <span className={`status ${ad.status}`}>
-                    {ad.status}
-                  </span>
-                </td>
-                <td>{ad.impressions}</td>
-                <td>{ad.clicks}</td>
->>>>>>> abf7476 (add wallpaper)
-                <td>{ad.ctr}%</td>
-                <td>¥{ad.revenue}</td>
-                <td>{ad.targetRegions.join(', ')}</td>
-                <td>{ad.startTime} 至 {ad.endTime}</td>
-<<<<<<< HEAD
-                <td>
-                  <div className="action-buttons">
-                    <button 
-                      onClick={() => handleUpdateAd(ad.id)}
-                      className="btn btn-small btn-primary"
-                    >
-                      编辑
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteAd(ad.id)}
-                      className="btn btn-small btn-danger"
-                    >
-                      删除
-                    </button>
-                  </div>
-                </td>
-=======
->>>>>>> abf7476 (add wallpaper)
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      
-      {/* 地区广告效果统计 */}
-      <div className="ad-regional-stats">
-        <h3>地区广告效果统计</h3>
-        <div className="stats-container">
-          <div className="stat-card">
-            <h4>北京市</h4>
-            <p>展示: 5,000</p>
-            <p>点击: 150</p>
-            <p>CTR: 3.0%</p>
-<<<<<<< HEAD
-            <p>收入: ¥1,200</p>
-=======
->>>>>>> abf7476 (add wallpaper)
+
+      {/* 创建广告表单 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>创建新广告</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">广告标题</label>
+              <Input
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="请输入广告标题"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">投放位置</label>
+              <Select value={formData.position} onValueChange={(value) => setFormData(prev => ({ ...prev, position: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="header">页面顶部</SelectItem>
+                  <SelectItem value="sidebar">侧边栏</SelectItem>
+                  <SelectItem value="footer">页面底部</SelectItem>
+                  <SelectItem value="popup">弹窗</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="stat-card">
-            <h4>上海市</h4>
-            <p>展示: 4,200</p>
-            <p>点击: 120</p>
-            <p>CTR: 2.86%</p>
-<<<<<<< HEAD
-            <p>收入: ¥980</p>
-=======
->>>>>>> abf7476 (add wallpaper)
+
+          <div>
+            <label className="text-sm font-medium">广告内容</label>
+            <Textarea
+              value={formData.content}
+              onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+              placeholder="请输入广告内容"
+              rows={3}
+            />
           </div>
-          <div className="stat-card">
-            <h4>广州市</h4>
-            <p>展示: 3,800</p>
-            <p>点击: 90</p>
-            <p>CTR: 2.37%</p>
-<<<<<<< HEAD
-            <p>收入: ¥750</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm font-medium">开始时间</label>
+              <Input
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">结束时间</label>
+              <Input
+                type="date"
+                value={formData.end_date}
+                onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">目标地区</label>
+              <Input
+                value={formData.region}
+                onChange={(e) => setFormData(prev => ({ ...prev, region: e.target.value }))}
+                placeholder="如: 北京,上海,广州"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">语言</label>
+              <Select value={formData.language} onValueChange={(value) => setFormData(prev => ({ ...prev, language: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="zh">中文</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="es">Español</SelectItem>
+                  <SelectItem value="ja">日本語</SelectItem>
+                  <SelectItem value="ko">한국어</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="stat-card">
-            <h4>其他地区</h4>
-            <p>展示: 8,500</p>
-            <p>点击: 210</p>
-            <p>CTR: 2.47%</p>
-            <p>收入: ¥1,800</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">目标链接</label>
+              <Input
+                value={formData.target_url}
+                onChange={(e) => setFormData(prev => ({ ...prev, target_url: e.target.value }))}
+                placeholder="https://example.com"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">图片链接</label>
+              <Input
+                value={formData.image_url}
+                onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
+                placeholder="https://example.com/image.jpg"
+              />
+            </div>
           </div>
-        </div>
-      </div>
-      
-      {/* 广告效果分析 */}
-      <div className="ad-performance-analysis">
-        <h3>广告效果分析</h3>
-        <div className="analysis-cards">
-          <div className="analysis-card">
-            <h4>总体展示次数</h4>
-            <p className="analysis-value">21,700</p>
+
+          <Button onClick={handleCreateAd} className="w-full">
+            创建广告
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* 广告列表 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>广告列表</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>标题</TableHead>
+                  <TableHead>位置</TableHead>
+                  <TableHead>地区</TableHead>
+                  <TableHead>语言</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>展示数</TableHead>
+                  <TableHead>点击数</TableHead>
+                  <TableHead>CTR</TableHead>
+                  <TableHead>操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ads.map((ad) => (
+                  <TableRow key={ad.id}>
+                    <TableCell className="font-medium">{ad.title}</TableCell>
+                    <TableCell>{ad.position}</TableCell>
+                    <TableCell>{ad.region}</TableCell>
+                    <TableCell>{ad.language}</TableCell>
+                    <TableCell>
+                      {getStatusBadge(ad.is_active, ad.start_date, ad.end_date)}
+                    </TableCell>
+                    <TableCell>{ad.impressions.toLocaleString()}</TableCell>
+                    <TableCell>{ad.clicks.toLocaleString()}</TableCell>
+                    <TableCell>{calculateCTR(ad.clicks, ad.impressions)}%</TableCell>
+                    <TableCell>
+                      <Button
+                        variant={ad.is_active ? "destructive" : "default"}
+                        size="sm"
+                        onClick={() => handleToggleAd(ad.id, ad.is_active)}
+                      >
+                        {ad.is_active ? '停用' : '启用'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-          <div className="analysis-card">
-            <h4>总体点击次数</h4>
-            <p className="analysis-value">570</p>
-          </div>
-          <div className="analysis-card">
-            <h4>平均点击率</h4>
-            <p className="analysis-value">2.63%</p>
-          </div>
-          <div className="analysis-card">
-            <h4>总收入</h4>
-            <p className="analysis-value">¥3,730</p>
-=======
->>>>>>> abf7476 (add wallpaper)
-          </div>
-        </div>
+        </CardContent>
+      </Card>
+
+      {/* 统计数据 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{ads.filter(ad => ad.is_active).length}</div>
+            <p className="text-sm text-muted-foreground">活跃广告</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">
+              {ads.reduce((sum, ad) => sum + ad.impressions, 0).toLocaleString()}
+            </div>
+            <p className="text-sm text-muted-foreground">总展示数</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">
+              {ads.reduce((sum, ad) => sum + ad.clicks, 0).toLocaleString()}
+            </div>
+            <p className="text-sm text-muted-foreground">总点击数</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">
+              {calculateCTR(
+                ads.reduce((sum, ad) => sum + ad.clicks, 0),
+                ads.reduce((sum, ad) => sum + ad.impressions, 0)
+              )}%
+            </div>
+            <p className="text-sm text-muted-foreground">平均CTR</p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ import AdminLogsPanel from './AdminLogsPanel';
 import AdminResourceManager from './AdminResourceManager';
 import UserManagementTable from './UserManagementTable';
 import LogManagement from '../LogManagement';
-import GameRecordManagement from '../GameRecordManagement';
+import GameRecordManagement from './GameRecordManagement';
 import RevenueManagement from '../RevenueManagement';
 import AdvertisingManagement from '../AdvertisingManagement';
 import DatabaseOptimization from '../DatabaseOptimization';

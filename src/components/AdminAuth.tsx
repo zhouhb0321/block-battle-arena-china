@@ -23,6 +23,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
   const [loading, setLoading] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
+  const [devMode, setDevMode] = useState(process.env.NODE_ENV === 'development');
 
   // 检查现有用户登录状态 - 使用角色系统
   useEffect(() => {
@@ -267,14 +268,14 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
           throw new Error('您没有管理员权限');
         }
 
-        console.log('管理员权限验证成功，准备发送MFA验证码');
+        console.log('管理员权限验证成功');
         
         // Log successful admin login with error handling
         try {
           await supabase.from('security_events').insert({
             user_id: data.user.id,
             event_type: 'admin_login_success',
-            event_data: { email },
+            event_data: { email, devMode },
             user_agent: navigator.userAgent
           });
         } catch (logError) {
@@ -282,6 +283,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
           // Don't fail the login for logging errors
         }
         
+<<<<<<< HEAD
         // 开发模式：添加跳过MFA选项
         const isDevMode = window.location.hostname === 'localhost' || 
                          window.location.hostname === '127.0.0.1' ||
@@ -290,11 +292,20 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         if (isDevMode) {
           // 在开发模式下直接认证成功，跳过MFA
           setStep('verified');
+=======
+        // 开发模式下跳过MFA验证
+        if (devMode) {
+          console.log('开发模式：跳过MFA验证');
+          setFailedAttempts(0);
+          localStorage.removeItem('admin_lockout');
+          
+>>>>>>> d0b42bf3e3baf28f81e7a17dd2b8257994979d7f
           // 设置管理员会话
           const adminSession = {
             email,
             authenticated: true,
             timestamp: Date.now(),
+<<<<<<< HEAD
             expires: Date.now() + (4 * 60 * 60 * 1000) // 4小时有效期
           };
           localStorage.setItem('admin_session', JSON.stringify(adminSession));
@@ -308,6 +319,24 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
             console.error('MFA发送失败:', mfaError);
             throw new Error('发送验证码失败，请重试');
           }
+=======
+            expires: Date.now() + (4 * 60 * 60 * 1000),
+            devMode: true
+          };
+          localStorage.setItem('admin_session', JSON.stringify(adminSession));
+          
+          onAuthenticated();
+          return;
+        }
+        
+        // 生产模式发送MFA验证码
+        try {
+          await sendMFACode(email);
+          setStep('mfa');
+        } catch (mfaError) {
+          console.error('MFA发送失败:', mfaError);
+          throw new Error('发送验证码失败，请重试');
+>>>>>>> d0b42bf3e3baf28f81e7a17dd2b8257994979d7f
         }
       } else {
         throw new Error('登录失败，请重试');
@@ -442,6 +471,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
           <CheckCircle className="h-4 w-4" />
           <AlertDescription className="text-blue-700">
             请使用具有管理员权限的账户登录管理面板
+            {devMode && <span className="block text-sm mt-1 text-green-600">开发模式：MFA验证已禁用</span>}
           </AlertDescription>
         </Alert>
 
@@ -474,6 +504,14 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? '验证中...' : '登录'}
             </Button>
+            
+            {devMode && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                <p className="text-sm text-yellow-800">
+                  <strong>开发模式提示：</strong>MFA验证已禁用，登录成功后将直接进入管理面板
+                </p>
+              </div>
+            )}
           </form>
         )}
 

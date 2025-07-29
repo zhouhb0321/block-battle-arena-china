@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ResourceManagement from './ResourceManagement';
 import LogManagement from './LogManagement';
-import GameRecordManagement from './GameRecordManagement';
+import GameRecordManagement from './components/GameRecordManagement';
 import RevenueManagement from './RevenueManagement';
 import AdvertisingManagement from './AdvertisingManagement';
 import DatabaseOptimization from './DatabaseOptimization';
