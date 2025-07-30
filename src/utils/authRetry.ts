@@ -8,7 +8,7 @@ export const retryAuthOperation = async <T>(
   operation: () => Promise<T>,
   options: RetryOptions = {}
 ): Promise<T> => {
-  const { maxRetries = 2, delay = 1000, exponentialBackoff = true } = options;
+  const { maxRetries = 1, delay = 800, exponentialBackoff = true } = options;
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {

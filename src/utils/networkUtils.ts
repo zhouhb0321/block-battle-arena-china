@@ -155,23 +155,40 @@ export const getNetworkErrorMessage = (error: any): string => {
 
 export const withNetworkRetry = async <T>(
   operation: () => Promise<T>,
-  maxRetries: number = 3,
-  delay: number = 1000
+  maxRetries: number = 2,
+  delay: number = 800
 ): Promise<T> => {
   let lastError: any;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await operation();
+      // 为每个操作添加超时控制
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('操作超时')), 5000); // 5秒超时
+      });
+      
+      const operationPromise = operation();
+      return await Promise.race([operationPromise, timeoutPromise]);
     } catch (error) {
       lastError = error;
+      
+      // 不重试认证相关的错误
+      if (error && typeof error === 'object' && 'message' in error) {
+        const message = String(error.message).toLowerCase();
+        if (message.includes('invalid login') || 
+            message.includes('email not confirmed') ||
+            message.includes('too many requests')) {
+          throw error;
+        }
+      }
       
       if (!isNetworkError(error) || attempt === maxRetries) {
         throw error;
       }
       
-      // Wait before retry, with exponential backoff
-      await new Promise(resolve => setTimeout(resolve, delay * attempt));
+      // 优化重试间隔
+      const retryDelay = Math.min(delay * Math.pow(1.5, attempt - 1), 3000);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
     }
   }
   

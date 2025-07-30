@@ -135,9 +135,9 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         throw new Error('密码长度至少8位');
       }
 
-      // 使用Supabase认证 - 优化超时时间
+      // 使用Supabase认证 - 优化超时时间和重试机制
       const authTimeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('登录超时，请检查网络连接')), 8000); // 降低超时时间
+        setTimeout(() => reject(new Error('登录超时，请检查网络连接')), 5000); // 进一步降低超时时间
       });
 
       const authPromise = supabase.auth.signInWithPassword({

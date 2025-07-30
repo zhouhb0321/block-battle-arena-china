@@ -183,90 +183,85 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     debugLog.auth('初始化认证状态...');
     
-    // 设置认证状态监听器
+    // 设置认证状态监听器 - 简化回调函数避免异步操作阻塞
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         debugLog.auth('认证状态变化', { event, hasSession: !!session });
         
-        try {
-          setSession(session);
-          
-          if (session?.user) {
-            try {
-              const extendedUser = await fetchUserProfile(session.user);
-              setUser(extendedUser);
-              debugLog.auth('用户状态更新完成', { 
-                isAdmin: extendedUser.isAdmin,
-                email: extendedUser.email 
+        // 只进行同步的状态更新
+        setSession(session);
+        
+        if (session?.user) {
+          // 延迟执行异步操作，避免阻塞回调
+          setTimeout(() => {
+            fetchUserProfile(session.user)
+              .then(extendedUser => {
+                setUser(extendedUser);
+                debugLog.auth('用户状态更新完成', { 
+                  isAdmin: extendedUser.isAdmin,
+                  email: extendedUser.email 
+                });
+              })
+              .catch(profileError => {
+                debugLog.error('设置用户信息失败', profileError);
+                
+                // 即使profile获取失败，也设置基础用户信息
+                const fallbackUser = {
+                  ...session.user,
+                  isAdmin: false,
+                  isGuest: session.user.email?.includes('@guest.local') || session.user.email?.includes('@local.guest') || false,
+                  username: session.user.email?.split('@')[0] || 'User',
+                  roles: [],
+                  user_type: 'regular'
+                };
+                setUser(fallbackUser);
               });
-            } catch (profileError) {
-              debugLog.error('设置用户信息失败', profileError);
-              
-              // Even if profile fetch fails, we should still set the basic user
-              setUser({
-                ...session.user,
-                isAdmin: false,
-                isGuest: session.user.email?.includes('@guest.local') || false,
-                username: session.user.email?.split('@')[0] || 'User',
-                roles: [],
-                user_type: 'regular'
-              });
-            }
-          } else {
-            setUser(null);
-            debugLog.auth('用户已注销');
-          }
-        } catch (error) {
-          debugLog.error('处理认证状态变化失败', error);
-          
-          // Check for network errors and attempt recovery
-          if (isNetworkError(error)) {
-            debugLog.auth('认证状态变化中检测到网络错误，尝试恢复');
-            try {
-              const recovered = await authRecoveryManager.recoverAuthState();
-              if (!recovered) {
-                setUser(null);
-                setSession(null);
-              }
-            } catch (recoveryError) {
-              debugLog.error('认证状态恢复失败', recoveryError);
-              setUser(null);
-              setSession(null);
-            }
-          } else {
-            // 在错误情况下，确保状态一致
-            setUser(null);
-            setSession(null);
-          }
-        } finally {
-          setLoading(false);
+          }, 0);
+        } else {
+          setUser(null);
+          debugLog.auth('用户已注销');
         }
+        
+        // 总是在状态更新后结束loading
+        setTimeout(() => setLoading(false), 100);
       }
     );
 
-    // 检查现有会话 - 不自动创建访客用户
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+    // 检查现有会话
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         debugLog.error('获取会话失败', error);
         setLoading(false);
       } else if (session) {
         debugLog.auth('发现现有会话', { userId: session.user.id });
-        try {
-          const extendedUser = await fetchUserProfile(session.user);
-          setUser(extendedUser);
-          setSession(session);
-          debugLog.auth('初始会话处理完成', { 
-            isAdmin: extendedUser.isAdmin,
-            email: extendedUser.email 
-          });
-        } catch (error) {
-          debugLog.error('初始化用户信息失败', error);
-        }
+        // 延迟处理初始会话，避免阻塞初始化
+        setTimeout(() => {
+          fetchUserProfile(session.user)
+            .then(extendedUser => {
+              setUser(extendedUser);
+              setSession(session);
+              debugLog.auth('初始会话处理完成', { 
+                isAdmin: extendedUser.isAdmin,
+                email: extendedUser.email 
+              });
+            })
+            .catch(error => {
+              debugLog.error('初始化用户信息失败', error);
+              // 设置基础用户信息作为回退
+              setUser({
+                ...session.user,
+                isAdmin: false,
+                isGuest: session.user.email?.includes('@local.guest') || false,
+                username: session.user.email?.split('@')[0] || 'User',
+                roles: [],
+                user_type: 'regular'
+              });
+            });
+        }, 0);
         setLoading(false);
       } else {
         debugLog.auth('无有效会话，等待用户手动登录');
         setLoading(false);
-        // 移除自动创建访客用户 - 让用户主动选择登录方式
       }
     });
 
