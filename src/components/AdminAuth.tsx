@@ -135,9 +135,9 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         throw new Error('密码长度至少8位');
       }
 
-      // 使用Supabase认证 - 优化超时和重试机制
+      // 使用Supabase认证 - 优化超时时间
       const authTimeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('登录超时，请检查网络连接')), 12000); // Reduced timeout
+        setTimeout(() => reject(new Error('登录超时，请检查网络连接')), 8000); // 降低超时时间
       });
 
       const authPromise = supabase.auth.signInWithPassword({
@@ -145,34 +145,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         password
       });
 
-      let authResult;
-      let retryCount = 0;
-      const maxRetries = 2;
-      
-      while (retryCount <= maxRetries) {
-        try {
-          authResult = await Promise.race([authPromise, authTimeoutPromise]);
-          break; // Success, exit retry loop
-        } catch (networkError: any) {
-          retryCount++;
-          console.error(`网络错误 (尝试 ${retryCount}/${maxRetries + 1}):`, networkError);
-          
-          if (retryCount > maxRetries) {
-            if (networkError.message?.includes('timeout') || networkError.message?.includes('超时')) {
-              throw new Error('网络连接超时，请检查网络后重试');
-            } else if (networkError.message?.includes('fetch') || networkError.message?.includes('network')) {
-              throw new Error('网络连接失败，请检查网络设置');
-            } else if (networkError.message?.includes('abort')) {
-              throw new Error('请求被中断，请重试');
-            } else {
-              throw new Error('登录失败，请检查网络连接');
-            }
-          }
-          
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-        }
-      }
+      const authResult = await Promise.race([authPromise, authTimeoutPromise]);
 
       const { data, error: authError } = authResult;
 
@@ -193,78 +166,32 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         );
         
         if (authError.message.includes('Invalid login credentials')) {
-          throw new Error('邮箱或密码错误。请检查您的登录信息');
+          throw new Error('邮箱或密码错误');
         } else if (authError.message.includes('Email not confirmed')) {
-          throw new Error('邮箱未验证。请先验证邮箱');
-        } else if (authError.message.includes('User not found')) {
-          throw new Error('用户账户不存在。请联系系统管理员');
+          throw new Error('邮箱未验证，请先验证邮箱');
         } else if (authError.message.includes('Too many requests')) {
           throw new Error('请求过于频繁，请稍后重试');
-        } else if (authError.message.includes('network') || authError.message.includes('fetch')) {
-          throw new Error('网络连接失败，请检查网络设置');
         } else {
-          throw new Error(`登录失败: ${authError.message}`);
+          throw new Error('登录失败，请重试');
         }
       }
 
       if (data?.user) {
-        // Check if user has admin role with improved error handling
-        const roleTimeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('权限验证超时')), 6000); // Reduced timeout
-        });
-
-        const rolePromise = supabase
+        // 检查用户是否有管理员权限
+        const { data: roles, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', data.user.id)
           .eq('role', 'admin');
 
-        let roleRetryCount = 0;
-        const maxRoleRetries = 2;
-        let roleResult;
-
-        while (roleRetryCount <= maxRoleRetries) {
-          try {
-            roleResult = await Promise.race([rolePromise, roleTimeoutPromise]);
-            break; // Success, exit retry loop
-          } catch (roleCheckError: any) {
-            roleRetryCount++;
-            console.error(`权限验证错误 (尝试 ${roleRetryCount}/${maxRoleRetries + 1}):`, roleCheckError);
-            
-            if (roleRetryCount > maxRoleRetries) {
-              if (roleCheckError.message?.includes('timeout') || roleCheckError.message?.includes('超时')) {
-                throw new Error('权限验证超时，请检查网络后重试');
-              } else if (roleCheckError.message?.includes('network') || roleCheckError.message?.includes('fetch')) {
-                throw new Error('网络连接失败，无法验证权限，请重试');
-              } else {
-                throw new Error('权限验证失败，请重试');
-              }
-            }
-            
-            // Wait before retry
-            await new Promise(resolve => setTimeout(resolve, 1000 * roleRetryCount));
-          }
-        }
-
-        const { data: roles, error: roleError } = roleResult;
-
         if (roleError) {
           console.error('权限查询错误:', roleError);
-          if (roleError.message?.includes('network') || roleError.message?.includes('fetch')) {
-            throw new Error('网络连接失败，无法验证权限，请重试');
-          } else {
-            throw new Error(`权限验证失败: ${roleError.message}`);
-          }
+          throw new Error('权限验证失败，请重试');
         }
 
         if (!roles || roles.length === 0) {
           handleFailedAttempt();
-          // Sign out non-admin user with error handling
-          try {
-            await supabase.auth.signOut();
-          } catch (signOutError) {
-            console.warn('登出非管理员用户失败:', signOutError);
-          }
+          await supabase.auth.signOut();
           throw new Error('您没有管理员权限');
         }
 
