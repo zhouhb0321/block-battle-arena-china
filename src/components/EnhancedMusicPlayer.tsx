@@ -1,10 +1,10 @@
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, Pause, SkipForward, Volume2, Shuffle, Music } from 'lucide-react';
+import { Play, Pause, SkipForward, Shuffle, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MusicTrack {
   id: string;
@@ -28,19 +28,20 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
   initialVolume = 70,
   initialMuted = false
 }) => {
-  const { settings, updateSettings } = useUserSettings();
+  const { settings } = useUserSettings();
   const audioRef = useRef<HTMLAudioElement>(null);
+  
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTrack, setCurrentTrack] = useState(0);
+  const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
   const [availableTracks, setAvailableTracks] = useState<MusicTrack[]>([]);
-  const [isShuffled, setIsShuffled] = useState(true);
+  const [userInteracted, setUserInteracted] = useState(false);
+  const [muted, setMuted] = useState(initialMuted || false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isShuffled, setIsShuffled] = useState(false);
   const [playOrder, setPlayOrder] = useState<number[]>([]);
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  const [volume, setVolume] = useState(70); // 新增音量状态
-  const [isMuted, setIsMuted] = useState(false); // 新增静音状态
 
-  // 默认音乐列表 - 只保留存在的文件
-  const defaultTracks: MusicTrack[] = [
+  // 默认音乐轨道
+  const DEFAULT_MUSIC_TRACKS: MusicTrack[] = [
     {
       id: 'wotlk-main',
       title: 'WotLK Main Title',
@@ -49,47 +50,91 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
     }
   ];
 
-  // 检查音频文件是否存在
-  const checkAudioExists = (url: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const audio = new Audio();
-      audio.addEventListener('canplaythrough', () => resolve(true), { once: true });
-      audio.addEventListener('error', () => resolve(false), { once: true });
-      audio.addEventListener('abort', () => resolve(false), { once: true });
-      audio.src = url;
-      audio.load();
-    });
-  };
-
-  // 初始化可用音轨 - 简化版本
-  useEffect(() => {
-    const initializeAudioTracks = async () => {
-      console.log('正在检查可用音乐文件...');
-      const validTracks: MusicTrack[] = [];
+  // 检查音频文件是否可访问
+  const checkAudioExists = useCallback(async (url: string): Promise<boolean> => {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
+  }, []);
+  
+  // 从Supabase Storage获取音乐文件列表
+  const fetchMusicFiles = useCallback(async (): Promise<MusicTrack[]> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
       
-      for (const track of defaultTracks) {
-        console.log(`检查音乐文件: ${track.url}`);
-        const exists = await checkAudioExists(track.url);
-        if (exists) {
-          console.log(`✓ 找到音乐文件: ${track.title}`);
-          validTracks.push(track);
-        } else {
-          console.log(`✗ 音乐文件不存在: ${track.url}`);
+      const { data, error } = await supabase.storage
+        .from('music-files')
+        .list('', {
+          limit: 100,
+          sortBy: { column: 'name', order: 'asc' }
+        });
+      
+      if (error) {
+        console.error('获取音乐文件列表失败:', error);
+        return [];
+      }
+      
+      const tracks: MusicTrack[] = [];
+      for (const file of data || []) {
+        if (file.name.match(/\.(mp3|wav|ogg|m4a)$/i)) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('music-files')
+            .getPublicUrl(file.name);
+          
+          tracks.push({
+            id: file.id || file.name,
+            title: file.name.replace(/\.[^/.]+$/, ''),
+            filename: file.name,
+            url: publicUrl
+          });
         }
       }
       
-      console.log(`总共找到 ${validTracks.length} 个可用音乐文件`);
-      setAvailableTracks(validTracks);
-      
-      if (validTracks.length > 0) {
-        // 选择用户设置的背景音乐或第一首
-        const preferredTrack = validTracks.findIndex(track => track.id === settings.backgroundMusic);
-        setCurrentTrack(preferredTrack >= 0 ? preferredTrack : 0);
-      }
-    };
+      return tracks;
+    } catch (error) {
+      console.error('获取音乐文件异常:', error);
+      return [];
+    }
+  }, []);
 
-    initializeAudioTracks();
-  }, [settings.backgroundMusic]);
+  // 初始化可用音轨列表
+  useEffect(() => {
+    const initializeTracks = async () => {
+      setIsLoading(true);
+      let tracks: MusicTrack[] = [];
+      
+      // 首先尝试从Supabase Storage获取音乐文件
+      const storageTracks = await fetchMusicFiles();
+      if (storageTracks.length > 0) {
+        tracks = storageTracks;
+      } else {
+        // 如果Storage中没有文件，使用默认音轨
+        const validTracks: MusicTrack[] = [];
+        for (const track of DEFAULT_MUSIC_TRACKS) {
+          const exists = await checkAudioExists(track.url);
+          if (exists) {
+            validTracks.push(track);
+          }
+        }
+        tracks = validTracks;
+      }
+      
+      setAvailableTracks(tracks);
+      
+      // 设置初始播放音轨
+      if (tracks.length > 0 && !currentTrack) {
+        setCurrentTrack(tracks[0]);
+      }
+      
+      setIsLoading(false);
+    };
+    
+    initializeTracks();
+  }, [fetchMusicFiles, checkAudioExists, currentTrack]);
 
   // 初始化播放顺序
   useEffect(() => {
@@ -106,32 +151,29 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
   // 设置音量
   useEffect(() => {
     if (audioRef.current) {
-      const volume = (settings.masterVolume / 100) * ((settings.musicVolume || 70) / 100);
-      audioRef.current.volume = Math.max(0, Math.min(1, volume));
+      const effectiveVolume = muted ? 0 : (settings.musicVolume || 30) / 100;
+      audioRef.current.volume = Math.max(0, Math.min(1, effectiveVolume));
     }
-  }, [settings.masterVolume, settings.musicVolume]);
+  }, [settings.musicVolume, muted]);
 
   // 处理用户交互
   const handleUserInteraction = () => {
-    if (!hasUserInteracted) {
-      setHasUserInteracted(true);
-      console.log('用户首次交互，允许自动播放');
+    if (!userInteracted) {
+      setUserInteracted(true);
     }
   };
 
   // 播放音乐
   const handlePlay = async () => {
-    if (!audioRef.current || availableTracks.length === 0) return;
+    if (!audioRef.current || !currentTrack) return;
     
     handleUserInteraction();
     
     try {
       await audioRef.current.play();
       setIsPlaying(true);
-      console.log(`开始播放: ${availableTracks[currentTrack]?.title}`);
     } catch (error) {
       console.error('播放失败:', error);
-      // 尝试播放下一首
       handleNext();
     }
   };
@@ -141,189 +183,177 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
     if (audioRef.current) {
       audioRef.current.pause();
       setIsPlaying(false);
-      console.log('音乐已暂停');
     }
   };
 
   // 下一首
   const handleNext = () => {
-    if (playOrder.length === 0) return;
+    if (availableTracks.length === 0) return;
     
-    const currentOrderIndex = playOrder.findIndex(index => index === currentTrack);
-    const nextOrderIndex = (currentOrderIndex + 1) % playOrder.length;
-    const nextTrack = playOrder[nextOrderIndex];
+    const currentIndex = availableTracks.findIndex(track => track.id === currentTrack?.id);
+    const nextIndex = playOrder.length > 0 
+      ? playOrder[(playOrder.findIndex(i => i === currentIndex) + 1) % playOrder.length]
+      : (currentIndex + 1) % availableTracks.length;
     
-    setCurrentTrack(nextTrack);
-    updateSettings({ backgroundMusic: availableTracks[nextTrack]?.id });
-    console.log(`切换到下一首: ${availableTracks[nextTrack]?.title}`);
+    setCurrentTrack(availableTracks[nextIndex]);
   };
 
   // 音轨结束处理
   const handleTrackEnd = () => {
-    console.log('当前音轨播放结束，自动播放下一首');
     handleNext();
   };
 
   // 随机播放切换
   const toggleShuffle = () => {
     setIsShuffled(!isShuffled);
-    console.log(`随机播放: ${!isShuffled ? '开启' : '关闭'}`);
   };
 
   // 音量调节
   const handleVolumeChange = (values: number[]) => {
-    updateSettings({ musicVolume: values[0] });
+    const newVolume = values[0];
+    if (audioRef.current) {
+      audioRef.current.volume = muted ? 0 : newVolume / 100;
+    }
+    if (onVolumeChange) {
+      onVolumeChange(newVolume);
+    }
   };
-
-  // 自动播放逻辑
-  useEffect(() => {
-    if (autoPlay && availableTracks.length > 0 && settings.enableSound && hasUserInteracted) {
-      console.log('尝试自动播放音乐');
-      handlePlay();
-    }
-  }, [autoPlay, availableTracks.length, settings.enableSound, hasUserInteracted]);
-
-  // 自动播放功能
-  useEffect(() => {
-    if (autoPlay && availableTracks.length > 0 && !hasUserInteracted) {
-      const timer = setTimeout(() => {
-        if (audioRef.current && !isPlaying) {
-          handlePlay(); // 使用 handlePlay 替代 playMusic
-        }
-      }, 1000); // 延迟1秒自动播放
-      
-      return () => clearTimeout(timer);
-    }
-  }, [autoPlay, availableTracks, hasUserInteracted, isPlaying]);
 
   // 鼠标滚轮音量控制
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -5 : 5;
-    const newVolume = Math.max(0, Math.min(100, volume + delta));
-    setVolume(newVolume);
-    
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume / 100;
-    }
-    
-    // 保存音量设置
-    if (onVolumeChange) {
-      onVolumeChange(newVolume);
-    }
-  }, [volume, onVolumeChange]);
+    const newVolume = Math.max(0, Math.min(100, (settings.musicVolume || 30) + delta));
+    handleVolumeChange([newVolume]);
+  }, [settings.musicVolume, handleVolumeChange]);
 
   // 静音切换
   const toggleMute = useCallback(() => {
-    const newMuted = !isMuted;
-    setIsMuted(newMuted);
+    const newMuted = !muted;
+    setMuted(newMuted);
     
     if (audioRef.current) {
       audioRef.current.muted = newMuted;
     }
     
-    // 保存静音设置
     if (onMuteChange) {
       onMuteChange(newMuted);
     }
-  }, [isMuted, onMuteChange]);
+  }, [muted, onMuteChange]);
 
-  const currentTrackData = availableTracks[currentTrack];
+  // 自动播放功能
+  useEffect(() => {
+    if (autoPlay && availableTracks.length > 0 && userInteracted && settings.enableSound) {
+      handlePlay();
+    }
+  }, [autoPlay, availableTracks.length, userInteracted, settings.enableSound]);
 
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Music className="w-4 h-4" />
-          <span>背景音乐</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleShuffle}
-            className={isShuffled ? 'text-blue-600' : 'text-gray-400'}
-            title={isShuffled ? '随机播放' : '顺序播放'}
-          >
-            <Shuffle className="w-4 h-4" />
-          </Button>
+          <span>背景音乐播放器</span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const initializeTracks = async () => {
+                  setIsLoading(true);
+                  const storageTracks = await fetchMusicFiles();
+                  if (storageTracks.length > 0) {
+                    setAvailableTracks(storageTracks);
+                    if (!currentTrack) {
+                      setCurrentTrack(storageTracks[0]);
+                    }
+                  }
+                  setIsLoading(false);
+                };
+                initializeTracks();
+              }}
+              disabled={isLoading}
+              title="刷新音乐列表"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleShuffle}
+              className={`${isShuffled ? 'bg-primary/20' : ''}`}
+            >
+              <Shuffle className="w-4 h-4" />
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={isPlaying ? handlePause : handlePlay}
+              disabled={!currentTrack}
+            >
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNext}
+              disabled={availableTracks.length <= 1}
+            >
+              <SkipForward className="w-4 h-4" />
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {currentTrackData ? (
-          <>
-            <div className="text-center">
-              <p className="text-sm font-medium truncate" title={currentTrackData.title}>
-                {currentTrackData.title}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {availableTracks.length} 首音乐 {isShuffled ? '(随机)' : '(顺序)'}
-              </p>
-            </div>
-            
-            <div className="flex items-center justify-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={isPlaying ? handlePause : handlePlay}
-                onMouseDown={handleUserInteraction}
-                disabled={!settings.enableSound}
-              >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  handleUserInteraction();
-                  handleNext();
-                }}
-                disabled={availableTracks.length <= 1 || !settings.enableSound}
-              >
-                <SkipForward className="w-4 h-4" />
-              </Button>
-            </div>
+        <div className="flex items-center gap-2" onWheel={handleWheel}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleMute}
+          >
+            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </Button>
+          <Slider
+            value={[settings.musicVolume || 30]}
+            onValueChange={handleVolumeChange}
+            max={100}
+            step={1}
+            className="flex-1"
+            disabled={!settings.enableSound}
+          />
+          <span className="text-sm w-8">{settings.musicVolume || 30}</span>
+        </div>
 
-            <div className="flex items-center gap-2">
-              <Volume2 className="w-4 h-4" />
-              <Slider
-                value={[settings.musicVolume || 70]}
-                onValueChange={handleVolumeChange}
-                max={100}
-                step={1}
-                className="flex-1"
-                disabled={!settings.enableSound}
-              />
-              <span className="text-sm text-gray-500 w-8">
-                {settings.musicVolume || 70}
-              </span>
-            </div>
-
-            {!hasUserInteracted && (
-              <p className="text-xs text-yellow-600 text-center">
-                点击播放按钮开始音乐
+        <div className="text-center text-sm text-muted-foreground">
+          {isLoading ? (
+            <p>加载音乐文件中...</p>
+          ) : availableTracks.length > 0 ? (
+            <>
+              <p>当前播放: {currentTrack?.title || '无'}</p>
+              <p className={`text-xs ${isPlaying ? 'text-green-500' : 'text-gray-400'}`}>
+                {isPlaying ? '播放中' : '已暂停'} | 共 {availableTracks.length} 首歌曲
               </p>
-            )}
-          </>
-        ) : (
-          <div className="text-center text-gray-500">
-            <Music className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">没有找到音乐文件</p>
-            <p className="text-xs mt-1">
-              请将音乐文件放在 public/music/ 目录下
-            </p>
-          </div>
-        )}
+            </>
+          ) : (
+            <div className="space-y-1">
+              <p>未找到音乐文件</p>
+              <p className="text-xs">请通过管理面板上传音乐文件</p>
+            </div>
+          )}
+        </div>
 
-        {currentTrackData && (
+        {currentTrack && (
           <audio
             ref={audioRef}
-            src={currentTrackData.url}
+            src={currentTrack.url}
             onEnded={handleTrackEnd}
             onError={(e) => {
               console.error('音频播放错误:', e);
-              console.log('尝试播放下一首...');
               handleNext();
             }}
+            loop={false}
             preload="metadata"
           />
         )}

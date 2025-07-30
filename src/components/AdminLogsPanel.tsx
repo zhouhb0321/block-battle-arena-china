@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationEllipsis, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from '@/components/ui/pagination';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,16 +29,28 @@ const AdminLogsPanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | 'ERROR' | 'LOG'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalLogs, setTotalLogs] = useState(0);
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      // 使用 admin_activity_logs 作为示例日志表
+      const offset = (currentPage - 1) * pageSize;
+      
+      // 获取日志计数
+      const { count } = await supabase
+        .from('admin_activity_logs')
+        .select('*', { count: 'exact', head: true });
+      
+      setTotalLogs(count || 0);
+      
+      // 获取分页日志数据
       const { data, error } = await supabase
         .from('admin_activity_logs')
         .select('id, created_at, action_type, details')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .range(offset, offset + pageSize - 1);
       
       if (error) {
         console.error('获取日志失败:', error);
@@ -53,7 +74,7 @@ const AdminLogsPanel: React.FC = () => {
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [currentPage, pageSize]);
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch = searchTerm === '' || 
@@ -63,7 +84,14 @@ const AdminLogsPanel: React.FC = () => {
   });
 
   const formatTimestamp = (timestamp: string) => {
-    return new Date(parseInt(timestamp) / 1000).toLocaleString();
+    return new Date(timestamp).toLocaleString();
+  };
+  
+  const totalPages = Math.ceil(totalLogs / pageSize);
+  
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(parseInt(value));
+    setCurrentPage(1);
   };
 
   return (
@@ -87,6 +115,17 @@ const AdminLogsPanel: React.FC = () => {
             <SelectItem value="all">全部</SelectItem>
             <SelectItem value="ERROR">错误</SelectItem>
             <SelectItem value="LOG">日志</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+          <SelectTrigger className="w-24">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="50">50条</SelectItem>
+            <SelectItem value="100">100条</SelectItem>
+            <SelectItem value="200">200条</SelectItem>
           </SelectContent>
         </Select>
 
@@ -123,8 +162,51 @@ const AdminLogsPanel: React.FC = () => {
         </Table>
       </ScrollArea>
       
-      <div className="text-sm text-muted-foreground">
-        显示 {filteredLogs.length} 条日志记录
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          显示第 {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalLogs)} 条，共 {totalLogs} 条日志记录
+        </div>
+        
+        {totalPages > 1 && (
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNumber = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                return (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(pageNumber)}
+                      isActive={currentPage === pageNumber}
+                      className="cursor-pointer"
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+              
+              {totalPages > 5 && currentPage < totalPages - 2 && (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              )}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BackgroundWallpaperProps {
   children: React.ReactNode;
@@ -12,24 +13,7 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
   const [nextWallpaper, setNextWallpaper] = useState<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // 可用的壁纸列表 - 用户需要将图片放在 public/wallpapers/ 目录下
-  const availableWallpapers = [
-    '/wallpapers/wallpaper1.jpg',
-    '/wallpapers/wallpaper2.jpg',
-    '/wallpapers/wallpaper3.jpg',
-    '/wallpapers/wallpaper4.jpg',
-    '/wallpapers/wallpaper5.jpg',
-    '/wallpapers/wallpaper6.jpg',
-    '/wallpapers/wallpaper7.jpg',
-    '/wallpapers/wallpaper8.jpg',
-    '/wallpapers/sunset1.jpg',
-    '/wallpapers/forest.jpg',
-    '/wallpapers/mountain.jpg',
-    '/wallpapers/ocean.jpg',
-    '/wallpapers/city.jpg',
-    '/wallpapers/space.jpg',
-    '/wallpapers/abstract.jpg'
-  ];
+  const [availableWallpapers, setAvailableWallpapers] = useState<string[]>([]);
 
   // 检查图片是否存在
   const checkImageExists = useCallback((url: string): Promise<boolean> => {
@@ -41,8 +25,51 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
     });
   }, []);
 
+  // 从Supabase Storage获取壁纸文件列表
+  const fetchWallpaperFiles = useCallback(async (): Promise<string[]> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
+      
+      const { data, error } = await supabase.storage
+        .from('wallpapers')
+        .list('', {
+          limit: 100,
+          sortBy: { column: 'name', order: 'asc' }
+        });
+      
+      if (error) {
+        console.error('获取壁纸文件列表失败:', error);
+        return [];
+      }
+      
+      const wallpapers: string[] = [];
+      for (const file of data || []) {
+        if (file.name.match(/\.(jpg|jpeg|png|webp|bmp)$/i)) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('wallpapers')
+            .getPublicUrl(file.name);
+          
+          wallpapers.push(publicUrl);
+        }
+      }
+      
+      return wallpapers;
+    } catch (error) {
+      console.error('获取壁纸文件异常:', error);
+      return [];
+    }
+  }, []);
+  
   // 获取可用的壁纸
   const getAvailableWallpapers = useCallback(async () => {
+    // 首先尝试从Supabase Storage获取
+    const storageWallpapers = await fetchWallpaperFiles();
+    if (storageWallpapers.length > 0) {
+      return storageWallpapers;
+    }
+    
+    // 如果Storage中没有文件，检查本地wallpapers
     const validWallpapers = [];
     for (const wallpaper of availableWallpapers) {
       const exists = await checkImageExists(wallpaper);
@@ -51,7 +78,7 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
       }
     }
     return validWallpapers;
-  }, [availableWallpapers, checkImageExists]);
+  }, [availableWallpapers, checkImageExists, fetchWallpaperFiles]);
 
   // 随机选择壁纸
   const getRandomWallpaper = useCallback((validWallpapers: string[], exclude?: string) => {
@@ -84,17 +111,22 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
     img.src = newWallpaper;
   }, [settings.enableWallpaper, currentWallpaper, getAvailableWallpapers, getRandomWallpaper]);
 
-  // 初始化壁纸
+  // 初始化壁纸和获取列表
   useEffect(() => {
-    if (settings.enableWallpaper && !currentWallpaper) {
-      getAvailableWallpapers().then(validWallpapers => {
-        if (validWallpapers.length > 0) {
-          const initialWallpaper = getRandomWallpaper(validWallpapers);
-          setCurrentWallpaper(initialWallpaper);
-        }
-      });
-    }
-  }, [settings.enableWallpaper, currentWallpaper, getAvailableWallpapers, getRandomWallpaper]);
+    const initializeWallpapers = async () => {
+      // 首先获取壁纸列表
+      const wallpapers = await fetchWallpaperFiles();
+      setAvailableWallpapers(wallpapers);
+      
+      // 如果启用壁纸且还没有当前壁纸，设置初始壁纸
+      if (settings.enableWallpaper && !currentWallpaper && wallpapers.length > 0) {
+        const initialWallpaper = getRandomWallpaper(wallpapers);
+        setCurrentWallpaper(initialWallpaper);
+      }
+    };
+    
+    initializeWallpapers();
+  }, [settings.enableWallpaper, currentWallpaper, fetchWallpaperFiles, getRandomWallpaper]);
 
   // 设置定时切换
   useEffect(() => {

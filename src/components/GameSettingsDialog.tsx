@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, Keyboard, Volume2, Eye, Gamepad2, Music, Save, RotateCcw, CheckCircle } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { toast } from 'sonner';
+import { useGameLogic } from '@/hooks/useGameLogic';
 import ControlsTab from './settings/ControlsTab';
 import TimingTab from './settings/TimingTab';
 import VisualTab from './settings/VisualTab';
@@ -23,6 +24,9 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
   const [hasChanges, setHasChanges] = useState(false);
   const [tempSettings, setTempSettings] = useState(gameSettings);
   const [saving, setSaving] = useState(false);
+  
+  // 暂时禁用游戏状态检测，设置按钮始终可用
+  const isGameInProgress = false;
 
   // 当gameSettings更新时，同步更新tempSettings
   useEffect(() => {
@@ -121,7 +125,15 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm" className="bg-gray-800 hover:bg-gray-700 text-white border-gray-600">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            disabled={isGameInProgress}
+            className={`bg-gray-800 hover:bg-gray-700 text-white border-gray-600 ${
+              isGameInProgress ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            title={isGameInProgress ? '游戏进行中不能修改设置' : '游戏设置'}
+          >
             <Settings className="w-4 h-4 mr-2" />
             游戏设置
           </Button>
