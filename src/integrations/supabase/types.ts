@@ -276,6 +276,108 @@ export type Database = {
         }
         Relationships: []
       }
+      compressed_replays: {
+        Row: {
+          actions_count: number
+          apm: number
+          checksum: string
+          compressed_actions: string
+          compression_ratio: number
+          created_at: string
+          duration_seconds: number
+          final_level: number
+          final_lines: number
+          final_score: number
+          game_id: string | null
+          game_mode: string
+          game_settings: Json
+          game_type: string
+          id: string
+          initial_board: Json
+          is_featured: boolean
+          is_personal_best: boolean
+          is_world_record: boolean
+          match_id: string | null
+          opponent_id: string | null
+          pps: number
+          seed: string
+          updated_at: string
+          user_id: string
+          version: string
+        }
+        Insert: {
+          actions_count?: number
+          apm?: number
+          checksum: string
+          compressed_actions: string
+          compression_ratio?: number
+          created_at?: string
+          duration_seconds?: number
+          final_level?: number
+          final_lines?: number
+          final_score?: number
+          game_id?: string | null
+          game_mode: string
+          game_settings?: Json
+          game_type?: string
+          id?: string
+          initial_board?: Json
+          is_featured?: boolean
+          is_personal_best?: boolean
+          is_world_record?: boolean
+          match_id?: string | null
+          opponent_id?: string | null
+          pps?: number
+          seed: string
+          updated_at?: string
+          user_id: string
+          version?: string
+        }
+        Update: {
+          actions_count?: number
+          apm?: number
+          checksum?: string
+          compressed_actions?: string
+          compression_ratio?: number
+          created_at?: string
+          duration_seconds?: number
+          final_level?: number
+          final_lines?: number
+          final_score?: number
+          game_id?: string | null
+          game_mode?: string
+          game_settings?: Json
+          game_type?: string
+          id?: string
+          initial_board?: Json
+          is_featured?: boolean
+          is_personal_best?: boolean
+          is_world_record?: boolean
+          match_id?: string | null
+          opponent_id?: string | null
+          pps?: number
+          seed?: string
+          updated_at?: string
+          user_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compressed_replays_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "match_games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compressed_replays_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "ranked_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friend_requests: {
         Row: {
           created_at: string
@@ -575,10 +677,16 @@ export type Database = {
       league_rankings: {
         Row: {
           best_streak: number
+          current_streak: number
+          elo_rating: number
           games_lost: number
           games_played: number
           games_won: number
           id: string
+          longest_win_streak: number
+          matches_played: number
+          peak_rating: number
+          promotion_protection_games: number
           rank_tier: string
           rating: number
           season_id: string
@@ -588,10 +696,16 @@ export type Database = {
         }
         Insert: {
           best_streak?: number
+          current_streak?: number
+          elo_rating?: number
           games_lost?: number
           games_played?: number
           games_won?: number
           id?: string
+          longest_win_streak?: number
+          matches_played?: number
+          peak_rating?: number
+          promotion_protection_games?: number
           rank_tier?: string
           rating?: number
           season_id: string
@@ -601,10 +715,16 @@ export type Database = {
         }
         Update: {
           best_streak?: number
+          current_streak?: number
+          elo_rating?: number
           games_lost?: number
           games_played?: number
           games_won?: number
           id?: string
+          longest_win_streak?: number
+          matches_played?: number
+          peak_rating?: number
+          promotion_protection_games?: number
           rank_tier?: string
           rating?: number
           season_id?: string
@@ -651,6 +771,80 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      match_games: {
+        Row: {
+          attacks_received: Json
+          attacks_sent: Json
+          created_at: string
+          duration_seconds: number
+          finished_at: string
+          game_number: number
+          game_seed: string
+          id: string
+          loser_apm: number
+          loser_id: string
+          loser_lines: number
+          loser_pps: number
+          loser_score: number
+          match_id: string
+          winner_apm: number
+          winner_id: string
+          winner_lines: number
+          winner_pps: number
+          winner_score: number
+        }
+        Insert: {
+          attacks_received?: Json
+          attacks_sent?: Json
+          created_at?: string
+          duration_seconds?: number
+          finished_at?: string
+          game_number: number
+          game_seed: string
+          id?: string
+          loser_apm?: number
+          loser_id: string
+          loser_lines?: number
+          loser_pps?: number
+          loser_score?: number
+          match_id: string
+          winner_apm?: number
+          winner_id: string
+          winner_lines?: number
+          winner_pps?: number
+          winner_score?: number
+        }
+        Update: {
+          attacks_received?: Json
+          attacks_sent?: Json
+          created_at?: string
+          duration_seconds?: number
+          finished_at?: string
+          game_number?: number
+          game_seed?: string
+          id?: string
+          loser_apm?: number
+          loser_id?: string
+          loser_lines?: number
+          loser_pps?: number
+          loser_score?: number
+          match_id?: string
+          winner_apm?: number
+          winner_id?: string
+          winner_lines?: number
+          winner_pps?: number
+          winner_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_games_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "ranked_matches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       password_reset_tokens: {
         Row: {
@@ -708,6 +902,121 @@ export type Database = {
           sender_id?: string
         }
         Relationships: []
+      }
+      ranked_matches: {
+        Row: {
+          best_of: number
+          created_at: string
+          current_game: number
+          finished_at: string | null
+          id: string
+          match_type: string
+          player1_id: string
+          player1_rating: number
+          player1_wins: number
+          player2_id: string
+          player2_rating: number
+          player2_wins: number
+          room_id: string | null
+          season_id: string | null
+          seed: string
+          started_at: string | null
+          status: string
+          winner_id: string | null
+        }
+        Insert: {
+          best_of?: number
+          created_at?: string
+          current_game?: number
+          finished_at?: string | null
+          id?: string
+          match_type?: string
+          player1_id: string
+          player1_rating?: number
+          player1_wins?: number
+          player2_id: string
+          player2_rating?: number
+          player2_wins?: number
+          room_id?: string | null
+          season_id?: string | null
+          seed: string
+          started_at?: string | null
+          status?: string
+          winner_id?: string | null
+        }
+        Update: {
+          best_of?: number
+          created_at?: string
+          current_game?: number
+          finished_at?: string | null
+          id?: string
+          match_type?: string
+          player1_id?: string
+          player1_rating?: number
+          player1_wins?: number
+          player2_id?: string
+          player2_rating?: number
+          player2_wins?: number
+          room_id?: string | null
+          season_id?: string | null
+          seed?: string
+          started_at?: string | null
+          status?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ranked_matches_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      replay_bookmarks: {
+        Row: {
+          bookmark_type: string
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean
+          replay_id: string
+          timestamp_ms: number
+          title: string
+          user_id: string
+        }
+        Insert: {
+          bookmark_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          replay_id: string
+          timestamp_ms: number
+          title: string
+          user_id: string
+        }
+        Update: {
+          bookmark_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          replay_id?: string
+          timestamp_ms?: number
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "replay_bookmarks_replay_id_fkey"
+            columns: ["replay_id"]
+            isOneToOne: false
+            referencedRelation: "compressed_replays"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_events: {
         Row: {
@@ -1073,6 +1382,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_elo_change: {
+        Args: { winner_rating: number; loser_rating: number; k_factor?: number }
+        Returns: {
+          winner_new_rating: number
+          loser_new_rating: number
+        }[]
+      }
       has_role: {
         Args: {
           _user_id: string
