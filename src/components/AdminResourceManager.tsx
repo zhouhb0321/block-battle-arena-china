@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Upload, 
   Music, 
@@ -36,6 +38,7 @@ interface WallpaperFile {
 const AdminResourceManager: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [musicFiles, setMusicFiles] = useState<MusicFile[]>([]);
   const [wallpaperFiles, setWallpaperFiles] = useState<WallpaperFile[]>([]);
   const [uploadingMusic, setUploadingMusic] = useState(false);
@@ -86,46 +89,70 @@ const AdminResourceManager: React.FC = () => {
 
   // 加载音乐文件列表
   const loadMusicFiles = async () => {
-    const defaultMusicFiles = [
-      { name: 'WotLK_main_title.mp3', url: '/music/WotLK_main_title.mp3' },
-      { name: 'tetris-theme-a.mp3', url: '/music/tetris-theme-a.mp3' },
-      { name: 'tetris-theme-b.mp3', url: '/music/tetris-theme-b.mp3' },
-      { name: 'korobeiniki.mp3', url: '/music/korobeiniki.mp3' },
-      { name: 'electronic-beat.mp3', url: '/music/electronic-beat.mp3' }
-    ];
+    try {
+      const { data, error } = await supabase.storage
+        .from('music-files')
+        .list('', { limit: 100, sortBy: { column: 'name', order: 'asc' } });
 
-    const validMusicFiles: MusicFile[] = [];
-    for (const file of defaultMusicFiles) {
-      const exists = await checkAudioExists(file.url);
-      if (exists) {
-        validMusicFiles.push(file);
-      }
+      if (error) throw error;
+
+      const musicList: MusicFile[] = await Promise.all(
+        data.map(async (file) => {
+          const { data: urlData } = supabase.storage
+            .from('music-files')
+            .getPublicUrl(file.name);
+          
+          return {
+            name: file.name,
+            url: urlData.publicUrl,
+            size: `${(file.metadata?.size || 0 / 1024 / 1024).toFixed(2)} MB`
+          };
+        })
+      );
+
+      setMusicFiles(musicList);
+    } catch (error) {
+      console.error('Error loading music files:', error);
+      toast({
+        title: "错误",
+        description: "加载音乐文件失败",
+        variant: "destructive"
+      });
     }
-    setMusicFiles(validMusicFiles);
   };
 
   // 加载壁纸文件列表
   const loadWallpaperFiles = async () => {
-    const defaultWallpapers = [
-      { name: 'wallpaper1.jpg', url: '/wallpapers/wallpaper1.jpg' },
-      { name: 'wallpaper2.jpg', url: '/wallpapers/wallpaper2.jpg' },
-      { name: 'wallpaper3.jpg', url: '/wallpapers/wallpaper3.jpg' },
-      { name: 'wallpaper4.jpg', url: '/wallpapers/wallpaper4.jpg' },
-      { name: 'wallpaper5.jpg', url: '/wallpapers/wallpaper5.jpg' },
-      { name: 'wallpaper6.jpg', url: '/wallpapers/wallpaper6.jpg' },
-      { name: 'wallpaper7.jpg', url: '/wallpapers/wallpaper7.jpg' },
-      { name: 'wallpaper8.jpg', url: '/wallpapers/wallpaper8.jpg' },
-      { name: 'sunset1.jpg', url: '/wallpapers/sunset1.jpg' }
-    ];
+    try {
+      const { data, error } = await supabase.storage
+        .from('wallpapers')
+        .list('', { limit: 100, sortBy: { column: 'name', order: 'asc' } });
 
-    const validWallpapers: WallpaperFile[] = [];
-    for (const wallpaper of defaultWallpapers) {
-      const exists = await checkImageExists(wallpaper.url);
-      if (exists) {
-        validWallpapers.push(wallpaper);
-      }
+      if (error) throw error;
+
+      const wallpaperList: WallpaperFile[] = await Promise.all(
+        data.map(async (file) => {
+          const { data: urlData } = supabase.storage
+            .from('wallpapers')
+            .getPublicUrl(file.name);
+          
+          return {
+            name: file.name,
+            url: urlData.publicUrl,
+            size: `${(file.metadata?.size || 0 / 1024 / 1024).toFixed(2)} MB`
+          };
+        })
+      );
+
+      setWallpaperFiles(wallpaperList);
+    } catch (error) {
+      console.error('Error loading wallpaper files:', error);
+      toast({
+        title: "错误",
+        description: "加载壁纸文件失败",
+        variant: "destructive"
+      });
     }
-    setWallpaperFiles(validWallpapers);
   };
 
   // 播放音乐
@@ -153,16 +180,28 @@ const AdminResourceManager: React.FC = () => {
 
     setUploadingMusic(true);
     try {
-      // 这里应该调用后端API上传文件
-      // 目前只是模拟上传过程
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // 重新加载音乐文件列表
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const { error } = await supabase.storage
+          .from('music-files')
+          .upload(file.name, file, { upsert: true });
+        
+        if (error) throw error;
+      });
+
+      await Promise.all(uploadPromises);
       await loadMusicFiles();
       
-      console.log('音乐文件上传成功');
+      toast({
+        title: "成功",
+        description: `成功上传 ${files.length} 个音乐文件`,
+      });
     } catch (error) {
       console.error('音乐文件上传失败:', error);
+      toast({
+        title: "错误",
+        description: "音乐文件上传失败",
+        variant: "destructive"
+      });
     } finally {
       setUploadingMusic(false);
     }
@@ -175,16 +214,28 @@ const AdminResourceManager: React.FC = () => {
 
     setUploadingWallpaper(true);
     try {
-      // 这里应该调用后端API上传文件
-      // 目前只是模拟上传过程
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // 重新加载壁纸文件列表
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const { error } = await supabase.storage
+          .from('wallpapers')
+          .upload(file.name, file, { upsert: true });
+        
+        if (error) throw error;
+      });
+
+      await Promise.all(uploadPromises);
       await loadWallpaperFiles();
       
-      console.log('壁纸文件上传成功');
+      toast({
+        title: "成功",
+        description: `成功上传 ${files.length} 个壁纸文件`,
+      });
     } catch (error) {
       console.error('壁纸文件上传失败:', error);
+      toast({
+        title: "错误",
+        description: "壁纸文件上传失败",
+        variant: "destructive"
+      });
     } finally {
       setUploadingWallpaper(false);
     }
@@ -193,22 +244,48 @@ const AdminResourceManager: React.FC = () => {
   // 删除音乐文件
   const deleteMusicFile = async (fileName: string) => {
     try {
-      // 这里应该调用后端API删除文件
-      console.log('删除音乐文件:', fileName);
+      const { error } = await supabase.storage
+        .from('music-files')
+        .remove([fileName]);
+      
+      if (error) throw error;
+      
       await loadMusicFiles();
+      toast({
+        title: "成功",
+        description: `已删除音乐文件: ${fileName}`,
+      });
     } catch (error) {
       console.error('删除音乐文件失败:', error);
+      toast({
+        title: "错误",
+        description: "删除音乐文件失败",
+        variant: "destructive"
+      });
     }
   };
 
   // 删除壁纸文件
   const deleteWallpaperFile = async (fileName: string) => {
     try {
-      // 这里应该调用后端API删除文件
-      console.log('删除壁纸文件:', fileName);
+      const { error } = await supabase.storage
+        .from('wallpapers')
+        .remove([fileName]);
+      
+      if (error) throw error;
+      
       await loadWallpaperFiles();
+      toast({
+        title: "成功",
+        description: `已删除壁纸文件: ${fileName}`,
+      });
     } catch (error) {
       console.error('删除壁纸文件失败:', error);
+      toast({
+        title: "错误",
+        description: "删除壁纸文件失败",
+        variant: "destructive"
+      });
     }
   };
 

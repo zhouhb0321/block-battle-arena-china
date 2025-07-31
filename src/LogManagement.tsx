@@ -30,19 +30,27 @@ const LogManagement: React.FC = () => {
   const [logType, setLogType] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [selectedLogs, setSelectedLogs] = useState<number[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalLogs, setTotalLogs] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [currentPage, pageSize]);
 
   const fetchLogs = async () => {
     try {
-      // 从多个表获取日志数据
-      const [sessionLogs, adminLogs, securityLogs] = await Promise.all([
-        supabase.from('user_session_logs').select('*').order('created_at', { ascending: false }).limit(500),
-        supabase.from('admin_activity_logs').select('*').order('created_at', { ascending: false }).limit(500),
-        supabase.from('security_events').select('*').order('created_at', { ascending: false }).limit(500)
+      const offset = (currentPage - 1) * pageSize;
+      
+      // 从多个表获取日志数据，支持分页
+      const [sessionLogs, adminLogs, securityLogs, sessionCount, adminCount, securityCount] = await Promise.all([
+        supabase.from('user_session_logs').select('*').order('created_at', { ascending: false }).range(offset, offset + pageSize - 1),
+        supabase.from('admin_activity_logs').select('*').order('created_at', { ascending: false }).range(offset, offset + pageSize - 1),
+        supabase.from('security_events').select('*').order('created_at', { ascending: false }).range(offset, offset + pageSize - 1),
+        supabase.from('user_session_logs').select('*', { count: 'exact', head: true }),
+        supabase.from('admin_activity_logs').select('*', { count: 'exact', head: true }),
+        supabase.from('security_events').select('*', { count: 'exact', head: true })
       ]);
 
       const allLogs: LogEntry[] = [];
@@ -94,6 +102,10 @@ const LogManagement: React.FC = () => {
 
       // 按时间排序
       allLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      // 设置总日志数
+      const total = (sessionCount.count || 0) + (adminCount.count || 0) + (securityCount.count || 0);
+      setTotalLogs(total);
       
       setLogs(allLogs);
       setFilteredLogs(allLogs);
@@ -162,6 +174,8 @@ const LogManagement: React.FC = () => {
     }
     
     setFilteredLogs(result);
+    // 重置到第一页当筛选条件改变时
+    setCurrentPage(1);
   }, [searchTerm, dateRange, logType, severityFilter, logs]);
 
   const handleExport = () => {
@@ -248,6 +262,8 @@ const LogManagement: React.FC = () => {
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('zh-CN');
   };
+
+  const totalPages = Math.ceil(totalLogs / pageSize);
 
   if (loading) {
     return <div className="flex justify-center p-8">加载日志中...</div>;
@@ -337,7 +353,20 @@ const LogManagement: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-between items-center mt-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">每页显示:</span>
+              <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button onClick={handleExport} variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
               导出选中日志
@@ -403,6 +432,51 @@ const LogManagement: React.FC = () => {
                 ))}
               </TableBody>
             </Table>
+          </div>
+          
+          {/* 分页控制 */}
+          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>共 {totalLogs} 条记录</span>
+              <span>•</span>
+              <span>第 {currentPage} 页，共 {totalPages} 页</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                上一页
+              </Button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNumber = Math.max(1, Math.min(totalPages, currentPage - 2 + i));
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNumber)}
+                      className="w-8"
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                下一页
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
