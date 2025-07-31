@@ -314,9 +314,17 @@ class BattleManager {
   }
 
   startGame(roomId: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+
+    // 生成统一的游戏种子确保同步
+    const gameSeed = `game-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     this.broadcastToRoom(roomId, {
       type: 'game_start',
-      countdown: 3
+      countdown: 3,
+      seed: gameSeed,
+      syncTime: Date.now()
     });
   }
 }
