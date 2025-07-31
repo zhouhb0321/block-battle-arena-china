@@ -3,12 +3,17 @@ import { useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ReplayAction } from '@/utils/gameTypes';
+import { ReplayCompressor, SeededRandom } from '@/utils/replayCompression';
+import type { OptimizedReplayData } from '@/utils/replayTypes';
 
 interface ReplayData {
   actions: ReplayAction[];
   startTime: number;
   initialBoard: number[][];
   settings: any;
+  seed?: string;
+  matchId?: string;
+  gameId?: string;
 }
 
 export const useReplayRecorder = () => {
@@ -18,16 +23,29 @@ export const useReplayRecorder = () => {
   const startTimeRef = useRef<number>(0);
   const { user } = useAuth();
 
-  // 开始录制
-  const startRecording = useCallback((initialBoard: number[][], settings: any) => {
-    console.log('Starting replay recording...');
+  // 开始录制 - 支持单人和多人模式
+  const startRecording = useCallback((
+    initialBoard: number[][], 
+    settings: any,
+    seed?: string,
+    matchId?: string,
+    gameId?: string
+  ) => {
+    console.log('Starting replay recording...', { seed, matchId, gameId });
     startTimeRef.current = Date.now();
     actionsRef.current = [];
+    
+    // 如果没有提供seed，生成一个新的
+    const gameSeed = seed || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     setReplayData({
       actions: [],
       startTime: startTimeRef.current,
       initialBoard: initialBoard.map(row => [...row]),
-      settings
+      settings,
+      seed: gameSeed,
+      matchId,
+      gameId
     });
     setIsRecording(true);
   }, []);
@@ -56,7 +74,7 @@ export const useReplayRecorder = () => {
     }
   }, [isRecording]);
 
-  // 停止录制并保存
+  // 停止录制并保存 - 使用优化的压缩格式
   const stopRecording = useCallback(async (gameStats: {
     score: number;
     lines: number;
@@ -66,6 +84,7 @@ export const useReplayRecorder = () => {
     duration: number;
     gameMode: string;
     opponentId?: string;
+    gameType?: 'single' | 'ranked' | '1v1';
   }) => {
     if (!isRecording || !user || user.isGuest) {
       setIsRecording(false);
@@ -74,42 +93,82 @@ export const useReplayRecorder = () => {
 
     console.log('Stopping replay recording with', actionsRef.current.length, 'actions');
 
-    const finalReplayData = {
-      actions: [...actionsRef.current],
-      startTime: startTimeRef.current,
-      initialBoard: replayData?.initialBoard || [],
-      settings: replayData?.settings || {}
-    };
-
     try {
+      // 创建优化的录像数据
+      const optimizedData: OptimizedReplayData = {
+        gameMetadata: {
+          gameMode: gameStats.gameMode,
+          seed: replayData?.seed || `${Date.now()}`,
+          startTime: startTimeRef.current,
+          endTime: Date.now(),
+          playerIds: [user.id, ...(gameStats.opponentId ? [gameStats.opponentId] : [])],
+          matchId: replayData?.matchId,
+          gameId: replayData?.gameId
+        },
+        playerActions: {
+          [user.id]: ReplayCompressor.compressActions(actionsRef.current)
+        },
+        gameEvents: [], // 可以在后续版本中添加游戏事件
+        checksum: ''
+      };
+
+      // 生成校验和
+      optimizedData.checksum = ReplayCompressor.generateChecksum(optimizedData);
+
+      // 压缩动作数据为二进制
+      const compressedActions = ReplayCompressor.encodeToBinary(
+        ReplayCompressor.compressActions(actionsRef.current)
+      );
+
+      // 计算压缩比率
+      const compressionRatio = ReplayCompressor.calculateCompressionRatio(
+        actionsRef.current, 
+        compressedActions
+      );
+
+      // 保存到新的压缩录像表
       const { data, error } = await supabase
-        .from('game_replays_new')
+        .from('compressed_replays')
         .insert({
           user_id: user.id,
           opponent_id: gameStats.opponentId || null,
           game_mode: gameStats.gameMode,
+          game_type: gameStats.gameType || 'single',
+          seed: replayData?.seed || `${Date.now()}`,
+          initial_board: replayData?.initialBoard || [],
+          game_settings: replayData?.settings || {},
+          compressed_actions: compressedActions,
+          actions_count: actionsRef.current.length,
+          compression_ratio: compressionRatio,
           final_score: gameStats.score,
           final_lines: gameStats.lines,
           final_level: gameStats.level,
           pps: gameStats.pps,
           apm: gameStats.apm,
-          duration: gameStats.duration,
-          replay_data: finalReplayData as any
+          duration_seconds: Math.round(gameStats.duration / 1000),
+          checksum: optimizedData.checksum,
+          version: '2.0'
         })
         .select()
         .single();
 
       if (error) {
-        console.error('Error saving replay:', error);
+        console.error('Error saving compressed replay:', error);
         setIsRecording(false);
         return null;
       }
 
-      console.log('Replay saved successfully:', data);
+      console.log('Compressed replay saved successfully:', {
+        id: data.id,
+        originalActions: actionsRef.current.length,
+        compressedSize: compressedActions.length,
+        compressionRatio: compressionRatio
+      });
+
       setIsRecording(false);
       return data;
     } catch (error) {
-      console.error('Error saving replay:', error);
+      console.error('Error saving compressed replay:', error);
       setIsRecording(false);
       return null;
     }
