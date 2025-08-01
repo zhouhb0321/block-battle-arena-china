@@ -87,7 +87,7 @@ export const DualScreenReplay: React.FC<DualScreenReplayProps> = ({
             <CardTitle className="text-sm">Hold</CardTitle>
           </CardHeader>
           <CardContent className="p-2">
-            <HoldPieceDisplay piece={data.holdPiece} />
+            <HoldPieceDisplay holdPiece={data.holdPiece} canHold={true} />
           </CardContent>
         </Card>
 
@@ -111,7 +111,7 @@ export const DualScreenReplay: React.FC<DualScreenReplayProps> = ({
           </CardHeader>
           <CardContent className="p-2 space-y-1">
             {data.nextPieces.slice(0, 6).map((piece, index) => (
-              <PiecePreview key={index} piece={piece} size="small" />
+              <PiecePreview key={index} piece={piece.type} title="" size="small" />
             ))}
           </CardContent>
         </Card>
