@@ -4,6 +4,7 @@ import { useUserSettings } from './useUserSettings';
 import { useWindowFocus } from './useWindowFocus';
 import { useGameState } from './useGameState';
 import { useAchievements } from './useAchievements';
+import { useReplayRecorder } from './useReplayRecorder';
 import { debugLog } from '@/utils/debugLogger';
 import { 
   createEmptyBoard, 
@@ -48,6 +49,14 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const [isManuallyPaused, setIsManuallyPaused] = useState(false);
   const [time, setTime] = useState(0);
   const [pps, setPps] = useState(0);
+  
+  // Replay recording
+  const { 
+    startRecording, 
+    recordAction, 
+    stopRecording, 
+    isRecording 
+  } = useReplayRecorder();
   const [apm, setApm] = useState(0);
   const [isHardDropping, setIsHardDropping] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
@@ -186,6 +195,22 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     if (!isValidPosition(board, newPiece)) {
       debugLog.game('Game over - no valid position for new piece');
       setGameOver(true);
+      
+      // Stop replay recording and save if recording
+      if (isRecording) {
+        const gameStats = {
+          score,
+          lines,
+          level,
+          duration: time,
+          pps,
+          apm,
+          gameMode: gameMode.id
+        };
+        stopRecording(gameStats);
+        debugLog.game('Replay recording stopped and saved');
+      }
+      
       onGameEnd({
         score,
         lines,
@@ -301,6 +326,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setCurrentPiece(newPiece);
       totalActions.current++;
       
+      // Record replay action
+      if (isRecording) {
+        recordAction('move', { dx, dy, piece: newPiece });
+      }
+      
       if (dx !== 0) {
         // 修复：只有在方块已经触底且移动后仍然触底时，才重置锁定延迟
         const belowNewPiece = { ...newPiece, y: newPiece.y + 1 };
@@ -317,7 +347,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay, resetLockDelay, clearLockDelayTimer]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay, resetLockDelay, clearLockDelayTimer, isRecording, recordAction]);
 
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
@@ -381,6 +411,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     if (srsResult.success && srsResult.newPiece) {
       setCurrentPiece(srsResult.newPiece);
       totalActions.current++;
+      
+      // Record replay action
+      if (isRecording) {
+        recordAction('rotate', { clockwise: true, piece: srsResult.newPiece, wasKicked: srsResult.wasKicked });
+      }
       
       if (lastTSpinCheck.current) {
         lastTSpinCheck.current.wasKicked = srsResult.wasKicked;
@@ -534,10 +569,33 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setGameStarted(true);
     gameStartTime.current = Date.now();
     
+    // Start replay recording for ranked/competitive modes
+    if (gameMode.id === 'sprint40' || gameMode.id === 'ultra2min' || gameMode.id.includes('vs')) {
+      const gameSettings = {
+        enableGhost: settings.enableGhost,
+        enableSound: settings.enableSound,
+        masterVolume: settings.masterVolume,
+        musicVolume: settings.musicVolume,
+        backgroundMusic: settings.backgroundMusic,
+        arr: settings.arr,
+        das: settings.das,
+        sdf: settings.sdf,
+        controls: settings.controls,
+        ghostOpacity: settings.ghostOpacity,
+        enableWallpaper: settings.enableWallpaper,
+        undoSteps: settings.undoSteps,
+        wallpaperChangeInterval: settings.wallpaperChangeInterval,
+        blockSkin: settings.blockSkin,
+      };
+      
+      startRecording(createEmptyBoard(), gameSettings, Math.random().toString(36));
+      debugLog.game('Replay recording started for game mode:', gameMode.id);
+    }
+    
     if (!gameInitialized) {
       initializePieces();
     }
-  }, [initializePieces, gameInitialized]);
+  }, [initializePieces, gameInitialized, gameMode.id, settings, startRecording]);
 
   const initializeForCountdown = useCallback(() => {
     debugLog.game('Initializing for countdown start');

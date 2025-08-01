@@ -28,9 +28,6 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
   // 从Supabase Storage获取壁纸文件列表
   const fetchWallpaperFiles = useCallback(async (): Promise<string[]> => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return [];
-      
       const { data, error } = await supabase.storage
         .from('wallpapers')
         .list('', {

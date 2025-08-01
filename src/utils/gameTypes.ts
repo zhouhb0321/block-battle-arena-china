@@ -80,6 +80,8 @@ export interface GameSettings {
   enableWallpaper: boolean;
   undoSteps: number;
   wallpaperChangeInterval: number;
+  blockSkin?: string;
+  auto_play_music?: boolean;
 }
 
 export interface AdContent {

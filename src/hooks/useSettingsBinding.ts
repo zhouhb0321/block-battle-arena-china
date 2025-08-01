@@ -31,6 +31,7 @@ export const useSettingsBinding = () => {
     enableWallpaper: userSettings.enableWallpaper,
     undoSteps: userSettings.undoSteps,
     wallpaperChangeInterval: userSettings.wallpaperChangeInterval,
+    blockSkin: userSettings.blockSkin,
   });
 
   const [tempSettings, setTempSettings] = useState<GameSettings>(() => convertToGameSettings(settings));

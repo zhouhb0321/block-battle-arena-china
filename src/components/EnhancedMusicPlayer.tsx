@@ -63,9 +63,6 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
   // 从Supabase Storage获取音乐文件列表
   const fetchMusicFiles = useCallback(async (): Promise<MusicTrack[]> => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return [];
-      
       const { data, error } = await supabase.storage
         .from('music-files')
         .list('', {

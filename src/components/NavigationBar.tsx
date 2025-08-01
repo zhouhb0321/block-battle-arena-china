@@ -3,7 +3,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
-import { Play, Users, Settings, LogIn, Shield } from 'lucide-react';
+import { Play, Users, Settings, LogIn, Shield, History } from 'lucide-react';
 import UserMenu from './UserMenu';
 import LanguageSelector from './LanguageSelector';
 import ThemeSwitcher from './ThemeSwitcher';
@@ -64,6 +64,16 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             >
               <Settings className="w-4 h-4" />
               {t('nav.settings')}
+            </Button>
+
+            <Button
+              variant={currentView === 'replays' ? 'default' : 'ghost'}
+              onClick={() => onViewChange('replays')}
+              className="flex items-center gap-2"
+              disabled={!isAuthenticated}
+            >
+              <History className="w-4 h-4" />
+              {t('nav.replays')}
             </Button>
 
             {/* Admin Button */}
