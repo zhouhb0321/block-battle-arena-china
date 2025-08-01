@@ -66,6 +66,8 @@ export const useKeyboardControls = ({
     }
 
     const { controls } = gameSettings;
+    console.log('按键设置当前值:', controls);
+    console.log('按下的按键:', event.code);
     const now = performance.now();
     
     // 记录按键时间

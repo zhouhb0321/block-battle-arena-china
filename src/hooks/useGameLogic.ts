@@ -171,7 +171,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   }, [currentPiece, board, lockDelayResetCount]);
 
   
-  const spawnNewPiece = useCallback(() => {
+  const spawnNewPiece = useCallback(async () => {
     if (nextPieces.length === 0) {
       debugLog.warn('No next pieces available for spawning');
       return;
@@ -205,10 +205,18 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
           duration: time,
           pps,
           apm,
-          gameMode: gameMode.id
+          gameMode: gameMode.id,
+          gameType: 'single' as 'single' | 'ranked' | '1v1'
         };
-        stopRecording(gameStats);
-        debugLog.game('Replay recording stopped and saved');
+        console.log('游戏结束，保存录像:', gameStats);
+        const savedReplay = await stopRecording(gameStats);
+        if (savedReplay) {
+          console.log('录像保存成功:', savedReplay.id);
+          debugLog.game('Replay recording stopped and saved', { replayId: savedReplay.id });
+        } else {
+          console.log('录像保存失败');
+          debugLog.game('Replay recording failed to save');
+        }
       }
       
       onGameEnd({

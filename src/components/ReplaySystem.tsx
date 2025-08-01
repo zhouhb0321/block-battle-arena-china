@@ -27,15 +27,35 @@ const ReplaySystem: React.FC = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('game_replays_new')
+      // 首先尝试从压缩回放表获取数据
+      const { data: compressedReplays, error: compressedError } = await supabase
+        .from('compressed_replays')
         .select(`
           *,
-          user_profiles!game_replays_new_user_id_fkey(username, avatar_url)
+          user_profiles!compressed_replays_user_id_fkey(username, avatar_url)
         `)
-        .or(`user_id.eq.${user.id},opponent_id.eq.${user.id}`)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
+
+      let data = compressedReplays;
+      let error = compressedError;
+
+      // 如果压缩回放表没有数据，则尝试旧的回放表
+      if (!compressedReplays || compressedReplays.length === 0) {
+        const { data: oldReplays, error: oldError } = await supabase
+          .from('game_replays_new')
+          .select(`
+            *,
+            user_profiles!game_replays_new_user_id_fkey(username, avatar_url)
+          `)
+          .or(`user_id.eq.${user.id},opponent_id.eq.${user.id}`)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        
+        data = oldReplays;
+        error = oldError;
+      }
 
       if (error) {
         console.error('Error loading replays:', error);
@@ -44,57 +64,71 @@ const ReplaySystem: React.FC = () => {
 
       if (data) {
         const formattedReplays: GameReplay[] = data.map(replay => {
-          const replayData = replay.replay_data as any;
-          const actions: ReplayAction[] = replayData?.actions || [];
+          // 处理压缩回放和旧回放的不同数据结构
+          const isCompressed = 'compressed_actions' in replay;
+          let actions: ReplayAction[] = [];
+          
+          if (isCompressed) {
+            // 压缩回放数据处理
+            console.log('处理压缩回放数据:', replay.id);
+            // 这里可以添加解压缩逻辑
+            actions = []; // 暂时空数组，实际使用时需要解压缩
+          } else {
+            // 旧回放数据处理
+            const replayData = replay.replay_data as any;
+            actions = replayData?.actions || [];
+          }
+          
           const userProfile = replay.user_profiles as any;
+          const duration = isCompressed ? (replay.duration_seconds * 1000) : replay.duration;
           
           return {
             id: replay.id,
             matchId: replay.id,
             userId: replay.user_id,
-            gameType: replay.game_mode,
-            gameMode: replay.game_mode,
+            gameType: replay.game_mode || replay.game_type,
+            gameMode: replay.game_mode || replay.game_type,
             score: replay.final_score,
             lines: replay.final_lines,
             level: replay.final_level,
-            pps: parseFloat(replay.pps.toString()),
-            apm: parseFloat(replay.apm.toString()),
-            duration: replay.duration,
+            pps: parseFloat((replay.pps || 0).toString()),
+            apm: parseFloat((replay.apm || 0).toString()),
+            duration: duration,
             startTime: new Date(replay.created_at).getTime(),
-            endTime: new Date(replay.created_at).getTime() + replay.duration,
+            endTime: new Date(replay.created_at).getTime() + duration,
             actions: actions,
             finalBoard: Array(20).fill(null).map(() => Array(10).fill(0)),
             date: replay.created_at,
             playerName: userProfile?.username || 'Unknown Player',
             isPersonalBest: replay.is_personal_best || false,
             metadata: {
-              version: '1.0',
-            settings: {
-              das: 167,
-              arr: 33,
-              sdf: 20,
-              controls: {
-                moveLeft: 'ArrowLeft',
-                moveRight: 'ArrowRight',
-                softDrop: 'ArrowDown',
-                hardDrop: 'Space',
-                rotateClockwise: 'ArrowUp',
-                rotateCounterclockwise: 'KeyZ',
-                rotate180: 'KeyA',
-                hold: 'KeyC',
-                pause: 'Escape',
-                backToMenu: 'KeyB'
-              },
-              enableGhost: true,
-              enableSound: true,
-              masterVolume: 50,
-              backgroundMusic: '',
-              musicVolume: 30,
-              ghostOpacity: 50,
-              enableWallpaper: true,
-              undoSteps: 50,
-              wallpaperChangeInterval: 120
-            }
+              version: isCompressed ? '2.0' : '1.0',
+              settings: replay.game_settings || {
+                das: 167,
+                arr: 33,
+                sdf: 20,
+                controls: {
+                  moveLeft: 'ArrowLeft',
+                  moveRight: 'ArrowRight',
+                  softDrop: 'ArrowDown',
+                  hardDrop: 'Space',
+                  rotateClockwise: 'ArrowUp',
+                  rotateCounterclockwise: 'KeyZ',
+                  rotate180: 'KeyA',
+                  hold: 'KeyC',
+                  pause: 'Escape',
+                  backToMenu: 'KeyB'
+                },
+                enableGhost: true,
+                enableSound: true,
+                masterVolume: 50,
+                backgroundMusic: '',
+                musicVolume: 30,
+                ghostOpacity: 50,
+                enableWallpaper: true,
+                undoSteps: 50,
+                wallpaperChangeInterval: 120
+              }
             }
           };
         });
