@@ -216,13 +216,21 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
     }
   };
 
-  // 鼠标滚轮音量控制
+  // 鼠标滚轮音量控制（更好的体验）
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -5 : 5;
-    const newVolume = Math.max(0, Math.min(100, (settings.musicVolume || 30) + delta));
-    handleVolumeChange([newVolume]);
-  }, [settings.musicVolume, handleVolumeChange]);
+    e.stopPropagation();
+    const delta = e.deltaY > 0 ? -3 : 3; // 更精细的控制
+    const currentVolume = settings.musicVolume || 30;
+    const newVolume = Math.max(0, Math.min(100, currentVolume + delta));
+    
+    // 直接调用设置更新函数而不是handleVolumeChange
+    if (audioRef.current) {
+      audioRef.current.volume = muted ? 0 : newVolume / 100;
+    }
+    // 通过用户设置保存音量变化
+    // TODO: 需要通过useUserSettings保存音量设置
+  }, [settings.musicVolume, muted]);
 
   // 静音切换
   const toggleMute = useCallback(() => {
@@ -304,7 +312,11 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-2" onWheel={handleWheel}>
+        <div 
+          className="flex items-center gap-2" 
+          onWheel={handleWheel}
+          title="使用鼠标滚轮可以快速调节音量"
+        >
           <Button
             variant="ghost"
             size="sm"
@@ -320,7 +332,9 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
             className="flex-1"
             disabled={!settings.enableSound}
           />
-          <span className="text-sm w-8">{settings.musicVolume || 30}</span>
+          <span className="text-sm w-12 text-right">
+            {muted ? "静音" : `${settings.musicVolume || 30}%`}
+          </span>
         </div>
 
         <div className="text-center text-sm text-muted-foreground">

@@ -20,19 +20,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RotateCcw, RotateCw } from 'lucide-react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import GameMusicManager from '@/components/GameMusicManager';
+import BackgroundWallpaper from '@/components/BackgroundWallpaper';
 
 interface SinglePlayerGameAreaProps {
   gameMode: GameMode;
   gameStarted?: boolean;
   onGameEnd: (finalStats: any) => void;
   onBackToMenu?: () => void;
+  onActualGameStart?: () => void;
 }
 
 const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   gameMode,
   gameStarted = false,
   onGameEnd,
-  onBackToMenu
+  onBackToMenu,
+  onActualGameStart
 }) => {
   const { user } = useAuth();
   const { logUserSession } = useSessionLogger();
@@ -83,12 +87,16 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     // 启动游戏逻辑
     gameLogic.startGame();
     
+    // 通知父组件游戏真正开始了
+    onActualGameStart?.();
+    
     // 添加调试日志确认游戏状态
     debugLog.debug('游戏开始后状态', {
       gameStarted: gameLogic.gameStarted,
       gameInitialized: gameLogic.gameInitialized,
       isPaused: gameLogic.isPaused,
-      gameOver: gameLogic.gameOver
+      gameOver: gameLogic.gameOver,
+      reallyStarted: gameReallyStarted
     });
     
     if (user && !user.isGuest) {
@@ -187,12 +195,17 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const showOutOfFocusOverlay = gameLogic.isPaused && gameReallyStarted && !gameLogic.gameOver;
 
   return (
-    <div 
-      ref={gameContainerRef}
-      className={`min-h-screen p-4 ${getThemeClasses()}`}
-      tabIndex={0}
-      style={{ outline: 'none' }}
-    >
+    <BackgroundWallpaper>
+      <GameMusicManager 
+        isGameActive={gameReallyStarted} 
+        isGamePaused={gameLogic.isPaused} 
+      />
+      <div 
+        ref={gameContainerRef}
+        className={`min-h-screen p-4 ${getThemeClasses()}`}
+        tabIndex={0}
+        style={{ outline: 'none' }}
+      >
       {/* 顶部控制栏 */}
       <div className="mb-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
@@ -378,7 +391,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         gameMode={gameMode.displayName}
         isEndlessMode={gameMode.id === 'endless'}
       />
-    </div>
+      </div>
+    </BackgroundWallpaper>
   );
 };
 

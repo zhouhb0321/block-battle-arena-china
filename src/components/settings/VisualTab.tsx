@@ -1,10 +1,12 @@
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Sparkles } from 'lucide-react';
+import { Eye, Sparkles, RefreshCw, Image } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import type { GameSettings } from '@/utils/gameTypes';
 
 interface VisualTabProps {
@@ -15,6 +17,61 @@ interface VisualTabProps {
 const VisualTab: React.FC<VisualTabProps> = ({ settings, onSettingChange }) => {
   // 添加幽灵方块透明度设置（如果不存在则默认为50%）
   const ghostOpacity = (settings as any).ghostOpacity || 50;
+  
+  // 背景图片相关状态
+  const [backgroundImages, setBackgroundImages] = useState<string[]>([]);
+  const [currentPreviewImage, setCurrentPreviewImage] = useState<string>('');
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
+
+  // 获取背景图片列表
+  const fetchBackgroundImages = useCallback(async () => {
+    setIsLoadingImages(true);
+    try {
+      const { data, error } = await supabase.storage
+        .from('wallpapers')
+        .list('', {
+          limit: 50,
+          sortBy: { column: 'name', order: 'asc' }
+        });
+      
+      if (error) {
+        console.error('获取背景图片失败:', error);
+        return;
+      }
+      
+      const imageUrls: string[] = [];
+      for (const file of data || []) {
+        if (file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('wallpapers')
+            .getPublicUrl(file.name);
+          imageUrls.push(publicUrl);
+        }
+      }
+      
+      setBackgroundImages(imageUrls);
+      if (imageUrls.length > 0 && !currentPreviewImage) {
+        setCurrentPreviewImage(imageUrls[0]);
+      }
+    } catch (error) {
+      console.error('获取背景图片异常:', error);
+    } finally {
+      setIsLoadingImages(false);
+    }
+  }, [currentPreviewImage]);
+
+  // 初始化时获取背景图片
+  useEffect(() => {
+    fetchBackgroundImages();
+  }, [fetchBackgroundImages]);
+
+  // 随机预览图片
+  const previewRandomImage = () => {
+    if (backgroundImages.length > 0) {
+      const randomIndex = Math.floor(Math.random() * backgroundImages.length);
+      setCurrentPreviewImage(backgroundImages[randomIndex]);
+    }
+  };
 
   return (
     <Card>
@@ -109,8 +166,67 @@ const VisualTab: React.FC<VisualTabProps> = ({ settings, onSettingChange }) => {
                 ))}
               </div>
               <p className="text-sm text-muted-foreground">
-                建议使用较长间隔避免分心，图片将从 /public/wallpapers/ 文件夹随机选择
+                建议使用较长间隔避免分心，图片将从上传的背景图片中随机选择
               </p>
+              
+              {/* 背景图片预览区域 */}
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Image className="w-4 h-4" />
+                    背景图片预览
+                  </Label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchBackgroundImages}
+                      disabled={isLoadingImages}
+                    >
+                      <RefreshCw className={`w-3 h-3 mr-1 ${isLoadingImages ? 'animate-spin' : ''}`} />
+                      刷新
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={previewRandomImage}
+                      disabled={backgroundImages.length === 0}
+                    >
+                      随机预览
+                    </Button>
+                  </div>
+                </div>
+                
+                {backgroundImages.length > 0 ? (
+                  <div className="space-y-2">
+                    <div 
+                      className="w-full h-24 bg-cover bg-center rounded-lg border"
+                      style={{ 
+                        backgroundImage: currentPreviewImage ? `url(${currentPreviewImage})` : 'none',
+                        backgroundColor: !currentPreviewImage ? '#f0f0f0' : 'transparent'
+                      }}
+                    >
+                      {!currentPreviewImage && (
+                        <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
+                          点击"随机预览"查看背景图片
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      找到 {backgroundImages.length} 张背景图片
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center p-4 border-2 border-dashed border-gray-300 rounded-lg">
+                    <p className="text-sm text-gray-500">
+                      未找到背景图片
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      请通过管理面板上传背景图片文件
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

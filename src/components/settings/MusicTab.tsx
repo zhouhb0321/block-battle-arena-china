@@ -35,8 +35,12 @@ const MusicTab: React.FC<MusicTabProps> = ({ settings, onSettingChange }) => {
 
           {/* 音乐播放器 */}
           <div className="space-y-2">
-            <Label>背景音乐播放器</Label>
-            <EnhancedMusicPlayer autoPlay={false} />
+            <Label>背景音乐播放器（支持鼠标滚轮调节音量）</Label>
+            <EnhancedMusicPlayer 
+              autoPlay={false} 
+              onVolumeChange={(volume) => onSettingChange('musicVolume', volume)}
+              initialVolume={settings.musicVolume || 30}
+            />
           </div>
         </CardContent>
       </Card>

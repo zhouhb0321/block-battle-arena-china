@@ -19,10 +19,11 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
   const { t } = useLanguage();
   const { gameLogic, gameSettings } = useTetrisGame();
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
+  const [actualGameStarted, setActualGameStarted] = useState(false);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
-  // 同步gameStarted状态与gameLogic
-  const gameStarted = gameLogic.gameStarted || gameLogic.gameInitialized;
+  // 仅在倒计时完成且游戏真正开始后才激活键盘控制
+  const gameStarted = actualGameStarted && gameLogic.gameStarted;
 
   const handleModeReady = (mode: GameMode) => {
     console.log('Game mode ready:', mode);
@@ -34,12 +35,14 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
     console.log('Back to menu called');
     gameLogic.resetGame();
     setGameMode(null);
+    setActualGameStarted(false);
     onBackToMenu();
   };
 
   const handleReset = () => {
     console.log('Reset called');
     gameLogic.resetGame();
+    setActualGameStarted(false);
   };
 
   const handleTimeUp = () => {
@@ -82,11 +85,12 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       
       <SinglePlayerGameArea
         gameMode={gameMode}
-        gameStarted={gameStarted}
+        gameStarted={!!gameMode}
         onGameEnd={(stats) => {
           console.log('Game ended with stats:', stats);
           handleBackToMenu();
         }}
+        onActualGameStart={() => setActualGameStarted(true)}
       />
       
       <OutOfFocusOverlay 
