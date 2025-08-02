@@ -19,19 +19,20 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
   const { t } = useLanguage();
   const { gameLogic, gameSettings } = useTetrisGame();
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
-  const [gameStarted, setGameStarted] = useState(false);
   const gameContainerRef = useRef<HTMLDivElement>(null);
+
+  // 同步gameStarted状态与gameLogic
+  const gameStarted = gameLogic.gameStarted || gameLogic.gameInitialized;
 
   const handleModeReady = (mode: GameMode) => {
     console.log('Game mode ready:', mode);
     setGameMode(mode);
-    setGameStarted(true); // 直接开始游戏
+    // 游戏开始将由倒计时完成后触发
   };
 
   const handleBackToMenu = () => {
     console.log('Back to menu called');
     gameLogic.resetGame();
-    setGameStarted(false);
     setGameMode(null);
     onBackToMenu();
   };
@@ -39,7 +40,6 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
   const handleReset = () => {
     console.log('Reset called');
     gameLogic.resetGame();
-    setGameStarted(false);
   };
 
   const handleTimeUp = () => {

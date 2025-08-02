@@ -61,58 +61,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     }
   });
 
-  // Remove useGameControls dependency - handle keyboard directly
-
-  // Basic keyboard handling without external dependency
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (!gameReallyStarted || gameLogic.gameOver) return;
-      
-      switch (e.key) {
-        case 'ArrowLeft':
-          e.preventDefault();
-          gameLogic.movePiece(-1, 0);
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          gameLogic.movePiece(1, 0);
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          gameLogic.movePiece(0, 1);
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          gameLogic.rotatePieceClockwise();
-          break;
-        case ' ':
-          e.preventDefault();
-          gameLogic.hardDrop();
-          break;
-        case 'c':
-        case 'C':
-          e.preventDefault();
-          gameLogic.holdCurrentPiece();
-          break;
-        case 'z':
-        case 'Z':
-          e.preventDefault();
-          gameLogic.rotatePieceCounterclockwise();
-          break;
-        case 'p':
-        case 'P':
-          e.preventDefault();
-          gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame();
-          break;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyPress);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyPress);
-    };
-  }, [gameLogic, gameReallyStarted]);
+  // 键盘控制已移至GameKeyboardHandler统一处理，移除重复的键盘事件监听
 
   const handleUndo = useCallback(() => {
     if (gameLogic.canUndo) {
@@ -133,6 +82,14 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     
     // 启动游戏逻辑
     gameLogic.startGame();
+    
+    // 添加调试日志确认游戏状态
+    debugLog.debug('游戏开始后状态', {
+      gameStarted: gameLogic.gameStarted,
+      gameInitialized: gameLogic.gameInitialized,
+      isPaused: gameLogic.isPaused,
+      gameOver: gameLogic.gameOver
+    });
     
     if (user && !user.isGuest) {
       logUserSession('game_start', gameMode.id, { 
