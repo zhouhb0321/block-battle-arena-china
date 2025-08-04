@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useKeyboardControls } from './useKeyboardControls';
-import { useUserSettings } from './useUserSettings';
 import { useWindowFocus } from './useWindowFocus';
 import { useGameState } from './useGameState';
 import { useAchievements } from './useAchievements';
@@ -33,9 +31,10 @@ interface UseGameLogicProps {
   onGameEnd: (stats: GameStats) => void;
   onSpecialClear?: (clearType: string, lines: number) => void;
   onAchievement?: (text: string, type: 'tetris' | 'tspin' | 'combo' | 'perfect' | 'level') => void;
+  undoSteps?: number; // Pass from TetrisGameProvider to avoid circular dependency
 }
 
-export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievement }: UseGameLogicProps) => {
+export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievement, undoSteps = 50 }: UseGameLogicProps) => {
   const [board, setBoard] = useState<Board>(createEmptyBoard());
   const [currentPiece, setCurrentPiece] = useState<GamePiece | null>(null);
   const [nextPieces, setNextPieces] = useState<GamePiece[]>([]);
@@ -68,12 +67,12 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const [isLockDelayActive, setIsLockDelayActive] = useState(false);
   const [lockDelayResetCount, setLockDelayResetCount] = useState(0);
   
-  const { settings } = useUserSettings();
+  // Remove direct useUserSettings dependency to prevent circular rendering
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
   
   // 撤销重做功能 - 仅单人模式
   const isSinglePlayer = gameMode.id === 'marathon' || gameMode.id === 'endless' || gameMode.id === 'sprint40' || gameMode.id === 'ultra2min';
-  const maxUndoSteps = settings.undoSteps || 50;
+  const maxUndoSteps = undoSteps;
   const gameStateManager = useGameState({
     maxHistorySize: maxUndoSteps,
     enabled: isSinglePlayer
@@ -577,33 +576,12 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setGameStarted(true);
     gameStartTime.current = Date.now();
     
-    // Start replay recording for ranked/competitive modes
-    if (gameMode.id === 'sprint40' || gameMode.id === 'ultra2min' || gameMode.id.includes('vs')) {
-      const gameSettings = {
-        enableGhost: settings.enableGhost,
-        enableSound: settings.enableSound,
-        masterVolume: settings.masterVolume,
-        musicVolume: settings.musicVolume,
-        backgroundMusic: settings.backgroundMusic,
-        arr: settings.arr,
-        das: settings.das,
-        sdf: settings.sdf,
-        controls: settings.controls,
-        ghostOpacity: settings.ghostOpacity,
-        enableWallpaper: settings.enableWallpaper,
-        undoSteps: settings.undoSteps,
-        wallpaperChangeInterval: settings.wallpaperChangeInterval,
-        blockSkin: settings.blockSkin,
-      };
-      
-      startRecording(createEmptyBoard(), gameSettings, Math.random().toString(36));
-      debugLog.game('Replay recording started for game mode:', gameMode.id);
-    }
+    // Replay recording will be handled by the game provider
     
     if (!gameInitialized) {
       initializePieces();
     }
-  }, [initializePieces, gameInitialized, gameMode.id, settings, startRecording]);
+  }, [initializePieces, gameInitialized, gameMode.id, startRecording]);
 
   const initializeForCountdown = useCallback(() => {
     debugLog.game('Initializing for countdown start');

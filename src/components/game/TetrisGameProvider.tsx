@@ -67,7 +67,8 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
     },
     onSpecialClear: (clearType: string, lines: number) => {
       console.log('Special clear:', clearType, lines);
-    }
+    },
+    undoSteps: gameSettings.undoSteps
   });
 
   const contextValue: TetrisGameContextType = {
