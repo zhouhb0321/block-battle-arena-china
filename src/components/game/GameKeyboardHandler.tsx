@@ -91,9 +91,9 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
     canRedo
   });
 
-  // 添加键盘控制循环
+  // 添加键盘控制循环 - 只有在游戏结束时才停止
   useEffect(() => {
-    if (!gameStarted || gameLogic.gameOver || gameLogic.isPaused) {
+    if (gameLogic.gameOver) {
       if (keyboardLoopRef.current) {
         cancelAnimationFrame(keyboardLoopRef.current);
         keyboardLoopRef.current = null;
@@ -114,7 +114,7 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
         keyboardLoopRef.current = null;
       }
     };
-  }, [gameStarted, gameLogic.gameOver, gameLogic.isPaused, keyboardControls, keyboardLoopRef]);
+  }, [gameLogic.gameOver, keyboardControls, keyboardLoopRef]);
 
   return null; // This component only handles keyboard logic
 };

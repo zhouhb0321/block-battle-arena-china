@@ -22,8 +22,8 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
   const [actualGameStarted, setActualGameStarted] = useState(false);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
-  // 仅在倒计时完成且游戏真正开始后才激活键盘控制
-  const gameStarted = actualGameStarted && gameLogic.gameStarted;
+  // 键盘控制在选择模式后即可激活，无需等待双重条件
+  const gameStarted = !!gameMode;
 
   const handleModeReady = (mode: GameMode) => {
     console.log('Game mode ready:', mode);
@@ -75,7 +75,7 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       style={{ outline: 'none' }}
     >
       <GameKeyboardHandler
-        gameStarted={gameStarted}
+        gameStarted={true}
         onBackToMenu={handleBackToMenu}
         onUndo={gameLogic.undo}
         onRedo={gameLogic.redo}
