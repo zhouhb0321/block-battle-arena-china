@@ -85,8 +85,9 @@ export const useUserSettings = () => {
   const [settings, setSettings] = useLocalStorage<UserSettings>('userSettings', DEFAULT_GUEST_SETTINGS);
   const [loading, setLoading] = useState(false);
 
-  // Fetch cloud settings
+  // Fetch cloud settings with enhanced debugging
   const fetchCloudSettings = useCallback(async (uid: string) => {
+    console.log('fetchCloudSettings: 开始获取云端设置', { uid });
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -94,8 +95,20 @@ export const useUserSettings = () => {
         .select('*')
         .eq('user_id', uid)
         .single();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('fetchCloudSettings: 获取云端设置失败', error);
+        throw error;
+      }
+      
       if (data) {
+        console.log('fetchCloudSettings: 获取到云端设置数据', { 
+          controls: data.controls,
+          arr: data.arr,
+          das: data.das,
+          sdf: data.sdf
+        });
+        
         // Type-safe conversion from database to UserSettings
         const controlsData = data.controls as any;
         const cloudSettings: UserSettings = {
@@ -125,22 +138,59 @@ export const useUserSettings = () => {
           undoSteps: data.undo_steps ?? 50,
           wallpaperChangeInterval: data.wallpaper_change_interval ?? 120,
         };
+        
+        console.log('fetchCloudSettings: 设置转换完成', { 
+          cloudSettings: cloudSettings.controls,
+          originalControls: data.controls
+        });
+        
         setSettings(cloudSettings);
         window.localStorage.setItem('userSettings', JSON.stringify(cloudSettings));
+        console.log('fetchCloudSettings: 云端设置应用成功');
+      } else {
+        console.log('fetchCloudSettings: 未找到云端设置数据');
       }
     } catch (error) {
-      console.error('Failed to fetch cloud settings:', error);
+      console.error('fetchCloudSettings: 获取云端设置时发生错误', error);
     } finally {
       setLoading(false);
     }
   }, [setSettings]);
 
-  // Auto-fetch cloud settings after login
+  // Auto-fetch cloud settings after login with debug logging
   useEffect(() => {
+    console.log('useUserSettings: 用户状态变化检测', { 
+      hasUser: !!user, 
+      isGuest: user?.isGuest, 
+      userId: user?.id 
+    });
+    
     if (user && !user.isGuest && user.id) {
+      console.log('useUserSettings: 开始加载云端设置', { userId: user.id });
       fetchCloudSettings(user.id);
+    } else if (user?.isGuest) {
+      console.log('useUserSettings: 访客用户，使用本地设置');
+    } else {
+      console.log('useUserSettings: 无用户或用户ID，保持默认设置');
     }
   }, [user, fetchCloudSettings]);
+
+  // Listen for external settings reload triggers
+  useEffect(() => {
+    const handleSettingsReload = (event: CustomEvent) => {
+      console.log('useUserSettings: 收到设置重新加载信号', event.detail);
+      const { userId, isGuest } = event.detail;
+      if (userId && !isGuest) {
+        console.log('useUserSettings: 触发云端设置重新加载', { userId });
+        fetchCloudSettings(userId);
+      }
+    };
+
+    window.addEventListener('userSettingsReload', handleSettingsReload as EventListener);
+    return () => {
+      window.removeEventListener('userSettingsReload', handleSettingsReload as EventListener);
+    };
+  }, [fetchCloudSettings]);
 
   // Save settings to cloud - using completely type-safe approach
   const saveSettings = useCallback(async (newSettings: Partial<UserSettings>) => {

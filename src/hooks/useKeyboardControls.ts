@@ -66,8 +66,14 @@ export const useKeyboardControls = ({
     }
 
     const { controls } = gameSettings;
-    console.log('按键设置当前值:', controls);
-    console.log('按下的按键:', event.code);
+    console.log('useKeyboardControls: 当前按键设置', { 
+      controls,
+      pressedKey: event.code,
+      moveLeft: controls.moveLeft,
+      moveRight: controls.moveRight,
+      softDrop: controls.softDrop,
+      hardDrop: controls.hardDrop
+    });
     const now = performance.now();
     
     // 记录按键时间
@@ -106,15 +112,24 @@ export const useKeyboardControls = ({
       // 移动和软降的初始响应
       if (!gameOver && !paused) {
         if (event.code === controls.moveLeft) {
-          console.log('左移按键触发');
+          console.log('useKeyboardControls: 左移按键触发', { 
+            key: event.code, 
+            expected: controls.moveLeft 
+          });
           onMoveLeft();
           lastMoveTime.current[event.code] = now;
         } else if (event.code === controls.moveRight) {
-          console.log('右移按键触发');
+          console.log('useKeyboardControls: 右移按键触发', { 
+            key: event.code, 
+            expected: controls.moveRight 
+          });
           onMoveRight();
           lastMoveTime.current[event.code] = now;
         } else if (event.code === controls.softDrop) {
-          console.log('软降按键触发');
+          console.log('useKeyboardControls: 软降按键触发', { 
+            key: event.code, 
+            expected: controls.softDrop 
+          });
           onSoftDrop();
           lastMoveTime.current[event.code] = now;
         }
@@ -167,7 +182,12 @@ export const useKeyboardControls = ({
     });
   }, [gameOver, paused, keys, gameSettings, onMoveLeft, onMoveRight, onSoftDrop]);
 
+  // Enhanced useEffect with settings change detection
   useEffect(() => {
+    console.log('useKeyboardControls: 重新绑定键盘事件监听器', { 
+      controls: gameSettings.controls 
+    });
+    
     const handleKeyDownEvent = (e: KeyboardEvent) => handleKeyDown(e);
     const handleKeyUpEvent = (e: KeyboardEvent) => handleKeyUp(e);
 
@@ -178,7 +198,7 @@ export const useKeyboardControls = ({
       window.removeEventListener('keydown', handleKeyDownEvent);
       window.removeEventListener('keyup', handleKeyUpEvent);
     };
-  }, [handleKeyDown, handleKeyUp]);
+  }, [handleKeyDown, handleKeyUp, gameSettings.controls]); // Added gameSettings.controls dependency
 
   return {
     keys,

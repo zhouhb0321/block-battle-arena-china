@@ -29,24 +29,36 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
   children,
   gameMode
 }) => {
-  const { settings } = useUserSettings();
+  const { settings, loading } = useUserSettings();
   const keyboardLoopRef = useRef<number | null>(null);
 
-  const gameSettings: GameSettings = {
-    enableGhost: settings.enableGhost,
-    enableSound: settings.enableSound,
-    masterVolume: settings.masterVolume,
-    arr: settings.arr,
-    das: settings.das,
-    sdf: settings.sdf,
-    controls: settings.controls,
-    backgroundMusic: settings.backgroundMusic || '',
-    musicVolume: settings.musicVolume || 30,
-    ghostOpacity: settings.ghostOpacity || 50,
-    enableWallpaper: settings.enableWallpaper,
-    undoSteps: settings.undoSteps,
-    wallpaperChangeInterval: settings.wallpaperChangeInterval || 120
-  };
+  // Enhanced gameSettings with debugging
+  const gameSettings: GameSettings = React.useMemo(() => {
+    const gameSettingsData = {
+      enableGhost: settings.enableGhost,
+      enableSound: settings.enableSound,
+      masterVolume: settings.masterVolume,
+      arr: settings.arr,
+      das: settings.das,
+      sdf: settings.sdf,
+      controls: settings.controls,
+      backgroundMusic: settings.backgroundMusic || '',
+      musicVolume: settings.musicVolume || 30,
+      ghostOpacity: settings.ghostOpacity || 50,
+      enableWallpaper: settings.enableWallpaper,
+      undoSteps: settings.undoSteps,
+      wallpaperChangeInterval: settings.wallpaperChangeInterval || 120
+    };
+    
+    console.log('TetrisGameProvider: gameSettings 更新', { 
+      controls: gameSettingsData.controls,
+      arr: gameSettingsData.arr,
+      das: gameSettingsData.das,
+      loading
+    });
+    
+    return gameSettingsData;
+  }, [settings, loading]);
 
   const gameLogic = useGameLogic({
     gameMode,

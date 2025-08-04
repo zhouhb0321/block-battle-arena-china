@@ -201,6 +201,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   isAdmin: extendedUser.isAdmin,
                   email: extendedUser.email 
                 });
+                // 触发设置重新加载的事件
+                window.dispatchEvent(new CustomEvent('userSettingsReload', { 
+                  detail: { userId: extendedUser.id, isGuest: extendedUser.isGuest } 
+                }));
               })
               .catch(profileError => {
                 debugLog.error('设置用户信息失败', profileError);
@@ -236,15 +240,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         debugLog.auth('发现现有会话', { userId: session.user.id });
         // 延迟处理初始会话，避免阻塞初始化
         setTimeout(() => {
-          fetchUserProfile(session.user)
-            .then(extendedUser => {
-              setUser(extendedUser);
-              setSession(session);
-              debugLog.auth('初始会话处理完成', { 
-                isAdmin: extendedUser.isAdmin,
-                email: extendedUser.email 
-              });
-            })
+            fetchUserProfile(session.user)
+              .then(extendedUser => {
+                setUser(extendedUser);
+                setSession(session);
+                debugLog.auth('初始会话处理完成', { 
+                  isAdmin: extendedUser.isAdmin,
+                  email: extendedUser.email 
+                });
+                // 触发设置重新加载的事件
+                window.dispatchEvent(new CustomEvent('userSettingsReload', { 
+                  detail: { userId: extendedUser.id, isGuest: extendedUser.isGuest } 
+                }));
+              })
             .catch(error => {
               debugLog.error('初始化用户信息失败', error);
               // 设置基础用户信息作为回退
