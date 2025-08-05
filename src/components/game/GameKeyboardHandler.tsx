@@ -35,16 +35,28 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
     gameOver: gameLogic.gameOver,
     paused: gameLogic.isPaused,
     onMoveLeft: () => {
-      debugLog.debug('Keyboard: Move left');
+      console.log('键盘控制: 左移触发', { 
+        gameOver: gameLogic.gameOver, 
+        isPaused: gameLogic.isPaused, 
+        hasPiece: !!gameLogic.currentPiece 
+      });
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
-        return gameLogic.movePiece(-1, 0);
+        const moved = gameLogic.movePiece(-1, 0);
+        console.log('左移结果:', moved);
+        return moved;
       }
       return false;
     },
     onMoveRight: () => {
-      debugLog.debug('Keyboard: Move right');
+      console.log('键盘控制: 右移触发', { 
+        gameOver: gameLogic.gameOver, 
+        isPaused: gameLogic.isPaused, 
+        hasPiece: !!gameLogic.currentPiece 
+      });
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
-        return gameLogic.movePiece(1, 0);
+        const moved = gameLogic.movePiece(1, 0);
+        console.log('右移结果:', moved);
+        return moved;
       }
       return false;
     },
@@ -66,9 +78,14 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
       }
     },
     onRotateClockwise: () => {
-      debugLog.debug('Keyboard: Rotate clockwise');
+      console.log('键盘控制: 顺时针旋转触发', { 
+        gameOver: gameLogic.gameOver, 
+        isPaused: gameLogic.isPaused, 
+        hasPiece: !!gameLogic.currentPiece 
+      });
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
         gameLogic.rotatePieceClockwise();
+        console.log('顺时针旋转执行完成');
       }
     },
     onRotateCounterclockwise: () => {

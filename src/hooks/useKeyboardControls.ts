@@ -182,23 +182,20 @@ export const useKeyboardControls = ({
     });
   }, [gameOver, paused, keys, gameSettings, onMoveLeft, onMoveRight, onSoftDrop]);
 
-  // Enhanced useEffect with settings change detection
+  // Enhanced useEffect with stable event handlers to prevent frequent re-binding
   useEffect(() => {
     console.log('useKeyboardControls: 重新绑定键盘事件监听器', { 
       controls: gameSettings.controls 
     });
     
-    const handleKeyDownEvent = (e: KeyboardEvent) => handleKeyDown(e);
-    const handleKeyUpEvent = (e: KeyboardEvent) => handleKeyUp(e);
-
-    window.addEventListener('keydown', handleKeyDownEvent);
-    window.addEventListener('keyup', handleKeyUpEvent);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDownEvent);
-      window.removeEventListener('keyup', handleKeyUpEvent);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [handleKeyDown, handleKeyUp, gameSettings.controls]); // Added gameSettings.controls dependency
+  }, [handleKeyDown, handleKeyUp]); // Removed gameSettings.controls to reduce re-binding
 
   return {
     keys,

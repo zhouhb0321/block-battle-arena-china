@@ -80,23 +80,24 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   }, [gameLogic]);
 
   const handleCountdownComplete = () => {
-    debugLog.game('Countdown completed, starting game...');
+    console.log('Countdown completed, starting game...');
     setShowCountdown(false);
     setGameReallyStarted(true);
     
-    // 启动游戏逻辑
+    // 启动游戏逻辑 - 确保只在这里启动一次
     gameLogic.startGame();
+    gameLogic.spawnNewPiece();
     
     // 通知父组件游戏真正开始了
     onActualGameStart?.();
     
     // 添加调试日志确认游戏状态
-    debugLog.debug('游戏开始后状态', {
+    console.log('游戏开始后状态', {
       gameStarted: gameLogic.gameStarted,
       gameInitialized: gameLogic.gameInitialized,
       isPaused: gameLogic.isPaused,
       gameOver: gameLogic.gameOver,
-      reallyStarted: gameReallyStarted
+      currentPiece: !!gameLogic.currentPiece
     });
     
     if (user && !user.isGuest) {

@@ -28,13 +28,7 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
   const handleModeReady = (mode: GameMode) => {
     console.log('Game mode ready:', mode);
     setGameMode(mode);
-    // 游戏模式设置后立即开始游戏并生成方块
-    setTimeout(() => {
-      console.log('Starting game and spawning first piece');
-      gameLogic.startGame();
-      gameLogic.spawnNewPiece();
-      setActualGameStarted(true);
-    }, 100);
+    // 只设置模式，不启动游戏，游戏将由倒计时完成后启动
   };
 
   const handleBackToMenu = () => {
