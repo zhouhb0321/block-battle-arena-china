@@ -1,7 +1,6 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useGameState } from '@/hooks/useGameState';
-import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import type { GameSettings, GameMode } from '@/utils/gameTypes';
 
@@ -65,32 +64,13 @@ const GameController: React.FC<GameControllerProps> = ({
     }
   }, [onBackToMenu]);
 
-  const keyboardControls = useKeyboardControls({
-    gameSettings,
-    gameOver: gameLogic.gameOver,
-    paused: gameLogic.isPaused,
-    onMoveLeft: () => gameLogic.movePiece(-1, 0),
-    onMoveRight: () => gameLogic.movePiece(1, 0),
-    onSoftDrop: () => {
-      const moved = gameLogic.movePiece(0, 1);
-      if (moved) {
-        // Add soft drop score if needed
-      }
-    },
-    onHardDrop: gameLogic.hardDrop,
-    onRotateClockwise: gameLogic.rotatePieceClockwise,
-    onRotateCounterclockwise: gameLogic.rotatePieceCounterclockwise,
-    onHold: gameLogic.holdCurrentPiece,
-    onPause: togglePause,
-    onBackToMenu: handleBackToMenu
-  });
+  // 键盘控制已移至GameKeyboardHandler统一处理，避免重复监听
 
   const gameLoop = useCallback((timestamp: number) => {
     if (gameLogic.gameOver) return;
 
     if (!gameLogic.isPaused) {
-      keyboardControls.processHeldKeys(timestamp);
-
+      // 键盘控制已移至GameKeyboardHandler，这里只处理重力下降
       const dropSpeed = Math.max(50, 1000 - (gameLogic.level - 1) * 50);
       if (timestamp - lastDropTime.current > dropSpeed) {
         const moved = gameLogic.movePiece(0, 1);
@@ -100,8 +80,7 @@ const GameController: React.FC<GameControllerProps> = ({
 
     gameLoopRef.current = requestAnimationFrame(gameLoop);
   }, [
-    gameLogic.gameOver, gameLogic.isPaused, gameLogic.level,
-    keyboardControls.processHeldKeys, gameLogic.movePiece
+    gameLogic.gameOver, gameLogic.isPaused, gameLogic.level, gameLogic.movePiece
   ]);
 
   useEffect(() => {

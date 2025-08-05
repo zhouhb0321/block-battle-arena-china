@@ -36,31 +36,46 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
     paused: gameLogic.isPaused,
     onMoveLeft: () => {
       debugLog.debug('Keyboard: Move left');
-      return gameLogic.movePiece(-1, 0);
+      if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
+        return gameLogic.movePiece(-1, 0);
+      }
+      return false;
     },
     onMoveRight: () => {
       debugLog.debug('Keyboard: Move right');
-      return gameLogic.movePiece(1, 0);
+      if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
+        return gameLogic.movePiece(1, 0);
+      }
+      return false;
     },
     onSoftDrop: () => {
       debugLog.debug('Keyboard: Soft drop');
-      const moved = gameLogic.movePiece(0, 1);
-      if (moved) {
-        // Add soft drop points if needed
+      if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
+        const moved = gameLogic.movePiece(0, 1);
+        if (moved) {
+          // Add soft drop points if needed
+        }
+        return moved;
       }
-      return moved;
+      return false;
     },
     onHardDrop: () => {
       debugLog.debug('Keyboard: Hard drop');
-      gameLogic.hardDrop();
+      if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
+        gameLogic.hardDrop();
+      }
     },
     onRotateClockwise: () => {
       debugLog.debug('Keyboard: Rotate clockwise');
-      gameLogic.rotatePieceClockwise();
+      if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
+        gameLogic.rotatePieceClockwise();
+      }
     },
     onRotateCounterclockwise: () => {
       debugLog.debug('Keyboard: Rotate counter-clockwise');
-      gameLogic.rotatePieceCounterclockwise();
+      if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
+        gameLogic.rotatePieceCounterclockwise();
+      }
     },
     onRotate180: rotate180,
     onHold: () => {
