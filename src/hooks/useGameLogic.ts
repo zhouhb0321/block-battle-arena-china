@@ -640,6 +640,19 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   useEffect(() => {
     if (gameOver || isPaused || !isWindowFocused || !gameStarted) return;
 
+    if (gameMode.id === 'ultra2min' && time >= 120) {
+      setGameOver(true);
+      const finalStats = { score, lines, level, time: 120, pps, apm, gameMode: gameMode.id };
+      onGameEnd(finalStats);
+
+      if (isRecording) {
+        stopRecording(finalStats as any).then(replay => {
+          if (replay) console.log(`2分钟挑战结束，录像已保存: ${replay.id}`);
+        });
+      }
+      return;
+    }
+
     const timer = setInterval(() => {
       setTime(prev => prev + 1);
       
@@ -651,7 +664,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameOver, isPaused, isWindowFocused, gameStarted]);
+  }, [gameOver, isPaused, isWindowFocused, gameStarted, time, gameMode.id, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
 
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;

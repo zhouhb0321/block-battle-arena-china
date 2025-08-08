@@ -13,85 +13,70 @@ interface AchievementDisplayProps {
   onAchievementComplete: (id: string) => void;
 }
 
-const AchievementDisplay: React.FC<AchievementDisplayProps> = ({ 
-  achievements, 
-  onAchievementComplete 
-}) => {
-  const [currentAchievement, setCurrentAchievement] = useState<Achievement | null>(null);
+const getAchievementColor = (type: Achievement['type']) => {
+  switch (type) {
+    case 'tetris':
+      return 'text-yellow-300 border-yellow-400/80 bg-yellow-400/25 shadow-yellow-400/40';
+    case 'tspin':
+      return 'text-purple-300 border-purple-400/80 bg-purple-400/25 shadow-purple-400/40';
+    case 'combo':
+      return 'text-green-300 border-green-400/80 bg-green-400/25 shadow-green-400/40';
+    case 'perfect':
+      return 'text-white border-white/80 bg-white/25 shadow-white/40';
+    case 'level':
+      return 'text-cyan-300 border-cyan-400/80 bg-cyan-400/25 shadow-cyan-400/40';
+    default:
+      return 'text-gray-300 border-gray-400/80 bg-gray-400/25 shadow-gray-400/40';
+  }
+};
+
+const AchievementItem: React.FC<{ achievement: Achievement; onComplete: (id: string) => void }> = ({ achievement, onComplete }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    if (achievements.length > 0 && !currentAchievement) {
-      const nextAchievement = achievements[0];
-      console.log('显示新成就:', nextAchievement.text, nextAchievement.type);
-      
-      setCurrentAchievement(nextAchievement);
-      setIsVisible(true);
+    setIsVisible(true);
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+      setTimeout(() => onComplete(achievement.id), 300); // 动画结束后移除
+    }, 1200); // 显示1.2秒
 
-      // 更短的显示时间，快速闪现
-      const hideTimer = setTimeout(() => {
-        setIsVisible(false);
-        // 100ms消失动画后立即移除
-        setTimeout(() => {
-          setCurrentAchievement(null);
-          onAchievementComplete(nextAchievement.id);
-        }, 100);
-      }, 800);
-
-      return () => clearTimeout(hideTimer);
-    }
-  }, [achievements, currentAchievement, onAchievementComplete]);
-
-  const getAchievementColor = (type: Achievement['type']) => {
-    switch (type) {
-      case 'tetris':
-        return 'text-yellow-300 border-yellow-400/80 bg-yellow-400/25 shadow-yellow-400/40';
-      case 'tspin':
-        return 'text-purple-300 border-purple-400/80 bg-purple-400/25 shadow-purple-400/40';
-      case 'combo':
-        return 'text-green-300 border-green-400/80 bg-green-400/25 shadow-green-400/40';
-      case 'perfect':
-        return 'text-white border-white/80 bg-white/25 shadow-white/40';
-      case 'level':
-        return 'text-cyan-300 border-cyan-400/80 bg-cyan-400/25 shadow-cyan-400/40';
-      default:
-        return 'text-gray-300 border-gray-400/80 bg-gray-400/25 shadow-gray-400/40';
-    }
-  };
-
-  if (!currentAchievement) {
-    return <div className="h-16 w-full" />; // 增加占位符高度
-  }
+    return () => clearTimeout(timer);
+  }, [achievement.id, onComplete]);
 
   return (
-    <div className="h-16 w-full flex items-center justify-center relative overflow-hidden">
+    <div
+      className={`
+        transform transition-all duration-300 ease-out
+        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}
+      `}
+    >
       <div
         className={`
-          absolute inset-0 flex items-center justify-center
-          transform transition-all duration-200 ease-out
-          ${isVisible 
-            ? 'scale-125 opacity-100 translate-y-0 animate-bounce' 
-            : 'scale-90 opacity-0 translate-y-2'
-          }
+          px-4 py-2 mb-2 font-bold text-center text-lg
+          ${getAchievementColor(achievement.type)}
+          border-2 rounded-lg backdrop-blur-md
+          whitespace-nowrap shadow-lg
         `}
       >
-        <div
-          className={`
-            px-8 py-3 font-bold text-center text-xl
-            ${getAchievementColor(currentAchievement.type)}
-            border-2 rounded-xl backdrop-blur-md
-            drop-shadow-2xl whitespace-nowrap
-            transform transition-all duration-200
-            shadow-2xl
-            ${isVisible ? 'animate-pulse' : ''}
-          `}
-          style={{
-            animation: isVisible ? 'bounce 0.6s ease-in-out, pulse 1s ease-in-out infinite' : undefined
-          }}
-        >
-          {currentAchievement.text}
-        </div>
+        {achievement.text}
       </div>
+    </div>
+  );
+};
+
+const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
+  achievements,
+  onAchievementComplete
+}) => {
+  return (
+    <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-48 w-full flex flex-col items-center justify-end z-30 pointer-events-none">
+      {achievements.map(achievement => (
+        <AchievementItem
+          key={achievement.id}
+          achievement={achievement}
+          onComplete={onAchievementComplete}
+        />
+      ))}
     </div>
   );
 };
