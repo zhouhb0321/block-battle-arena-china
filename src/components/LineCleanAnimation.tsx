@@ -21,13 +21,13 @@ const LineCleanAnimation: React.FC<LineCleanAnimationProps> = ({
       // Growing phase
       const growTimer = setTimeout(() => {
         setAnimationPhase('shrinking');
-      }, 400);
+      }, 120);
 
       // Shrinking phase
       const shrinkTimer = setTimeout(() => {
         setAnimationPhase('done');
         onComplete();
-      }, 800);
+      }, 240);
 
       return () => {
         clearTimeout(growTimer);
@@ -45,7 +45,7 @@ const LineCleanAnimation: React.FC<LineCleanAnimationProps> = ({
       case 'growing':
         return 'animate-pulse scale-110 opacity-100';
       case 'shrinking':
-        return 'scale-90 opacity-0 transition-all duration-300';
+        return 'scale-90 opacity-0 transition-all duration-150';
       default:
         return '';
     }

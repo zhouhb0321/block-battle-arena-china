@@ -223,16 +223,38 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           )}
           
           {gameReallyStarted && (
-            <Button
-              onClick={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-              disabled={gameLogic.gameOver}
-            >
-              {gameLogic.isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-              {gameLogic.isPaused ? '继续' : '暂停'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => gameLogic.isPaused ? gameLogic.resumeGame() : gameLogic.pauseGame()}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                disabled={gameLogic.gameOver}
+              >
+                {gameLogic.isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                {gameLogic.isPaused ? '继续' : '暂停'}
+              </Button>
+              <Button
+                onClick={handleUndo}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                disabled={!gameLogic.canUndo}
+                title="撤销 (Ctrl+Z)"
+              >
+                <Undo2 className="w-4 h-4" /> 撤销
+              </Button>
+              <Button
+                onClick={handleRedo}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                disabled={!gameLogic.canRedo}
+                title="重做 (Ctrl+Y)"
+              >
+                <Redo2 className="w-4 h-4" /> 重做
+              </Button>
+            </div>
           )}
         </div>
         
@@ -318,15 +340,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             <EnhancedGameBoard
               board={gameLogic.board}
               currentPiece={gameLogic.currentPiece}
-              ghostPiece={gameLogic.currentPiece ? {
-                ...gameLogic.currentPiece,
-                y: gameLogic.board && gameLogic.currentPiece 
-                  ? Math.max(0, gameLogic.board.findIndex((row, y) => 
-                      y >= gameLogic.currentPiece!.y && 
-                      !gameLogic.isValidPosition(gameLogic.board, { ...gameLogic.currentPiece!, y: y + 1 })
-                    ) || gameLogic.currentPiece.y)
-                  : gameLogic.currentPiece.y
-              } : null}
+              ghostPiece={gameLogic.ghostPiece || null}
               cellSize={32}
             />
           </div>

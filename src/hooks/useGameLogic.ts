@@ -389,6 +389,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       recordAction('drop', { type: 'hard' });
     }
     
+    // 在锁定前保存状态以支持撤销
+    if (isSinglePlayer) {
+      gameStateManager.saveState(board, currentPiece, score, lines, level);
+    }
     // 直接锁定方块到最终位置
     const droppedPiece = { ...currentPiece, y: dropY };
     const newBoard = placePiece(board, droppedPiece);
@@ -496,6 +500,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       
       if (lastTSpinCheck.current) {
         lastTSpinCheck.current.wasKicked = srsResult.wasKicked;
+        // 关键修复：使用旋转后的方块用于T-Spin检测
+        lastTSpinCheck.current.piece = { ...srsResult.newPiece };
+        lastTSpinCheck.current.board = board.map(row => [...row]);
       }
       
       if (resetLockDelay()) {
@@ -533,6 +540,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       
       if (lastTSpinCheck.current) {
         lastTSpinCheck.current.wasKicked = srsResult.wasKicked;
+        // 关键修复：使用旋转后的方块用于T-Spin检测
+        lastTSpinCheck.current.piece = { ...srsResult.newPiece };
+        lastTSpinCheck.current.board = board.map(row => [...row]);
       }
       
       if (resetLockDelay()) {
@@ -570,6 +580,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       
       if (lastTSpinCheck.current) {
         lastTSpinCheck.current.wasKicked = srsResult.wasKicked;
+        // 关键修复：使用旋转后的方块用于T-Spin检测
+        lastTSpinCheck.current.piece = { ...srsResult.newPiece };
+        lastTSpinCheck.current.board = board.map(row => [...row]);
       }
       
       if (resetLockDelay()) {
@@ -726,6 +739,38 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     gameStartTime.current = Date.now();
   }, [clearLockDelayTimer, gameStateManager, isRecording, score, lines, level, time, pps, apm, gameMode.id, stopRecording]);
 
+  const undoAction = useCallback(() => {
+    if (!isSinglePlayer) return null;
+    const snapshot = gameStateManager.undo();
+    if (snapshot) {
+      setBoard(snapshot.board.map(row => [...row]));
+      setCurrentPiece(snapshot.currentPiece ? { ...snapshot.currentPiece } : null);
+      setScore(snapshot.score);
+      setLines(snapshot.lines);
+      setLevel(snapshot.level);
+      clearLockDelayTimer();
+      setIsPaused(false);
+      return snapshot;
+    }
+    return null;
+  }, [isSinglePlayer, gameStateManager, clearLockDelayTimer]);
+
+  const redoAction = useCallback(() => {
+    if (!isSinglePlayer) return null;
+    const snapshot = gameStateManager.redo();
+    if (snapshot) {
+      setBoard(snapshot.board.map(row => [...row]));
+      setCurrentPiece(snapshot.currentPiece ? { ...snapshot.currentPiece } : null);
+      setScore(snapshot.score);
+      setLines(snapshot.lines);
+      setLevel(snapshot.level);
+      clearLockDelayTimer();
+      setIsPaused(false);
+      return snapshot;
+    }
+    return null;
+  }, [isSinglePlayer, gameStateManager, clearLockDelayTimer]);
+
   const pauseGame = useCallback(() => {
     debugLog.game('暂停游戏', { isPaused, isManuallyPaused });
     if (!isPaused) {
@@ -802,8 +847,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     // 撤销重放功能（仅单人模式）
     canUndo: isSinglePlayer ? gameStateManager.canUndo : false,
     canRedo: isSinglePlayer ? gameStateManager.canRedo : false,
-    undo: isSinglePlayer ? gameStateManager.undo : () => {},
-    redo: isSinglePlayer ? gameStateManager.redo : () => {},
+    undo: isSinglePlayer ? undoAction : () => {},
+    redo: isSinglePlayer ? redoAction : () => {},
     clearHistory: isSinglePlayer ? gameStateManager.clearHistory : () => {},
     
     // 硬降功能

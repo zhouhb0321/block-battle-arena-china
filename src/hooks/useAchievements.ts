@@ -19,7 +19,12 @@ export const useAchievements = () => {
       timestamp: Date.now()
     };
 
-    setAchievements(prev => [...prev, newAchievement]);
+    setAchievements(prev => {
+      const now = Date.now();
+      const last = prev[prev.length - 1];
+      const isDuplicate = last && last.text === text && last.type === type && (now - last.timestamp) < 1200;
+      return isDuplicate ? prev : [...prev, newAchievement];
+    });
   }, []);
 
   const removeAchievement = useCallback((id: string) => {

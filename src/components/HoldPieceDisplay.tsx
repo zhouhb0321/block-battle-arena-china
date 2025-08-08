@@ -23,7 +23,7 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     }
 
     const { shape } = holdPiece.type;
-    const cellSize = 20; // 调整为20px，与Next区保持一致
+    const cellSize = 28; // 与NEXT区保持一致
 
     // 计算方块的边界框
     let minRow = shape.length, maxRow = -1;
@@ -48,8 +48,8 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
         <div 
           className="flex justify-center items-center"
           style={{ 
-            width: Math.max(80, pieceWidth * cellSize),
-            height: Math.max(60, pieceHeight * cellSize)
+            width: Math.max(112, pieceWidth * cellSize),
+            height: Math.max(84, pieceHeight * cellSize)
           }}
         >
           <div 
