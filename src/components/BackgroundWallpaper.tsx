@@ -146,12 +146,12 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
       {currentWallpaper && settings.enableWallpaper && (
         <div
           className={`fixed inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
-            isTransitioning ? 'opacity-60' : 'opacity-80'
+            isTransitioning ? 'opacity-50' : 'opacity-70'
           }`}
           style={{
             backgroundImage: `url(${currentWallpaper})`,
-            zIndex: -2,
-            filter: 'brightness(0.3) contrast(1.2) saturate(0.8)' // 深色处理减少视觉干扰
+            zIndex: -2, // 确保壁纸在最底层
+            filter: 'brightness(0.6) contrast(1.1) saturate(0.9)' // 提升亮度，降低对比度和饱和度
           }}
         />
       )}
@@ -159,20 +159,20 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
       {/* 下一张壁纸（用于过渡效果）*/}
       {nextWallpaper && isTransitioning && (
         <div
-          className="fixed inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 opacity-60"
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 opacity-50"
           style={{
             backgroundImage: `url(${nextWallpaper})`,
-            zIndex: -1,
-            filter: 'brightness(0.3) contrast(1.2) saturate(0.8)'
+            zIndex: -2, // 同样在最底层
+            filter: 'brightness(0.6) contrast(1.1) saturate(0.9)'
           }}
         />
       )}
       
-      {/* 深色遮罩确保内容可读性 */}
+      {/* 深色遮罩确保内容可读性 - 去除模糊，降低不透明度 */}
       {currentWallpaper && settings.enableWallpaper && (
         <div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-[0.5px]"
-          style={{ zIndex: -1 }}
+          className="fixed inset-0 bg-black/25" // 降低黑色遮罩的不透明度
+          style={{ zIndex: -1 }} // 遮罩层在壁纸之上，但在游戏内容之下
         />
       )}
       
