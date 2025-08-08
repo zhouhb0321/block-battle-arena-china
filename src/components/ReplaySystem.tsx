@@ -143,7 +143,9 @@ const ReplaySystem: React.FC = () => {
                 enableWallpaper: true,
                 undoSteps: 50,
                 wallpaperChangeInterval: 120
-              }
+              },
+              seed: replay.seed || undefined,
+              initialBoard: replay.initial_board || undefined
             }
           };
         });

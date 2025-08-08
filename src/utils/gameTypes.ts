@@ -122,6 +122,8 @@ export interface GameReplay {
   metadata: {
     version: string;
     settings: GameSettings;
+    seed?: string;
+    initialBoard?: number[][];
   };
 }
 

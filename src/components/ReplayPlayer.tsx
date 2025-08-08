@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, RotateCcw, FastForward } from 'lucide-react';
+import { Play, Pause, RotateCcw } from 'lucide-react';
 import GameBoard from './GameBoard';
 import { createEmptyBoard, TETROMINO_TYPES } from '@/utils/tetrisLogic';
-import type { GameReplay, ReplayAction } from '@/utils/gameTypes';
+import { clearLines, placePiece } from '@/utils/tetrisCore';
+import type { GameReplay, ReplayAction, GamePiece, TetrominoType } from '@/utils/gameTypes';
+import { SeededRandom } from '@/utils/replayCompression';
 
 interface ReplayPlayerProps {
   replay: GameReplay | null;
@@ -28,18 +30,86 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
   const actionsRef = useRef<ReplayAction[]>([]);
   const maxTimeRef = useRef(0);
 
+  // 简易重放模拟器（仅根据 place 动作重建棋盘，最小化服务器压力）
+  const seedRef = useRef<SeededRandom | null>(null);
+  const pieceSeqRef = useRef<string[]>([]);
+  const pieceIndexRef = useRef(0);
+  const currentPieceRef = useRef<GamePiece | null>(null);
+  const initialBoardRef = useRef<number[][]>(createEmptyBoard());
+  const boardRef = useRef<number[][]>(createEmptyBoard());
+
   useEffect(() => {
-    if (replay?.actions) {
-      actionsRef.current = replay.actions;
-      maxTimeRef.current = Math.max(...replay.actions.map(a => a.timestamp), 0);
-      resetReplay();
+    boardRef.current = board;
+  }, [board]);
+
+  // 根据字母创建方块
+  const makeGamePiece = (letter: string): GamePiece => {
+    const t: TetrominoType = TETROMINO_TYPES[letter] as unknown as TetrominoType;
+    return {
+      type: t,
+      x: 4,
+      y: 0,
+      rotation: 0
+    };
+  };
+
+  const ensureQueue = (minLength: number) => {
+    if (pieceSeqRef.current.length >= minLength) return;
+    const needed = minLength - pieceSeqRef.current.length;
+    const seed = seedRef.current;
+    if (seed) {
+      const extra = seed.generatePieceSequence(needed);
+      pieceSeqRef.current.push(...extra);
+    } else {
+      const order = ['I','O','T','S','Z','J','L'];
+      while (pieceSeqRef.current.length < minLength) {
+        pieceSeqRef.current.push(...order);
+      }
     }
+  };
+
+  const getNextPiece = (): GamePiece => {
+    ensureQueue(pieceIndexRef.current + 1);
+    const letter = pieceSeqRef.current[pieceIndexRef.current] || 'T';
+    pieceIndexRef.current += 1;
+    return makeGamePiece(letter);
+  };
+
+  // 初始化回放数据
+  useEffect(() => {
+    if (!replay) return;
+    actionsRef.current = replay.actions || [];
+    maxTimeRef.current = Math.max(...actionsRef.current.map(a => a.timestamp), 0);
+
+    // 初始化种子与初始棋盘
+    seedRef.current = replay.metadata?.seed ? new SeededRandom(replay.metadata.seed) : null;
+    pieceSeqRef.current = [];
+    pieceIndexRef.current = 0;
+
+    const initBoard = replay.metadata?.initialBoard && Array.isArray(replay.metadata.initialBoard)
+      ? replay.metadata.initialBoard
+      : createEmptyBoard();
+
+    initialBoardRef.current = initBoard.map(row => [...row]);
+    boardRef.current = initBoard.map(row => [...row]);
+    setBoard(initBoard.map(row => [...row]));
+
+    currentPieceRef.current = getNextPiece();
+    setGameStats({ score: 0, lines: 0, level: 1, pieces: 0 });
+    setCurrentTime(0);
+    setIsPlaying(false);
   }, [replay]);
 
   const resetReplay = () => {
     setCurrentTime(0);
     setIsPlaying(false);
-    setBoard(createEmptyBoard());
+    // 重置到初始棋盘与方块队列
+    const init = initialBoardRef.current.map(r => [...r]);
+    boardRef.current = init.map(r => [...r]);
+    setBoard(init);
+    pieceIndexRef.current = 0;
+    pieceSeqRef.current = [];
+    currentPieceRef.current = getNextPiece();
     setGameStats({
       score: 0,
       lines: 0,
@@ -75,12 +145,32 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
         );
 
         if (actionsToExecute.length > 0) {
-          // 这里可以根据动作更新游戏状态
-          // 由于这是简化版本，我们主要显示基本信息
-          setGameStats(prevStats => ({
-            ...prevStats,
-            pieces: prevStats.pieces + actionsToExecute.filter(a => a.action === 'place').length
-          }));
+          let piecesDelta = 0;
+          let linesDelta = 0;
+          let boardLocal = boardRef.current;
+          for (const a of actionsToExecute) {
+            if (a.action === 'place') {
+              const piece = currentPieceRef.current || getNextPiece();
+              const x = a.data?.x ?? piece.x;
+              const y = a.data?.y ?? piece.y;
+              const placed = { ...piece, x, y };
+              const after = placePiece(boardLocal, placed);
+              const cleared = clearLines(after);
+              boardLocal = cleared.newBoard;
+              linesDelta += cleared.linesCleared;
+              piecesDelta += 1;
+              currentPieceRef.current = getNextPiece();
+            }
+          }
+          boardRef.current = boardLocal;
+          if (piecesDelta || linesDelta) {
+            setBoard(boardLocal.map(r => [...r]));
+            setGameStats(prevStats => ({
+              ...prevStats,
+              pieces: prevStats.pieces + piecesDelta,
+              lines: prevStats.lines + linesDelta
+            }));
+          }
         }
 
         return newTime;

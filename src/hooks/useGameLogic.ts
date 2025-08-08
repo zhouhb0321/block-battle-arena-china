@@ -389,36 +389,88 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       recordAction('drop', { type: 'hard' });
     }
     
-    // 直接锁定方块到最终位置，不设置currentPiece
+    // 直接锁定方块到最终位置
     const droppedPiece = { ...currentPiece, y: dropY };
     const newBoard = placePiece(board, droppedPiece);
-    setBoard(newBoard);
     
     // Record place action
     if (isRecording) {
       recordAction('place', { x: droppedPiece.x, y: dropY });
     }
     
-    // 立即锁定方块，不设置currentPiece
-    setIsHardDropping(false);
-    
-    // 直接处理锁定逻辑，不通过lockPiece
+    // 处理行消除与成就（与普通锁定逻辑保持一致）
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
+    const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
+
+    // T-Spin 检测（若当前为T并且上次旋转记录存在）
+    const isTSpin = droppedPiece.type.type === 'T' && lastTSpinCheck.current && 
+      checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked);
+
     setBoard(clearedBoard);
-    
+
     if (linesCleared > 0) {
       const newLines = lines + linesCleared;
       const newLevel = Math.floor(newLines / 10) + 1;
-      const lineScore = [100, 300, 500, 800][linesCleared - 1] * level;
-      
+      let lineScore = 0;
+
+      const newComboCount = comboCount + 1;
+      setComboCount(newComboCount);
+
+      let clearType = '';
+
+      if (isTSpin) {
+        clearType = `tspin_${linesCleared === 3 ? 'triple' : linesCleared === 2 ? 'double' : 'single'}`;
+        lineScore = [800, 1200, 1600][Math.max(0, linesCleared - 1)] * level;
+        const tspinResult = lastTSpinCheck.current ? checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked) : null;
+        const isMini = tspinResult?.isMini || false;
+        const b2bNext = b2bCount > 0 ? b2bCount + 1 : 1;
+        if (linesCleared === 2) {
+          showTSpin(2, isMini, b2bCount > 0, b2bNext);
+        } else if (linesCleared === 3) {
+          showTSpin(3, isMini, b2bCount > 0, b2bNext);
+        } else {
+          showTSpin(1, isMini, b2bCount > 0, b2bNext);
+        }
+        setB2bCount(prev => prev + 1);
+      } else if (linesCleared === 4) {
+        clearType = 'tetris';
+        lineScore = 800 * level;
+        const b2bNext = b2bCount > 0 ? b2bCount + 1 : 1;
+        showTetris(false, b2bCount > 0, b2bNext);
+        setB2bCount(prev => prev + 1);
+      } else {
+        lineScore = [100, 300, 500][Math.max(0, linesCleared - 1)] * level;
+        setB2bCount(0);
+      }
+
+      if (newComboCount > 1 && newComboCount <= 100) {
+        showCombo(newComboCount);
+      }
+
+      if (isPerfectClear) {
+        showPerfectClear();
+      }
+
+      if (newLevel > level) {
+        showLevelUp(newLevel);
+      }
+
       setLines(newLines);
       setLevel(newLevel);
       setScore(prev => prev + lineScore);
+
+      if (onSpecialClear && (clearType || linesCleared >= 4)) {
+        onSpecialClear(clearType || 'tetris', linesCleared);
+      }
+    } else {
+      setComboCount(0);
     }
-    
-    // 生成新方块
+
+    // 清理并生成新方块
+    setIsHardDropping(false);
+    lastTSpinCheck.current = null;
     spawnNewPiece();
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, clearLockDelayTimer, lines, level, spawnNewPiece]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, clearLockDelayTimer, lines, level, comboCount, b2bCount, showTSpin, showTetris, showCombo, showPerfectClear, showLevelUp, onSpecialClear, spawnNewPiece, isRecording, recordAction]);
 
   const rotatePieceClockwise = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
