@@ -237,6 +237,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     clearLockDelayTimer();
 
     const newBoard = placePiece(board, currentPiece);
+    
+    // Record replay action
+    if (isRecording && currentPiece) {
+      recordAction('place', { x: currentPiece.x, y: currentPiece.y });
+    }
 
     if (isSinglePlayer) {
       gameStateManager.saveState(board, currentPiece, score, lines, level);
@@ -333,9 +338,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setCurrentPiece(newPiece);
       totalActions.current++;
       
-      // Record replay action
-      if (isRecording) {
-        recordAction('move', { dx, dy, piece: newPiece });
+      // Record replay action (only horizontal moves)
+      if (isRecording && dx !== 0) {
+        recordAction('move', { direction: dx < 0 ? 'left' : 'right' });
       }
       
       if (dx !== 0) {
@@ -376,10 +381,20 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setScore(prev => prev + dropDistance * 2);
     totalActions.current++;
     
+    // Record replay action
+    if (isRecording) {
+      recordAction('drop', { type: 'hard' });
+    }
+    
     // 直接锁定方块到最终位置，不设置currentPiece
     const droppedPiece = { ...currentPiece, y: dropY };
     const newBoard = placePiece(board, droppedPiece);
     setBoard(newBoard);
+    
+    // Record place action
+    if (isRecording) {
+      recordAction('place', { x: droppedPiece.x, y: dropY });
+    }
     
     // 立即锁定方块，不设置currentPiece
     setIsHardDropping(false);
@@ -421,7 +436,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       
       // Record replay action
       if (isRecording) {
-        recordAction('rotate', { clockwise: true, piece: srsResult.newPiece, wasKicked: srsResult.wasKicked });
+        recordAction('rotate', { direction: 'clockwise' });
       }
       
       if (lastTSpinCheck.current) {
@@ -456,6 +471,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setCurrentPiece(srsResult.newPiece);
       totalActions.current++;
       
+      // Record replay action
+      if (isRecording) {
+        recordAction('rotate', { direction: 'counterclockwise' });
+      }
+      
       if (lastTSpinCheck.current) {
         lastTSpinCheck.current.wasKicked = srsResult.wasKicked;
       }
@@ -487,6 +507,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     if (srsResult.success && srsResult.newPiece) {
       setCurrentPiece(srsResult.newPiece);
       totalActions.current++;
+      
+      // Record replay action
+      if (isRecording) {
+        recordAction('rotate', { direction: '180' });
+      }
       
       if (lastTSpinCheck.current) {
         lastTSpinCheck.current.wasKicked = srsResult.wasKicked;
@@ -522,7 +547,12 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }
     
     setCanHold(false);
-    totalActions.current++;
+     totalActions.current++;
+    
+    // Record replay action
+    if (isRecording) {
+      recordAction('hold', {});
+    }
   }, [currentPiece, holdPiece, canHold, gameOver, isPaused, isHardDropping, spawnNewPiece, gameStarted, clearLockDelayTimer]);
 
   useEffect(() => {
@@ -575,13 +605,19 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     debugLog.game('Starting game logic...');
     setGameStarted(true);
     gameStartTime.current = Date.now();
-    
-    // Replay recording will be handled by the game provider
+    // Start replay recording at game start
+    if (!isRecording) {
+      try {
+        startRecording(board.map(row => [...row]), { gameMode: gameMode.id });
+      } catch (e) {
+        console.warn('Failed to start replay recording', e);
+      }
+    }
     
     if (!gameInitialized) {
       initializePieces();
     }
-  }, [initializePieces, gameInitialized, gameMode.id, startRecording]);
+  }, [initializePieces, gameInitialized, gameMode.id, startRecording, board]);
 
   const initializeForCountdown = useCallback(() => {
     debugLog.game('Initializing for countdown start');

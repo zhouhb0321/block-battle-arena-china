@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import ReplayPlayer from './ReplayPlayer';
 import type { GameReplay, ReplayAction } from '@/utils/gameTypes';
+import { ReplayCompressor } from '@/utils/replayCompression';
 
 const ReplaySystem: React.FC = () => {
   const { user } = useAuth();
@@ -69,10 +70,30 @@ const ReplaySystem: React.FC = () => {
           let actions: ReplayAction[] = [];
           
           if (isCompressed) {
-            // 压缩回放数据处理
-            console.log('处理压缩回放数据:', replay.id);
-            // 这里可以添加解压缩逻辑
-            actions = []; // 暂时空数组，实际使用时需要解压缩
+            // 压缩回放数据处理：二进制解码 + 动作解压缩
+            try {
+              const raw = replay.compressed_actions as any;
+              let bytes: Uint8Array | null = null;
+              if (raw instanceof Uint8Array) {
+                bytes = raw;
+              } else if (Array.isArray(raw)) {
+                bytes = new Uint8Array(raw);
+              } else if (typeof raw === 'string') {
+                const bstr = atob(raw);
+                const arr = new Uint8Array(bstr.length);
+                for (let i = 0; i < bstr.length; i++) arr[i] = bstr.charCodeAt(i);
+                bytes = arr;
+              }
+              if (bytes) {
+                const compressed = ReplayCompressor.decodeFromBinary(bytes);
+                actions = ReplayCompressor.decompressActions(compressed);
+              } else {
+                actions = [];
+              }
+            } catch (e) {
+              console.error('解压缩回放失败:', e);
+              actions = [];
+            }
           } else {
             // 旧回放数据处理
             const replayData = replay.replay_data as any;

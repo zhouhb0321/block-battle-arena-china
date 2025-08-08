@@ -18,8 +18,8 @@ import { useTetrisGame } from './TetrisGameProvider';
 import type { GameMode } from '@/utils/gameTypes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RotateCcw, RotateCw } from 'lucide-react';
-import { useGameLogic } from '@/hooks/useGameLogic';
-import { useUserSettings } from '@/hooks/useUserSettings';
+
+
 import GameMusicManager from '@/components/GameMusicManager';
 import BackgroundWallpaper from '@/components/BackgroundWallpaper';
 
@@ -41,7 +41,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { user } = useAuth();
   const { logUserSession } = useSessionLogger();
   const { actualTheme } = useTheme();
- // const { gameLogic, gameSettings } = useTetrisGame();
+ const { gameLogic } = useTetrisGame();
   
   const handleAchievementComplete = (id: string) => {
     // Achievement handling - remove achievement when completed
@@ -55,15 +55,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const [showGameOverDialog, setShowGameOverDialog] = useState(false);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
-  const { settings } = useUserSettings();
   
-  const gameLogic = useGameLogic({
-    gameMode,
-    onGameEnd,
-    onSpecialClear: (clearType, lines) => {
-      console.log(`特殊消除: ${clearType}, 行数: ${lines}`);
-    }
-  });
+  
 
   // 键盘控制已移至GameKeyboardHandler统一处理，移除重复的键盘事件监听
 
