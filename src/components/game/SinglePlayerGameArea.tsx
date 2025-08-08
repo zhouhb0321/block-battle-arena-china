@@ -41,11 +41,15 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { user } = useAuth();
   const { logUserSession } = useSessionLogger();
   const { actualTheme } = useTheme();
- const { gameLogic } = useTetrisGame();
+  const { gameLogic } = useTetrisGame();
   
   const handleAchievementComplete = (id: string) => {
-    // Achievement handling - remove achievement when completed
-    console.log('Achievement completed:', id);
+    // 从队列中移除已显示的成就，确保下一个成就继续显示
+    try {
+      gameLogic.removeAchievement(id);
+    } catch (e) {
+      console.log('移除成就时出错', e);
+    }
   };
   
   const [showCountdown, setShowCountdown] = useState(true);
@@ -205,7 +209,10 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         <div className="flex items-center gap-4">
           {onBackToMenu && (
             <Button
-              onClick={onBackToMenu}
+              onClick={() => { 
+                try { gameLogic.resetGame(); } catch {}
+                onBackToMenu?.();
+              }}
               variant="outline"
               size="sm"
               className="flex items-center gap-2"

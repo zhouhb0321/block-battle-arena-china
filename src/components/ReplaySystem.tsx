@@ -31,10 +31,7 @@ const ReplaySystem: React.FC = () => {
       // 首先尝试从压缩回放表获取数据
       const { data: compressedReplays, error: compressedError } = await supabase
         .from('compressed_replays')
-        .select(`
-          *,
-          user_profiles!compressed_replays_user_id_fkey(username, avatar_url)
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -46,10 +43,7 @@ const ReplaySystem: React.FC = () => {
       if (!compressedReplays || compressedReplays.length === 0) {
         const { data: oldReplays, error: oldError } = await supabase
           .from('game_replays_new')
-          .select(`
-            *,
-            user_profiles!game_replays_new_user_id_fkey(username, avatar_url)
-          `)
+          .select('*')
           .or(`user_id.eq.${user.id},opponent_id.eq.${user.id}`)
           .order('created_at', { ascending: false })
           .limit(50);

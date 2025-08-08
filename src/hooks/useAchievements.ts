@@ -31,13 +31,16 @@ export const useAchievements = () => {
   }, []);
 
   // 便捷方法 - 修复格式并简化
-  const showTetris = useCallback((isTSpin = false, isB2B = false) => {
-    let text = isTSpin ? 'T-SPIN TETRIS' : 'TETRIS';
-    if (isB2B) text = `B2B ${text}`;
-    addAchievement(text, 'tetris');
+  const showTetris = useCallback((isTSpin = false, isB2B = false, b2bCount?: number) => {
+    let prefix = '';
+    if (isB2B) {
+      prefix = b2bCount && b2bCount > 0 ? `B2B x${b2bCount} ` : 'B2B ';
+    }
+    const core = isTSpin ? 'T-SPIN TETRIS' : 'TETRIS';
+    addAchievement(`${prefix}${core}`, 'tetris');
   }, [addAchievement]);
 
-  const showTSpin = useCallback((lines: number, isMini = false, isB2B = false) => {
+  const showTSpin = useCallback((lines: number, isMini = false, isB2B = false, b2bCount?: number) => {
     let text = '';
     if (isMini) {
       text = `MINI T-SPIN`;
@@ -46,9 +49,9 @@ export const useAchievements = () => {
       text = `T-SPIN`;
       if (lines > 0) text += ` ${lines === 1 ? 'SINGLE' : lines === 2 ? 'DOUBLE' : 'TRIPLE'}`;
     }
-    if (isB2B) text = `B2B ${text}`;
-    
-    // 修复：确保成就实时更新
+    if (isB2B) {
+      text = b2bCount && b2bCount > 0 ? `B2B x${b2bCount} ${text}` : `B2B ${text}`;
+    }
     console.log(`显示T-Spin成就: ${text}, 消除行数: ${lines}`);
     addAchievement(text, 'tspin');
   }, [addAchievement]);
@@ -56,8 +59,7 @@ export const useAchievements = () => {
   // 修复Combo显示 - 每次combo都显示，最大100
   const showCombo = useCallback((comboCount: number) => {
     if (comboCount > 0 && comboCount <= 100) {
-      // 修复：显示正确的combo格式
-      addAchievement(`COMBO ${comboCount}`, 'combo');
+      addAchievement(`COMBO x${comboCount}`, 'combo');
     }
   }, [addAchievement]);
 
@@ -69,12 +71,21 @@ export const useAchievements = () => {
     addAchievement(`LEVEL ${level}`, 'level');
   }, [addAchievement]);
 
+  // 通用旋转成就（L/J/S/Z/I 等）
+  const showSpin = useCallback((piece: string, lines: number, isB2B = false, b2bCount?: number) => {
+    let core = `${piece.toUpperCase()}-SPIN`;
+    if (lines > 0) core += ` ${lines === 1 ? 'SINGLE' : lines === 2 ? 'DOUBLE' : 'TRIPLE'}`;
+    const prefix = isB2B ? (b2bCount && b2bCount > 0 ? `B2B x${b2bCount} ` : 'B2B ') : '';
+    addAchievement(`${prefix}${core}`,'tspin');
+  }, [addAchievement]);
+
   return {
     achievements,
     removeAchievement,
     clearAchievements,
     showTetris,
     showTSpin,
+    showSpin,
     showCombo,
     showPerfectClear,
     showLevelUp

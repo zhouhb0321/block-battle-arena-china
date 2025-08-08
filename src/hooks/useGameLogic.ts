@@ -201,7 +201,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
           score,
           lines,
           level,
-          duration: time,
+          duration: time * 1000,
           pps,
           apm,
           gameMode: gameMode.id,
@@ -275,13 +275,14 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         const tspinResult = lastTSpinCheck.current ? checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked) : null;
         const isMini = tspinResult?.isMini || false;
         
-        // 修复：根据实际消除行数显示正确的T-Spin类型
+        // 修复：根据实际消除行数显示正确的T-Spin类型，并显示B2B连击次数
+        const b2bNext = b2bCount > 0 ? b2bCount + 1 : 1;
         if (linesCleared === 2) {
-          showTSpin(2, isMini, b2bCount > 0); // T-Spin Double
+          showTSpin(2, isMini, b2bCount > 0, b2bNext); // T-Spin Double
         } else if (linesCleared === 3) {
-          showTSpin(3, isMini, b2bCount > 0); // T-Spin Triple
+          showTSpin(3, isMini, b2bCount > 0, b2bNext); // T-Spin Triple
         } else {
-          showTSpin(1, isMini, b2bCount > 0); // T-Spin Single
+          showTSpin(1, isMini, b2bCount > 0, b2bNext); // T-Spin Single
         }
         setB2bCount(prev => prev + 1);
       } else if (linesCleared === 4) {
@@ -289,7 +290,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         lineScore = 800 * level;
         isSpecialClear = true;
         
-        showTetris(false, b2bCount > 0);
+        const b2bNext = b2bCount > 0 ? b2bCount + 1 : 1;
+        
+        showTetris(false, b2bCount > 0, b2bNext);
         setB2bCount(prev => prev + 1);
       } else {
         lineScore = [100, 300, 500][linesCleared - 1] * level;
@@ -626,6 +629,24 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
 
   const resetGame = useCallback(() => {
     debugLog.game('Resetting game...');
+    // 若正在录制，先保存当前录像
+    try {
+      if (isRecording) {
+        const stats = {
+          score,
+          lines,
+          level,
+          duration: time * 1000,
+          pps,
+          apm,
+          gameMode: gameMode.id
+        };
+        // 不等待，异步保存
+        stopRecording(stats as any);
+      }
+    } catch (e) {
+      console.warn('重置前保存录像失败', e);
+    }
     setBoard(createEmptyBoard());
     setCurrentPiece(null);
     setNextPieces([]);
@@ -651,7 +672,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     totalPieces.current = 0;
     totalActions.current = 0;
     gameStartTime.current = Date.now();
-  }, [clearLockDelayTimer, gameStateManager]);
+  }, [clearLockDelayTimer, gameStateManager, isRecording, score, lines, level, time, pps, apm, gameMode.id, stopRecording]);
 
   const pauseGame = useCallback(() => {
     debugLog.game('暂停游戏', { isPaused, isManuallyPaused });
