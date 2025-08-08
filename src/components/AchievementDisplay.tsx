@@ -37,8 +37,8 @@ const AchievementItem: React.FC<{ achievement: Achievement; onComplete: (id: str
     setIsVisible(true);
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(() => onComplete(achievement.id), 300); // 动画结束后移除
-    }, 1200); // 显示1.2秒
+      setTimeout(() => onComplete(achievement.id), 200); // 动画结束后移除
+    }, 500); // 总显示时间约600-700ms
 
     return () => clearTimeout(timer);
   }, [achievement.id, onComplete]);
@@ -46,16 +46,15 @@ const AchievementItem: React.FC<{ achievement: Achievement; onComplete: (id: str
   return (
     <div
       className={`
-        transform transition-all duration-300 ease-out
-        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}
+        transform transition-all duration-200 ease-in-out
+        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
       `}
     >
       <div
         className={`
-          px-4 py-2 mb-2 font-bold text-center text-lg
+          px-3 py-1 mb-2 font-semibold text-center text-sm
           ${getAchievementColor(achievement.type)}
-          border-2 rounded-lg backdrop-blur-md
-          whitespace-nowrap shadow-lg
+          border rounded-md whitespace-nowrap shadow-md
         `}
       >
         {achievement.text}
@@ -69,7 +68,7 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
   onAchievementComplete
 }) => {
   return (
-    <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-48 w-full flex flex-col items-center justify-end z-30 pointer-events-none">
+    <div className="h-24 w-full flex flex-col-reverse items-center overflow-hidden">
       {achievements.map(achievement => (
         <AchievementItem
           key={achievement.id}

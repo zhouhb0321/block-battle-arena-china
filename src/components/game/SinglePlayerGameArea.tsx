@@ -176,14 +176,15 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
   const getBoardThemeClasses = () => {
     return actualTheme === 'light' 
-      ? 'bg-white border-gray-300' 
-      : 'bg-gray-800 border-gray-600';
+      ? 'bg-gray-200' // 不透明背景
+      : 'bg-gray-900'; // 不透明背景
   };
 
   const getPanelThemeClasses = () => {
+    // 半透明背景，让壁纸透出来，并移除边框
     return actualTheme === 'light' 
-      ? 'bg-white border-gray-300' 
-      : 'bg-gray-900 border-gray-700';
+      ? 'bg-white/70 border-transparent'
+      : 'bg-black/50 border-transparent';
   };
 
   const currentTime = Date.now();
@@ -275,13 +276,11 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             />
           </div>
           
-          {/* 成就显示区域 */}
-          <div className={`p-2 rounded-lg border ${getPanelThemeClasses()}`}>
-            <AchievementDisplay
-              achievements={gameLogic.achievements || []}
-              onAchievementComplete={handleAchievementComplete}
-            />
-          </div>
+          {/* 成就显示区域 - 移到Hold区下方，无额外边框 */}
+          <AchievementDisplay
+            achievements={gameLogic.achievements || []}
+            onAchievementComplete={handleAchievementComplete}
+          />
           
           {/* 游戏信息面板 - 与游戏板底部对齐 */}
           <div className="flex-1 flex flex-col justify-end">

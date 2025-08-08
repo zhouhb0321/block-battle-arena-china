@@ -341,20 +341,25 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setCurrentPiece(newPiece);
       totalActions.current++;
       
-      // Record replay action (only horizontal moves)
       if (isRecording && dx !== 0) {
         recordAction('move', { direction: dx < 0 ? 'left' : 'right' });
       }
       
-      if (dx !== 0) {
-        // 修复：只有在方块已经触底且移动后仍然触底时，才重置锁定延迟
-        const belowNewPiece = { ...newPiece, y: newPiece.y + 1 };
-        if (!isValidPosition(board, belowNewPiece)) {
-          if (resetLockDelay()) {
-            clearLockDelayTimer();
-          }
+      const isAtBottom = !isValidPosition(board, { ...newPiece, y: newPiece.y + 1 });
+
+      if (isAtBottom) {
+        // 如果方块在底部，则重置并重启锁定延迟
+        if (resetLockDelay()) {
+          startLockDelay();
+        } else {
+          // 如果无法重置（达到上限），则立即锁定
+          lockPiece();
         }
+      } else {
+        // 如果方块不在底部，则清除任何正在进行的锁定延迟
+        clearLockDelayTimer();
       }
+
       return true;
     } else if (dy > 0) {
       // 软降失败时启动锁定延迟
@@ -362,7 +367,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay, resetLockDelay, clearLockDelayTimer, isRecording, recordAction]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay, resetLockDelay, lockPiece, clearLockDelayTimer, isRecording, recordAction]);
 
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
@@ -637,8 +642,26 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }
   }, [isWindowFocused, isPaused, isManuallyPaused, gameStarted, gameOver]);
 
+  // 计时器useEffect - 仅负责时间递增
   useEffect(() => {
     if (gameOver || isPaused || !isWindowFocused || !gameStarted) return;
+
+    const timer = setInterval(() => {
+      setTime(prev => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameOver, isPaused, isWindowFocused, gameStarted]);
+
+  // 统计数据和游戏结束条件useEffect
+  useEffect(() => {
+    if (!gameStarted || gameOver) return;
+
+    const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
+    if (elapsedTime > 0) {
+      setPps(totalPieces.current / elapsedTime);
+      setApm((totalActions.current / elapsedTime) * 60);
+    }
 
     if (gameMode.id === 'ultra2min' && time >= 120) {
       setGameOver(true);
@@ -648,23 +671,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       if (isRecording) {
         stopRecording(finalStats as any).then(replay => {
           if (replay) console.log(`2分钟挑战结束，录像已保存: ${replay.id}`);
-        });
+        }).catch(err => console.error("保存录像失败", err));
       }
-      return;
     }
-
-    const timer = setInterval(() => {
-      setTime(prev => prev + 1);
-      
-      const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
-      if (elapsedTime > 0) {
-        setPps(totalPieces.current / elapsedTime);
-        setApm((totalActions.current / elapsedTime) * 60);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [gameOver, isPaused, isWindowFocused, gameStarted, time, gameMode.id, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
+  }, [time, gameStarted, gameOver]); // 依赖项简化，只在关键状态变化时运行
 
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
