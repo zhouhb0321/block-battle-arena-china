@@ -638,24 +638,43 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   }, [isWindowFocused, isPaused, isManuallyPaused, gameStarted, gameOver]);
 
   useEffect(() => {
-    if (gameOver || isPaused || !isWindowFocused || !gameStarted) return;
+    if (!gameStarted || gameOver) return;
 
-    if (gameMode.id === 'ultra2min' && time >= 120) {
-      setGameOver(true);
-      const finalStats = { score, lines, level, time: 120, pps, apm, gameMode: gameMode.id };
-      onGameEnd(finalStats);
+    // Ultra 2-minute: use real elapsed time based on start timestamp; do not pause on blur or manual pause
+    if (gameMode.id === 'ultra2min') {
+      const interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - gameStartTime.current) / 1000);
+        const clamped = Math.min(elapsed, 120);
+        setTime(clamped);
 
-      if (isRecording) {
-        stopRecording(finalStats as any).then(replay => {
-          if (replay) console.log(`2分钟挑战结束，录像已保存: ${replay.id}`);
-        });
-      }
-      return;
+        // Update PPS/APM based on real elapsed time
+        const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
+        if (elapsedTime > 0) {
+          setPps(totalPieces.current / elapsedTime);
+          setApm((totalActions.current / elapsedTime) * 60);
+        }
+
+        if (elapsed >= 120) {
+          setGameOver(true);
+          const finalStats = { score, lines, level, time: 120, pps, apm, gameMode: gameMode.id };
+          onGameEnd(finalStats);
+          if (isRecording) {
+            stopRecording(finalStats as any).then(replay => {
+              if (replay) console.log(`2分钟挑战结束，录像已保存: ${replay.id}`);
+            });
+          }
+        }
+      }, 250);
+
+      return () => clearInterval(interval);
     }
+
+    // Other modes: keep previous behavior (pause on blur/manual pause)
+    if (isPaused || !isWindowFocused) return;
 
     const timer = setInterval(() => {
       setTime(prev => prev + 1);
-      
+
       const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
       if (elapsedTime > 0) {
         setPps(totalPieces.current / elapsedTime);
@@ -664,7 +683,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameOver, isPaused, isWindowFocused, gameStarted, time, gameMode.id, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
+  }, [gameStarted, gameOver, gameMode.id, isPaused, isWindowFocused, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
 
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;

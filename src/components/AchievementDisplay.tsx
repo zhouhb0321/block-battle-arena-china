@@ -11,6 +11,7 @@ interface Achievement {
 interface AchievementDisplayProps {
   achievements: Achievement[];
   onAchievementComplete: (id: string) => void;
+  placement?: 'overlay' | 'sidebar';
 }
 
 const getAchievementColor = (type: Achievement['type']) => {
@@ -66,8 +67,22 @@ const AchievementItem: React.FC<{ achievement: Achievement; onComplete: (id: str
 
 const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
   achievements,
-  onAchievementComplete
+  onAchievementComplete,
+  placement = 'overlay'
 }) => {
+  if (placement === 'sidebar') {
+    return (
+      <div className="relative h-48 w-full flex flex-col items-center justify-end">
+        {achievements.map(achievement => (
+          <AchievementItem
+            key={achievement.id}
+            achievement={achievement}
+            onComplete={onAchievementComplete}
+          />
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-48 w-full flex flex-col items-center justify-end z-30 pointer-events-none">
       {achievements.map(achievement => (

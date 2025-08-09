@@ -16,7 +16,7 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   const renderHoldPiece = () => {
     if (!holdPiece) {
       return (
-        <div className="w-24 h-24 border border-border rounded bg-card flex items-center justify-center">
+          <div className="w-24 h-24 border border-border/60 rounded bg-background/20 backdrop-blur-sm flex items-center justify-center">
           <div className="w-10 h-10 border border-dashed border-muted-foreground/30 rounded opacity-50"></div>
         </div>
       );
@@ -44,7 +44,7 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
     const pieceHeight = maxRow - minRow + 1;
 
     return (
-      <div className={`p-2 bg-card rounded border border-border ${!canHold ? 'opacity-50' : ''}`}>
+      <div className={`p-2 bg-background/20 backdrop-blur-sm rounded border border-border/60 ${!canHold ? 'opacity-50' : ''}`}>
         <div 
           className="flex justify-center items-center"
           style={{ 
@@ -94,7 +94,7 @@ const HoldPieceDisplay: React.FC<HoldPieceDisplayProps> = ({ holdPiece, canHold 
   };
 
   return (
-    <div className="bg-card p-4 rounded-lg border border-border">
+    <div className="bg-transparent p-4 rounded-lg border border-border/60">
       <h3 className="text-foreground text-sm font-bold mb-3 text-center">HOLD</h3>
       <div className="flex justify-center">
         {renderHoldPiece()}

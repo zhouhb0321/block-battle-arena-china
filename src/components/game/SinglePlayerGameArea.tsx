@@ -181,13 +181,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   };
 
   const getPanelThemeClasses = () => {
-    return actualTheme === 'light' 
-      ? 'bg-white border-gray-300' 
-      : 'bg-gray-900 border-gray-700';
+    // Glassy panels so wallpaper shows through (except the stack area)
+    return 'bg-background/40 border-border/60 backdrop-blur-sm';
   };
 
   const currentTime = Date.now();
   const elapsedTime = gameLogic.time;
+  const remainingTime = gameMode.isTimeAttack && gameMode.timeLimit ? Math.max(0, gameMode.timeLimit - gameLogic.time) : null;
 
   // 确定是否显示失焦覆盖层
   const showOutOfFocusOverlay = gameLogic.isPaused && gameReallyStarted && !gameLogic.gameOver;
@@ -276,10 +276,11 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           </div>
           
           {/* 成就显示区域 */}
-          <div className={`p-2 rounded-lg border ${getPanelThemeClasses()}`}>
+          <div className={`relative h-48 p-2 rounded-lg border ${getPanelThemeClasses()}`}>
             <AchievementDisplay
               achievements={gameLogic.achievements || []}
               onAchievementComplete={handleAchievementComplete}
+              placement="sidebar"
             />
           </div>
           
@@ -309,9 +310,11 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                   <div>攻击:</div>
                   <div className="font-mono text-right">{gameLogic.apm.toFixed(1)}</div>
                   
-                  <div>时间:</div>
+                  <div>{gameMode.isTimeAttack ? '剩余:' : '时间:'}</div>
                   <div className="font-mono text-right">
-                    {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
+                    {gameMode.isTimeAttack && gameMode.timeLimit
+                      ? `${Math.floor((remainingTime || 0) / 60)}:${((remainingTime || 0) % 60).toString().padStart(2, '0')}`
+                      : `${Math.floor(elapsedTime / 60)}:${(elapsedTime % 60).toString().padStart(2, '0')}`}
                   </div>
                 </div>
 
