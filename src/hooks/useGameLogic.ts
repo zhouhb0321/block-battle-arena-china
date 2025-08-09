@@ -71,7 +71,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
   
   // 撤销重做功能 - 仅单人模式
-  const isSinglePlayer = gameMode.id === 'marathon' || gameMode.id === 'endless' || gameMode.id === 'sprint40' || gameMode.id === 'ultra2min';
+  const isSinglePlayer = gameMode.isTimeAttack || !!gameMode.targetLines || gameMode.id === 'endless' || gameMode.id === 'marathon';
   const maxUndoSteps = undoSteps;
   const gameStateManager = useGameState({
     maxHistorySize: maxUndoSteps,
@@ -81,6 +81,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
 
   const gameStartTime = useRef<number>(Date.now());
+  const sprintProgressRef = useRef<number>(0);
   const totalPieces = useRef<number>(0);
   const totalActions = useRef<number>(0);
   const dropTimer = useRef<NodeJS.Timeout | null>(null);
@@ -319,6 +320,28 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       if (onSpecialClear && (clearType || linesCleared >= 4)) {
         onSpecialClear(clearType || 'tetris', linesCleared);
       }
+
+      // 40L 冲刺：按权重计数并在达标时立即结束
+      if (gameMode.id === 'sprint40') {
+        let added = linesCleared;
+        if (isTSpin) {
+          added = linesCleared === 3 ? 6 : linesCleared === 2 ? 4 : 2;
+        }
+        const newProgress = sprintProgressRef.current + added;
+        sprintProgressRef.current = newProgress;
+        if (newProgress >= (gameMode.targetLines || 40)) {
+          const elapsed = Math.floor((Date.now() - gameStartTime.current) / 1000);
+          const finalScore = score + lineScore;
+          setTime(elapsed);
+          setGameOver(true);
+          const finalStats = { score: finalScore, lines: newLines, level: newLevel, time: elapsed, pps, apm, gameMode: gameMode.id };
+          onGameEnd(finalStats);
+          if (isRecording) {
+            stopRecording({ ...finalStats, duration: elapsed * 1000 } as any);
+          }
+          return; // 终止后续流程
+        }
+      }
     } else {
       setComboCount(0);
     }
@@ -465,6 +488,29 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
 
       if (onSpecialClear && (clearType || linesCleared >= 4)) {
         onSpecialClear(clearType || 'tetris', linesCleared);
+      }
+
+      // 40L 冲刺：按权重计数并在达标时立即结束（硬降）
+      if (gameMode.id === 'sprint40') {
+        let added = linesCleared;
+        if (isTSpin) {
+          added = linesCleared === 3 ? 6 : linesCleared === 2 ? 4 : 2;
+        }
+        const newProgress = sprintProgressRef.current + added;
+        sprintProgressRef.current = newProgress;
+        if (newProgress >= (gameMode.targetLines || 40)) {
+          const elapsed = Math.floor((Date.now() - gameStartTime.current) / 1000);
+          const finalScore = score + lineScore;
+          setTime(elapsed);
+          setGameOver(true);
+          const finalStats = { score: finalScore, lines: newLines, level: newLevel, time: elapsed, pps, apm, gameMode: gameMode.id };
+          onGameEnd(finalStats);
+          if (isRecording) {
+            stopRecording({ ...finalStats, duration: elapsed * 1000 } as any);
+          }
+          setIsHardDropping(false);
+          return; // 终止后续流程
+        }
       }
     } else {
       setComboCount(0);
@@ -640,27 +686,30 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   useEffect(() => {
     if (!gameStarted || gameOver) return;
 
-    // Ultra 2-minute: use real elapsed time based on start timestamp; do not pause on blur or manual pause
-    if (gameMode.id === 'ultra2min') {
+    // Time attack (including legacy ids): use real elapsed time and hard limit
+    const legacyLimit = gameMode.id === 'ultra2min' || gameMode.id === 'timeAttack2' ? 120 : undefined;
+    const limit = gameMode.timeLimit ?? legacyLimit;
+    if (limit) {
       const interval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - gameStartTime.current) / 1000);
-        const clamped = Math.min(elapsed, 120);
+        const now = Date.now();
+        const elapsed = Math.floor((now - gameStartTime.current) / 1000);
+        const clamped = Math.min(elapsed, limit);
         setTime(clamped);
 
         // Update PPS/APM based on real elapsed time
-        const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
+        const elapsedTime = (now - gameStartTime.current) / 1000;
         if (elapsedTime > 0) {
           setPps(totalPieces.current / elapsedTime);
           setApm((totalActions.current / elapsedTime) * 60);
         }
 
-        if (elapsed >= 120) {
+        if (elapsed >= limit) {
           setGameOver(true);
-          const finalStats = { score, lines, level, time: 120, pps, apm, gameMode: gameMode.id };
+          const finalStats = { score, lines, level, time: limit, pps, apm, gameMode: gameMode.id };
           onGameEnd(finalStats);
           if (isRecording) {
-            stopRecording(finalStats as any).then(replay => {
-              if (replay) console.log(`2分钟挑战结束，录像已保存: ${replay.id}`);
+            stopRecording({ ...finalStats, duration: limit * 1000 } as any).then(replay => {
+              if (replay) console.log(`限时挑战结束，录像已保存: ${replay.id}`);
             });
           }
         }
@@ -705,8 +754,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     debugLog.game('Starting game logic...');
     setGameStarted(true);
     gameStartTime.current = Date.now();
+    sprintProgressRef.current = 0;
     // Start replay recording at game start
-    if (!isRecording) {
+    if (!isRecording && gameMode.id !== 'endless') {
       try {
         startRecording(board.map(row => [...row]), { gameMode: gameMode.id });
       } catch (e) {
@@ -728,7 +778,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     debugLog.game('Resetting game...');
     // 若正在录制，先保存当前录像
     try {
-      if (isRecording) {
+      if (isRecording && gameMode.id !== 'endless') {
         const stats = {
           score,
           lines,

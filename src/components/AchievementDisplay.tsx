@@ -36,12 +36,13 @@ const AchievementItem: React.FC<{ achievement: Achievement; onComplete: (id: str
 
   useEffect(() => {
     setIsVisible(true);
-    const timer = setTimeout(() => {
+    const showTimer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(() => onComplete(achievement.id), 300); // 动画结束后移除
-    }, 1200); // 显示1.2秒
+      const hideTimer = setTimeout(() => onComplete(achievement.id), 100); // 100ms 淡出后立刻移除
+      return () => clearTimeout(hideTimer);
+    }, 300); // 显示300ms
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(showTimer);
   }, [achievement.id, onComplete]);
 
   return (
@@ -73,25 +74,25 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
   if (placement === 'sidebar') {
     return (
       <div className="relative h-48 w-full flex flex-col items-center justify-end">
-        {achievements.map(achievement => (
+        {achievements.length > 0 && (
           <AchievementItem
-            key={achievement.id}
-            achievement={achievement}
+            key={achievements[0].id}
+            achievement={achievements[0]}
             onComplete={onAchievementComplete}
           />
-        ))}
+        )}
       </div>
     );
   }
   return (
     <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-48 w-full flex flex-col items-center justify-end z-30 pointer-events-none">
-      {achievements.map(achievement => (
+      {achievements.length > 0 && (
         <AchievementItem
-          key={achievement.id}
-          achievement={achievement}
+          key={achievements[0].id}
+          achievement={achievements[0]}
           onComplete={onAchievementComplete}
         />
-      ))}
+      )}
     </div>
   );
 };
