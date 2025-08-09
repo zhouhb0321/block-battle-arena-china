@@ -25,9 +25,26 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
     });
   }, []);
 
-  // 从Supabase Storage获取壁纸文件列表
+  // 从Supabase Storage获取壁纸文件列表，并加入缓存机制
   const fetchWallpaperFiles = useCallback(async (): Promise<string[]> => {
+    const cacheKey = 'wallpaper-list-cache';
+    const cacheDuration = 3600 * 1000; // 1 hour
+
     try {
+      const cachedData = localStorage.getItem(cacheKey);
+      if (cachedData) {
+        const { timestamp, wallpapers } = JSON.parse(cachedData);
+        if (Date.now() - timestamp < cacheDuration) {
+          console.log('从缓存加载壁纸列表');
+          return wallpapers;
+        }
+      }
+    } catch (e) {
+      console.error('读取壁纸缓存失败', e);
+    }
+
+    try {
+      console.log('从服务器获取壁纸列表');
       const { data, error } = await supabase.storage
         .from('wallpapers')
         .list('', {
@@ -51,6 +68,12 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
         }
       }
       
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), wallpapers }));
+      } catch (e) {
+        console.error('保存壁纸缓存失败', e);
+      }
+
       return wallpapers;
     } catch (error) {
       console.error('获取壁纸文件异常:', error);

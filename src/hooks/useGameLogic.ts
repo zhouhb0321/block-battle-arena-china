@@ -314,6 +314,16 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       
       setLines(newLines);
       setLevel(newLevel);
+
+      // 40L Sprint 模式结束条件
+      if (gameMode.id === 'sprint40' && newLines >= 40 && !gameOver) {
+        setGameOver(true);
+        const finalStats = { score, lines: newLines, level, time, pps, apm, gameMode: gameMode.id };
+        onGameEnd(finalStats);
+        if (isRecording) {
+          stopRecording(finalStats as any);
+        }
+      }
       setScore(prev => prev + lineScore);
       
       if (onSpecialClear && (clearType || linesCleared >= 4)) {
@@ -466,6 +476,16 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
 
       setLines(newLines);
       setLevel(newLevel);
+
+      // 40L Sprint 模式结束条件
+      if (gameMode.id === 'sprint40' && newLines >= 40 && !gameOver) {
+        setGameOver(true);
+        const finalStats = { score, lines: newLines, level, time, pps, apm, gameMode: gameMode.id };
+        onGameEnd(finalStats);
+        if (isRecording) {
+          stopRecording(finalStats as any);
+        }
+      }
       setScore(prev => prev + lineScore);
 
       if (onSpecialClear && (clearType || linesCleared >= 4)) {
@@ -644,14 +664,25 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
 
   // 计时器useEffect - 仅负责时间递增
   useEffect(() => {
-    if (gameOver || isPaused || !isWindowFocused || !gameStarted) return;
+    debugLog.game('计时器 Effect 检查', { gameOver, isPaused, isWindowFocused, gameStarted });
+    if (gameOver || isPaused || !isWindowFocused || !gameStarted) {
+      return;
+    }
 
     const timer = setInterval(() => {
       setTime(prev => prev + 1);
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      debugLog.game('清除计时器 interval');
+      clearInterval(timer);
+    };
   }, [gameOver, isPaused, isWindowFocused, gameStarted]);
+
+  const latestStats = useRef({ score, lines, level, pps, apm, gameMode });
+  useEffect(() => {
+    latestStats.current = { score, lines, level, pps, apm, gameMode };
+  }, [score, lines, level, pps, apm, gameMode]);
 
   // 统计数据和游戏结束条件useEffect
   useEffect(() => {
@@ -663,10 +694,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setApm((totalActions.current / elapsedTime) * 60);
     }
 
-    if (gameMode.id === 'ultra2min' && time >= 120) {
+    if (latestStats.current.gameMode.id === 'ultra2min' && time >= 120) {
+      debugLog.game('2分钟挑战时间到，结束游戏');
       setGameOver(true);
-      const finalStats = { score, lines, level, time: 120, pps, apm, gameMode: gameMode.id };
-      onGameEnd(finalStats);
+      const finalStats = { ...latestStats.current, time: 120 };
+      onGameEnd(finalStats as any);
 
       if (isRecording) {
         stopRecording(finalStats as any).then(replay => {
@@ -674,7 +706,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         }).catch(err => console.error("保存录像失败", err));
       }
     }
-  }, [time, gameStarted, gameOver]); // 依赖项简化，只在关键状态变化时运行
+  }, [time, gameStarted, gameOver, onGameEnd, isRecording, stopRecording]);
 
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
