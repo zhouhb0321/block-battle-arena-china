@@ -81,6 +81,18 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
 
   const gameStartTime = useRef<number>(Date.now());
+  const wasPausedRef = useRef(isPaused);
+
+  // 游戏恢复时调整计时器
+  useEffect(() => {
+    // 当 isPaused 从 true 变为 false 时，意味着游戏刚刚恢复
+    if (wasPausedRef.current && !isPaused) {
+      debugLog.game('游戏恢复，调整开始时间以修正计时器');
+      // 通过从当前时间减去已经过的时间，来校准开始时间
+      gameStartTime.current = Date.now() - time * 1000;
+    }
+    wasPausedRef.current = isPaused;
+  }, [isPaused, time]);
   const sprintProgressRef = useRef<number>(0);
   const totalPieces = useRef<number>(0);
   const totalActions = useRef<number>(0);
@@ -198,24 +210,29 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       
       // Stop replay recording and save if recording
       if (isRecording) {
-        const gameStats = {
-          score,
-          lines,
-          level,
-          duration: time * 1000,
-          pps,
-          apm,
-          gameMode: gameMode.id,
-          gameType: 'single' as 'single' | 'ranked' | '1v1'
-        };
-        console.log('游戏结束，保存录像:', gameStats);
-        const savedReplay = await stopRecording(gameStats);
-        if (savedReplay) {
-          console.log('录像保存成功:', savedReplay.id);
-          debugLog.game('Replay recording stopped and saved', { replayId: savedReplay.id });
-        } else {
-          console.log('录像保存失败');
-          debugLog.game('Replay recording failed to save');
+        try {
+          const gameStats = {
+            score,
+            lines,
+            level,
+            duration: time * 1000,
+            pps,
+            apm,
+            gameMode: gameMode.id,
+            gameType: 'single' as 'single' | 'ranked' | '1v1'
+          };
+          console.log('游戏结束，保存录像:', gameStats);
+          const savedReplay = await stopRecording(gameStats);
+          if (savedReplay) {
+            console.log('录像保存成功:', savedReplay.id);
+            debugLog.game('Replay recording stopped and saved', { replayId: savedReplay.id });
+          } else {
+            console.log('录像保存失败');
+            debugLog.game('Replay recording failed to save');
+          }
+        } catch (error) {
+          console.error('保存录像时出错:', error);
+          debugLog.error('Error saving replay', error);
         }
       }
       
@@ -337,7 +354,12 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
           const finalStats = { score: finalScore, lines: newLines, level: newLevel, time: elapsed, pps, apm, gameMode: gameMode.id };
           onGameEnd(finalStats);
           if (isRecording) {
-            stopRecording({ ...finalStats, duration: elapsed * 1000 } as any);
+            try {
+              stopRecording({ ...finalStats, duration: elapsed * 1000 } as any);
+            } catch (error) {
+              console.error('保存冲刺模式录像时出错:', error);
+              debugLog.error('Error saving sprint replay', error);
+            }
           }
           return; // 终止后续流程
         }
@@ -506,7 +528,12 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
           const finalStats = { score: finalScore, lines: newLines, level: newLevel, time: elapsed, pps, apm, gameMode: gameMode.id };
           onGameEnd(finalStats);
           if (isRecording) {
-            stopRecording({ ...finalStats, duration: elapsed * 1000 } as any);
+            try {
+              stopRecording({ ...finalStats, duration: elapsed * 1000 } as any);
+            } catch (error) {
+              console.error('保存冲刺模式录像时出错(硬降):', error);
+              debugLog.error('Error saving sprint replay on hard drop', error);
+            }
           }
           setIsHardDropping(false);
           return; // 终止后续流程
@@ -684,55 +711,54 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   }, [isWindowFocused, isPaused, isManuallyPaused, gameStarted, gameOver]);
 
   useEffect(() => {
-    if (!gameStarted || gameOver) return;
+    // 统一处理计时器：游戏未开始、已结束或暂停时，不执行任何计时逻辑
+    if (!gameStarted || gameOver || isPaused) {
+      return;
+    }
 
     // Time attack (including legacy ids): use real elapsed time and hard limit
     const legacyLimit = gameMode.id === 'ultra2min' || gameMode.id === 'timeAttack2' ? 120 : undefined;
     const limit = gameMode.timeLimit ?? legacyLimit;
-    if (limit) {
-      const interval = setInterval(() => {
-        const now = Date.now();
-        const elapsed = Math.floor((now - gameStartTime.current) / 1000);
-        const clamped = Math.min(elapsed, limit);
-        setTime(clamped);
 
-        // Update PPS/APM based on real elapsed time
-        const elapsedTime = (now - gameStartTime.current) / 1000;
-        if (elapsedTime > 0) {
-          setPps(totalPieces.current / elapsedTime);
-          setApm((totalActions.current / elapsedTime) * 60);
-        }
+    // 使用一个统一的计时器来更新时间和统计数据
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const elapsed = (now - gameStartTime.current) / 1000;
+
+      // 更新PPS和APM
+      if (elapsed > 0) {
+        setPps(totalPieces.current / elapsed);
+        setApm((totalActions.current / elapsed) * 60);
+      }
+
+      if (limit) {
+        // 限时模式
+        const clampedTime = Math.min(elapsed, limit);
+        setTime(Math.floor(clampedTime));
 
         if (elapsed >= limit) {
           setGameOver(true);
           const finalStats = { score, lines, level, time: limit, pps, apm, gameMode: gameMode.id };
           onGameEnd(finalStats);
           if (isRecording) {
-            stopRecording({ ...finalStats, duration: limit * 1000 } as any).then(replay => {
-              if (replay) console.log(`限时挑战结束，录像已保存: ${replay.id}`);
-            });
+            try {
+              stopRecording({ ...finalStats, duration: limit * 1000 } as any).then(replay => {
+                if (replay) console.log(`限时挑战结束，录像已保存: ${replay.id}`);
+              });
+            } catch (error) {
+              console.error('保存限时挑战录像时出错:', error);
+              debugLog.error('Error saving time attack replay', error);
+            }
           }
         }
-      }, 250);
-
-      return () => clearInterval(interval);
-    }
-
-    // Other modes: keep previous behavior (pause on blur/manual pause)
-    if (isPaused || !isWindowFocused) return;
-
-    const timer = setInterval(() => {
-      setTime(prev => prev + 1);
-
-      const elapsedTime = (Date.now() - gameStartTime.current) / 1000;
-      if (elapsedTime > 0) {
-        setPps(totalPieces.current / elapsedTime);
-        setApm((totalActions.current / elapsedTime) * 60);
+      } else {
+        // 非限时模式
+        setTime(Math.floor(elapsed));
       }
-    }, 1000);
+    }, 500); // 统一使用500ms的间隔，对于显示足够精确
 
     return () => clearInterval(timer);
-  }, [gameStarted, gameOver, gameMode.id, isPaused, isWindowFocused, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
+  }, [gameStarted, gameOver, gameMode.id, isPaused, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
 
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
@@ -777,8 +803,8 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const resetGame = useCallback(() => {
     debugLog.game('Resetting game...');
     // 若正在录制，先保存当前录像
-    try {
-      if (isRecording && gameMode.id !== 'endless') {
+    if (isRecording && gameMode.id !== 'endless') {
+      try {
         const stats = {
           score,
           lines,
@@ -790,9 +816,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         };
         // 不等待，异步保存
         stopRecording(stats as any);
+      } catch (e) {
+        console.warn('重置前保存录像失败', e);
+        debugLog.error('Error saving replay on reset', e);
       }
-    } catch (e) {
-      console.warn('重置前保存录像失败', e);
     }
     setBoard(createEmptyBoard());
     setCurrentPiece(null);
