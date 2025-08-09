@@ -82,19 +82,19 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
 
   const gameStartTime = useRef<number>(Date.now());
-  const pauseStartRef = useRef<number | null>(null);
+  const wasPausedRef = useRef(isPaused);
 
-  // Effect to track paused time
+  // 游戏恢复时调整计时器
   useEffect(() => {
-    if (isPaused) {
-      pauseStartRef.current = Date.now();
-    } else {
-      if (pauseStartRef.current) {
-        setTotalPausedTime(prev => prev + (Date.now() - (pauseStartRef.current ?? 0)));
-        pauseStartRef.current = null;
-      }
+    // 当 isPaused 从 true 变为 false 时，意味着游戏刚刚恢复
+    if (wasPausedRef.current && !isPaused) {
+      debugLog.game('游戏恢复，调整开始时间以修正计时器');
+      // 通过从当前时间减去已经过的时间，来校准开始时间
+      gameStartTime.current = Date.now() - time * 1000;
     }
-  }, [isPaused]);
+    wasPausedRef.current = isPaused;
+  }, [isPaused, time]);
+main
   const sprintProgressRef = useRef<number>(0);
   const totalPieces = useRef<number>(0);
   const totalActions = useRef<number>(0);
@@ -294,21 +294,29 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         showLevelUp(newLevel);
       }
 
-      // 40L Sprint Mode End Condition
-      if (gameMode.id === 'sprint40' && newLines >= (gameMode.targetLines || 40)) {
-        const elapsed = (Date.now() - gameStartTime.current) / 1000; // Keep precision for now
-        setTime(elapsed);
-        setGameOver(true);
-        const finalStats = { score, lines: newLines, level: newLevel, time: elapsed, pps, apm, gameMode: gameMode.id };
-        onGameEnd(finalStats);
+      // 40L 冲刺：按权重计数并在达标时立即结束
+      if (gameMode.id === 'sprint40') {
+        let added = linesCleared;
+        if (isTSpin) {
+          added = linesCleared === 3 ? 6 : linesCleared === 2 ? 4 : 2;
+        }
+        const newProgress = sprintProgressRef.current + added;
+        sprintProgressRef.current = newProgress;
+        if (newProgress >= (gameMode.targetLines || 40)) {
+          const elapsed = Math.floor((Date.now() - gameStartTime.current) / 1000);
+          const finalScore = score + lineScore;
+          setTime(elapsed);
+          setGameOver(true);
+          const finalStats = { score: finalScore, lines: newLines, level: newLevel, time: elapsed, pps, apm, gameMode: gameMode.id };
+          onGameEnd(finalStats);
+          if (isRecording) {
+            try {
+              stopRecording({ ...finalStats, duration: elapsed * 1000 } as any);
+            } catch (error) {
+              console.error('保存冲刺模式录像时出错:', error);
+              debugLog.error('Error saving sprint replay', error);
+            }
 
-        if (isRecording) {
-          try {
-            // Save duration with millisecond precision
-            stopRecording({ ...finalStats, duration: Date.now() - gameStartTime.current });
-          } catch (error) {
-            console.error('Error saving sprint replay:', error);
-            debugLog.error('Error saving sprint replay', error);
           }
         }
         return; // End further processing
@@ -424,20 +432,36 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       if (newLevel > level) {
         showLevelUp(newLevel);
       }
+      setLines(newLines);
+      setLevel(newLevel);
+      setScore(prev => prev + lineScore);
 
-      // 40L Sprint Mode End Condition (Hard Drop)
-      if (gameMode.id === 'sprint40' && newLines >= (gameMode.targetLines || 40)) {
-        const elapsed = (Date.now() - gameStartTime.current) / 1000;
-        setTime(elapsed);
-        setGameOver(true);
-        const finalStats = { score, lines: newLines, level: newLevel, time: elapsed, pps, apm, gameMode: gameMode.id };
-        onGameEnd(finalStats);
-        if (isRecording) {
-          try {
-            stopRecording({ ...finalStats, duration: Date.now() - gameStartTime.current });
-          } catch (error) {
-            console.error('Error saving sprint replay on hard drop:', error);
-            debugLog.error('Error saving sprint replay on hard drop', error);
+      if (onSpecialClear && (clearType || linesCleared >= 4)) {
+        onSpecialClear(clearType || 'tetris', linesCleared);
+      }
+
+      // 40L 冲刺：按权重计数并在达标时立即结束（硬降）
+      if (gameMode.id === 'sprint40') {
+        let added = linesCleared;
+        if (isTSpin) {
+          added = linesCleared === 3 ? 6 : linesCleared === 2 ? 4 : 2;
+        }
+        const newProgress = sprintProgressRef.current + added;
+        sprintProgressRef.current = newProgress;
+        if (newProgress >= (gameMode.targetLines || 40)) {
+          const elapsed = Math.floor((Date.now() - gameStartTime.current) / 1000);
+          const finalScore = score + lineScore;
+          setTime(elapsed);
+          setGameOver(true);
+          const finalStats = { score: finalScore, lines: newLines, level: newLevel, time: elapsed, pps, apm, gameMode: gameMode.id };
+          onGameEnd(finalStats);
+          if (isRecording) {
+            try {
+              stopRecording({ ...finalStats, duration: elapsed * 1000 } as any);
+            } catch (error) {
+              console.error('保存冲刺模式录像时出错(硬降):', error);
+              debugLog.error('Error saving sprint replay on hard drop', error);
+            }
           }
         }
         setIsHardDropping(false);
@@ -619,36 +643,50 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return;
     }
 
-    const timer = setInterval(() => {
-      const elapsed = (Date.now() - gameStartTime.current - totalPausedTime) / 1000;
+    // Time attack (including legacy ids): use real elapsed time and hard limit
+    const legacyLimit = gameMode.id === 'ultra2min' || gameMode.id === 'timeAttack2' ? 120 : undefined;
+    const limit = gameMode.timeLimit ?? legacyLimit;
 
+    // 使用一个统一的计时器来更新时间和统计数据
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const elapsed = (now - gameStartTime.current) / 1000;
+
+      // 更新PPS和APM
       if (elapsed > 0) {
         setPps(totalPieces.current / elapsed);
         setApm((totalActions.current / elapsed) * 60);
       }
 
-      const limit = gameMode.isTimeAttack ? gameMode.timeLimit : undefined;
+      if (limit) {
+        // 限时模式
+        const clampedTime = Math.min(elapsed, limit);
+        setTime(Math.floor(clampedTime));
 
-      if (limit && elapsed >= limit) {
-        setTime(limit);
-        setGameOver(true);
-        const finalStats = { score, lines, level, time: limit, pps, apm, gameMode: gameMode.id };
-        onGameEnd(finalStats);
-        if (isRecording) {
-          try {
-            stopRecording({ ...finalStats, duration: limit * 1000 });
-          } catch (error) {
-            console.error('Error saving time attack replay:', error);
-            debugLog.error('Error saving time attack replay', error);
+        if (elapsed >= limit) {
+          setGameOver(true);
+          const finalStats = { score, lines, level, time: limit, pps, apm, gameMode: gameMode.id };
+          onGameEnd(finalStats);
+          if (isRecording) {
+            try {
+              stopRecording({ ...finalStats, duration: limit * 1000 } as any).then(replay => {
+                if (replay) console.log(`限时挑战结束，录像已保存: ${replay.id}`);
+              });
+            } catch (error) {
+              console.error('保存限时挑战录像时出错:', error);
+              debugLog.error('Error saving time attack replay', error);
+            }
           }
         }
       } else {
-        setTime(elapsed);
+        // 非限时模式
+        setTime(Math.floor(elapsed));
       }
-    }, 500);
+    }, 500); // 统一使用500ms的间隔，对于显示足够精确
 
     return () => clearInterval(timer);
-  }, [gameStarted, gameOver, isPaused, gameMode, totalPausedTime, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
+  }, [gameStarted, gameOver, gameMode.id, isPaused, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
+
 
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
