@@ -10,28 +10,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import GameBoard from '@/components/GameBoard';
-import PiecePreview from '@/components/PiecePreview';
-import HoldPieceDisplay from '@/components/HoldPieceDisplay';
-import { ReplayCompressor, SeededRandom } from '@/utils/replayCompression';
+import { useGameLogic } from '@/hooks/useGameLogic';
+import { ReplayCompressor } from '@/utils/replayCompression';
 import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  SkipBack, 
-  SkipForward, 
-  Bookmark,
-  TrendingUp,
-  Trophy,
-  Target,
-  Clock,
-  Zap
+  Play, Pause, RotateCcw, SkipBack, SkipForward, Bookmark,
+  TrendingUp, Trophy, Target, Clock, Zap
 } from 'lucide-react';
 import type { 
   CompressedReplay, 
-  ReplayPlayerState, 
   ReplayPlayerConfig,
-  CompressedAction
+  ReplayAction as DecompressedReplayAction
 } from '@/utils/replayTypes';
+import { GameMode } from '@/utils/gameTypes';
 
 interface EnhancedReplayPlayerProps {
   replay: CompressedReplay;
@@ -40,253 +30,151 @@ interface EnhancedReplayPlayerProps {
   config?: Partial<ReplayPlayerConfig>;
 }
 
+const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
+  const gameLogic = useGameLogic({
+    gameMode: { id: replay.gameMode } as GameMode,
+    onGameEnd: () => {}, // 在回放中不处理游戏结束
+    isReplay: true,
+    replaySeed: replay.seed,
+  });
+
+  useEffect(() => {
+    gameLogic.initializeForCountdown();
+    gameLogic.startGame();
+
+    const decompressedActions = ReplayCompressor.decompressActions(
+      ReplayCompressor.decodeFromBinary(replay.compressedActions)
+    );
+    onActionsReady(decompressedActions, gameLogic);
+  }, [replay.id]);
+
+  useEffect(() => {
+    onStateUpdate(gameLogic);
+  }, [gameLogic, onStateUpdate]);
+
+  return null;
+};
+
+
 export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   replay,
   isOpen,
   onClose,
   config = {}
 }) => {
-  const [playerState, setPlayerState] = useState<ReplayPlayerState>({
-    isPlaying: false,
-    currentTime: 0,
-    totalTime: 0,
-    playbackSpeed: 1,
-    currentActionIndex: 0,
-    gameBoard: [],
-    gameStats: {
-      score: 0,
-      lines: 0,
-      level: 1,
-      pps: 0,
-      apm: 0,
-      pieces: 0
-    }
-  });
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [totalTime, setTotalTime] = useState(0);
+  const [replayKey, setReplayKey] = useState(Date.now());
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const actionsRef = useRef<CompressedAction[]>([]);
-  const gameEngineRef = useRef<any>(null);
-  const pieceGeneratorRef = useRef<SeededRandom | null>(null);
+  const actionsRef = useRef<DecompressedReplayAction[]>([]);
+  const gameLogicRef = useRef<any>(null);
+  const currentActionIndexRef = useRef(0);
 
   const playerConfig = {
     speedOptions: [0.25, 0.5, 1, 2, 4],
-    enableBookmarks: true,
-    showStatistics: true,
-    autoMarkEvents: true,
     ...config
   };
 
-  // 初始化回放数据
-  useEffect(() => {
-    if (!replay || !isOpen) return;
+  const handleActionsReady = useCallback((decompressedActions, logic) => {
+    actionsRef.current = decompressedActions;
+    gameLogicRef.current = logic;
+    const lastAction = decompressedActions[decompressedActions.length - 1];
+    setTotalTime(lastAction ? lastAction.timestamp : replay.durationSeconds * 1000);
+    // 准备好后，将指针重置为0
+    currentActionIndexRef.current = 0;
+  }, [replay.durationSeconds]);
 
-    try {
-      // 解压缩动作数据
-      const decompressedActions = ReplayCompressor.decodeFromBinary(replay.compressedActions);
-      actionsRef.current = decompressedActions;
-
-      // 创建方块生成器
-      pieceGeneratorRef.current = new SeededRandom(replay.seed);
-
-      // 设置总时长
-      const totalTime = decompressedActions.length > 0 
-        ? decompressedActions[decompressedActions.length - 1].t 
-        : replay.durationSeconds * 1000;
-
-      setPlayerState(prev => ({
-        ...prev,
-        totalTime,
-        gameBoard: [...(replay.initialBoard || Array(20).fill(0).map(() => Array(10).fill(0)))],
-        currentTime: 0,
-        currentActionIndex: 0,
-        gameStats: {
-          score: 0,
-          lines: 0,
-          level: 1,
-          pps: 0,
-          apm: 0,
-          pieces: 0
-        }
-      }));
-
-      console.log('Replay loaded:', {
-        actions: decompressedActions.length,
-        totalTime,
-        seed: replay.seed,
-        compressionRatio: replay.compressionRatio
-      });
-
-    } catch (error) {
-      console.error('Error loading replay:', error);
-    }
-  }, [replay, isOpen]);
-
-  // 播放控制
-  const togglePlayback = useCallback(() => {
-    setPlayerState(prev => {
-      const newIsPlaying = !prev.isPlaying;
-      
-      if (newIsPlaying) {
-        // 开始播放
-        intervalRef.current = setInterval(() => {
-          setPlayerState(current => {
-            const timeIncrement = 16 * current.playbackSpeed; // 16ms per frame
-            const newTime = Math.min(current.currentTime + timeIncrement, current.totalTime);
-            
-            // 处理动作
-            const newState = processActionsUntilTime(current, newTime);
-            
-            if (newTime >= current.totalTime) {
-              // 播放结束
-              if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-              }
-              return { ...newState, isPlaying: false };
-            }
-            
-            return { ...newState, currentTime: newTime };
-          });
-        }, 16); // 60fps
-      } else {
-        // 暂停播放
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      }
-      
-      return { ...prev, isPlaying: newIsPlaying };
-    });
+  const [gameLogicState, setGameLogicState] = useState(null);
+  const handleStateUpdate = useCallback((newState) => {
+    setGameLogicState(newState);
   }, []);
 
-  // 重置回放
-  const resetReplay = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+  const processActionsUntilTime = useCallback((targetTime: number) => {
+    if (!gameLogicRef.current) return;
 
-    setPlayerState(prev => ({
-      ...prev,
-      isPlaying: false,
-      currentTime: 0,
-      currentActionIndex: 0,
-      gameBoard: [...(replay.initialBoard || Array(20).fill(0).map(() => Array(10).fill(0)))],
-      gameStats: {
-        score: 0,
-        lines: 0,
-        level: 1,
-        pps: 0,
-        apm: 0,
-        pieces: 0
-      }
-    }));
-  }, [replay]);
-
-  // 跳转到指定时间
-  const seekTo = useCallback((time: number) => {
-    const targetTime = Math.max(0, Math.min(time, playerState.totalTime));
-    
-    // 如果向前跳转，从头开始重建
-    if (targetTime < playerState.currentTime) {
-      const newState = rebuildStateFromStart(targetTime);
-      setPlayerState(prev => ({ ...prev, ...newState, currentTime: targetTime }));
-    } else {
-      // 向后跳转，继续处理
-      const newState = processActionsUntilTime(playerState, targetTime);
-      setPlayerState(prev => ({ ...prev, ...newState, currentTime: targetTime }));
-    }
-  }, [playerState]);
-
-  // 处理动作直到指定时间
-  const processActionsUntilTime = (currentState: ReplayPlayerState, targetTime: number) => {
-    let newState = { ...currentState };
     const actions = actionsRef.current;
+    const logic = gameLogicRef.current;
 
-    while (newState.currentActionIndex < actions.length) {
-      const action = actions[newState.currentActionIndex];
-      
-      if (action.t > targetTime) break;
+    while (currentActionIndexRef.current < actions.length) {
+      const action = actions[currentActionIndexRef.current];
+      if (action.timestamp > targetTime) break;
 
-      // 处理动作
-      newState = processAction(newState, action);
-      newState.currentActionIndex++;
-    }
-
-    return newState;
-  };
-
-  // 从头重建状态
-  const rebuildStateFromStart = (targetTime: number): Partial<ReplayPlayerState> => {
-    let state: ReplayPlayerState = {
-      isPlaying: false,
-      currentTime: 0,
-      totalTime: playerState.totalTime,
-      playbackSpeed: playerState.playbackSpeed,
-      currentActionIndex: 0,
-      gameBoard: [...(replay.initialBoard || Array(20).fill(0).map(() => Array(10).fill(0)))],
-      gameStats: {
-        score: 0,
-        lines: 0,
-        level: 1,
-        pps: 0,
-        apm: 0,
-        pieces: 0
+      // 执行动作
+      switch (action.action) {
+        case 'move':
+          logic.movePiece(action.data.direction === 'left' ? -1 : 1, 0);
+          break;
+        case 'rotate':
+          if (action.data.direction === 'clockwise') logic.rotatePieceClockwise();
+          else if (action.data.direction === 'counterclockwise') logic.rotatePieceCounterclockwise();
+          else if (action.data.direction === '180') logic.rotatePiece180();
+          break;
+        case 'drop':
+          if (action.data.type === 'hard') logic.hardDrop();
+          else logic.movePiece(0, 1); // Soft drop
+          break;
+        case 'hold':
+          logic.holdCurrentPiece();
+          break;
+        case 'place':
+          // 'place' is a result of hardDrop or lockDelay, not a direct action to call.
+          // The game logic handles placing pieces automatically.
+          break;
       }
+      currentActionIndexRef.current++;
+    }
+  }, []);
+
+  const resetReplay = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setReplayKey(Date.now()); // 改变key来强制ReplayGame重新挂载和初始化
+  }, []);
+
+  const seekTo = useCallback((time: number) => {
+     const targetTime = Math.max(0, Math.min(time, totalTime));
+
+     // 通过重置key和时间来从头开始
+     setReplayKey(Date.now());
+     setCurrentTime(targetTime);
+     setIsPlaying(false); // 寻址后暂停
+
+     // 我们需要等待新的 gameLogic 实例准备好
+     // 这里用一个短暂的延迟来等待ReplayGame重新初始化
+     setTimeout(() => {
+       processActionsUntilTime(targetTime);
+     }, 50);
+  }, [totalTime, processActionsUntilTime]);
+
+  const togglePlayback = useCallback(() => {
+    setIsPlaying(p => !p);
+  }, []);
+
+  useEffect(() => {
+    if (isPlaying) {
+      intervalRef.current = setInterval(() => {
+        setCurrentTime(prev => {
+          const newTime = Math.min(prev + 16 * playbackSpeed, totalTime);
+          if (newTime >= totalTime) {
+            setIsPlaying(false);
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            return totalTime;
+          }
+          processActionsUntilTime(newTime);
+          return newTime;
+        });
+      }, 16);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-
-    return processActionsUntilTime(state, targetTime);
-  };
-
-  // 处理单个动作
-  const processAction = (state: ReplayPlayerState, action: CompressedAction): ReplayPlayerState => {
-    const newState = { ...state };
-    
-    // 解压缩动作
-    const decompressedAction = ReplayCompressor.decompressActions([action])[0];
-    
-    // 根据动作类型更新游戏状态
-    switch (decompressedAction.action) {
-      case 'place':
-        // 方块放置 - 更新分数和统计
-        newState.gameStats.pieces++;
-        newState.gameStats.score += 100; // 简化计分
-        
-        // 检查行消除
-        const linesCleared = checkLineClears(newState.gameBoard);
-        if (linesCleared > 0) {
-          newState.gameStats.lines += linesCleared;
-          newState.gameStats.score += linesCleared * 400;
-        }
-        break;
-        
-      case 'move':
-      case 'rotate':
-      case 'drop':
-        // 移动操作 - 更新APM
-        const timeInMinutes = action.t / 60000;
-        newState.gameStats.apm = timeInMinutes > 0 ? newState.gameStats.pieces / timeInMinutes : 0;
-        break;
-    }
-
-    // 计算PPS
-    const timeInSeconds = action.t / 1000;
-    newState.gameStats.pps = timeInSeconds > 0 ? newState.gameStats.pieces / timeInSeconds : 0;
-
-    return newState;
-  };
-
-  // 检查行消除（简化版）
-  const checkLineClears = (board: number[][]): number => {
-    let linesCleared = 0;
-    for (let row = 0; row < board.length; row++) {
-      if (board[row].every(cell => cell !== 0)) {
-        linesCleared++;
-      }
-    }
-    return linesCleared;
-  };
+  }, [isPlaying, playbackSpeed, totalTime, processActionsUntilTime]);
 
   // 格式化时间
   const formatTime = (ms: number): string => {
@@ -307,6 +195,12 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <ReplayGame
+          key={replayKey}
+          replay={replay}
+          onStateUpdate={handleStateUpdate}
+          onActionsReady={handleActionsReady}
+        />
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Trophy className="w-5 h-5" />
@@ -324,13 +218,15 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
             <Card>
               <CardContent className="p-4">
                 <div className="flex justify-center">
-                  <GameBoard
-                    board={playerState.gameBoard}
-                    currentPiece={null}
-                    ghostPiece={null}
-                    clearingLines={[]}
-                    cellSize={24}
-                  />
+                  {gameLogicState && (
+                    <GameBoard
+                      board={gameLogicState.board}
+                      currentPiece={gameLogicState.currentPiece}
+                      ghostPiece={gameLogicState.ghostPiece}
+                      clearingLines={[]}
+                      cellSize={24}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -341,18 +237,18 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                 {/* 进度条 */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span>{formatTime(playerState.currentTime)}</span>
-                    <span>{formatTime(playerState.totalTime)}</span>
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(totalTime)}</span>
                   </div>
                   <Slider
-                    value={[playerState.currentTime]}
-                    max={playerState.totalTime}
+                    value={[currentTime]}
+                    max={totalTime}
                     step={100}
                     onValueChange={(value) => seekTo(value[0])}
                     className="w-full"
                   />
                   <Progress 
-                    value={(playerState.currentTime / playerState.totalTime) * 100} 
+                    value={(currentTime / totalTime) * 100}
                     className="w-full"
                   />
                 </div>
@@ -363,31 +259,29 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                     <RotateCcw className="w-4 h-4" />
                   </Button>
                   
-                  <Button variant="outline" size="icon" onClick={() => seekTo(playerState.currentTime - 10000)}>
+                  <Button variant="outline" size="icon" onClick={() => seekTo(currentTime - 10000)}>
                     <SkipBack className="w-4 h-4" />
                   </Button>
                   
                   <Button onClick={togglePlayback} size="lg">
-                    {playerState.isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+                    {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
                   </Button>
                   
-                  <Button variant="outline" size="icon" onClick={() => seekTo(playerState.currentTime + 10000)}>
+                  <Button variant="outline" size="icon" onClick={() => seekTo(currentTime + 10000)}>
                     <SkipForward className="w-4 h-4" />
                   </Button>
                   
-                  {playerConfig.enableBookmarks && (
-                    <Button variant="outline" size="icon">
-                      <Bookmark className="w-4 h-4" />
-                    </Button>
-                  )}
+                  <Button variant="outline" size="icon">
+                    <Bookmark className="w-4 h-4" />
+                  </Button>
                 </div>
 
                 {/* 播放速度 */}
                 <div className="flex items-center justify-center gap-2">
                   <span className="text-sm font-medium">播放速度:</span>
                   <Select 
-                    value={playerState.playbackSpeed.toString()} 
-                    onValueChange={(value) => setPlayerState(prev => ({ ...prev, playbackSpeed: parseFloat(value) }))}
+                    value={playbackSpeed.toString()}
+                    onValueChange={(value) => setPlaybackSpeed(parseFloat(value))}
                   >
                     <SelectTrigger className="w-24">
                       <SelectValue />
@@ -433,21 +327,21 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
             </Card>
 
             {/* 实时统计 */}
-            {playerConfig.showStatistics && (
+            {gameLogicState && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <TrendingUp className="w-4 h-4" />
                     实时统计
                   </CardTitle>
-                </CardHeader>
+                </Header>
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Target className="w-4 h-4" />
                       <span>分数:</span>
                     </div>
-                    <span className="font-mono">{playerState.gameStats.score.toLocaleString()}</span>
+                    <span className="font-mono">{gameLogicState.score.toLocaleString()}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -455,7 +349,7 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                       <div className="w-4 h-4 bg-primary/20 rounded" />
                       <span>行数:</span>
                     </div>
-                    <span className="font-mono">{playerState.gameStats.lines}</span>
+                    <span className="font-mono">{gameLogicState.lines}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -463,7 +357,7 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                       <Clock className="w-4 h-4" />
                       <span>PPS:</span>
                     </div>
-                    <span className="font-mono">{playerState.gameStats.pps.toFixed(2)}</span>
+                    <span className="font-mono">{gameLogicState.pps.toFixed(2)}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -471,19 +365,14 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                       <Zap className="w-4 h-4" />
                       <span>APM:</span>
                     </div>
-                    <span className="font-mono">{Math.round(playerState.gameStats.apm)}</span>
+                    <span className="font-mono">{Math.round(gameLogicState.apm)}</span>
                   </div>
                   
                   <Separator />
                   
                   <div className="flex items-center justify-between">
-                    <span>方块数:</span>
-                    <span className="font-mono">{playerState.gameStats.pieces}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
                     <span>等级:</span>
-                    <span className="font-mono">{playerState.gameStats.level}</span>
+                    <span className="font-mono">{gameLogicState.level}</span>
                   </div>
                 </CardContent>
               </Card>
