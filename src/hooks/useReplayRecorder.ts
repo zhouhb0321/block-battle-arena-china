@@ -85,69 +85,22 @@ export const useReplayRecorder = () => {
     gameMode: string;
     opponentId?: string;
     gameType?: 'single' | 'ranked' | '1v1';
-  }) => {
-    if (!isRecording || !user || user.isGuest) {
+  } | null) => { // 允许传入 null 来停止而不保存
+    if (!isRecording) {
+      return null;
+    }
+
+    // 如果 gameStats 为 null，或者用户是访客，则停止录制但不保存
+    if (!gameStats || !user || user.isGuest) {
+      console.log('Replay recording stopped without saving.');
       setIsRecording(false);
       return null;
     }
 
-    console.log('Stopping replay recording with', actionsRef.current.length, 'actions');
+    console.log('Stopping replay recording with', actionsRef.current.length, 'actions. Attempting to save.');
 
     try {
-      const { gameMode, score, duration } = gameStats;
-      let shouldSave = false;
-
-      // Always save 1v1 replays
-      if (gameMode === 'versus') {
-        shouldSave = true;
-      } else if (gameMode === 'timeAttack2' || gameMode === 'sprint40') {
-        const { count, error: countError } = await supabase
-          .from('compressed_replays')
-          .select('*', { count: 'exact', head: true })
-          .eq('game_mode', gameMode);
-
-        if (countError) throw countError;
-
-        if (count < 500) {
-          shouldSave = true;
-        } else {
-          if (gameMode === 'timeAttack2') {
-            // Top 500 scores (higher is better)
-            const { data, error } = await supabase
-              .from('compressed_replays')
-              .select('final_score')
-              .eq('game_mode', gameMode)
-              .order('final_score', { ascending: false })
-              .limit(1)
-              .range(499, 499);
-            if (error) throw error;
-            if (data && score > data[0].final_score) {
-              shouldSave = true;
-            }
-          } else if (gameMode === 'sprint40') {
-            // Top 500 times (lower is better)
-            const { data, error } = await supabase
-              .from('compressed_replays')
-              .select('duration_seconds')
-              .eq('game_mode', gameMode)
-              .order('duration_seconds', { ascending: true })
-              .limit(1)
-              .range(499, 499);
-            if (error) throw error;
-            if (data && duration < data[0].duration_seconds) { // Compare ms with ms
-              shouldSave = true;
-            }
-          }
-        }
-      }
-
-      if (!shouldSave) {
-        console.log(`Replay for ${gameMode} does not qualify for leaderboard. Not saving.`);
-        setIsRecording(false);
-        return null;
-      }
-
-      // If we should save, proceed with compression and insertion
+      // 总是保存录像，移除了原有的 leaderboard 检查逻辑
       const compressed = ReplayCompressor.compressActions(actionsRef.current);
       const compressedActions = ReplayCompressor.encodeToBinary(
         compressed

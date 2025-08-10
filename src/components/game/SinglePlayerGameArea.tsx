@@ -25,6 +25,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { gameLogic, gameSettings, gameMode } = useTetrisGame();
   
   const [showCountdown, setShowCountdown] = useState(true);
+  const [displayTime, setDisplayTime] = useState(0);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
   const handleCountdownComplete = () => {
@@ -58,7 +59,23 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     return 'bg-background/40 border-border/60 backdrop-blur-sm';
   };
 
-  const remainingTime = gameMode.isTimeAttack && gameMode.timeLimit ? Math.max(0, gameMode.timeLimit - gameLogic.time) : null;
+  const remainingTime = gameMode.isTimeAttack && gameMode.timeLimit ? Math.max(0, gameMode.timeLimit - displayTime) : null;
+
+  useEffect(() => {
+    let animationFrameId: number;
+
+    const updateTimer = () => {
+      if (gameLogic.gameStarted && !gameLogic.isPaused && !gameLogic.gameOver) {
+        const elapsed = (Date.now() - gameLogic.gameStartTime.current) / 1000;
+        setDisplayTime(elapsed);
+      }
+      animationFrameId = requestAnimationFrame(updateTimer);
+    };
+
+    animationFrameId = requestAnimationFrame(updateTimer);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [gameLogic.gameStarted, gameLogic.isPaused, gameLogic.gameOver, gameLogic.gameStartTime]);
 
   return (
     <BackgroundWallpaper>
@@ -126,10 +143,35 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                     <div>攻击:</div>
                     <div className="font-mono text-right">{gameLogic.apm.toFixed(1)}</div>
                     <div>{gameMode.isTimeAttack ? '剩余:' : '时间:'}</div>
-                    <div className="font-mono text-right">
-                      {gameMode.isTimeAttack && gameMode.timeLimit
-                        ? `${Math.floor((remainingTime || 0) / 60)}:${((remainingTime || 0) % 60).toString().padStart(2, '0')}`
-                        : `${Math.floor(gameLogic.time / 60)}:${(gameLogic.time % 60).toString().padStart(2, '0')}`}
+                    <div className="font-mono text-right flex items-center justify-end gap-2">
+                      {gameMode.isTimeAttack && gameMode.timeLimit && (
+                        <svg className="w-5 h-5" viewBox="0 0 36 36">
+                          <path
+                            d="M18 2.0845
+                              a 15.9155 15.9155 0 0 1 0 31.831
+                              a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="#e5e7eb"
+                            strokeWidth="4"
+                          />
+                          <path
+                            d="M18 2.0845
+                              a 15.9155 15.9155 0 0 1 0 31.831
+                              a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="#ef4444"
+                            strokeWidth="4"
+                            strokeDasharray={`${(remainingTime / gameMode.timeLimit) * 100}, 100`}
+                          />
+                        </svg>
+                      )}
+                      <span>
+                        {gameMode.isTimeAttack && gameMode.timeLimit
+                          ? `${Math.floor((remainingTime || 0) / 60)}:${((remainingTime || 0) % 60).toString().padStart(2, '0')}`
+                          : gameMode.id === 'sprint40'
+                            ? `${Math.floor(displayTime / 60)}:${(displayTime % 60).toFixed(3).padStart(6, '0')}`
+                            : `${Math.floor(displayTime / 60)}:${Math.floor(displayTime % 60).toString().padStart(2, '0')}`}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -156,6 +198,14 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               show={gameLogic.isPaused && gameLogic.gameStarted && !gameLogic.gameOver}
               onResume={gameLogic.resumeGame}
             />
+            {/* 10-second countdown warning */}
+            {remainingTime !== null && remainingTime <= 10 && remainingTime > 0 && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="text-8xl font-bold text-red-500/80 animate-ping">
+                  {Math.ceil(remainingTime)}
+                </div>
+              </div>
+            )}
           </div>
           <div className="lg:w-48">
             <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>

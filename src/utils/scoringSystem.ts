@@ -1,49 +1,61 @@
 
-// 计算得分 - 修正参数数量
+// TETR.IO 积分系统
 export const calculateScore = (
-  linesCleared: number,
-  level: number,
-  tSpin: { type: string; isMini: boolean } | null,
-  b2b: boolean,
-  combo: number,
-  isPerfectClear: boolean
-): number => {
-  let score = 0;
-
-  if (isPerfectClear) {
-    score += 3500; // 全清奖励
+  action: {
+    linesCleared: number;
+    tSpin: 'none' | 'mini' | 'normal';
+    isB2B: boolean;
+    combo: number; // 从0开始计数
+    isPerfectClear: boolean;
   }
+): { score: number; isDifficult: boolean } => {
+  const { linesCleared, tSpin, isB2B, combo, isPerfectClear } = action;
+  let baseScore = 0;
+  let isDifficultAction = false;
 
-  if (tSpin) {
-    if (tSpin.isMini) {
-      score += level * (b2b ? 100 : 800); // Mini T-Spin
-    } else {
-      score += level * (b2b ? 1200 : 400); // Regular T-Spin
+  if (tSpin !== 'none') {
+    isDifficultAction = true;
+    switch (linesCleared) {
+      case 0: // T-Spin
+        baseScore = tSpin === 'mini' ? 100 : 400;
+        break;
+      case 1: // T-Spin Single
+        baseScore = tSpin === 'mini' ? 200 : 800;
+        break;
+      case 2: // T-Spin Double
+        baseScore = tSpin === 'mini' ? 400 : 1200;
+        break;
+      case 3: // T-Spin Triple
+        baseScore = 1600;
+        break;
     }
   } else {
     switch (linesCleared) {
-      case 1:
-        score += 100 * level;
-        break;
-      case 2:
-        score += 300 * level;
-        break;
-      case 3:
-        score += 500 * level;
-        break;
-      case 4:
-        score += 800 * level;
-        break;
-      default:
-        break;
+      case 1: baseScore = 100; break; // 消一
+      case 2: baseScore = 300; break; // 消二
+      case 3: baseScore = 500; break; // 消三
+      case 4: baseScore = 800; isDifficultAction = true; break; // 消四 (Tetris)
     }
   }
 
-  if (combo > 0) {
-    score += 50 * combo * level; // 连击奖励
+  let finalScore = baseScore;
+
+  // 背靠背 (B2B) 奖励
+  if (isDifficultAction && isB2B) {
+    finalScore = Math.floor(baseScore * 1.5);
   }
 
-  return score;
+  // 连击 (Combo) 奖励
+  if (combo > 0) {
+    finalScore += 50 * combo;
+  }
+
+  // 全清 (Perfect Clear) 奖励
+  if (isPerfectClear) {
+    finalScore += 3500;
+  }
+
+  return { score: finalScore, isDifficult: isDifficultAction };
 };
 
 // 计算攻击行数 - 修正参数数量

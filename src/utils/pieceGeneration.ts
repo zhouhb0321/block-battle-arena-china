@@ -76,18 +76,22 @@ export const TETROMINO_TYPE_IDS: { [key: string]: number } = {
   L: 7
 };
 
+import { SeededRandom } from './replayCompression';
+
 // 全局7-bag状态
 let currentBag: TetrominoType[] = [];
 let bagIndex = 0;
+// 使用当前时间戳作为默认种子，确保每次游戏会话的随机性不同
+let randomGenerator = new SeededRandom(Date.now().toString());
 
 // 生成一个包含所有七种方块的随机序列（7-bag系统）
 export const generateSevenBag = (): TetrominoType[] => {
   const pieceTypes = Object.values(TETROMINO_TYPES);
   let shuffledPieces = [...pieceTypes];
 
-  // Fisher-Yates shuffle算法
+  // Fisher-Yates shuffle算法，使用带种子的随机数生成器
   for (let i = shuffledPieces.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(randomGenerator.next() * (i + 1));
     [shuffledPieces[i], shuffledPieces[j]] = [shuffledPieces[j], shuffledPieces[i]];
   }
 
@@ -109,7 +113,13 @@ export const generateRandomPiece = (): TetrominoType => {
 };
 
 // 重置7-bag系统（游戏重新开始时调用）
-export const resetSevenBag = (): void => {
+export const resetSevenBag = (seed?: string): void => {
+  if (seed) {
+    randomGenerator = new SeededRandom(seed);
+  } else {
+    // 如果没有提供种子，则使用新的时间戳来重置，以保证非回放模式下的随机性
+    randomGenerator = new SeededRandom(Date.now().toString());
+  }
   currentBag = [];
   bagIndex = 0;
 };
