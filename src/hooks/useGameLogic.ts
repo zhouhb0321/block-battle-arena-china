@@ -294,35 +294,33 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         showLevelUp(newLevel);
       }
 
-      // 40L 冲刺：按权重计数并在达标时立即结束
-      if (gameMode.id === 'sprint40') {
-        // Detect T-Spin from last rotation state
-        const wasTSpin = lastTSpinCheck.current ? !!checkTSpin(
-          lastTSpinCheck.current.board,
-          lastTSpinCheck.current.piece,
-          'rotate',
-          lastTSpinCheck.current.wasKicked
-        ) : false;
-        let added = linesCleared;
-        if (wasTSpin) {
-          added = linesCleared === 3 ? 6 : linesCleared === 2 ? 4 : 2;
-        }
-        const newProgress = sprintProgressRef.current + added;
-        sprintProgressRef.current = newProgress;
-        if (newProgress >= (gameMode.targetLines || 40)) {
-          const elapsed = Math.floor((Date.now() - gameStartTime.current) / 1000);
-          const finalScore = score + lineScore;
-          setTime(elapsed);
-          setGameOver(true);
-          const finalStats = { score: finalScore, lines: newLines, level: newLevel, time: elapsed, pps, apm, gameMode: gameMode.id };
-          onGameEnd(finalStats);
-          if (isRecording) {
-            try {
-              stopRecording({ ...finalStats, duration: elapsed * 1000 } as any);
-            } catch (error) {
-              console.error('保存冲刺模式录像时出错:', error);
-              debugLog.error('Error saving sprint replay', error);
-            }
+      // 40L Sprint Mode: End game when target lines are reached
+      if (gameMode.id === 'sprint40' && newLines >= (gameMode.targetLines || 40)) {
+        const finalTimeMs = Date.now() - gameStartTime.current;
+        const finalScore = score + lineScore;
+
+        setTime(finalTimeMs / 1000);
+        setGameOver(true);
+
+        const finalStats = {
+          score: finalScore,
+          lines: newLines,
+          level: newLevel,
+          time: finalTimeMs / 1000,
+          pps,
+          apm,
+          gameMode: gameMode.id
+        };
+
+        onGameEnd(finalStats);
+
+        if (isRecording) {
+          try {
+            // Pass duration in milliseconds
+            stopRecording({ ...finalStats, duration: finalTimeMs });
+          } catch (error) {
+            console.error('Error saving sprint replay on lockPiece:', error);
+            debugLog.error('Error saving sprint replay on lockPiece', error);
           }
         }
         return; // End further processing
@@ -348,6 +346,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     if (isValidPosition(board, newPiece)) {
       setCurrentPiece(newPiece);
       totalActions.current++;
+
       
       // Record replay action (only horizontal moves)
       if (isRecording && dx !== 0) {
@@ -457,35 +456,33 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         }
       }
 
-      // 40L 冲刺：按权重计数并在达标时立即结束（硬降）
-      if (gameMode.id === 'sprint40') {
-        // Detect T-Spin from last rotation state
-        const wasTSpin = lastTSpinCheck.current ? !!checkTSpin(
-          lastTSpinCheck.current.board,
-          lastTSpinCheck.current.piece,
-          'rotate',
-          lastTSpinCheck.current.wasKicked
-        ) : false;
-        let added = linesCleared;
-        if (wasTSpin) {
-          added = linesCleared === 3 ? 6 : linesCleared === 2 ? 4 : 2;
-        }
-        const newProgress = sprintProgressRef.current + added;
-        sprintProgressRef.current = newProgress;
-        if (newProgress >= (gameMode.targetLines || 40)) {
-          const elapsed = Math.floor((Date.now() - gameStartTime.current) / 1000);
-          const finalScore = score + lineScore;
-          setTime(elapsed);
-          setGameOver(true);
-          const finalStats = { score: finalScore, lines: newLines, level: newLevel, time: elapsed, pps, apm, gameMode: gameMode.id };
-          onGameEnd(finalStats);
-          if (isRecording) {
-            try {
-              stopRecording({ ...finalStats, duration: elapsed * 1000 } as any);
-            } catch (error) {
-              console.error('保存冲刺模式录像时出错(硬降):', error);
-              debugLog.error('Error saving sprint replay on hard drop', error);
-            }
+      // 40L Sprint Mode: End game when target lines are reached (on hard drop)
+      if (gameMode.id === 'sprint40' && newLines >= (gameMode.targetLines || 40)) {
+        const finalTimeMs = Date.now() - gameStartTime.current;
+        const finalScore = score + lineScore;
+
+        setTime(finalTimeMs / 1000);
+        setGameOver(true);
+
+        const finalStats = {
+          score: finalScore,
+          lines: newLines,
+          level: newLevel,
+          time: finalTimeMs / 1000,
+          pps,
+          apm,
+          gameMode: gameMode.id
+        };
+
+        onGameEnd(finalStats);
+
+        if (isRecording) {
+          try {
+            // Pass duration in milliseconds
+            stopRecording({ ...finalStats, duration: finalTimeMs });
+          } catch (error) {
+            console.error('Error saving sprint replay on hard drop:', error);
+            debugLog.error('Error saving sprint replay on hard drop', error);
           }
         }
         setIsHardDropping(false);
@@ -683,21 +680,23 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       }
 
       if (limit) {
-        // 限时模式
+        // Time-limited mode
+        debugLog.game(`Time attack check: elapsed=${elapsed.toFixed(2)}s, limit=${limit}s`);
         const clampedTime = Math.min(elapsed, limit);
         setTime(Math.floor(clampedTime));
 
         if (elapsed >= limit) {
+          debugLog.game(`Time limit reached for mode ${gameMode.id}. Ending game.`);
           setGameOver(true);
           const finalStats = { score, lines, level, time: limit, pps, apm, gameMode: gameMode.id };
           onGameEnd(finalStats);
           if (isRecording) {
             try {
               stopRecording({ ...finalStats, duration: limit * 1000 } as any).then(replay => {
-                if (replay) console.log(`限时挑战结束，录像已保存: ${replay.id}`);
+                if (replay) console.log(`Time attack replay saved: ${replay.id}`);
               });
             } catch (error) {
-              console.error('保存限时挑战录像时出错:', error);
+              console.error('Error saving time attack replay:', error);
               debugLog.error('Error saving time attack replay', error);
             }
           }
@@ -709,7 +708,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }, 500); // 统一使用500ms的间隔，对于显示足够精确
 
     return () => clearInterval(timer);
-  }, [gameStarted, gameOver, gameMode.id, isPaused, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
+  }, [gameStarted, gameOver, gameMode.id, gameMode.timeLimit, isPaused, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
 
 
   useEffect(() => {

@@ -1,5 +1,4 @@
-
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TetrisGameProvider, useTetrisGame } from './game/TetrisGameProvider';
@@ -14,69 +13,19 @@ interface TetrisGameProps {
   gameConfig?: any;
 }
 
-const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig }) => {
-  const { user } = useAuth();
-  const { t } = useLanguage();
-  const { gameLogic, gameSettings } = useTetrisGame();
-  const [gameMode, setGameMode] = useState<GameMode | null>(null);
+const TetrisGameContent: React.FC<{ onBackToMenu: () => void }> = ({ onBackToMenu }) => {
+  const { gameLogic } = useTetrisGame();
   const [actualGameStarted, setActualGameStarted] = useState(false);
-  const gameContainerRef = useRef<HTMLDivElement>(null);
-
-  // 键盘控制在选择模式后即可激活，无需等待双重条件
-  const gameStarted = !!gameMode;
-
-  const handleModeReady = (mode: GameMode) => {
-    console.log('Game mode ready:', mode);
-    setGameMode(mode);
-    // 只设置模式，不启动游戏，游戏将由倒计时完成后启动
-  };
-
-  const handleBackToMenu = () => {
-    console.log('Back to menu called');
-    gameLogic.resetGame();
-    setGameMode(null);
-    setActualGameStarted(false);
-    onBackToMenu();
-  };
-
-  const handleReset = () => {
-    console.log('Reset called');
-    gameLogic.resetGame();
-    setActualGameStarted(false);
-  };
-
-  const handleTimeUp = () => {
-    console.log('Time up!');
-    gameLogic.pauseGame();
-  };
-
-  useEffect(() => {
-    if (gameContainerRef.current && gameStarted) {
-      gameContainerRef.current.focus();
-    }
-  }, [gameStarted]);
-
-  // 如果还没选择模式，显示模式选择器
-  if (!gameMode) {
-    return (
-      <GameModeHandler
-        gameConfig={gameConfig}
-        onModeReady={handleModeReady}
-        onBackToMenu={handleBackToMenu}
-      />
-    );
-  }
 
   return (
     <div 
-      ref={gameContainerRef} 
       className="w-full h-full relative bg-gray-900" 
       tabIndex={0}
       style={{ outline: 'none' }}
     >
       <GameKeyboardHandler
         gameStarted={true}
-        onBackToMenu={handleBackToMenu}
+        onBackToMenu={onBackToMenu}
         onUndo={gameLogic.undo}
         onRedo={gameLogic.redo}
         canUndo={gameLogic.canUndo}
@@ -84,28 +33,53 @@ const TetrisGameContent: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig
       />
       
       <SinglePlayerGameArea
-        gameMode={gameMode}
-        gameStarted={!!gameMode}
-        onGameEnd={(stats) => {
-          console.log('Game ended with stats:', stats);
-          handleBackToMenu();
-        }}
         onActualGameStart={() => setActualGameStarted(true)}
       />
       
       <OutOfFocusOverlay 
-        show={gameLogic.isPaused && gameStarted && !gameLogic.gameOver} 
+        show={gameLogic.isPaused && !gameLogic.gameOver}
       />
     </div>
   );
 };
 
-const TetrisGame: React.FC<TetrisGameProps> = (props) => {
-  const defaultGameMode = GAME_MODES.find(mode => mode.id === 'endless') || GAME_MODES[0];
+const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig }) => {
+  const [gameMode, setGameMode] = useState<GameMode | null>(null);
+
+  const handleModeSelect = (mode: GameMode) => {
+    setGameMode(mode);
+  };
+
+  const handleBackToMenu = () => {
+    setGameMode(null);
+    onBackToMenu();
+  };
+
+  const handleRestart = () => {
+    // This will trigger a re-render of the provider with a new key, effectively resetting everything
+    const currentMode = gameMode;
+    setGameMode(null);
+    setTimeout(() => setGameMode(currentMode), 0);
+  };
+
+  if (!gameMode) {
+    return (
+      <GameModeHandler
+        gameConfig={gameConfig}
+        onModeReady={handleModeSelect}
+        onBackToMenu={onBackToMenu}
+      />
+    );
+  }
 
   return (
-    <TetrisGameProvider gameMode={defaultGameMode}>
-      <TetrisGameContent {...props} />
+    <TetrisGameProvider
+      key={gameMode.id + Math.random()} // Use a key to force re-mount on restart
+      gameMode={gameMode}
+      onBackToMenu={handleBackToMenu}
+      onRestart={handleRestart}
+    >
+      <TetrisGameContent onBackToMenu={handleBackToMenu} />
     </TetrisGameProvider>
   );
 };
