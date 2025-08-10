@@ -148,14 +148,29 @@ export const useReplayRecorder = () => {
       }
 
       // If we should save, proceed with compression and insertion
+      const compressed = ReplayCompressor.compressActions(actionsRef.current);
       const compressedActions = ReplayCompressor.encodeToBinary(
-        ReplayCompressor.compressActions(actionsRef.current)
+        compressed
       );
       const compressionRatio = ReplayCompressor.calculateCompressionRatio(
         actionsRef.current,
         compressedActions
       );
-      const checksum = ReplayCompressor.generateChecksum({ actions: actionsRef.current });
+      const checksumData: OptimizedReplayData = {
+        gameMetadata: {
+          gameMode: gameStats.gameMode,
+          seed: replayData?.seed || `${Date.now()}`,
+          startTime: replayData?.startTime || startTimeRef.current,
+          endTime: (replayData?.startTime || startTimeRef.current) + gameStats.duration,
+          playerIds: [user!.id],
+          matchId: replayData?.matchId,
+          gameId: replayData?.gameId,
+        },
+        playerActions: { [user!.id]: compressed },
+        gameEvents: [],
+        checksum: ''
+      };
+      const checksum = ReplayCompressor.generateChecksum(checksumData);
 
       const { data, error } = await supabase
         .from('compressed_replays')

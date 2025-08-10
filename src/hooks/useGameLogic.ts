@@ -94,7 +94,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }
     wasPausedRef.current = isPaused;
   }, [isPaused, time]);
-main
+
   const sprintProgressRef = useRef<number>(0);
   const totalPieces = useRef<number>(0);
   const totalActions = useRef<number>(0);
@@ -296,8 +296,15 @@ main
 
       // 40L 冲刺：按权重计数并在达标时立即结束
       if (gameMode.id === 'sprint40') {
+        // Detect T-Spin from last rotation state
+        const wasTSpin = lastTSpinCheck.current ? !!checkTSpin(
+          lastTSpinCheck.current.board,
+          lastTSpinCheck.current.piece,
+          'rotate',
+          lastTSpinCheck.current.wasKicked
+        ) : false;
         let added = linesCleared;
-        if (isTSpin) {
+        if (wasTSpin) {
           added = linesCleared === 3 ? 6 : linesCleared === 2 ? 4 : 2;
         }
         const newProgress = sprintProgressRef.current + added;
@@ -316,7 +323,6 @@ main
               console.error('保存冲刺模式录像时出错:', error);
               debugLog.error('Error saving sprint replay', error);
             }
-
           }
         }
         return; // End further processing
@@ -436,14 +442,32 @@ main
       setLevel(newLevel);
       setScore(prev => prev + lineScore);
 
-      if (onSpecialClear && (clearType || linesCleared >= 4)) {
-        onSpecialClear(clearType || 'tetris', linesCleared);
+      {
+        const wasTSpin2 = lastTSpinCheck.current ? !!checkTSpin(
+          lastTSpinCheck.current.board,
+          lastTSpinCheck.current.piece,
+          'rotate',
+          lastTSpinCheck.current.wasKicked
+        ) : false;
+        const clearType = wasTSpin2
+          ? (linesCleared === 1 ? 'tspin_single' : linesCleared === 2 ? 'tspin_double' : 'tspin_triple')
+          : (linesCleared === 4 ? 'tetris' : 'line_clear');
+        if (onSpecialClear && (wasTSpin2 || linesCleared >= 4)) {
+          onSpecialClear(clearType, linesCleared);
+        }
       }
 
       // 40L 冲刺：按权重计数并在达标时立即结束（硬降）
       if (gameMode.id === 'sprint40') {
+        // Detect T-Spin from last rotation state
+        const wasTSpin = lastTSpinCheck.current ? !!checkTSpin(
+          lastTSpinCheck.current.board,
+          lastTSpinCheck.current.piece,
+          'rotate',
+          lastTSpinCheck.current.wasKicked
+        ) : false;
         let added = linesCleared;
-        if (isTSpin) {
+        if (wasTSpin) {
           added = linesCleared === 3 ? 6 : linesCleared === 2 ? 4 : 2;
         }
         const newProgress = sprintProgressRef.current + added;
@@ -792,7 +816,7 @@ main
       return snapshot;
     }
     return null;
-  }, [isSinglePlayer, gameStateManager, clearLockDelayTimer]);
+  }, [isUndoRedoEnabled, gameStateManager, clearLockDelayTimer]);
 
   const redoAction = useCallback(() => {
     if (!isUndoRedoEnabled) return null;
@@ -808,7 +832,7 @@ main
       return snapshot;
     }
     return null;
-  }, [isSinglePlayer, gameStateManager, clearLockDelayTimer]);
+  }, [isUndoRedoEnabled, gameStateManager, clearLockDelayTimer]);
 
   const pauseGame = useCallback(() => {
     debugLog.game('暂停游戏', { isPaused, isManuallyPaused });
