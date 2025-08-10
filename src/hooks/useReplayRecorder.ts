@@ -81,7 +81,7 @@ export const useReplayRecorder = () => {
     level: number;
     pps: number;
     apm: number;
-    duration: number;
+    duration: number; // Duration in milliseconds
     gameMode: string;
     opponentId?: string;
     gameType?: 'single' | 'ranked' | '1v1';
@@ -94,39 +94,84 @@ export const useReplayRecorder = () => {
     console.log('Stopping replay recording with', actionsRef.current.length, 'actions');
 
     try {
-      // 创建优化的录像数据
-      const optimizedData: OptimizedReplayData = {
+      const { gameMode, score, duration } = gameStats;
+      let shouldSave = false;
+
+      // Always save 1v1 replays
+      if (gameMode === 'versus') {
+        shouldSave = true;
+      } else if (gameMode === 'timeAttack2' || gameMode === 'sprint40') {
+        const { count, error: countError } = await supabase
+          .from('compressed_replays')
+          .select('*', { count: 'exact', head: true })
+          .eq('game_mode', gameMode);
+
+        if (countError) throw countError;
+
+        if (count < 500) {
+          shouldSave = true;
+        } else {
+          if (gameMode === 'timeAttack2') {
+            // Top 500 scores (higher is better)
+            const { data, error } = await supabase
+              .from('compressed_replays')
+              .select('final_score')
+              .eq('game_mode', gameMode)
+              .order('final_score', { ascending: false })
+              .limit(1)
+              .range(499, 499);
+            if (error) throw error;
+            if (data && score > data[0].final_score) {
+              shouldSave = true;
+            }
+          } else if (gameMode === 'sprint40') {
+            // Top 500 times (lower is better)
+            const { data, error } = await supabase
+              .from('compressed_replays')
+              .select('duration_seconds')
+              .eq('game_mode', gameMode)
+              .order('duration_seconds', { ascending: true })
+              .limit(1)
+              .range(499, 499);
+            if (error) throw error;
+            if (data && duration < data[0].duration_seconds) { // Compare ms with ms
+              shouldSave = true;
+            }
+          }
+        }
+      }
+
+      if (!shouldSave) {
+        console.log(`Replay for ${gameMode} does not qualify for leaderboard. Not saving.`);
+        setIsRecording(false);
+        return null;
+      }
+
+      // If we should save, proceed with compression and insertion
+      const compressed = ReplayCompressor.compressActions(actionsRef.current);
+      const compressedActions = ReplayCompressor.encodeToBinary(
+        compressed
+      );
+      const compressionRatio = ReplayCompressor.calculateCompressionRatio(
+        actionsRef.current,
+        compressedActions
+      );
+      const checksumData: OptimizedReplayData = {
         gameMetadata: {
           gameMode: gameStats.gameMode,
           seed: replayData?.seed || `${Date.now()}`,
-          startTime: startTimeRef.current,
-          endTime: Date.now(),
-          playerIds: [user.id, ...(gameStats.opponentId ? [gameStats.opponentId] : [])],
+          startTime: replayData?.startTime || startTimeRef.current,
+          endTime: (replayData?.startTime || startTimeRef.current) + gameStats.duration,
+          playerIds: [user!.id],
           matchId: replayData?.matchId,
-          gameId: replayData?.gameId
+          gameId: replayData?.gameId,
         },
-        playerActions: {
-          [user.id]: ReplayCompressor.compressActions(actionsRef.current)
-        },
-        gameEvents: [], // 可以在后续版本中添加游戏事件
+        playerActions: { [user!.id]: compressed },
+        gameEvents: [],
         checksum: ''
       };
+      const checksum = ReplayCompressor.generateChecksum(checksumData);
 
-      // 生成校验和
-      optimizedData.checksum = ReplayCompressor.generateChecksum(optimizedData);
-
-      // 压缩动作数据为二进制
-      const compressedActions = ReplayCompressor.encodeToBinary(
-        ReplayCompressor.compressActions(actionsRef.current)
-      );
-
-      // 计算压缩比率
-      const compressionRatio = ReplayCompressor.calculateCompressionRatio(
-        actionsRef.current, 
-        compressedActions
-      );
-
-      // 保存到新的压缩录像表
       const { data, error } = await supabase
         .from('compressed_replays')
         .insert({
@@ -145,9 +190,9 @@ export const useReplayRecorder = () => {
           final_level: gameStats.level,
           pps: gameStats.pps,
           apm: gameStats.apm,
-          duration_seconds: Math.round(gameStats.duration / 1000),
-          checksum: optimizedData.checksum,
-          version: '2.0'
+          duration_seconds: gameStats.duration, // Storing duration in ms
+          checksum: checksum,
+          version: '2.1' // Version bump for new logic
         })
         .select()
         .single();
@@ -158,17 +203,12 @@ export const useReplayRecorder = () => {
         return null;
       }
 
-      console.log('Compressed replay saved successfully:', {
-        id: data.id,
-        originalActions: actionsRef.current.length,
-        compressedSize: compressedActions.length,
-        compressionRatio: compressionRatio
-      });
-
+      console.log('Compressed replay saved successfully:', { id: data.id });
       setIsRecording(false);
       return data;
+
     } catch (error) {
-      console.error('Error saving compressed replay:', error);
+      console.error('Error in stopRecording logic:', error);
       setIsRecording(false);
       return null;
     }

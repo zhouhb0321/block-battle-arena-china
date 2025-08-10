@@ -11,6 +11,7 @@ interface Achievement {
 interface AchievementDisplayProps {
   achievements: Achievement[];
   onAchievementComplete: (id: string) => void;
+  placement?: 'overlay' | 'sidebar';
 }
 
 const getAchievementColor = (type: Achievement['type']) => {
@@ -38,18 +39,15 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    if (achievements.length > 0 && !currentAchievement) {
-      const nextAchievement = achievements[0];
-      setCurrentAchievement(nextAchievement);
-      setIsVisible(true);
+    setIsVisible(true);
+    const showTimer = setTimeout(() => {
+      setIsVisible(false);
+      const hideTimer = setTimeout(() => onComplete(achievement.id), 100); // 100ms 淡出后立刻移除
+      return () => clearTimeout(hideTimer);
+    }, 300); // 显示300ms
 
-      const hideTimer = setTimeout(() => {
-        setIsVisible(false);
-        setTimeout(() => {
-          setCurrentAchievement(null);
-          onAchievementComplete(nextAchievement.id);
-        }, 100); // 100ms fade-out
-      }, 500); // 500ms hold time
+    return () => clearTimeout(showTimer);
+  }, [achievement.id, onComplete]);
 
       return () => clearTimeout(hideTimer);
     }
@@ -72,25 +70,32 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
     }
   };
 
+const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
+  achievements,
+  onAchievementComplete,
+  placement = 'overlay'
+}) => {
+  if (placement === 'sidebar') {
+    return (
+      <div className="relative h-48 w-full flex flex-col items-center justify-end">
+        {achievements.length > 0 && (
+          <AchievementItem
+            key={achievements[0].id}
+            achievement={achievements[0]}
+            onComplete={onAchievementComplete}
+          />
+        )}
+      </div>
+    );
+  }
   return (
-    <div className="h-16 w-full flex items-center justify-center relative overflow-hidden">
-      {currentAchievement && (
-        <div
-          className={`
-            transform transition-all duration-100 ease-out
-            ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}
-          `}
-        >
-          <div
-            className={`
-              px-4 py-2 font-bold text-center text-md
-              ${getAchievementColor(currentAchievement.type)}
-              border rounded-lg whitespace-nowrap shadow-lg
-            `}
-          >
-            {currentAchievement.text}
-          </div>
-        </div>
+    <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-48 w-full flex flex-col items-center justify-end z-30 pointer-events-none">
+      {achievements.length > 0 && (
+        <AchievementItem
+          key={achievements[0].id}
+          achievement={achievements[0]}
+          onComplete={onAchievementComplete}
+        />
       )}
     </div>
   );

@@ -49,6 +49,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const [isPaused, setIsPaused] = useState(false);
   const [isManuallyPaused, setIsManuallyPaused] = useState(false);
   const [time, setTime] = useState(0);
+  const [totalPausedTime, setTotalPausedTime] = useState(0);
   const [pps, setPps] = useState(0);
   
   // Replay recording
@@ -73,18 +74,32 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   // Remove direct useUserSettings dependency to prevent circular rendering
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
   
-  // 撤销重做功能 - 仅单人模式
-  const isSinglePlayer = gameMode.id === 'marathon' || gameMode.id === 'endless' || gameMode.id === 'sprint40' || gameMode.id === 'ultra2min';
+  // Undo/Redo is only enabled for endless mode.
+  const isUndoRedoEnabled = gameMode.id === 'endless';
   const maxUndoSteps = undoSteps;
   const gameStateManager = useGameState({
     maxHistorySize: maxUndoSteps,
-    enabled: isSinglePlayer
+    enabled: isUndoRedoEnabled
   });
   
   const { user } = useAuth();
   const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
 
   const gameStartTime = useRef<number>(Date.now());
+  const wasPausedRef = useRef(isPaused);
+
+  // 游戏恢复时调整计时器
+  useEffect(() => {
+    // 当 isPaused 从 true 变为 false 时，意味着游戏刚刚恢复
+    if (wasPausedRef.current && !isPaused) {
+      debugLog.game('游戏恢复，调整开始时间以修正计时器');
+      // 通过从当前时间减去已经过的时间，来校准开始时间
+      gameStartTime.current = Date.now() - time * 1000;
+    }
+    wasPausedRef.current = isPaused;
+  }, [isPaused, time]);
+
+  const sprintProgressRef = useRef<number>(0);
   const totalPieces = useRef<number>(0);
   const totalActions = useRef<number>(0);
   const dropTimer = useRef<NodeJS.Timeout | null>(null);
@@ -200,25 +215,31 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setGameOver(true);
       
       // Stop replay recording and save if recording
-      if (isRecording && gameMode.id !== 'endless') {
-        const gameStats = {
-          score,
-          lines,
-          level,
-          duration: time * 1000,
-          pps,
-          apm,
-          gameMode: gameMode.id,
-          gameType: 'single' as 'single' | 'ranked' | '1v1'
-        };
-        console.log('游戏结束，保存录像:', gameStats);
-        const savedReplay = await stopRecording(gameStats);
-        if (savedReplay) {
-          console.log('录像保存成功:', savedReplay.id);
-          debugLog.game('Replay recording stopped and saved', { replayId: savedReplay.id });
-        } else {
-          console.log('录像保存失败');
-          debugLog.game('Replay recording failed to save');
+      if (isRecording) {
+        try {
+          const gameStats = {
+            score,
+            lines,
+            level,
+            duration: time * 1000,
+            pps,
+            apm,
+            gameMode: gameMode.id,
+            gameType: 'single' as 'single' | 'ranked' | '1v1'
+          };
+          console.log('游戏结束，保存录像:', gameStats);
+          const savedReplay = await stopRecording(gameStats);
+          if (savedReplay) {
+            console.log('录像保存成功:', savedReplay.id);
+            debugLog.game('Replay recording stopped and saved', { replayId: savedReplay.id });
+          } else {
+            console.log('录像保存失败');
+            debugLog.game('Replay recording failed to save');
+          }
+        } catch (error) {
+          console.error('保存录像时出错:', error);
+          debugLog.error('Error saving replay', error);
+
         }
       }
       
@@ -247,96 +268,69 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       recordAction('place', { x: currentPiece.x, y: currentPiece.y });
     }
 
-    if (isSinglePlayer) {
+    if (isUndoRedoEnabled) {
       gameStateManager.saveState(board, currentPiece, score, lines, level);
     }
 
-    const isTSpin = currentPiece.type.type === 'T' && lastTSpinCheck.current && 
-                   checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked);
-
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
-    
     const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
-    
     setBoard(clearedBoard);
-    
+
     if (linesCleared > 0) {
       const newLines = lines + linesCleared;
       const newLevel = Math.floor(newLines / 10) + 1;
-      let lineScore = 0;
-      
-      const newComboCount = comboCount + 1;
-      setComboCount(newComboCount);
-      
-      let clearType = '';
-      let isSpecialClear = false;
-      let weightedLines = linesCleared;
-      
-      if (isTSpin) {
-        clearType = `tspin_${linesCleared === 3 ? 'triple' : linesCleared === 2 ? 'double' : 'single'}`;
-        lineScore = [800, 1200, 1600][linesCleared - 1] * level;
-        isSpecialClear = true;
-        
-        // Weighted lines for T-Spins
-        if (gameMode.id === 'sprint40') {
-          weightedLines = [2, 4, 6][linesCleared - 1];
-        }
 
-        const tspinResult = lastTSpinCheck.current ? checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked) : null;
-        const isMini = tspinResult?.isMini || false;
-        
-        const b2bNext = b2bCount > 0 ? b2bCount + 1 : 1;
-        if (linesCleared === 2) {
-          showTSpin(2, isMini, b2bCount > 0, b2bNext);
-        } else if (linesCleared === 3) {
-          showTSpin(3, isMini, b2bCount > 0, b2bNext);
-        } else {
-          showTSpin(1, isMini, b2bCount > 0, b2bNext);
-        }
-        setB2bCount(prev => prev + 1);
-      } else if (linesCleared === 4) {
-        clearType = 'tetris';
-        lineScore = 800 * level;
-        isSpecialClear = true;
-        
-        const b2bNext = b2bCount > 0 ? b2bCount + 1 : 1;
-        
-        showTetris(false, b2bCount > 0, b2bNext);
-        setB2bCount(prev => prev + 1);
-      } else {
-        lineScore = [100, 300, 500][linesCleared - 1] * level;
-        setB2bCount(0);
-      }
-      
-      // 修复：只在combo大于1时显示，避免单行消除显示combo
-      if (newComboCount > 1 && newComboCount <= 100) {
-        showCombo(newComboCount);
-      }
-      
+      // Original Nintendo scoring system
+      const scoreBase = { 1: 40, 2: 100, 3: 300, 4: 1200 };
+      const lineScore = (scoreBase[linesCleared] || 0) * newLevel;
+
+      setLines(newLines);
+      setLevel(newLevel);
+      setScore(prev => prev + lineScore);
+
+      // Reset combo and B2B as they are not part of this scoring system
+      setComboCount(0);
+      setB2bCount(0);
+
+
       if (isPerfectClear) {
         showPerfectClear();
       }
-      
       if (newLevel > level) {
         showLevelUp(newLevel);
       }
-      
-      setLines(newLines);
-      setLevel(newLevel);
 
-      // 40L Sprint 模式结束条件
-      if (gameMode.id === 'sprint40' && newLines >= 40 && !gameOver) {
+      // 40L Sprint Mode: End game when target lines are reached
+      if (gameMode.id === 'sprint40' && newLines >= (gameMode.targetLines || 40)) {
+        const finalTimeMs = Date.now() - gameStartTime.current;
+        const finalScore = score + lineScore;
+
+        setTime(finalTimeMs / 1000);
         setGameOver(true);
-        const finalStats = { score, lines: newLines, level, time, pps, apm, gameMode: gameMode.id };
+
+        const finalStats = {
+          score: finalScore,
+          lines: newLines,
+          level: newLevel,
+          time: finalTimeMs / 1000,
+          pps,
+          apm,
+          gameMode: gameMode.id
+        };
+
         onGameEnd(finalStats);
+
         if (isRecording) {
-          stopRecording(finalStats as any);
+          try {
+            // Pass duration in milliseconds
+            stopRecording({ ...finalStats, duration: finalTimeMs });
+          } catch (error) {
+            console.error('Error saving sprint replay on lockPiece:', error);
+            debugLog.error('Error saving sprint replay on lockPiece', error);
+          }
         }
-      }
-      setScore(prev => prev + lineScore);
-      
-      if (onSpecialClear && (clearType || linesCleared >= 4)) {
-        onSpecialClear(clearType || 'tetris', linesCleared);
+        return; // End further processing
+
       }
 
       // 40L Sprint 模式结束条件
@@ -373,6 +367,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     if (isValidPosition(board, newPiece)) {
       setCurrentPiece(newPiece);
       totalActions.current++;
+
       
       if (isRecording && dx !== 0) {
         recordAction('move', { direction: dx < 0 ? 'left' : 'right' });
@@ -428,7 +423,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }
     
     // 在锁定前保存状态以支持撤销
-    if (isSinglePlayer) {
+    if (isUndoRedoEnabled) {
       gameStateManager.saveState(board, currentPiece, score, lines, level);
     }
     // 直接锁定方块到最终位置
@@ -444,65 +439,30 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
     const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
 
-    // T-Spin 检测（若当前为T并且上次旋转记录存在）
-    const isTSpin = droppedPiece.type.type === 'T' && lastTSpinCheck.current && 
-      checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked);
-
     setBoard(clearedBoard);
 
     if (linesCleared > 0) {
       const newLines = lines + linesCleared;
       const newLevel = Math.floor(newLines / 10) + 1;
-      let lineScore = 0;
 
-      const newComboCount = comboCount + 1;
-      setComboCount(newComboCount);
+      // Original Nintendo scoring system
+      const scoreBase = { 1: 40, 2: 100, 3: 300, 4: 1200 };
+      const lineScore = (scoreBase[linesCleared] || 0) * newLevel;
 
-      let clearType = '';
-      let weightedLines = linesCleared;
+      setLines(newLines);
+      setLevel(newLevel);
+      setScore(prev => prev + lineScore);
 
-      if (isTSpin) {
-        clearType = `tspin_${linesCleared === 3 ? 'triple' : linesCleared === 2 ? 'double' : 'single'}`;
-        lineScore = [800, 1200, 1600][Math.max(0, linesCleared - 1)] * level;
-
-        if (gameMode.id === 'sprint40') {
-          weightedLines = [2, 4, 6][linesCleared - 1];
-        }
-
-        const tspinResult = lastTSpinCheck.current ? checkTSpin(lastTSpinCheck.current.board, lastTSpinCheck.current.piece, 'rotate', lastTSpinCheck.current.wasKicked) : null;
-        const isMini = tspinResult?.isMini || false;
-        const b2bNext = b2bCount > 0 ? b2bCount + 1 : 1;
-        if (linesCleared === 2) {
-          showTSpin(2, isMini, b2bCount > 0, b2bNext);
-        } else if (linesCleared === 3) {
-          showTSpin(3, isMini, b2bCount > 0, b2bNext);
-        } else {
-          showTSpin(1, isMini, b2bCount > 0, b2bNext);
-        }
-        setB2bCount(prev => prev + 1);
-      } else if (linesCleared === 4) {
-        clearType = 'tetris';
-        lineScore = 800 * level;
-        const b2bNext = b2bCount > 0 ? b2bCount + 1 : 1;
-        showTetris(false, b2bCount > 0, b2bNext);
-        setB2bCount(prev => prev + 1);
-      } else {
-        lineScore = [100, 300, 500][Math.max(0, linesCleared - 1)] * level;
-        setB2bCount(0);
-      }
-
-      if (newComboCount > 1 && newComboCount <= 100) {
-        showCombo(newComboCount);
-      }
+      // Reset combo and B2B as they are not part of this scoring system
+      setComboCount(0);
+      setB2bCount(0);
 
       if (isPerfectClear) {
         showPerfectClear();
       }
-
       if (newLevel > level) {
         showLevelUp(newLevel);
       }
-
       setLines(newLines);
       setLevel(newLevel);
 
@@ -517,8 +477,52 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       }
       setScore(prev => prev + lineScore);
 
-      if (onSpecialClear && (clearType || linesCleared >= 4)) {
-        onSpecialClear(clearType || 'tetris', linesCleared);
+      {
+        const wasTSpin2 = lastTSpinCheck.current ? !!checkTSpin(
+          lastTSpinCheck.current.board,
+          lastTSpinCheck.current.piece,
+          'rotate',
+          lastTSpinCheck.current.wasKicked
+        ) : false;
+        const clearType = wasTSpin2
+          ? (linesCleared === 1 ? 'tspin_single' : linesCleared === 2 ? 'tspin_double' : 'tspin_triple')
+          : (linesCleared === 4 ? 'tetris' : 'line_clear');
+        if (onSpecialClear && (wasTSpin2 || linesCleared >= 4)) {
+          onSpecialClear(clearType, linesCleared);
+        }
+      }
+
+      // 40L Sprint Mode: End game when target lines are reached (on hard drop)
+      if (gameMode.id === 'sprint40' && newLines >= (gameMode.targetLines || 40)) {
+        const finalTimeMs = Date.now() - gameStartTime.current;
+        const finalScore = score + lineScore;
+
+        setTime(finalTimeMs / 1000);
+        setGameOver(true);
+
+        const finalStats = {
+          score: finalScore,
+          lines: newLines,
+          level: newLevel,
+          time: finalTimeMs / 1000,
+          pps,
+          apm,
+          gameMode: gameMode.id
+        };
+
+        onGameEnd(finalStats);
+
+        if (isRecording) {
+          try {
+            // Pass duration in milliseconds
+            stopRecording({ ...finalStats, duration: finalTimeMs });
+          } catch (error) {
+            console.error('Error saving sprint replay on hard drop:', error);
+            debugLog.error('Error saving sprint replay on hard drop', error);
+          }
+        }
+        setIsHardDropping(false);
+        return; // End further processing
       }
 
       // 40L Sprint 模式结束条件
@@ -754,108 +758,55 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
 
   // 游戏结束和计时器逻辑
   useEffect(() => {
-    if (!gameStarted || gameOver) {
-      if (timerWorker.current) {
-        timerWorker.current.postMessage({ command: 'stop' });
-        timerWorker.current.terminate();
-        timerWorker.current = null;
-      }
+    if (!gameStarted || gameOver || isPaused) {
       return;
     }
 
-    if (gameMode.id === 'ultra2min') {
-      if (!timerWorker.current) {
-        timerWorker.current = new Worker(new URL('../utils/timer.worker.ts', import.meta.url), { type: 'module' });
+    // Time attack (including legacy ids): use real elapsed time and hard limit
+    const legacyLimit = gameMode.id === 'ultra2min' || gameMode.id === 'timeAttack2' ? 120 : undefined;
+    const limit = gameMode.timeLimit ?? legacyLimit;
 
-        timerWorker.current.onmessage = (e: MessageEvent) => {
-          if (e.data.type === 'tick') {
-            setTime(e.data.time);
-            if (e.data.time >= 120) {
-              setGameOver(true);
+    // 使用一个统一的计时器来更新时间和统计数据
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const elapsed = (now - gameStartTime.current) / 1000;
+
+      // 更新PPS和APM
+      if (elapsed > 0) {
+        setPps(totalPieces.current / elapsed);
+        setApm((totalActions.current / elapsed) * 60);
+      }
+
+      if (limit) {
+        // Time-limited mode
+        debugLog.game(`Time attack check: elapsed=${elapsed.toFixed(2)}s, limit=${limit}s`);
+        const clampedTime = Math.min(elapsed, limit);
+        setTime(Math.floor(clampedTime));
+
+        if (elapsed >= limit) {
+          debugLog.game(`Time limit reached for mode ${gameMode.id}. Ending game.`);
+          setGameOver(true);
+          const finalStats = { score, lines, level, time: limit, pps, apm, gameMode: gameMode.id };
+          onGameEnd(finalStats);
+          if (isRecording) {
+            try {
+              stopRecording({ ...finalStats, duration: limit * 1000 } as any).then(replay => {
+                if (replay) console.log(`Time attack replay saved: ${replay.id}`);
+              });
+            } catch (error) {
+              console.error('Error saving time attack replay:', error);
+              debugLog.error('Error saving time attack replay', error);
             }
           }
-        };
-
-        timerWorker.current.postMessage({ command: 'start', startTime: time });
+        }
+      } else {
+        // 非限时模式
+        setTime(Math.floor(elapsed));
       }
-    }
+    }, 500); // 统一使用500ms的间隔，对于显示足够精确
 
-    return () => {
-      if (timerWorker.current) {
-        timerWorker.current.postMessage({ command: 'stop' });
-        timerWorker.current.terminate();
-        timerWorker.current = null;
-      }
-    };
-  }, [gameStarted, gameOver, gameMode.id]);
-
-  const handleBestReplaySaving = useCallback(async (finalStats: GameStats) => {
-    if (!user || user.isGuest || gameMode.id !== 'ultra2min') {
-      if (isRecording) {
-        await stopRecording(finalStats);
-      }
-      return;
-    }
-
-    // 1. 获取当前最佳分数
-    const { data: bestRecord, error: fetchError } = await supabase
-      .from('user_best_records')
-      .select('best_score')
-      .eq('user_id', user.id)
-      .eq('game_mode', gameMode.id)
-      .single();
-
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows found
-      console.error('获取最佳记录失败:', fetchError);
-      return;
-    }
-
-    const currentBest = bestRecord?.best_score || 0;
-
-    // 2. 如果是新高分，则保存录像并更新记录
-    if (finalStats.score > currentBest) {
-      console.log(`新高分! ${finalStats.score} > ${currentBest}. 保存录像...`);
-      const replay = await stopRecording(finalStats);
-      if (replay) {
-        const { error: upsertError } = await supabase
-          .from('user_best_records')
-          .upsert({
-            user_id: user.id,
-            game_mode: gameMode.id,
-            best_score: finalStats.score,
-            replay_id: replay.id,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id, game_mode' });
-
-        if (upsertError) console.error('更新最佳记录失败:', upsertError);
-        else console.log('最佳记录更新成功!');
-      }
-    } else {
-      console.log(`分数未超过最高分 (${finalStats.score} <= ${currentBest}). 不保存录像.`);
-      // 不保存录像，但需要停止录制状态
-      stopRecording(null);
-    }
-  }, [user, gameMode.id, isRecording, stopRecording]);
-
-  // 游戏结束处理
-  useEffect(() => {
-    if (gameOver) {
-      if (timerWorker.current) {
-        timerWorker.current.postMessage({ command: 'stop' });
-      }
-
-      const finalStats = { score, lines, level, time, pps, apm, gameMode: gameMode.id };
-
-      if (gameMode.id === 'ultra2min') {
-        finalStats.time = 120;
-        handleBestReplaySaving(finalStats);
-      } else if (isRecording && gameMode.id !== 'endless') {
-        stopRecording(finalStats);
-      }
-
-      onGameEnd(finalStats);
-    }
-  }, [gameOver]);
+    return () => clearInterval(timer);
+  }, [gameStarted, gameOver, gameMode.id, gameMode.timeLimit, isPaused, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
 
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
@@ -877,8 +828,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     debugLog.game('Starting game logic...');
     setGameStarted(true);
     gameStartTime.current = Date.now();
-    // Start replay recording at game start, except for endless mode
-    if (gameMode.id !== 'endless' && !isRecording) {
+    sprintProgressRef.current = 0;
+    // Start replay recording only for specific modes
+    const recordableModes = ['sprint40', 'sprint100', 'timeAttack2', 'timeAttack5', 'versus'];
+    if (!isRecording && recordableModes.includes(gameMode.id)) {
       try {
         startRecording(board.map(row => [...row]), { gameMode: gameMode.id });
       } catch (e) {
@@ -899,8 +852,9 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const resetGame = useCallback(() => {
     debugLog.game('Resetting game...');
     // 若正在录制，先保存当前录像
-    try {
-      if (isRecording && gameMode.id !== 'endless') {
+
+    if (isRecording && gameMode.id !== 'endless') {
+      try {
         const stats = {
           score,
           lines,
@@ -912,9 +866,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         };
         // 不等待，异步保存
         stopRecording(stats as any);
+      } catch (e) {
+        console.warn('重置前保存录像失败', e);
+        debugLog.error('Error saving replay on reset', e);
       }
-    } catch (e) {
-      console.warn('重置前保存录像失败', e);
     }
     setBoard(createEmptyBoard());
     setCurrentPiece(null);
@@ -928,6 +883,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     setIsPaused(false);
     setIsManuallyPaused(false);
     setTime(0);
+    setTotalPausedTime(0);
     setPps(0);
     setApm(0);
     setIsHardDropping(false);
@@ -944,7 +900,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   }, [clearLockDelayTimer, gameStateManager, isRecording, score, lines, level, time, pps, apm, gameMode.id, stopRecording]);
 
   const undoAction = useCallback(() => {
-    if (!isSinglePlayer) return null;
+    if (!isUndoRedoEnabled) return null;
     const snapshot = gameStateManager.undo();
     if (snapshot) {
       setBoard(snapshot.board.map(row => [...row]));
@@ -957,10 +913,10 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return snapshot;
     }
     return null;
-  }, [isSinglePlayer, gameStateManager, clearLockDelayTimer]);
+  }, [isUndoRedoEnabled, gameStateManager, clearLockDelayTimer]);
 
   const redoAction = useCallback(() => {
-    if (!isSinglePlayer) return null;
+    if (!isUndoRedoEnabled) return null;
     const snapshot = gameStateManager.redo();
     if (snapshot) {
       setBoard(snapshot.board.map(row => [...row]));
@@ -973,7 +929,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return snapshot;
     }
     return null;
-  }, [isSinglePlayer, gameStateManager, clearLockDelayTimer]);
+  }, [isUndoRedoEnabled, gameStateManager, clearLockDelayTimer]);
 
   const pauseGame = useCallback(() => {
     debugLog.game('暂停游戏', { isPaused, isManuallyPaused });
@@ -1049,11 +1005,11 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     lockPiece,
     initializeForCountdown,
     // 撤销重放功能（仅单人模式）
-    canUndo: isSinglePlayer ? gameStateManager.canUndo : false,
-    canRedo: isSinglePlayer ? gameStateManager.canRedo : false,
-    undo: isSinglePlayer ? undoAction : () => {},
-    redo: isSinglePlayer ? redoAction : () => {},
-    clearHistory: isSinglePlayer ? gameStateManager.clearHistory : () => {},
+    canUndo: isUndoRedoEnabled ? gameStateManager.canUndo : false,
+    canRedo: isUndoRedoEnabled ? gameStateManager.canRedo : false,
+    undo: isUndoRedoEnabled ? undoAction : () => {},
+    redo: isUndoRedoEnabled ? redoAction : () => {},
+    clearHistory: isUndoRedoEnabled ? gameStateManager.clearHistory : () => {},
     
     // 硬降功能
     hardDrop,

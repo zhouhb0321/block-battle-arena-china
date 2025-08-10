@@ -60,13 +60,13 @@ const TimeChallengeClock: React.FC<TimeChallengeClockProps> = ({
   const getClockColor = () => {
     if (remainingTime <= 10) return 'text-red-500';
     if (remainingTime <= 30) return 'text-yellow-500';
-    return 'text-white';
+    return 'text-foreground';
   };
 
   const shouldPulse = remainingTime <= 10;
 
   return (
-    <div className={`bg-gray-900 p-3 rounded-lg border border-gray-700 ${shouldPulse ? 'animate-pulse' : ''}`}>
+    <div className={`bg-background/50 backdrop-blur-sm p-3 rounded-lg border border-border/60 ${shouldPulse ? 'animate-pulse' : ''}`}>
       <div className="flex items-center justify-center gap-2">
         <Clock className={`w-4 h-4 ${getClockColor()}`} />
         <span className={`text-lg font-mono font-bold ${getClockColor()}`}>
@@ -77,15 +77,14 @@ const TimeChallengeClock: React.FC<TimeChallengeClockProps> = ({
         )}
       </div>
       
-      {/* 进度条 */}
-      <div className="mt-2 w-full bg-gray-700 rounded-full h-2">
+      <div className="mt-2 w-full bg-border/60 rounded-full h-2">
         <div
           className={`h-2 rounded-full transition-all duration-1000 ${
             remainingTime <= 10 
               ? 'bg-red-500' 
               : remainingTime <= 30 
                 ? 'bg-yellow-500' 
-                : 'bg-blue-500'
+                : 'bg-primary'
           }`}
           style={{ width: `${(remainingTime / timeLimit) * 100}%` }}
         />
@@ -93,7 +92,7 @@ const TimeChallengeClock: React.FC<TimeChallengeClockProps> = ({
       
       {remainingTime <= 10 && remainingTime > 0 && (
         <div className="text-center mt-1">
-          <span className="text-red-400 text-xs font-bold animate-bounce">
+          <span className="text-destructive text-xs font-bold animate-bounce">
             时间不多了！
           </span>
         </div>

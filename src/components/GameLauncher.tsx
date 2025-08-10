@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import TetrisGame from './TetrisGame';
-
+import { GAME_MODES } from '@/utils/gameTypes';
 
 interface GameLauncherProps {
   onBackToMenu: () => void;
@@ -16,7 +16,7 @@ const GameLauncher: React.FC<GameLauncherProps> = ({ onBackToMenu }) => {
   React.useEffect(() => {
     // Automatically start with endless mode
     console.log('Auto-starting endless mode');
-    setGameConfig({ gameType: 'singleplayer', gameMode: { id: 'endless', title: 'Endless Mode', description: 'Practice mode' } });
+    setGameConfig({ gameType: 'singleplayer', gameMode: (GAME_MODES.find((m) => m.id === 'endless') || GAME_MODES[0]) });
     setGameStarted(true);
   }, []);
 

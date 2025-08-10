@@ -23,7 +23,7 @@ const NextPiecePreview: React.FC<NextPiecePreviewProps> = ({
           <div 
             key={index} 
             className={`flex justify-center ${compact ? 'p-1' : 'p-2'} ${
-              index === 0 ? 'bg-gray-800 rounded' : ''
+              index === 0 ? 'bg-background/20 backdrop-blur-sm rounded' : ''
             }`}
           >
             <PiecePreview 
