@@ -4,6 +4,8 @@ import { useGameState } from './useGameState';
 import { useAchievements } from './useAchievements';
 import { useReplayRecorder } from './useReplayRecorder';
 import { debugLog } from '@/utils/debugLogger';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   createEmptyBoard, 
   isValidPosition,
@@ -63,6 +65,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const [gameInitialized, setGameInitialized] = useState(false);
   const [comboCount, setComboCount] = useState(0);
   const [b2bCount, setB2bCount] = useState(0);
+  const [sprintProgress, setSprintProgress] = useState(0); // For 40L weighted lines
 
   // 锁定延迟相关状态
   const [isLockDelayActive, setIsLockDelayActive] = useState(false);
@@ -79,6 +82,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     enabled: isUndoRedoEnabled
   });
   
+  const { user } = useAuth();
   const { isWindowFocused, wasManuallyPaused, setWasManuallyPaused } = useWindowFocus();
 
   const gameStartTime = useRef<number>(Date.now());
@@ -235,6 +239,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         } catch (error) {
           console.error('保存录像时出错:', error);
           debugLog.error('Error saving replay', error);
+
         }
       }
       
@@ -287,6 +292,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       setComboCount(0);
       setB2bCount(0);
 
+
       if (isPerfectClear) {
         showPerfectClear();
       }
@@ -324,6 +330,21 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
           }
         }
         return; // End further processing
+
+      }
+
+      // 40L Sprint 模式结束条件
+      if (gameMode.id === 'sprint40' && !gameOver) {
+        const newSprintProgress = sprintProgress + weightedLines;
+        setSprintProgress(newSprintProgress);
+        if (newSprintProgress >= 40) {
+          setGameOver(true);
+          const finalStats = { score, lines: newLines, level, time, pps, apm, gameMode: gameMode.id };
+          onGameEnd(finalStats);
+          if (isRecording && gameMode.id !== 'endless') {
+            stopRecording(finalStats as any);
+          }
+        }
       }
     } else {
       setComboCount(0);
@@ -348,20 +369,25 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       totalActions.current++;
 
       
-      // Record replay action (only horizontal moves)
       if (isRecording && dx !== 0) {
         recordAction('move', { direction: dx < 0 ? 'left' : 'right' });
       }
       
-      if (dx !== 0) {
-        // 修复：只有在方块已经触底且移动后仍然触底时，才重置锁定延迟
-        const belowNewPiece = { ...newPiece, y: newPiece.y + 1 };
-        if (!isValidPosition(board, belowNewPiece)) {
-          if (resetLockDelay()) {
-            clearLockDelayTimer();
-          }
+      const isAtBottom = !isValidPosition(board, { ...newPiece, y: newPiece.y + 1 });
+
+      if (isAtBottom) {
+        // 如果方块在底部，则重置并重启锁定延迟
+        if (resetLockDelay()) {
+          startLockDelay();
+        } else {
+          // 如果无法重置（达到上限），则立即锁定
+          lockPiece();
         }
+      } else {
+        // 如果方块不在底部，则清除任何正在进行的锁定延迟
+        clearLockDelayTimer();
       }
+
       return true;
     } else if (dy > 0) {
       // 软降失败时启动锁定延迟
@@ -369,7 +395,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       return false;
     }
     return false;
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay, resetLockDelay, clearLockDelayTimer, isRecording, recordAction]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, startLockDelay, resetLockDelay, lockPiece, clearLockDelayTimer, isRecording, recordAction]);
 
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
@@ -439,6 +465,16 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
       }
       setLines(newLines);
       setLevel(newLevel);
+
+      // 40L Sprint 模式结束条件
+      if (gameMode.id === 'sprint40' && newLines >= 40 && !gameOver) {
+        setGameOver(true);
+        const finalStats = { score, lines: newLines, level, time, pps, apm, gameMode: gameMode.id };
+        onGameEnd(finalStats);
+        if (isRecording) {
+          stopRecording(finalStats as any);
+        }
+      }
       setScore(prev => prev + lineScore);
 
       {
@@ -487,6 +523,20 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
         }
         setIsHardDropping(false);
         return; // End further processing
+      }
+
+      // 40L Sprint 模式结束条件
+      if (gameMode.id === 'sprint40' && !gameOver) {
+        const newSprintProgress = sprintProgress + weightedLines;
+        setSprintProgress(newSprintProgress);
+        if (newSprintProgress >= 40) {
+          setGameOver(true);
+          const finalStats = { score, lines: newLines, level, time, pps, apm, gameMode: gameMode.id };
+          onGameEnd(finalStats);
+          if (isRecording && gameMode.id !== 'endless') {
+            stopRecording(finalStats as any);
+          }
+        }
       }
     } else {
       setComboCount(0);
@@ -659,6 +709,54 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     }
   }, [isWindowFocused, isPaused, isManuallyPaused, gameStarted, gameOver]);
 
+  const timerWorker = useRef<Worker | null>(null);
+
+  const handleBestReplaySaving = useCallback(async (finalStats: GameStats) => {
+    if (!user || user.isGuest) {
+      if (isRecording) await stopRecording(finalStats);
+      return;
+    }
+
+    debugLog.game(`检查 ${gameMode.id} 模式的最佳分数`);
+    const { data: bestRecord, error: fetchError } = await supabase
+      .from('user_best_records')
+      .select('best_score')
+      .eq('user_id', user.id)
+      .eq('game_mode', gameMode.id)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('获取最佳记录失败:', fetchError);
+      if (isRecording) await stopRecording(finalStats);
+      return;
+    }
+
+    const currentBest = bestRecord?.best_score || 0;
+    if (finalStats.score > currentBest) {
+      debugLog.game(`新高分! ${finalStats.score} > ${currentBest}. 保存录像...`);
+      const replay = await stopRecording(finalStats);
+      if (replay) {
+        const { error: upsertError } = await supabase
+          .from('user_best_records')
+          .upsert({
+            user_id: user.id,
+            game_mode: gameMode.id,
+            best_score: finalStats.score,
+            best_time: finalStats.time * 1000,
+            replay_id: replay.id,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id, game_mode' });
+
+        if (upsertError) console.error('更新最佳记录失败:', upsertError);
+        else console.log('最佳记录更新成功!');
+      }
+    } else {
+      debugLog.game(`分数未超过最高分 (${finalStats.score} <= ${currentBest}). 不保存录像.`);
+      await stopRecording(null);
+    }
+  }, [user, gameMode.id, isRecording, stopRecording]);
+
+  // 游戏结束和计时器逻辑
   useEffect(() => {
     if (!gameStarted || gameOver || isPaused) {
       return;
@@ -710,7 +808,6 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
     return () => clearInterval(timer);
   }, [gameStarted, gameOver, gameMode.id, gameMode.timeLimit, isPaused, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
 
-
   useEffect(() => {
     if (gameOver || isPaused || !currentPiece || !isWindowFocused || isHardDropping || !gameStarted) return;
 
@@ -755,6 +852,7 @@ export const useGameLogic = ({ gameMode, onGameEnd, onSpecialClear, onAchievemen
   const resetGame = useCallback(() => {
     debugLog.game('Resetting game...');
     // 若正在录制，先保存当前录像
+
     if (isRecording && gameMode.id !== 'endless') {
       try {
         const stats = {

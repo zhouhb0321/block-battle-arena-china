@@ -50,8 +50,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
   const getBoardThemeClasses = () => {
     return actualTheme === 'light' 
-      ? 'bg-white border-gray-300' 
-      : 'bg-gray-800 border-gray-600';
+      ? 'bg-gray-200' // 不透明背景
+      : 'bg-gray-900'; // 不透明背景
   };
 
   const getPanelThemeClasses = () => {
@@ -76,32 +76,43 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
           <div className="flex items-center gap-4">
             {/* Controls are now handled by GameKeyboardHandler and the provider */}
           </div>
-          <div className="text-lg font-semibold">
-            {gameMode.displayName}
-          </div>
-        </div>
-        <div className="flex flex-col lg:flex-row gap-6 items-start justify-center">
-          <div className="flex flex-col gap-4 lg:w-48">
-            <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
-              <HoldPieceDisplay
-                holdPiece={gameLogic.holdPiece}
-                canHold={gameLogic.canHold}
-              />
-            </div>
-            <div className={`relative h-48 p-2 rounded-lg border ${getPanelThemeClasses()}`}>
-              <AchievementDisplay
-                achievements={gameLogic.achievements || []}
-                onAchievementComplete={gameLogic.removeAchievement}
-                placement="sidebar"
-              />
-            </div>
-            <div className="flex-1 flex flex-col justify-end">
-              <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
-                <div className="space-y-3">
-                  <div className="text-center border-b pb-2 mb-3">
-                    <div className="font-bold text-lg">
-                      {user?.username || user?.email?.split('@')[0] || 'Player'}
-                    </div>
+
+          
+          {/* 成就显示区域 - 移到Hold区下方，无额外边框 */}
+          <AchievementDisplay
+            achievements={gameLogic.achievements || []}
+            onAchievementComplete={handleAchievementComplete}
+          />
+          
+          {/* 游戏信息面板 - 与游戏板底部对齐 */}
+          <div className="flex-1 flex flex-col justify-end">
+            <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
+              <div className="space-y-3">
+                <div className="text-center border-b pb-2 mb-3">
+                  <div className="font-bold text-lg">
+                    {user?.username || user?.email?.split('@')[0] || 'Player'}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>得分:</div>
+                  <div className="font-mono text-right">{gameLogic.score.toLocaleString()}</div>
+                  
+                  <div>行数:</div>
+                  <div className="font-mono text-right">{gameLogic.lines}</div>
+                  
+                  <div>等级:</div>
+                  <div className="font-mono text-right">{gameLogic.level}</div>
+                  
+                  <div>PPS:</div>
+                  <div className="font-mono text-right">{gameLogic.pps.toFixed(2)}</div>
+                  
+                  <div>攻击:</div>
+                  <div className="font-mono text-right">{gameLogic.apm.toFixed(1)}</div>
+                  
+                  <div>时间:</div>
+                  <div className="font-mono text-right">
+                    {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>得分:</div>

@@ -12,38 +12,19 @@ export const useAchievements = () => {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   const addAchievement = useCallback((text: string, type: Achievement['type']) => {
+    const newAchievement: Achievement = {
+      id: `${Date.now()}-${Math.random()}`,
+      text,
+      type,
+      timestamp: Date.now()
+    };
+
     setAchievements(prev => {
-      const now = Date.now();
-
-      // 优化：处理Combo和B2B的叠加显示
-      if (type === 'combo' || (type === 'tspin' && text.includes('B2B')) || (type === 'tetris' && text.includes('B2B'))) {
-        const existingIndex = prev.findIndex(a => a.type === type || (a.type === 'tspin' && type === 'tetris') || (a.type === 'tetris' && type === 'tspin'));
-
-        if (existingIndex !== -1) {
-          const updatedAchievements = [...prev];
-          updatedAchievements[existingIndex] = {
-            ...updatedAchievements[existingIndex],
-            id: `${Date.now()}-${Math.random()}`, // 更新ID以重新触发动画
-            text,
-            timestamp: now
-          };
-          return updatedAchievements;
-        }
-      }
-
-      const newAchievement: Achievement = {
-        id: `${Date.now()}-${Math.random()}`,
-        text,
-        type,
-        timestamp: now
-      };
-
-      // 避免快速重复完全相同的成就
+      // 避免重复刷旧成就
       const last = prev[prev.length - 1];
-      if (last && last.text === text && last.type === type && (now - last.timestamp) < 500) {
+      if (last && last.text === text && (Date.now() - last.timestamp) < 500) {
         return prev;
       }
-
       return [...prev, newAchievement];
     });
   }, []);
