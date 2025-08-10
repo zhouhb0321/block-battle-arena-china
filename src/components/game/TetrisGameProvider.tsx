@@ -7,6 +7,8 @@ import GameOverDialog from '@/components/GameOverDialog';
 interface TetrisGameContextType {
   gameLogic: ReturnType<typeof useGameLogic>;
   gameSettings: GameSettings;
+  gameMode: GameMode;
+  keyboardLoopRef: React.MutableRefObject<number | null>;
 }
 
 const TetrisGameContext = createContext<TetrisGameContextType | null>(null);
@@ -35,7 +37,7 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
   const { settings } = useUserSettings();
   const [isGameOver, setIsGameOver] = useState(false);
   const [finalStats, setFinalStats] = useState<GameStats | null>(null);
-
+  const keyboardLoopRef = useRef<number | null>(null);
   const gameSettings: GameSettings = React.useMemo(() => ({
       enableGhost: settings.enableGhost,
       enableSound: settings.enableSound,
@@ -66,6 +68,8 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
   const contextValue = {
     gameLogic,
     gameSettings,
+    gameMode,
+    keyboardLoopRef,
   };
 
   return (

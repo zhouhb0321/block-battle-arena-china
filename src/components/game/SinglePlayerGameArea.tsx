@@ -22,8 +22,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 }) => {
   const { user } = useAuth();
   const { actualTheme } = useTheme();
-  const { gameLogic, gameSettings } = useTetrisGame();
-  const { gameMode } = gameLogic;
+  const { gameLogic, gameSettings, gameMode } = useTetrisGame();
   
   const [showCountdown, setShowCountdown] = useState(true);
   const gameContainerRef = useRef<HTMLDivElement>(null);
