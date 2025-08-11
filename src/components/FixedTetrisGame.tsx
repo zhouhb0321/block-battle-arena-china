@@ -17,7 +17,6 @@ import {
   placePiece,
   clearLines,
   calculateDropPosition,
-  calculateScore,
   calculateAttackLines,
   createEmptyBoard,
   createNewPiece,
@@ -28,6 +27,7 @@ import {
   BOARD_HEIGHT
 } from '@/utils/tetrisLogic';
 import { calculateDropSpeed, getGravityInfo } from '@/utils/gravitySystem';
+import { calculateScore } from '@/utils/scoringSystem';
 import { getB2BDisplayText } from '@/utils/b2bSystem';
 import type { TetrominoType, GamePiece, GameState } from '@/utils/gameTypes';
 
@@ -262,7 +262,13 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
       const newTotalLines = prev.lines + linesCleared;
       const gravityInfo = getGravityInfo(newTotalLines);
       
-      const newScore = calculateScore(linesCleared, gravityInfo.level, tSpinResult, newB2B > 1, newCombo, isPerfectClear);
+      const scoreResult = calculateScore({
+        linesCleared,
+        tSpin: tSpinResult ? (tSpinResult.isMini ? 'mini' : 'normal') : 'none',
+        isB2B: newB2B > 1,
+        combo: newCombo,
+        isPerfectClear
+      });
       const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 1, newCombo);
       
       const timeElapsed = (Date.now() - prev.startTime) / 1000;
@@ -284,7 +290,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             const b2bText = newB2B > 1 ? ` ${getB2BDisplayText(newB2B)}` : '';
             toast.success(`Tetris!${b2bText}`, { duration: 2000 });
           } else {
-            toast.success(`消除了 ${linesCleared} 行! +${newScore} 分`, { duration: 1500 });
+            toast.success(`消除了 ${linesCleared} 行! +${scoreResult.score} 分`, { duration: 1500 });
           }
           
           if (newCombo >= 0) {
@@ -297,7 +303,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
         ...prev,
         board: clearedBoard,
         currentPiece: null,
-        score: prev.score + newScore + dropDistance * 2,
+        score: prev.score + scoreResult.score + dropDistance * 2,
         lines: newTotalLines,
         level: gravityInfo.level,
         combo: newCombo,
@@ -332,7 +338,13 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
           const newTotalLines = prev.lines + linesCleared;
           const gravityInfo = getGravityInfo(newTotalLines);
           
-          const newScore = calculateScore(linesCleared, gravityInfo.level, tSpinResult, newB2B > 1, newCombo, isPerfectClear);
+          const scoreResult = calculateScore({
+            linesCleared,
+            tSpin: tSpinResult ? (tSpinResult.isMini ? 'mini' : 'normal') : 'none',
+            isB2B: newB2B > 1,
+            combo: newCombo,
+            isPerfectClear
+          });
           const attackLines = calculateAttackLines(linesCleared, tSpinResult, newB2B > 1, newCombo);
           
           const timeElapsed = (Date.now() - prev.startTime) / 1000;
@@ -343,7 +355,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             ...current,
             board: clearedBoard,
             currentPiece: null,
-            score: current.score + newScore,
+            score: current.score + scoreResult.score,
             lines: newTotalLines,
             level: gravityInfo.level,
             combo: newCombo,
@@ -368,7 +380,7 @@ const FixedTetrisGame: React.FC<FixedTetrisGameProps> = ({ onBackToMenu }) => {
             const b2bText = newB2B > 1 ? ` ${getB2BDisplayText(newB2B)}` : '';
             toast.success(`Tetris!${b2bText}`, { duration: 2000 });
           } else {
-            toast.success(`消除了 ${linesCleared} 行! +${newScore} 分`, { duration: 1500 });
+            toast.success(`消除了 ${linesCleared} 行! +${scoreResult.score} 分`, { duration: 1500 });
           }
           
           if (newCombo >= 0) {

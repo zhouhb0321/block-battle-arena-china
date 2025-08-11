@@ -336,7 +336,7 @@ export const useGameLogic = ({
         const finalStats = { score: score + scoreResult.score, lines: newLines, level: newLevel, time: finalTimeMs / 1000, pps, apm, gameMode: gameMode.id };
         onGameEnd(finalStats);
         if (isRecording) {
-          stopRecording({ ...finalStats, duration: finalTimeMs, gameType: (gameMode.id === 'versus' || gameMode.id === '1v1') ? '1v1' : 'single' });
+          stopRecording({ ...finalStats, duration: finalTimeMs, gameType: 'single' });
         }
         return;
       }
@@ -478,7 +478,7 @@ export const useGameLogic = ({
         const finalStats = { score: score + scoreResult.score + hardDropBonus, lines: newLines, level: newLevel, time: finalTimeMs / 1000, pps, apm, gameMode: gameMode.id };
         onGameEnd(finalStats);
         if (isRecording) {
-          stopRecording({ ...finalStats, duration: finalTimeMs, gameType: (gameMode.id === 'versus' || gameMode.id === '1v1') ? '1v1' : 'single' });
+          stopRecording({ ...finalStats, duration: finalTimeMs, gameType: 'single' });
         }
         setIsHardDropping(false);
         return;
@@ -492,7 +492,7 @@ export const useGameLogic = ({
     setIsHardDropping(false);
     lastTSpinCheck.current = null;
     spawnNewPiece();
-  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, clearLockDelayTimer, lines, level, comboCount, b2bCount, showTSpin, showTetris, showCombo, showPerfectClear, showLevelUp, onSpecialClear, spawnNewPiece, isRecording, recordAction]);
+  }, [currentPiece, board, gameOver, isPaused, isHardDropping, gameStarted, clearLockDelayTimer, lines, level, comboCount, isB2B, showTSpin, showTetris, showCombo, showPerfectClear, showLevelUp, onSpecialClear, spawnNewPiece, isRecording, recordAction]);
 
   const rotatePieceClockwise = useCallback(() => {
     if (!currentPiece || gameOver || isPaused || isHardDropping || !gameStarted) return;
@@ -692,7 +692,7 @@ export const useGameLogic = ({
           onGameEnd(finalStats);
           if (isRecording) {
             try {
-              stopRecording({ ...finalStats, duration: limit * 1000, gameType: (gameMode.id === 'versus' || gameMode.id === '1v1') ? '1v1' : 'single' } as any).then(replay => {
+              stopRecording({ ...finalStats, duration: limit * 1000, gameType: 'single' } as any).then(replay => {
                 if (replay) console.log(`Time attack replay saved: ${replay.id}`);
               });
             } catch (error) {
@@ -794,7 +794,7 @@ export const useGameLogic = ({
     setGameInitialized(false);
     setLockDelayResetCount(0);
     setComboCount(0);
-    setB2bCount(0);
+    
     clearLockDelayTimer();
     gameStateManager.clearHistory();
     totalPieces.current = 0;
@@ -891,7 +891,6 @@ export const useGameLogic = ({
     gameStarted,
     gameInitialized,
     comboCount,
-    b2bCount,
     achievements,
     
     // 游戏控制

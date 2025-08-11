@@ -18,9 +18,9 @@ import {
 } from 'lucide-react';
 import type { 
   CompressedReplay, 
-  ReplayPlayerConfig,
-  ReplayAction as DecompressedReplayAction
+  ReplayPlayerConfig
 } from '@/utils/replayTypes';
+import type { ReplayAction as DecompressedReplayAction } from '@/utils/gameTypes';
 import { GameMode } from '@/utils/gameTypes';
 
 interface EnhancedReplayPlayerProps {
