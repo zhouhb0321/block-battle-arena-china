@@ -233,6 +233,7 @@ export const useGameLogic = ({
       // Stop replay recording and save if recording
       if (isRecording) {
         try {
+          const gameTypeParam = (gameMode.id === 'versus' || gameMode.id === '1v1') ? '1v1' as const : 'single' as const;
           const gameStats = {
             score,
             lines,
@@ -241,7 +242,7 @@ export const useGameLogic = ({
             pps,
             apm,
             gameMode: gameMode.id,
-            gameType: 'single' as 'single' | 'ranked' | '1v1'
+            gameType: gameTypeParam
           };
           console.log('游戏结束，保存录像:', gameStats);
           const savedReplay = await stopRecording(gameStats);
@@ -335,7 +336,7 @@ export const useGameLogic = ({
         const finalStats = { score: score + scoreResult.score, lines: newLines, level: newLevel, time: finalTimeMs / 1000, pps, apm, gameMode: gameMode.id };
         onGameEnd(finalStats);
         if (isRecording) {
-          stopRecording({ ...finalStats, duration: finalTimeMs });
+          stopRecording({ ...finalStats, duration: finalTimeMs, gameType: (gameMode.id === 'versus' || gameMode.id === '1v1') ? '1v1' : 'single' });
         }
         return;
       }
@@ -477,7 +478,7 @@ export const useGameLogic = ({
         const finalStats = { score: score + scoreResult.score + hardDropBonus, lines: newLines, level: newLevel, time: finalTimeMs / 1000, pps, apm, gameMode: gameMode.id };
         onGameEnd(finalStats);
         if (isRecording) {
-          stopRecording({ ...finalStats, duration: finalTimeMs });
+          stopRecording({ ...finalStats, duration: finalTimeMs, gameType: (gameMode.id === 'versus' || gameMode.id === '1v1') ? '1v1' : 'single' });
         }
         setIsHardDropping(false);
         return;
@@ -691,7 +692,7 @@ export const useGameLogic = ({
           onGameEnd(finalStats);
           if (isRecording) {
             try {
-              stopRecording({ ...finalStats, duration: limit * 1000 } as any).then(replay => {
+              stopRecording({ ...finalStats, duration: limit * 1000, gameType: (gameMode.id === 'versus' || gameMode.id === '1v1') ? '1v1' : 'single' } as any).then(replay => {
                 if (replay) console.log(`Time attack replay saved: ${replay.id}`);
               });
             } catch (error) {
@@ -732,7 +733,7 @@ export const useGameLogic = ({
     gameStartTime.current = Date.now();
     sprintProgressRef.current = 0;
     // Start replay recording only for specific modes
-    const recordableModes = ['sprint40', 'sprint100', 'timeAttack2', 'timeAttack5', 'versus'];
+    const recordableModes = ['sprint40', 'sprint100', 'timeAttack2', 'timeAttack5', 'versus', '1v1'];
     if (!isRecording && recordableModes.includes(gameMode.id)) {
       try {
         startRecording(board.map(row => [...row]), { gameMode: gameMode.id });

@@ -334,7 +334,7 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                     <TrendingUp className="w-4 h-4" />
                     实时统计
                   </CardTitle>
-                </Header>
+                </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">

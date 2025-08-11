@@ -28,6 +28,10 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const [displayTime, setDisplayTime] = useState(0);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
+  const handleAchievementComplete = useCallback((id: string) => {
+    gameLogic.removeAchievement?.(id);
+  }, [gameLogic]);
+
   const handleCountdownComplete = () => {
     setShowCountdown(false);
     gameLogic.startGame();
@@ -129,7 +133,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                   
                   <div>时间:</div>
                   <div className="font-mono text-right">
-                    {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
+                    {Math.floor(displayTime / 60)}:{Math.floor(displayTime % 60).toString().padStart(2, '0')}
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>得分:</div>

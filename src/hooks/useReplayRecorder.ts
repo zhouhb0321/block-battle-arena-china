@@ -100,7 +100,39 @@ export const useReplayRecorder = () => {
     console.log('Stopping replay recording with', actionsRef.current.length, 'actions. Attempting to save.');
 
     try {
-      // 总是保存录像，移除了原有的 leaderboard 检查逻辑
+      // 先根据模式检查是否有资格进入前500
+      const mode = gameStats.gameMode;
+      const isSprint40 = mode === 'sprint40';
+      const isTimeAttack2 = mode === 'timeAttack2' || mode === 'ultra2min';
+
+      if (isSprint40 || isTimeAttack2) {
+        let query = supabase
+          .from('compressed_replays')
+          .select('id, final_score, duration_seconds')
+          .eq('user_id', user.id);
+
+        if (isTimeAttack2) {
+          // 2分钟模式按分数降序
+          query = query.in('game_mode', ['timeAttack2', 'ultra2min']).order('final_score', { ascending: false }).limit(500);
+        } else {
+          // 40L模式按用时升序
+          query = query.eq('game_mode', 'sprint40').order('duration_seconds', { ascending: true }).limit(500);
+        }
+
+        const { data: existing, error: fetchError } = await query;
+        if (!fetchError && existing && existing.length >= 500) {
+          const worst = existing[existing.length - 1];
+          const isWorseOrEqual = isTimeAttack2
+            ? (gameStats.score <= (worst.final_score ?? 0))
+            : (gameStats.duration >= (worst.duration_seconds ?? Number.MAX_SAFE_INTEGER));
+          if (isWorseOrEqual) {
+            console.log('Skipping replay save: not within top 500 for mode', mode);
+            setIsRecording(false);
+            return null;
+          }
+        }
+      }
+
       const compressed = ReplayCompressor.compressActions(actionsRef.current);
       const compressedActions = ReplayCompressor.encodeToBinary(
         compressed
@@ -143,12 +175,13 @@ export const useReplayRecorder = () => {
           final_level: gameStats.level,
           pps: gameStats.pps,
           apm: gameStats.apm,
-          duration_seconds: gameStats.duration, // Storing duration in ms
+          duration_seconds: gameStats.duration,
           checksum: checksum,
-          version: '2.1' // Version bump for new logic
+          version: '2.1'
         })
         .select()
         .single();
+
 
       if (error) {
         console.error('Error saving compressed replay:', error);
