@@ -91,20 +91,20 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   }, [gameLogic.gameStarted, gameLogic.isPaused, gameLogic.gameOver, gameLogic.gameStartTime]);
 
   return (
-    <BackgroundWallpaper>
+    <div
+      ref={gameContainerRef}
+      className={`min-h-screen p-4 flex flex-col items-center justify-center ${getThemeClasses()}`}
+      tabIndex={0}
+      style={{ outline: 'none' }}
+    >
       <GameMusicManager 
         isGameActive={gameLogic.gameStarted}
         isGamePaused={gameLogic.isPaused} 
       />
-      <div 
-        ref={gameContainerRef}
-        className={`min-h-screen p-4 ${getThemeClasses()}`}
-        tabIndex={0}
-        style={{ outline: 'none' }}
-      >
+      <BackgroundWallpaper>
         <div className="flex justify-center items-start p-4 gap-4">
           {/* Left Panel */}
-          <div className="w-48 flex flex-col gap-4">
+          <div className="w-48 flex flex-col gap-4 h-full">
             {/* Hold Piece */}
             <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
               <HoldPieceDisplay
@@ -114,10 +114,12 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             </div>
 
             {/* Achievements */}
-            <AchievementDisplay
-              achievements={gameLogic.achievements || []}
-              onAchievementComplete={handleAchievementComplete}
-            />
+            <div className="flex-grow">
+              <AchievementDisplay
+                achievements={gameLogic.achievements || []}
+                onAchievementComplete={handleAchievementComplete}
+              />
+            </div>
 
             {/* User Info and Stats */}
             <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
@@ -208,8 +210,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
             </div>
           </div>
         </div>
-      </div>
-    </BackgroundWallpaper>
+      </BackgroundWallpaper>
+    </div>
   );
 };
 
