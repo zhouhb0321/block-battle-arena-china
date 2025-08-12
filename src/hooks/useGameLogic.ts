@@ -266,7 +266,7 @@ export const useGameLogic = ({
   // Game End Condition Effect
   useEffect(() => {
     if (!gameStarted || gameOver) return;
-    
+
     let isGameOver = false;
     if (gameMode.isTimeAttack && gameMode.timeLimit && time >= gameMode.timeLimit) {
       isGameOver = true;
@@ -309,6 +309,7 @@ export const useGameLogic = ({
     comboCount,
     achievements,
     isNewRecord,
+
     ghostPiece,
     startGame,
     pauseGame: () => setIsPaused(true),
