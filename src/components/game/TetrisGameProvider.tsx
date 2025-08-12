@@ -35,8 +35,6 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
   onRestart,
 }) => {
   const { settings } = useUserSettings();
-  const [isGameOver, setIsGameOver] = useState(false);
-  const [finalStats, setFinalStats] = useState<GameStats | null>(null);
   const keyboardLoopRef = useRef<number | null>(null);
   const gameSettings: GameSettings = React.useMemo(() => ({
       enableGhost: settings.enableGhost,
@@ -54,14 +52,9 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
       wallpaperChangeInterval: settings.wallpaperChangeInterval || 120
   }), [settings]);
 
-  const handleGameEnd = useCallback((stats: GameStats) => {
-    setFinalStats(stats);
-    setIsGameOver(true);
-  }, []);
-
   const gameLogic = useGameLogic({
     gameMode,
-    onGameEnd: handleGameEnd,
+    onGameEnd: () => {}, // onGameEnd is now vestigial, but hook expects it. Will be removed next.
     undoSteps: gameSettings.undoSteps,
   });
 
@@ -76,11 +69,11 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
     <TetrisGameContext.Provider value={contextValue}>
       {children}
       <GameOverDialog
-        isOpen={isGameOver}
-        score={finalStats?.score ?? 0}
-        lines={finalStats?.lines ?? 0}
-        level={finalStats?.level ?? 0}
-        time={finalStats?.time ?? 0}
+        isOpen={gameLogic.gameOver}
+        score={gameLogic.score}
+        lines={gameLogic.lines}
+        level={gameLogic.level}
+        time={gameLogic.time}
         gameMode={gameMode.displayName}
         onRestart={onRestart}
         onBackToMenu={onBackToMenu}
