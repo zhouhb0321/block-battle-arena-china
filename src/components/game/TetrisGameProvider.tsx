@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState, useCallback } from 'react';
+import React, { createContext, useContext, useRef, useState } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import type { GameMode, GameSettings, GameStats } from '@/utils/gameTypes';
@@ -52,9 +52,11 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
       wallpaperChangeInterval: settings.wallpaperChangeInterval || 120
   }), [settings]);
 
+  // The onGameEnd callback is removed.
   const gameLogic = useGameLogic({
     gameMode,
-    onGameEnd: () => {}, // onGameEnd is now vestigial, but hook expects it. Will be removed next.
+    // @ts-ignore - Temporarily ignore while refactoring. Will be removed from hook next.
+    onGameEnd: () => {},
     undoSteps: gameSettings.undoSteps,
   });
 
