@@ -182,7 +182,7 @@ const BackgroundWallpaper: React.FC<BackgroundWallpaperProps> = ({ children }) =
       {/* 下一张壁纸（用于过渡效果）*/}
       {nextWallpaper && isTransitioning && (
         <div
-          className="fixed inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 opacity-50"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 opacity-50"
           style={{
             backgroundImage: `url(${nextWallpaper})`,
             zIndex: 0,

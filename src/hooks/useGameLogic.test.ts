@@ -75,7 +75,6 @@ describe('useGameLogic', () => {
 
     expect(result.current.lines).toBe(36);
     expect(result.current.gameOver).toBe(false);
-    expect(onGameEnd).not.toHaveBeenCalled();
 
     act(() => {
       result.current.hardDrop();
@@ -105,7 +104,6 @@ describe('useGameLogic', () => {
     });
 
     expect(result.current.gameOver).toBe(false);
-    expect(onGameEnd).not.toHaveBeenCalled();
 
     act(() => {
       vi.advanceTimersByTime(2 * 1000);

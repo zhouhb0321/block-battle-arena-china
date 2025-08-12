@@ -3,7 +3,7 @@ import React from 'react';
 import GameBoard from './GameBoard';
 import PiecePreview from './PiecePreview';
 import HoldPieceDisplay from './HoldPieceDisplay';
-import AchievementDisplay from './AchievementDisplay'; // Import AchievementDisplay
+import AchievementDisplay from './AchievementDisplay';
 import type { GamePiece, GameState } from '@/utils/gameTypes';
 
 interface BattleLayoutProps {
@@ -18,7 +18,7 @@ interface BattleLayoutProps {
     apm: number;
     pps: number;
   };
-  player1Achievements: GameState['achievements']; // Add achievements prop
+  player1Achievements: GameState['achievements'];
 
   player2Board: number[][];
   player2CurrentPiece: GamePiece | null;
@@ -31,7 +31,7 @@ interface BattleLayoutProps {
     apm: number;
     pps: number;
   };
-  player2Achievements: GameState['achievements']; // Add achievements prop
+  player2Achievements: GameState['achievements'];
 
   gameMode: '1v1' | 'alliance';
   isSpectator?: boolean;

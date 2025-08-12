@@ -4,7 +4,6 @@ import { useGameState } from './useGameState';
 import { useAchievements } from './useAchievements';
 import { useReplayRecorder } from './useReplayRecorder';
 import { debugLog } from '@/utils/debugLogger';
-import { useAuth } from '@/contexts/AuthContext';
 import { 
   createEmptyBoard, 
   isValidPosition,
@@ -24,7 +23,6 @@ import type {
   TetrominoType, 
   GameMode, 
   Position,
-  GameStats,
   GamePiece
 } from '@/utils/gameTypes';
 
@@ -66,23 +64,30 @@ export const useGameLogic = ({
   const [isB2B, setIsB2B] = useState(false);
   
   const { startRecording, recordAction, stopRecording, isRecording } = useReplayRecorder();
-  const { achievements, showLevelUp, showPerfectClear, removeAchievement } = useAchievements();
+  const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
   const isUndoRedoEnabled = gameMode.id === 'endless';
   const gameStateManager = useGameState({ maxHistorySize: undoSteps, enabled: isUndoRedoEnabled });
-  const { isWindowFocused } = useWindowFocus();
+  const { isWindowFocused, setWasManuallyPaused } = useWindowFocus();
 
   const gameStartTime = useRef<number | null>(null);
-  const lastTickTime = useRef<number | null>(null);
   const seedRef = useRef<string>('');
   const totalPieces = useRef<number>(0);
   const totalActions = useRef<number>(0);
   const lockDelayTimer = useRef<NodeJS.Timeout | null>(null);
+  const [lockDelayResetCount, setLockDelayResetCount] = useState(0);
   const lastTSpinCheck = useRef<{ piece: GamePiece; board: Board; wasKicked: boolean } | null>(null);
 
   const LOCK_DELAY_TIME = 500;
   const MAX_LOCK_RESETS = 15;
 
   const createGamePiece = useCallback((pieceType: TetrominoType): GamePiece => createNewPiece(pieceType), []);
+
+  const clearLockDelayTimer = useCallback(() => {
+    if (lockDelayTimer.current) {
+      clearTimeout(lockDelayTimer.current);
+      lockDelayTimer.current = null;
+    }
+  }, []);
 
   const spawnNewPiece = useCallback(() => {
     const newPiece = nextPieces[0];
@@ -94,6 +99,7 @@ export const useGameLogic = ({
     setCurrentPiece(newPiece);
     setNextPieces(newNextPieces);
     setCanHold(true);
+    setLockDelayResetCount(0);
     totalPieces.current++;
 
     if (!isValidPosition(board, newPiece)) {
@@ -104,7 +110,7 @@ export const useGameLogic = ({
   const lockPiece = useCallback(() => {
     if (!currentPiece) return;
 
-    if (lockDelayTimer.current) clearTimeout(lockDelayTimer.current);
+    clearLockDelayTimer();
 
     const newBoard = placePiece(board, currentPiece);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
@@ -120,16 +126,50 @@ export const useGameLogic = ({
         isPerfectClear: false,
       });
       setScore(prev => prev + scoreResult.score);
+      setLines(prev => prev + linesCleared);
+      setLevel(Math.floor((lines + linesCleared) / 10) + 1);
       setIsB2B(scoreResult.isDifficult);
       setComboCount(prev => prev + 1);
-      setLines(prev => prev + linesCleared);
     } else {
       setComboCount(0);
     }
-    
-    spawnNewPiece();
-  }, [currentPiece, board, isB2B, comboCount, spawnNewPiece]);
 
+    spawnNewPiece();
+  }, [currentPiece, board, isB2B, comboCount, lines, spawnNewPiece, clearLockDelayTimer]);
+
+  const resetLockDelay = useCallback(() => {
+    if (lockDelayResetCount >= MAX_LOCK_RESETS) {
+      lockPiece();
+      return false;
+    }
+    clearLockDelayTimer();
+    setLockDelayResetCount(prev => prev + 1);
+    return true;
+  }, [lockDelayResetCount, lockPiece, clearLockDelayTimer]);
+
+  const startLockDelay = useCallback(() => {
+    if (!currentPiece) return;
+    const testPiece = { ...currentPiece, y: currentPiece.y + 1 };
+    if (isValidPosition(board, testPiece)) return;
+
+    lockDelayTimer.current = setTimeout(() => lockPiece(), LOCK_DELAY_TIME);
+  }, [currentPiece, board, lockPiece]);
+
+  const movePiece = useCallback((dx: number, dy: number) => {
+    if (!currentPiece || gameOver || isPaused) return;
+
+    const newPiece = { ...currentPiece, x: currentPiece.x + dx, y: currentPiece.y + dy };
+    if (isValidPosition(board, newPiece)) {
+      setCurrentPiece(newPiece);
+      if (dy > 0) { // vertical movement resets lock delay
+        if(resetLockDelay()) {
+          startLockDelay();
+        }
+      }
+    } else if (dy > 0) {
+      startLockDelay();
+    }
+  }, [currentPiece, board, gameOver, isPaused, resetLockDelay, startLockDelay]);
 
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused) return;
@@ -143,16 +183,34 @@ export const useGameLogic = ({
     if (linesCleared > 0) {
       const scoreResult = calculateScore({ linesCleared, tSpin: 'none', isB2B, combo: comboCount, isPerfectClear: false });
       setScore(prev => prev + scoreResult.score);
+      setLines(prev => prev + linesCleared);
+      setLevel(Math.floor((lines + linesCleared) / 10) + 1);
       setIsB2B(scoreResult.isDifficult);
       setComboCount(prev => prev + 1);
-      setLines(prev => prev + linesCleared);
     } else {
       setComboCount(0);
     }
     
     spawnNewPiece();
-  }, [currentPiece, board, gameOver, isPaused, isB2B, comboCount, spawnNewPiece]);
+  }, [currentPiece, board, gameOver, isPaused, isB2B, comboCount, lines, spawnNewPiece]);
 
+  const rotatePiece = (clockwise: boolean) => {
+    if (!currentPiece || gameOver || isPaused) return;
+    const srsResult = performSRSRotation(board, currentPiece, clockwise);
+    if (srsResult.success && srsResult.newPiece) {
+      setCurrentPiece(srsResult.newPiece);
+    }
+  };
+  const rotatePieceClockwise = useCallback(() => rotatePiece(true), [currentPiece, board, gameOver, isPaused]);
+  const rotatePieceCounterclockwise = useCallback(() => rotatePiece(false), [currentPiece, board, gameOver, isPaused]);
+
+  const holdCurrentPiece = useCallback(() => {
+    if (!canHold || gameOver || isPaused) return;
+    const newHoldPiece = currentPiece;
+    setCurrentPiece(holdPiece || createGamePiece(generateRandomPiece()));
+    setHoldPiece(newHoldPiece);
+    setCanHold(false);
+  }, [canHold, gameOver, isPaused, currentPiece, holdPiece, createGamePiece]);
 
   const startGame = useCallback(() => {
     setBoard(createEmptyBoard());
@@ -161,8 +219,12 @@ export const useGameLogic = ({
     setLevel(1);
     setGameOver(false);
     setIsPaused(false);
-    setTime(0);
-    
+    setGameInitialized(true);
+    setCanHold(true);
+    setHoldPiece(null);
+    setComboCount(0);
+    setIsB2B(false);
+
     if (!seedRef.current) {
       seedRef.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     }
@@ -174,25 +236,29 @@ export const useGameLogic = ({
     
     setGameStarted(true);
     gameStartTime.current = Date.now();
-    lastTickTime.current = Date.now();
   }, [createGamePiece]);
+
+  // Main Game Loop (Gravity)
+  useEffect(() => {
+    if (!gameStarted || gameOver || isPaused) return;
+
+    const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+    const timer = setTimeout(() => movePiece(0, 1), dropInterval);
+    return () => clearTimeout(timer);
+  }, [gameStarted, gameOver, isPaused, level, movePiece]);
 
   // Game Timer and Stats Effect
   useEffect(() => {
     if (!gameStarted || gameOver || isPaused) return;
-
     const tick = () => {
-      const now = Date.now();
-      const elapsed = (now - gameStartTime.current!) / 1000;
+      const elapsed = (Date.now() - gameStartTime.current!) / 1000;
       setTime(elapsed);
-
       if (elapsed > 0) {
         setPps(totalPieces.current / elapsed);
         setApm((totalActions.current / elapsed) * 60);
       }
     };
-
-    const interval = setInterval(tick, 100); // Update stats 10 times a second
+    const interval = setInterval(tick, 200);
     return () => clearInterval(interval);
   }, [gameStarted, gameOver, isPaused]);
 
@@ -201,38 +267,22 @@ export const useGameLogic = ({
     if (!gameStarted || gameOver) return;
 
     let isGameOver = false;
-
-    // Time Attack End Condition
     if (gameMode.isTimeAttack && gameMode.timeLimit && time >= gameMode.timeLimit) {
-      console.log('Time limit reached, ending game.');
       isGameOver = true;
     }
-
-    // Sprint End Condition
     if (gameMode.targetLines && lines >= gameMode.targetLines) {
-      console.log('Line target reached, ending game.');
       isGameOver = true;
     }
 
     if (isGameOver) {
       setGameOver(true);
       if (isRecording) {
-        stopRecording({
-          score,
-          lines,
-          level,
-          pps,
-          apm,
-          duration: time * 1000,
-          gameMode: gameMode.id,
-        });
+        stopRecording({ score, lines, level, pps, apm, duration: time * 1000, gameMode: gameMode.id });
       }
     }
   }, [time, lines, gameStarted, gameOver, gameMode, isRecording, stopRecording, score, level, pps, apm]);
 
-  // All other functions (move, rotate, hold, etc.) would be here
-  // For the purpose of this fix, we assume they exist and work correctly,
-  // but they also need to respect the `gameOver` flag.
+  const ghostPiece = currentPiece ? { ...currentPiece, y: calculateDropPosition(board, currentPiece) } : null;
 
   return {
     board,
@@ -252,8 +302,23 @@ export const useGameLogic = ({
     gameInitialized,
     comboCount,
     achievements,
+    ghostPiece,
     startGame,
+    pauseGame: () => setIsPaused(true),
+    resumeGame: () => setIsPaused(false),
+    resetGame: startGame,
+    movePiece,
+    rotatePieceClockwise,
+    rotatePieceCounterclockwise,
+    rotatePiece180: () => {}, // Placeholder
+    holdCurrentPiece,
+    spawnNewPiece,
+    lockPiece,
     hardDrop,
-    //... other control functions
+    initializeForCountdown: startGame,
+    removeAchievement,
+    isValidPosition,
+    gameStartTime,
+    getGameStats: () => ({ score, lines, level, time, pps, apm, gameMode: gameMode.id }),
   };
 };

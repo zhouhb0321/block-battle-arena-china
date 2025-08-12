@@ -103,25 +103,19 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       />
       <BackgroundWallpaper>
         <div className="flex justify-center items-start p-4 gap-4">
-          {/* Left Panel */}
           <div className="w-48 flex flex-col gap-4 h-full">
-            {/* Hold Piece */}
             <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
               <HoldPieceDisplay
                 holdPiece={gameLogic.holdPiece}
                 canHold={gameLogic.canHold}
               />
             </div>
-
-            {/* Achievements */}
             <div className="flex-grow">
               <AchievementDisplay
                 achievements={gameLogic.achievements || []}
                 onAchievementComplete={handleAchievementComplete}
               />
             </div>
-
-            {/* User Info and Stats */}
             <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
               <div className="space-y-3">
                 <div className="text-center border-b pb-2 mb-3">
@@ -169,8 +163,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Game Board (Center) */}
           <div className="relative">
             <div className={`p-4 rounded-lg border ${getBoardThemeClasses()}`}>
               <EnhancedGameBoard
@@ -199,8 +191,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               </div>
             )}
           </div>
-
-          {/* Right Panel (Next Piece) */}
           <div className="w-48">
             <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
               <NextPiecePreview
