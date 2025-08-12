@@ -76,7 +76,9 @@ const BattleLayout: React.FC<BattleLayoutProps> = ({
       {/* Left Panel */}
       <div className="w-40 flex flex-col gap-3">
         <HoldPieceDisplay holdPiece={holdPiece} canHold={true} />
-        <AchievementDisplay achievements={achievements} onAchievementComplete={() => {}} />
+        <div className="flex-grow">
+          <AchievementDisplay achievements={achievements} onAchievementComplete={() => {}} />
+        </div>
         <div className="bg-gray-800 p-3 rounded text-white text-sm">
           <div className="space-y-1">
             <div>Score: {stats.score.toLocaleString()}</div>
