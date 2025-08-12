@@ -80,6 +80,7 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
         onRestart={onRestart}
         onBackToMenu={onBackToMenu}
         isEndlessMode={gameMode.id === 'endless'}
+        isNewRecord={gameLogic.isNewRecord}
       />
     </TetrisGameContext.Provider>
   );

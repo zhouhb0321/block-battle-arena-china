@@ -62,6 +62,7 @@ export const useGameLogic = ({
   const [gameInitialized, setGameInitialized] = useState(false);
   const [comboCount, setComboCount] = useState(0);
   const [isB2B, setIsB2B] = useState(false);
+  const [isNewRecord, setIsNewRecord] = useState(false);
   
   const { startRecording, recordAction, stopRecording, isRecording } = useReplayRecorder();
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
@@ -88,7 +89,7 @@ export const useGameLogic = ({
       lockDelayTimer.current = null;
     }
   }, []);
-
+  
   const spawnNewPiece = useCallback(() => {
     const newPiece = nextPieces[0];
     const newNextPieces = [...nextPieces.slice(1)];
@@ -151,7 +152,7 @@ export const useGameLogic = ({
     if (!currentPiece) return;
     const testPiece = { ...currentPiece, y: currentPiece.y + 1 };
     if (isValidPosition(board, testPiece)) return;
-
+    
     lockDelayTimer.current = setTimeout(() => lockPiece(), LOCK_DELAY_TIME);
   }, [currentPiece, board, lockPiece]);
 
@@ -277,7 +278,12 @@ export const useGameLogic = ({
     if (isGameOver) {
       setGameOver(true);
       if (isRecording) {
-        stopRecording({ score, lines, level, pps, apm, duration: time * 1000, gameMode: gameMode.id });
+        stopRecording({ score, lines, level, pps, apm, duration: time * 1000, gameMode: gameMode.id })
+          .then(result => {
+            if (result.isNewRecord) {
+              setIsNewRecord(true);
+            }
+          });
       }
     }
   }, [time, lines, gameStarted, gameOver, gameMode, isRecording, stopRecording, score, level, pps, apm]);
@@ -302,6 +308,8 @@ export const useGameLogic = ({
     gameInitialized,
     comboCount,
     achievements,
+    isNewRecord,
+
     ghostPiece,
     startGame,
     pauseGame: () => setIsPaused(true),

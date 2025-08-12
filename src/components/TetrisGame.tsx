@@ -45,9 +45,11 @@ const TetrisGameContent: React.FC<{ onBackToMenu: () => void }> = ({ onBackToMen
 
 const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig }) => {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
+  const [gameId, setGameId] = useState(1);
 
   const handleModeSelect = (mode: GameMode) => {
     setGameMode(mode);
+    setGameId(id => id + 1); // Also increment gameId to ensure a fresh game state
   };
 
   const handleBackToMenu = () => {
@@ -56,10 +58,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig }) => 
   };
 
   const handleRestart = () => {
-    // This will trigger a re-render of the provider with a new key, effectively resetting everything
-    const currentMode = gameMode;
-    setGameMode(null);
-    setTimeout(() => setGameMode(currentMode), 0);
+    setGameId(id => id + 1);
   };
 
   if (!gameMode) {
@@ -74,7 +73,7 @@ const TetrisGame: React.FC<TetrisGameProps> = ({ onBackToMenu, gameConfig }) => 
 
   return (
     <TetrisGameProvider
-      key={gameMode.id + Math.random()} // Use a key to force re-mount on restart
+      key={gameId}
       gameMode={gameMode}
       onBackToMenu={handleBackToMenu}
       onRestart={handleRestart}
