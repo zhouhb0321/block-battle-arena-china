@@ -37,13 +37,9 @@ const GameCountdownInArea: React.FC<GameCountdownInAreaProps> = ({
   if (!isVisible || count <= 0) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-50">
-      <div className="h-20 w-full flex items-center justify-center">
-        <div className="bg-black bg-opacity-70 rounded-lg px-8 py-4 border-2 border-white">
-          <div className="text-white text-6xl font-bold text-center animate-pulse">
-            {count}
-          </div>
-        </div>
+    <div className="absolute inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+      <div className="text-white text-8xl font-bold text-center animate-ping drop-shadow-lg" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
+        {count}
       </div>
     </div>
   );

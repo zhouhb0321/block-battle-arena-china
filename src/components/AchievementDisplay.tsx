@@ -68,22 +68,24 @@ const AchievementItem: React.FC<AchievementItemProps> = ({ achievement, onComple
 const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
   achievements,
   onAchievementComplete,
-  placement = 'overlay',
 }) => {
-  const wrapperClass =
-    placement === 'sidebar'
-      ? 'relative h-48 w-full flex flex-col items-center justify-end'
-      : 'absolute top-1/3 left-1/2 -translate-x-1/2 h-48 w-full flex flex-col items-center justify-end z-30 pointer-events-none';
-
   return (
-    <div className={wrapperClass}>
-      {achievements.length > 0 && (
-        <AchievementItem
-          key={achievements[0].id}
-          achievement={achievements[0]}
-          onComplete={onAchievementComplete}
-        />
-      )}
+    <div className="p-3 rounded-lg border bg-background/40 border-border/60 backdrop-blur-sm h-full flex flex-col justify-start items-center">
+      <h3 className="text-sm font-bold mb-2 text-center text-white/80">ACHIEVEMENTS</h3>
+      <div className="w-full flex-grow flex flex-col-reverse items-center gap-2 overflow-hidden">
+        {achievements.map((achievement) => (
+          <AchievementItem
+            key={achievement.id}
+            achievement={achievement}
+            onComplete={onAchievementComplete}
+          />
+        ))}
+        {achievements.length === 0 && (
+          <div className="flex-grow flex items-center justify-center">
+            <p className="text-xs text-white/50 italic">No new achievements</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
