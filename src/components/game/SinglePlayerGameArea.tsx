@@ -182,6 +182,14 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               </div>
             </div>
           </div>
+          <div className="lg:w-48">
+            <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
+              <HoldPieceDisplay
+                holdPiece={gameLogic.holdPiece}
+                canHold={gameLogic.canHold}
+              />
+            </div>
+          </div>
           <div className="relative">
             <div className={`p-4 rounded-lg border ${getBoardThemeClasses()}`}>
               <EnhancedGameBoard

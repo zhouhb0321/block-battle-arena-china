@@ -24,9 +24,12 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
 }) => {
   return (
     <div className="flex gap-6 justify-center items-start max-w-6xl mx-auto">
-      {/* 左侧面板 - Next区域（4个方块预览）*/}
+      {/* 左侧面板 - Hold区域 */}
       <div className="flex flex-col gap-4 w-48">
-        <NextPiecePreview nextPieces={gameState.nextPieces} />
+        <HoldPieceDisplay 
+          holdPiece={gameState.holdPiece}
+          canHold={gameState.canHold}
+        />
         
         {/* 游戏统计信息 */}
         <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
@@ -87,10 +90,7 @@ const EnhancedGameArea: React.FC<EnhancedGameAreaProps> = ({
 
       {/* 右侧面板 - Hold区域和详细统计 */}
       <div className="flex flex-col gap-4 w-48">
-        <HoldPieceDisplay 
-          holdPiece={gameState.holdPiece}
-          canHold={gameState.canHold}
-        />
+        <NextPiecePreview nextPieces={gameState.nextPieces} />
         
         {/* 成就显示区域 */}
         <div className="relative bg-gray-900 p-2 rounded-lg border border-gray-700">

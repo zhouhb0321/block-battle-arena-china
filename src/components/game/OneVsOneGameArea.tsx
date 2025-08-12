@@ -122,10 +122,10 @@ const OneVsOneGameArea: React.FC<OneVsOneGameAreaProps> = ({
 
           {/* 玩家2区域 */}
           <div className="flex gap-4">
-            {/* 玩家2 Next区域 */}
-            <NextPiecePreview 
-              nextPieces={player2State.nextPieces} 
-              compact={true}
+            {/* 玩家2 Hold区域 */}
+            <HoldPieceDisplay 
+              holdPiece={player2State.holdPiece}
+              canHold={player2State.canHold}
             />
 
             {/* 玩家 2游戏板 */}
@@ -139,10 +139,10 @@ const OneVsOneGameArea: React.FC<OneVsOneGameAreaProps> = ({
               />
             </div>
 
-            {/* 玩家2 Hold区域 */}
-            <HoldPieceDisplay 
-              holdPiece={player2State.holdPiece}
-              canHold={player2State.canHold}
+            {/* 玩家2 Next区域 */}
+            <NextPiecePreview 
+              nextPieces={player2State.nextPieces} 
+              compact={true}
             />
 
             {/* 玩家2统计面板 */}
