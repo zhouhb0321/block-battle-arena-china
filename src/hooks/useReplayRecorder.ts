@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { ReplayAction } from '@/utils/gameTypes';
+import type { ReplayAction, GameSettings } from '@/utils/gameTypes';
 import { ReplayCompressor, SeededRandom } from '@/utils/replayCompression';
 import type { OptimizedReplayData } from '@/utils/replayTypes';
 
@@ -10,7 +10,7 @@ interface ReplayData {
   actions: ReplayAction[];
   startTime: number;
   initialBoard: number[][];
-  settings: any;
+  settings: Partial<GameSettings>;
   seed?: string;
   matchId?: string;
   gameId?: string;
@@ -26,7 +26,7 @@ export const useReplayRecorder = () => {
   // 开始录制 - 支持单人和多人模式
   const startRecording = useCallback((
     initialBoard: number[][], 
-    settings: any,
+    settings: Partial<GameSettings>,
     seed?: string,
     matchId?: string,
     gameId?: string
@@ -53,7 +53,7 @@ export const useReplayRecorder = () => {
   // 记录动作
   const recordAction = useCallback((
     action: 'move' | 'rotate' | 'drop' | 'hold' | 'place',
-    data: any
+    data: Record<string, unknown>
   ) => {
     if (!isRecording) return;
 
@@ -108,8 +108,7 @@ export const useReplayRecorder = () => {
       if (isSprint40 || isTimeAttack2) {
         let query = supabase
           .from('compressed_replays')
-          .select('id, final_score, duration_seconds')
-          .eq('user_id', user.id);
+          .select('id, final_score, duration_seconds');
 
         if (isTimeAttack2) {
           // 2分钟模式按分数降序
@@ -122,9 +121,10 @@ export const useReplayRecorder = () => {
         const { data: existing, error: fetchError } = await query;
         if (!fetchError && existing && existing.length >= 500) {
           const worst = existing[existing.length - 1];
+          const gameDurationInSeconds = gameStats.duration / 1000;
           const isWorseOrEqual = isTimeAttack2
             ? (gameStats.score <= (worst.final_score ?? 0))
-            : (gameStats.duration >= (worst.duration_seconds ?? Number.MAX_SAFE_INTEGER));
+            : (gameDurationInSeconds >= (worst.duration_seconds ?? Number.MAX_SAFE_INTEGER));
           if (isWorseOrEqual) {
             console.log('Skipping replay save: not within top 500 for mode', mode);
             setIsRecording(false);
@@ -175,7 +175,7 @@ export const useReplayRecorder = () => {
           final_level: gameStats.level,
           pps: gameStats.pps,
           apm: gameStats.apm,
-          duration_seconds: gameStats.duration,
+          duration_seconds: gameStats.duration / 1000,
           checksum: checksum,
           version: '2.1'
         })

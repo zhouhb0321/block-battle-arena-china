@@ -20,7 +20,14 @@ export interface GameState {
   endTime: number | null;
   ghostPiece: GamePiece | null;
   clearingLines: number[];
-  achievements: any[];
+  achievements: Achievement[];
+}
+
+export interface Achievement {
+  id: string;
+  text: string;
+  type: 'tetris' | 'tspin' | 'combo' | 'perfect' | 'level';
+  timestamp: number;
 }
 
 export interface Piece {
@@ -130,7 +137,7 @@ export interface GameReplay {
 export interface ReplayAction {
   timestamp: number;
   action: 'move' | 'rotate' | 'drop' | 'hold' | 'pause' | 'place';
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 export type Board = number[][];

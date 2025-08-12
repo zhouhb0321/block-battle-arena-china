@@ -102,20 +102,24 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
         tabIndex={0}
         style={{ outline: 'none' }}
       >
-        <div className="mb-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            {/* Controls are now handled by GameKeyboardHandler and the provider */}
-          </div>
+        <div className="flex justify-center items-start p-4 gap-4">
+          {/* Left Panel */}
+          <div className="w-48 flex flex-col gap-4">
+            {/* Hold Piece */}
+            <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
+              <HoldPieceDisplay
+                holdPiece={gameLogic.holdPiece}
+                canHold={gameLogic.canHold}
+              />
+            </div>
 
-          
-          {/* 成就显示区域 - 移到Hold区下方，无额外边框 */}
-          <AchievementDisplay
-            achievements={gameLogic.achievements || []}
-            onAchievementComplete={handleAchievementComplete}
-          />
-          
-          {/* 游戏信息面板 - 与游戏板底部对齐 */}
-          <div className="flex-1 flex flex-col justify-end">
+            {/* Achievements */}
+            <AchievementDisplay
+              achievements={gameLogic.achievements || []}
+              onAchievementComplete={handleAchievementComplete}
+            />
+
+            {/* User Info and Stats */}
             <div className={`p-4 rounded-lg border ${getPanelThemeClasses()} relative`}>
               <div className="space-y-3">
                 <div className="text-center border-b pb-2 mb-3">
@@ -123,7 +127,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                     {user?.username || user?.email?.split('@')[0] || 'Player'}
                   </div>
                 </div>
-                {/* 统计信息（仅显示一次） */}
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>得分:</div>
                   <div className="font-mono text-right">{gameLogic.score.toLocaleString()}</div>
@@ -140,17 +143,13 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                     {gameMode.isTimeAttack && gameMode.timeLimit && (
                       <svg className="w-5 h-5" viewBox="0 0 36 36">
                         <path
-                          d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                           fill="none"
                           stroke="#e5e7eb"
                           strokeWidth="4"
                         />
                         <path
-                          d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                           fill="none"
                           stroke="#ef4444"
                           strokeWidth="4"
@@ -168,6 +167,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Game Board (Center) */}
           <div className="relative">
             <div className={`p-4 rounded-lg border ${getBoardThemeClasses()}`}>
               <EnhancedGameBoard
@@ -188,7 +189,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               show={gameLogic.isPaused && gameLogic.gameStarted && !gameLogic.gameOver}
               onResume={gameLogic.resumeGame}
             />
-            {/* 10-second countdown warning */}
             {remainingTimeMs !== null && remainingTimeMs <= 10000 && remainingTimeMs > 0 && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-8xl font-bold text-red-500/80 animate-ping">
@@ -197,13 +197,10 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               </div>
             )}
           </div>
-          <div className="lg:w-48">
+
+          {/* Right Panel (Next Piece) */}
+          <div className="w-48">
             <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
-              <HoldPieceDisplay
-                holdPiece={gameLogic.holdPiece}
-                canHold={gameLogic.canHold}
-              />
-              <div className="mt-3" />
               <NextPiecePreview
                 nextPieces={gameLogic.nextPieces}
                 compact={false}
