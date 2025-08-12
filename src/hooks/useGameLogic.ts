@@ -98,6 +98,7 @@ export const useGameLogic = ({
 
   const gameStartTime = useRef<number>(Date.now());
   const wasPausedRef = useRef(isPaused);
+  const seedRef = useRef<string>('');
 
   // 游戏恢复时调整计时器
   useEffect(() => {
@@ -145,11 +146,14 @@ export const useGameLogic = ({
   // 立即初始化方块队列
   const initializePieces = useCallback(() => {
     debugLog.game('Initializing pieces for countdown start', { isReplay, replaySeed });
-    // 如果是回放模式，使用提供的种子重置7-bag系统
+    // 使用固定种子重置7-bag，以保证回放一致
     if (isReplay && replaySeed) {
       resetSevenBag(replaySeed);
     } else {
-      resetSevenBag();
+      if (!seedRef.current) {
+        seedRef.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      resetSevenBag(seedRef.current);
     }
     
     const allPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
@@ -657,21 +661,22 @@ export const useGameLogic = ({
 
   const timerWorker = useRef<Worker | null>(null);
 
-  // 游戏结束和计时器逻辑
+  // 游戏结束和计时器逻辑（使用 RAF 提高精度）
   useEffect(() => {
     // 在回放模式下，计时器由外部控制，不自动运行
     if (isReplay || !gameStarted || gameOver || isPaused) {
       return;
     }
 
-    // Time attack (including legacy ids): use real elapsed time and hard limit
-    const legacyLimit = gameMode.id === 'ultra2min' || gameMode.id === 'timeAttack2' ? 120 : undefined;
-    const limit = gameMode.timeLimit ?? legacyLimit;
+    const legacyLimit = gameMode.id === 'ultra2min' || gameMode.id === 'timeAttack2' ? 120000 : undefined; // ms
+    const limitMs = (gameMode.timeLimit ? gameMode.timeLimit * 1000 : undefined) ?? legacyLimit;
 
-    // 使用一个统一的计时器来更新时间和统计数据
-    const timer = setInterval(() => {
+    let rafId: number;
+
+    const loop = () => {
       const now = Date.now();
-      const elapsed = (now - gameStartTime.current) / 1000;
+      const elapsedMs = now - gameStartTime.current;
+      const elapsed = elapsedMs / 1000;
 
       // 更新PPS和APM
       if (elapsed > 0) {
@@ -679,20 +684,18 @@ export const useGameLogic = ({
         setApm((totalActions.current / elapsed) * 60);
       }
 
-      if (limit) {
-        // Time-limited mode
-        debugLog.game(`Time attack check: elapsed=${elapsed.toFixed(2)}s, limit=${limit}s`);
-        const clampedTime = Math.min(elapsed, limit);
-        setTime(Math.floor(clampedTime));
+      if (limitMs != null) {
+        const clampedMs = Math.min(elapsedMs, limitMs);
+        setTime(Math.floor(clampedMs / 1000));
 
-        if (elapsed >= limit) {
+        if (elapsedMs >= limitMs) {
           debugLog.game(`Time limit reached for mode ${gameMode.id}. Ending game.`);
           setGameOver(true);
-          const finalStats = { score, lines, level, time: limit, pps, apm, gameMode: gameMode.id };
+          const finalStats = { score, lines, level, time: limitMs / 1000, pps, apm, gameMode: gameMode.id };
           onGameEnd(finalStats);
           if (isRecording) {
             try {
-              stopRecording({ ...finalStats, duration: limit * 1000, gameType: 'single' } as any).then(replay => {
+              stopRecording({ ...finalStats, duration: limitMs, gameType: 'single' } as any).then(replay => {
                 if (replay) console.log(`Time attack replay saved: ${replay.id}`);
               });
             } catch (error) {
@@ -700,14 +703,18 @@ export const useGameLogic = ({
               debugLog.error('Error saving time attack replay', error);
             }
           }
+          return; // 终止循环
         }
       } else {
         // 非限时模式
         setTime(Math.floor(elapsed));
       }
-    }, 500); // 统一使用500ms的间隔，对于显示足够精确
 
-    return () => clearInterval(timer);
+      rafId = requestAnimationFrame(loop);
+    };
+
+    rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
   }, [gameStarted, gameOver, gameMode.id, gameMode.timeLimit, isPaused, onGameEnd, score, lines, level, pps, apm, isRecording, stopRecording]);
 
   useEffect(() => {
@@ -732,11 +739,15 @@ export const useGameLogic = ({
     setGameStarted(true);
     gameStartTime.current = Date.now();
     sprintProgressRef.current = 0;
-    // Start replay recording only for specific modes
+    // 确保存在固定种子
+    if (!seedRef.current) {
+      seedRef.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    // 仅在特定模式下开始录像
     const recordableModes = ['sprint40', 'sprint100', 'timeAttack2', 'timeAttack5', 'versus', '1v1'];
     if (!isRecording && recordableModes.includes(gameMode.id)) {
       try {
-        startRecording(board.map(row => [...row]), { gameMode: gameMode.id });
+        startRecording(board.map(row => [...row]), { gameMode: gameMode.id }, seedRef.current);
       } catch (e) {
         console.warn('Failed to start replay recording', e);
       }

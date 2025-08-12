@@ -13,6 +13,17 @@ import { useTetrisGame } from './TetrisGameProvider';
 import GameMusicManager from '@/components/GameMusicManager';
 import BackgroundWallpaper from '@/components/BackgroundWallpaper';
 
+// 时间格式化为 mm:ss.SSS
+const formatMs = (ms: number) => {
+  const totalMs = Math.max(0, Math.floor(ms));
+  const minutes = Math.floor(totalMs / 60000);
+  const seconds = Math.floor((totalMs % 60000) / 1000);
+  const milliseconds = totalMs % 1000;
+  return `${minutes.toString().padStart(2, '0')}:${seconds
+    .toString()
+    .padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+};
+
 interface SinglePlayerGameAreaProps {
   onActualGameStart?: () => void;
 }
@@ -25,7 +36,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { gameLogic, gameSettings, gameMode } = useTetrisGame();
   
   const [showCountdown, setShowCountdown] = useState(true);
-  const [displayTime, setDisplayTime] = useState(0);
+  const [displayTimeMs, setDisplayTimeMs] = useState(0);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
   const handleAchievementComplete = useCallback((id: string) => {
@@ -54,24 +65,22 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   };
 
   const getBoardThemeClasses = () => {
-    return actualTheme === 'light' 
-      ? 'bg-gray-200' // 不透明背景
-      : 'bg-gray-900'; // 不透明背景
+    return 'bg-transparent';
   };
 
   const getPanelThemeClasses = () => {
     return 'bg-background/40 border-border/60 backdrop-blur-sm';
   };
 
-  const remainingTime = gameMode.isTimeAttack && gameMode.timeLimit ? Math.max(0, gameMode.timeLimit - displayTime) : null;
+  const remainingTimeMs = gameMode.isTimeAttack && gameMode.timeLimit ? Math.max(0, gameMode.timeLimit * 1000 - displayTimeMs) : null;
 
   useEffect(() => {
     let animationFrameId: number;
 
     const updateTimer = () => {
       if (gameLogic.gameStarted && !gameLogic.isPaused && !gameLogic.gameOver) {
-        const elapsed = (Date.now() - gameLogic.gameStartTime.current) / 1000;
-        setDisplayTime(elapsed);
+        const elapsedMs = Date.now() - gameLogic.gameStartTime.current;
+        setDisplayTimeMs(elapsedMs);
       }
       animationFrameId = requestAnimationFrame(updateTimer);
     };
@@ -114,80 +123,49 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                     {user?.username || user?.email?.split('@')[0] || 'Player'}
                   </div>
                 </div>
-                
+                {/* 统计信息（仅显示一次） */}
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>得分:</div>
                   <div className="font-mono text-right">{gameLogic.score.toLocaleString()}</div>
-                  
                   <div>行数:</div>
                   <div className="font-mono text-right">{gameLogic.lines}</div>
-                  
                   <div>等级:</div>
                   <div className="font-mono text-right">{gameLogic.level}</div>
-                  
                   <div>PPS:</div>
                   <div className="font-mono text-right">{gameLogic.pps.toFixed(2)}</div>
-                  
-                  <div>攻击:</div>
+                  <div>攻击(APM):</div>
                   <div className="font-mono text-right">{gameLogic.apm.toFixed(1)}</div>
-                  
-                  <div>时间:</div>
-                  <div className="font-mono text-right">
-                    {Math.floor(displayTime / 60)}:{Math.floor(displayTime % 60).toString().padStart(2, '0')}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>得分:</div>
-                    <div className="font-mono text-right">{gameLogic.score.toLocaleString()}</div>
-                    <div>行数:</div>
-                    <div className="font-mono text-right">{gameLogic.lines}</div>
-                    <div>等级:</div>
-                    <div className="font-mono text-right">{gameLogic.level}</div>
-                    <div>PPS:</div>
-                    <div className="font-mono text-right">{gameLogic.pps.toFixed(2)}</div>
-                    <div>攻击:</div>
-                    <div className="font-mono text-right">{gameLogic.apm.toFixed(1)}</div>
-                    <div>{gameMode.isTimeAttack ? '剩余:' : '时间:'}</div>
-                    <div className="font-mono text-right flex items-center justify-end gap-2">
-                      {gameMode.isTimeAttack && gameMode.timeLimit && (
-                        <svg className="w-5 h-5" viewBox="0 0 36 36">
-                          <path
-                            d="M18 2.0845
-                              a 15.9155 15.9155 0 0 1 0 31.831
-                              a 15.9155 15.9155 0 0 1 0 -31.831"
-                            fill="none"
-                            stroke="#e5e7eb"
-                            strokeWidth="4"
-                          />
-                          <path
-                            d="M18 2.0845
-                              a 15.9155 15.9155 0 0 1 0 31.831
-                              a 15.9155 15.9155 0 0 1 0 -31.831"
-                            fill="none"
-                            stroke="#ef4444"
-                            strokeWidth="4"
-                            strokeDasharray={`${(remainingTime / gameMode.timeLimit) * 100}, 100`}
-                          />
-                        </svg>
-                      )}
-                      <span>
-                        {gameMode.isTimeAttack && gameMode.timeLimit
-                          ? `${Math.floor((remainingTime || 0) / 60)}:${((remainingTime || 0) % 60).toString().padStart(2, '0')}`
-                          : gameMode.id === 'sprint40'
-                            ? `${Math.floor(displayTime / 60)}:${(displayTime % 60).toFixed(3).padStart(6, '0')}`
-                            : `${Math.floor(displayTime / 60)}:${Math.floor(displayTime % 60).toString().padStart(2, '0')}`}
-                      </span>
-                    </div>
+                  <div>{gameMode.isTimeAttack ? '剩余:' : '时间:'}</div>
+                  <div className="font-mono text-right flex items-center justify-end gap-2">
+                    {gameMode.isTimeAttack && gameMode.timeLimit && (
+                      <svg className="w-5 h-5" viewBox="0 0 36 36">
+                        <path
+                          d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="#e5e7eb"
+                          strokeWidth="4"
+                        />
+                        <path
+                          d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="#ef4444"
+                          strokeWidth="4"
+                          strokeDasharray={`${((remainingTimeMs || 0) / (gameMode.timeLimit * 1000)) * 100}, 100`}
+                        />
+                      </svg>
+                    )}
+                    <span>
+                      {gameMode.isTimeAttack && gameMode.timeLimit
+                        ? formatMs(remainingTimeMs || 0)
+                        : formatMs(displayTimeMs)}
+                    </span>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-          <div className="lg:w-48">
-            <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
-              <HoldPieceDisplay
-                holdPiece={gameLogic.holdPiece}
-                canHold={gameLogic.canHold}
-              />
             </div>
           </div>
           <div className="relative">
@@ -211,16 +189,21 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               onResume={gameLogic.resumeGame}
             />
             {/* 10-second countdown warning */}
-            {remainingTime !== null && remainingTime <= 10 && remainingTime > 0 && (
+            {remainingTimeMs !== null && remainingTimeMs <= 10000 && remainingTimeMs > 0 && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-8xl font-bold text-red-500/80 animate-ping">
-                  {Math.ceil(remainingTime)}
+                  {Math.ceil((remainingTimeMs || 0) / 1000)}
                 </div>
               </div>
             )}
           </div>
           <div className="lg:w-48">
             <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
+              <HoldPieceDisplay
+                holdPiece={gameLogic.holdPiece}
+                canHold={gameLogic.canHold}
+              />
+              <div className="mt-3" />
               <NextPiecePreview
                 nextPieces={gameLogic.nextPieces}
                 compact={false}

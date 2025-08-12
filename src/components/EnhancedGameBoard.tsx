@@ -163,7 +163,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
       )}
       
       <div 
-        className="game-board relative border-2 border-gray-600 bg-gray-900"
+        className="game-board relative border-2 border-gray-600 bg-transparent"
         style={{
           width: cellSize * 10,
           height: cellSize * (showHiddenRows ? 23 : 20),
