@@ -64,6 +64,7 @@ export const useGameLogic = ({
   const [isB2B, setIsB2B] = useState(false);
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [phase, setPhase] = useState<'ready' | 'countdown' | 'playing' | 'gameOver'>('ready');
+
   
   const { startRecording, recordAction, stopRecording, isRecording } = useReplayRecorder();
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
@@ -161,7 +162,6 @@ export const useGameLogic = ({
     if (!currentPiece || gameOver || isPaused) return;
 
     const newPiece = { ...currentPiece, x: currentPiece.x + dx, y: currentPiece.y + dy };
-
     // Clear any existing lock timer on horizontal move
     if (dx !== 0) {
         clearLockDelayTimer();
@@ -174,6 +174,7 @@ export const useGameLogic = ({
       startLockDelay();
     }
   }, [currentPiece, board, gameOver, isPaused, startLockDelay, clearLockDelayTimer]);
+
 
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused) return;
@@ -240,7 +241,6 @@ export const useGameLogic = ({
     setCurrentPiece(initialPieces[0]);
     setNextPieces(initialPieces.slice(1));
     
-    // Transition from countdown to playing
     setTimeout(() => {
       setGameStarted(true);
       setPhase('playing');
@@ -276,7 +276,7 @@ export const useGameLogic = ({
   // Game End Condition Effect
   useEffect(() => {
     if (!gameStarted || gameOver) return;
-    
+
     let isGameOver = false;
     if (gameMode.isTimeAttack && gameMode.timeLimit && time >= gameMode.timeLimit) {
       isGameOver = true;
@@ -286,7 +286,9 @@ export const useGameLogic = ({
     }
 
     if (isGameOver) {
+
       setPhase('gameOver');
+
       setGameOver(true);
       if (isRecording) {
         stopRecording({ score, lines, level, pps, apm, duration: time * 1000, gameMode: gameMode.id })
