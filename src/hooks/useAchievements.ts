@@ -63,9 +63,9 @@ export const useAchievements = () => {
     addAchievement(text, 'tspin');
   }, [addAchievement]);
 
-  // 修复Combo显示 - 每次combo都显示，最大100
+  // 修复Combo显示 - 每次combo都显示，从1开始
   const showCombo = useCallback((comboCount: number) => {
-    if (comboCount > 0 && comboCount <= 100) {
+    if (comboCount >= 1 && comboCount <= 100) {
       addAchievement(`COMBO x${comboCount}`, 'combo');
     }
   }, [addAchievement]);

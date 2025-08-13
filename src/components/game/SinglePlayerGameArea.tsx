@@ -63,11 +63,12 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
   const remainingTimeMs = gameMode.isTimeAttack && gameMode.timeLimit ? Math.max(0, gameMode.timeLimit * 1000 - displayTimeMs) : null;
 
+  // RAF-based precise timing for display and warnings
   useEffect(() => {
     let animationFrameId: number;
 
     const updateTimer = () => {
-      if (gameLogic.gameStarted && !gameLogic.isPaused && !gameLogic.gameOver) {
+      if (gameLogic.gameStarted && !gameLogic.isPaused && !gameLogic.gameOver && gameLogic.gameStartTime.current) {
         const elapsedMs = Date.now() - gameLogic.gameStartTime.current;
         setDisplayTimeMs(elapsedMs);
       }
@@ -78,6 +79,9 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
 
     return () => cancelAnimationFrame(animationFrameId);
   }, [gameLogic.gameStarted, gameLogic.isPaused, gameLogic.gameOver, gameLogic.gameStartTime]);
+
+  // 10秒倒计时警告检查
+  const showTimeWarning = remainingTimeMs !== null && remainingTimeMs <= 10000 && remainingTimeMs > 0;
 
   return (
     <div
@@ -143,7 +147,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                       </svg>
                     )}
                     <span>
-                      {gameMode.isTimeAttack && gameMode.timeLimit
+                      {gameMode.isTimeAttack && gameMode.timeLimit 
                         ? formatMs(remainingTimeMs || 0)
                         : formatMs(displayTimeMs)}
                     </span>

@@ -142,11 +142,15 @@ export const useGameLogic = ({
       if (isPerfectClear) showPerfectClear();
 
       if (tSpinResult) {
-        showTSpin(linesCleared, tSpinResult.isMini, newB2B > 1, newB2B);
+        showTSpin(linesCleared, tSpinResult.isMini, newB2B > 0, newB2B);
       } else if (linesCleared === 4) {
-        showTetris(false, newB2B > 1, newB2B);
+        showTetris(false, newB2B > 0, newB2B);
+      } else if (linesCleared > 0 && newB2B > 0) {
+        // Show B2B for any line clear when B2B is active
+        showTetris(false, true, newB2B);
       }
 
+      // Always show combo if > 1, regardless of lines cleared
       if (newCombo > 1) {
         showCombo(newCombo);
       }
@@ -279,48 +283,86 @@ export const useGameLogic = ({
     return () => clearTimeout(timer);
   }, [gameStarted, gameOver, isPaused, level, movePiece]);
 
-  // Game Timer and Stats Effect
+  // RAF-based precise timing with immediate 2min mode termination
   useEffect(() => {
     if (!gameStarted || gameOver || isPaused) return;
+
+    let animationFrameId: number;
+
     const tick = () => {
-      const elapsed = (Date.now() - gameStartTime.current!) / 1000;
-      setTime(elapsed);
-      if (elapsed > 0) {
-        setPps(totalPieces.current / elapsed);
-        setApm((totalActions.current / elapsed) * 60);
+      if (gameStartTime.current) {
+        const elapsed = (Date.now() - gameStartTime.current) / 1000;
+        const elapsedMs = Date.now() - gameStartTime.current;
+        
+        setTime(elapsed);
+        
+        if (totalPieces.current > 0) {
+          setPps(totalPieces.current / elapsed);
+          setApm((totalActions.current / elapsed) * 60);
+        }
+
+        // Check for time attack mode end condition with millisecond precision
+        if (gameMode.isTimeAttack && gameMode.timeLimit) {
+          const timeLimitMs = gameMode.timeLimit * 1000;
+          if (elapsedMs >= timeLimitMs) {
+            // Force immediate game end for time attack modes
+            setPhase('gameOver');
+            setGameOver(true);
+            
+            if (isRecording) {
+              stopRecording({ 
+                score, 
+                lines, 
+                level, 
+                pps: totalPieces.current / elapsed, 
+                apm: (totalActions.current / elapsed) * 60, 
+                duration: timeLimitMs, // Use exact time limit for consistency
+                gameMode: gameMode.id 
+              }).then(result => {
+                if (result.isNewRecord) {
+                  setIsNewRecord(true);
+                }
+              });
+            }
+            return; // Stop the animation frame
+          }
+        }
+
+        // Check for line-based goals
+        if (gameMode.targetLines && lines >= gameMode.targetLines) {
+          setPhase('gameOver');
+          setGameOver(true);
+          
+          if (isRecording) {
+            stopRecording({ 
+              score, 
+              lines, 
+              level, 
+              pps: totalPieces.current / elapsed, 
+              apm: (totalActions.current / elapsed) * 60, 
+              duration: elapsedMs, 
+              gameMode: gameMode.id 
+            }).then(result => {
+              if (result.isNewRecord) {
+                setIsNewRecord(true);
+              }
+            });
+          }
+          return;
+        }
+      }
+      
+      animationFrameId = requestAnimationFrame(tick);
+    };
+
+    animationFrameId = requestAnimationFrame(tick);
+    
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
     };
-    const interval = setInterval(tick, 200);
-    return () => clearInterval(interval);
-  }, [gameStarted, gameOver, isPaused]);
-
-  // Game End Condition Effect
-  useEffect(() => {
-    if (!gameStarted || gameOver) return;
-
-    let isGameOver = false;
-    if (gameMode.isTimeAttack && gameMode.timeLimit && time >= gameMode.timeLimit) {
-      isGameOver = true;
-    }
-    if (gameMode.targetLines && lines >= gameMode.targetLines) {
-      isGameOver = true;
-    }
-
-    if (isGameOver) {
-
-      setPhase('gameOver');
-
-      setGameOver(true);
-      if (isRecording) {
-        stopRecording({ score, lines, level, pps, apm, duration: time * 1000, gameMode: gameMode.id })
-          .then(result => {
-            if (result.isNewRecord) {
-              setIsNewRecord(true);
-            }
-          });
-      }
-    }
-  }, [time, lines, gameStarted, gameOver, gameMode, isRecording, stopRecording, score, level, pps, apm]);
+  }, [gameStarted, gameOver, isPaused, gameMode, score, lines, level, totalPieces, totalActions, isRecording, stopRecording]);
 
   const ghostPiece = currentPiece ? { ...currentPiece, y: calculateDropPosition(board, currentPiece) } : null;
 
