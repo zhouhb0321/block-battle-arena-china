@@ -46,7 +46,11 @@ const TetrisGameContent: React.FC<{ onBackToMenu: () => void }> = ({ onBackToMen
 
       <GameOverDialog
         isOpen={gameLogic.phase === 'gameOver'}
-        stats={gameLogic.getGameStats()}
+        score={gameLogic.score}
+        lines={gameLogic.lines}
+        level={gameLogic.level}
+        time={gameLogic.time}
+        gameMode="Game Mode"
         onRestart={onRestart}
         onBackToMenu={onBackToMenu}
         isNewRecord={gameLogic.isNewRecord}

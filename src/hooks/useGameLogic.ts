@@ -249,7 +249,7 @@ export const useGameLogic = ({
     setCanHold(true);
     setHoldPiece(null);
     setComboCount(0);
-    setIsB2B(false);
+    setIsB2B(0);
     setIsNewRecord(false);
     setPhase('countdown');
 

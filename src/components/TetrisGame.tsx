@@ -26,10 +26,10 @@ const TetrisGameContent: React.FC<{ onBackToMenu: () => void }> = ({ onBackToMen
       <GameKeyboardHandler
         gameStarted={true}
         onBackToMenu={onBackToMenu}
-        onUndo={gameLogic.undo}
-        onRedo={gameLogic.redo}
-        canUndo={gameLogic.canUndo}
-        canRedo={gameLogic.canRedo}
+        onUndo={() => {}}
+        onRedo={() => {}}
+        canUndo={false}
+        canRedo={false}
       />
       
       <SinglePlayerGameArea

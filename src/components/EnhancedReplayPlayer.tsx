@@ -33,7 +33,6 @@ interface EnhancedReplayPlayerProps {
 const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
   const gameLogic = useGameLogic({
     gameMode: { id: replay.gameMode } as GameMode,
-    onGameEnd: () => {}, // 在回放中不处理游戏结束
     isReplay: true,
     replaySeed: replay.seed,
   });

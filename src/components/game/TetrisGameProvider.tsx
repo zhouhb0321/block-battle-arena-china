@@ -9,6 +9,7 @@ interface TetrisGameContextType {
   gameSettings: GameSettings;
   gameMode: GameMode;
   keyboardLoopRef: React.MutableRefObject<number | null>;
+  onRestart: () => void;
 }
 
 const TetrisGameContext = createContext<TetrisGameContextType | null>(null);
@@ -60,15 +61,16 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
     undoSteps: gameSettings.undoSteps,
   });
 
-  const contextValue = {
+  const value = {
     gameLogic,
     gameSettings,
     gameMode,
     keyboardLoopRef,
+    onRestart,
   };
 
   return (
-    <TetrisGameContext.Provider value={contextValue}>
+    <TetrisGameContext.Provider value={value}>
       {children}
       <GameOverDialog
         isOpen={gameLogic.gameOver}

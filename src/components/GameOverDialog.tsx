@@ -23,6 +23,15 @@ interface GameOverDialogProps {
   gameMode: string;
   isEndlessMode?: boolean;
   isNewRecord?: boolean;
+  stats?: {
+    score: number;
+    lines: number;
+    level: number;
+    time: number;
+    pps: number;
+    apm: number;
+    gameMode: string;
+  };
 }
 
 const GameOverDialog: React.FC<GameOverDialogProps> = ({
