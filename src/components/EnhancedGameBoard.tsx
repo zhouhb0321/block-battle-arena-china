@@ -16,7 +16,7 @@ interface EnhancedGameBoardProps {
   clearingLines?: number[];
 }
 
-const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = ({
+const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
   board,
   currentPiece,
   ghostPiece,
