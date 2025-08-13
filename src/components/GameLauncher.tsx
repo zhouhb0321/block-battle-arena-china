@@ -14,9 +14,17 @@ const GameLauncher: React.FC<GameLauncherProps> = ({ onBackToMenu }) => {
   const [gameConfig, setGameConfig] = useState<any>(null);
 
   React.useEffect(() => {
-    // Automatically start with endless mode
-    console.log('Auto-starting endless mode');
-    setGameConfig({ gameType: 'singleplayer', gameMode: (GAME_MODES.find((m) => m.id === 'endless') || GAME_MODES[0]) });
+    const selectedMode = (window as any).selectedGameMode;
+    if (selectedMode) {
+      console.log('Starting game with selected mode:', selectedMode);
+      setGameConfig({ gameType: 'singleplayer', gameMode: selectedMode });
+      // Clean up the global variable
+      delete (window as any).selectedGameMode;
+    } else {
+      // Default to endless mode if no mode is selected
+      console.log('No selected mode, defaulting to endless mode');
+      setGameConfig({ gameType: 'singleplayer', gameMode: (GAME_MODES.find((m) => m.id === 'endless') || GAME_MODES[0]) });
+    }
     setGameStarted(true);
   }, []);
 
