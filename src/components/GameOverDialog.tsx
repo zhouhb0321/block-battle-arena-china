@@ -22,6 +22,7 @@ interface GameOverDialogProps {
   time: number;
   gameMode: string;
   isEndlessMode?: boolean;
+  isNewRecord?: boolean;
 }
 
 const GameOverDialog: React.FC<GameOverDialogProps> = ({
@@ -34,7 +35,8 @@ const GameOverDialog: React.FC<GameOverDialogProps> = ({
   level,
   time,
   gameMode,
-  isEndlessMode = false
+  isEndlessMode = false,
+  isNewRecord = false,
 }) => {
   const { t } = useLanguage();
 
@@ -60,6 +62,11 @@ const GameOverDialog: React.FC<GameOverDialogProps> = ({
         </DialogHeader>
 
         <div className="py-6">
+          {isNewRecord && (
+            <div className="mb-4 text-center text-lg font-semibold text-yellow-400 animate-pulse">
+              🎉 New Record! 🎉
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4 text-center">
             <div className="bg-muted/50 p-3 rounded-lg">
               <div className="text-2xl font-bold text-primary">{score.toLocaleString()}</div>
