@@ -63,6 +63,8 @@ export const useGameLogic = ({
   const [comboCount, setComboCount] = useState(0);
   const [isB2B, setIsB2B] = useState(false);
   const [isNewRecord, setIsNewRecord] = useState(false);
+  const [phase, setPhase] = useState<'ready' | 'countdown' | 'playing' | 'gameOver'>('ready');
+
   
   const { startRecording, recordAction, stopRecording, isRecording } = useReplayRecorder();
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
@@ -160,17 +162,19 @@ export const useGameLogic = ({
     if (!currentPiece || gameOver || isPaused) return;
 
     const newPiece = { ...currentPiece, x: currentPiece.x + dx, y: currentPiece.y + dy };
+    // Clear any existing lock timer on horizontal move
+    if (dx !== 0) {
+        clearLockDelayTimer();
+    }
+
     if (isValidPosition(board, newPiece)) {
       setCurrentPiece(newPiece);
-      if (dy > 0) { // vertical movement resets lock delay
-        if(resetLockDelay()) {
-          startLockDelay();
-        }
-      }
     } else if (dy > 0) {
+      // Only start lock delay if piece fails to move down
       startLockDelay();
     }
-  }, [currentPiece, board, gameOver, isPaused, resetLockDelay, startLockDelay]);
+  }, [currentPiece, board, gameOver, isPaused, startLockDelay, clearLockDelayTimer]);
+
 
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused) return;
@@ -225,6 +229,8 @@ export const useGameLogic = ({
     setHoldPiece(null);
     setComboCount(0);
     setIsB2B(false);
+    setIsNewRecord(false);
+    setPhase('countdown');
 
     if (!seedRef.current) {
       seedRef.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -235,13 +241,17 @@ export const useGameLogic = ({
     setCurrentPiece(initialPieces[0]);
     setNextPieces(initialPieces.slice(1));
     
-    setGameStarted(true);
-    gameStartTime.current = Date.now();
+    setTimeout(() => {
+      setGameStarted(true);
+      setPhase('playing');
+      gameStartTime.current = Date.now();
+    }, 3000); // 3-second countdown
+
   }, [createGamePiece]);
 
   // Main Game Loop (Gravity)
   useEffect(() => {
-    if (!gameStarted || gameOver || isPaused) return;
+    if (!gameStarted || gameOver || isPaused || phase !== 'playing') return;
 
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
     const timer = setTimeout(() => movePiece(0, 1), dropInterval);
@@ -276,6 +286,9 @@ export const useGameLogic = ({
     }
 
     if (isGameOver) {
+
+      setPhase('gameOver');
+
       setGameOver(true);
       if (isRecording) {
         stopRecording({ score, lines, level, pps, apm, duration: time * 1000, gameMode: gameMode.id })
@@ -309,7 +322,7 @@ export const useGameLogic = ({
     comboCount,
     achievements,
     isNewRecord,
-
+    phase,
     ghostPiece,
     startGame,
     pauseGame: () => setIsPaused(true),

@@ -51,6 +51,8 @@ describe('useGameLogic', () => {
   });
 
   it('should end the game when 40 lines are cleared in Sprint mode', () => {
+    vi.useFakeTimers();
+
     const onGameEnd = vi.fn();
 
     vi.spyOn(tetrisLogic, 'clearLines').mockReturnValue({
@@ -67,6 +69,12 @@ describe('useGameLogic', () => {
       result.current.startGame();
     });
 
+    // Advance timers to get past the countdown phase
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+
     for (let i = 0; i < 9; i++) {
       act(() => {
         result.current.hardDrop();
@@ -82,6 +90,8 @@ describe('useGameLogic', () => {
 
     expect(result.current.lines).toBe(40);
     expect(result.current.gameOver).toBe(true);
+    vi.useRealTimers();
+
   });
 
   it('should end the game when time runs out in Time Attack mode', () => {
@@ -99,8 +109,10 @@ describe('useGameLogic', () => {
 
     expect(result.current.gameOver).toBe(false);
 
+    // Advance timers to get past the countdown and then to 1 second before game over
     act(() => {
-      vi.advanceTimersByTime(119 * 1000);
+      vi.advanceTimersByTime(3000 + 119 * 1000);
+
     });
 
     expect(result.current.gameOver).toBe(false);

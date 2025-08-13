@@ -35,7 +35,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
   const { actualTheme } = useTheme();
   const { gameLogic, gameSettings, gameMode } = useTetrisGame();
   
-  const [showCountdown, setShowCountdown] = useState(true);
   const [displayTimeMs, setDisplayTimeMs] = useState(0);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
@@ -43,20 +42,10 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     gameLogic.removeAchievement?.(id);
   }, [gameLogic]);
 
-  const handleCountdownComplete = () => {
-    setShowCountdown(false);
-    gameLogic.startGame();
-    onActualGameStart?.();
-    if (gameContainerRef.current) {
-      gameContainerRef.current.focus();
-    }
-  };
-
   useEffect(() => {
-    if (!gameLogic.gameInitialized) {
-      gameLogic.initializeForCountdown();
-    }
-  }, [gameLogic]);
+    // Start the game logic (which includes the countdown) when the component mounts
+    gameLogic.startGame();
+  }, [gameLogic.startGame]);
 
   const getThemeClasses = () => {
     return actualTheme === 'light' 
@@ -172,15 +161,15 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                 cellSize={32}
               />
             </div>
-            {showCountdown && (
+            {gameLogic.phase === 'countdown' && (
               <GameCountdownInArea
                 initialCount={3}
-                onComplete={handleCountdownComplete}
+                onComplete={() => {}} // No longer needed, logic is in the hook
                 isVisible={true}
               />
             )}
             <OutOfFocusOverlay
-              show={gameLogic.isPaused && gameLogic.gameStarted && !gameLogic.gameOver}
+              show={gameLogic.isPaused && gameLogic.phase === 'playing' && !gameLogic.gameOver}
               onResume={gameLogic.resumeGame}
             />
             {remainingTimeMs !== null && remainingTimeMs <= 10000 && remainingTimeMs > 0 && (
