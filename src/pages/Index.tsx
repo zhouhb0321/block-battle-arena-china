@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn, Music } from 'lucide-react';
 import type { ViewType } from '@/types/navigation';
+import { GAME_MODES } from '@/utils/gameTypes';
 
 const Index = () => {
   const { user, isAuthenticated, loginAsGuest } = useAuth();
@@ -170,7 +171,7 @@ const Index = () => {
 
             {/* Game Modes Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', { id: 'sprint40', title: t('game.sprint40'), description: t('game.singlePlayerDesc') })}>
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', GAME_MODES.find(m => m.id === 'sprint40'))}>
                 <CardContent className="p-8 text-center space-y-4">
                   <div className="w-20 h-20 mx-auto bg-game-blue/10 rounded-2xl flex items-center justify-center group-hover:bg-game-blue/20 transition-colors">
                     <Play className="w-10 h-10 text-game-blue" />
@@ -182,7 +183,7 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', { id: 'ultra2min', title: t('game.ultra2min'), description: t('game.singlePlayerDesc') })}>
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', GAME_MODES.find(m => m.id === 'timeAttack2'))}>
                 <CardContent className="p-8 text-center space-y-4">
                   <div className="w-20 h-20 mx-auto bg-game-orange/10 rounded-2xl flex items-center justify-center group-hover:bg-game-orange/20 transition-colors">
                     <Trophy className="w-10 h-10 text-game-orange" />
@@ -194,7 +195,7 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', { id: 'endless', title: t('game.endless'), description: t('game.singlePlayerDesc') })}>
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', GAME_MODES.find(m => m.id === 'endless'))}>
                 <CardContent className="p-8 text-center space-y-4">
                   <div className="w-20 h-20 mx-auto bg-game-green/10 rounded-2xl flex items-center justify-center group-hover:bg-game-green/20 transition-colors">
                     <Settings className="w-10 h-10 text-game-green" />
