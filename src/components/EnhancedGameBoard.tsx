@@ -294,6 +294,6 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
       `}</style>
     </div>
   );
-};
+});
 
 export default EnhancedGameBoard;
