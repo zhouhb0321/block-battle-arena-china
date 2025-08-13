@@ -61,7 +61,7 @@ export const useGameLogic = ({
   const [gameStarted, setGameStarted] = useState(false);
   const [gameInitialized, setGameInitialized] = useState(false);
   const [comboCount, setComboCount] = useState(0);
-  const [isB2B, setIsB2B] = useState(false);
+  const [isB2B, setIsB2B] = useState(0);
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [phase, setPhase] = useState<'ready' | 'countdown' | 'playing' | 'gameOver'>('ready');
 
@@ -110,35 +110,66 @@ export const useGameLogic = ({
     }
   }, [nextPieces, board, createGamePiece]);
 
-  const lockPiece = useCallback(() => {
-    if (!currentPiece) return;
+  const handlePieceLock = useCallback((pieceToLock: GamePiece) => {
+    // 1. T-Spin Check
+    const tSpinResult = checkTSpin(board, pieceToLock, 'rotate'); // Assuming last action was rotate for check
 
-    clearLockDelayTimer();
-
-    const newBoard = placePiece(board, currentPiece);
+    // 2. Place piece and clear lines
+    const newBoard = placePiece(board, pieceToLock);
     const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
+    const isPerfectClear = clearedBoard.every(row => row.every(cell => cell === 0));
 
+    // 3. Update core game state
     setBoard(clearedBoard);
+    const newTotalLines = lines + linesCleared;
 
+    // 4. Scoring and Achievements
     if (linesCleared > 0) {
+      const newCombo = comboCount + 1;
+      const isDifficultClear = tSpinResult !== null || linesCleared === 4;
+      const newB2B = isDifficultClear ? isB2B + 1 : 0;
+
       const scoreResult = calculateScore({
         linesCleared,
-        tSpin: 'none', // Simplified for now
-        isB2B,
-        combo: comboCount,
-        isPerfectClear: false,
+        tSpin: tSpinResult ? (tSpinResult.isMini ? 'mini' : 'normal') : 'none',
+        isB2B: newB2B > 1,
+        combo: newCombo,
+        isPerfectClear,
       });
       setScore(prev => prev + scoreResult.score);
-      setLines(prev => prev + linesCleared);
-      setLevel(Math.floor((lines + linesCleared) / 10) + 1);
-      setIsB2B(scoreResult.isDifficult);
-      setComboCount(prev => prev + 1);
+
+      // Show achievements
+      if (isPerfectClear) showPerfectClear();
+
+      if (tSpinResult) {
+        showTSpin(linesCleared, tSpinResult.isMini, newB2B > 1, newB2B);
+      } else if (linesCleared === 4) {
+        showTetris(false, newB2B > 1, newB2B);
+      }
+
+      if (newCombo > 1) {
+        showCombo(newCombo);
+      }
+
+      setComboCount(newCombo);
+      setIsB2B(newB2B);
     } else {
       setComboCount(0);
     }
 
+    setLines(newTotalLines);
+    setLevel(Math.floor(newTotalLines / 10) + 1);
+
+    // 5. Spawn next piece
     spawnNewPiece();
-  }, [currentPiece, board, isB2B, comboCount, lines, spawnNewPiece, clearLockDelayTimer]);
+
+  }, [board, isB2B, comboCount, lines, spawnNewPiece, showTSpin, showTetris, showCombo, showPerfectClear]);
+
+  const lockPiece = useCallback(() => {
+    if (!currentPiece) return;
+    clearLockDelayTimer();
+    handlePieceLock(currentPiece);
+  }, [currentPiece, handlePieceLock, clearLockDelayTimer]);
 
   const resetLockDelay = useCallback(() => {
     if (lockDelayResetCount >= MAX_LOCK_RESETS) {
@@ -180,24 +211,14 @@ export const useGameLogic = ({
     if (!currentPiece || gameOver || isPaused) return;
     
     const dropY = calculateDropPosition(board, currentPiece);
-    const newBoard = placePiece(board, { ...currentPiece, y: dropY });
-    const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
-
-    setBoard(clearedBoard);
-
-    if (linesCleared > 0) {
-      const scoreResult = calculateScore({ linesCleared, tSpin: 'none', isB2B, combo: comboCount, isPerfectClear: false });
-      setScore(prev => prev + scoreResult.score);
-      setLines(prev => prev + linesCleared);
-      setLevel(Math.floor((lines + linesCleared) / 10) + 1);
-      setIsB2B(scoreResult.isDifficult);
-      setComboCount(prev => prev + 1);
-    } else {
-      setComboCount(0);
-    }
+    const pieceToLock = { ...currentPiece, y: dropY };
     
-    spawnNewPiece();
-  }, [currentPiece, board, gameOver, isPaused, isB2B, comboCount, lines, spawnNewPiece]);
+    // Also add score for the drop distance
+    const dropDistance = dropY - currentPiece.y;
+    setScore(prev => prev + dropDistance);
+
+    handlePieceLock(pieceToLock);
+  }, [currentPiece, board, gameOver, isPaused, handlePieceLock]);
 
   const rotatePiece = (clockwise: boolean) => {
     if (!currentPiece || gameOver || isPaused) return;
