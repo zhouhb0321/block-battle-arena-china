@@ -22,10 +22,11 @@ export const useAchievements = () => {
     setAchievements(prev => {
       // 避免重复刷旧成就
       const last = prev[prev.length - 1];
-      if (last && last.text === text && (Date.now() - last.timestamp) < 500) {
+      if (last && last.text === text && (Date.now() - last.timestamp) < 300) {
         return prev;
       }
-      return [...prev, newAchievement];
+      // 只保留最新的一个成就，清除所有旧成就
+      return [newAchievement];
     });
   }, []);
 

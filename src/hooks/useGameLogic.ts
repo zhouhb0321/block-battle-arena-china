@@ -106,9 +106,18 @@ export const useGameLogic = ({
     totalPieces.current++;
 
     if (!isValidPosition(board, newPiece)) {
+      // 无尽模式：堆满时重新开始游戏但保留状态
+      if (gameMode.id === 'endless') {
+        setBoard(createEmptyBoard());
+        setCurrentPiece(newPiece);
+        setComboCount(0);
+        setIsB2B(0);
+        // 保留分数、等级、时间等状态，只清空棋盘
+        return;
+      }
       setGameOver(true);
     }
-  }, [nextPieces, board, createGamePiece]);
+  }, [nextPieces, board, createGamePiece, gameMode.id]);
 
   const handlePieceLock = useCallback((pieceToLock: GamePiece) => {
     // 1. T-Spin Check
@@ -308,6 +317,7 @@ export const useGameLogic = ({
             // Force immediate game end for time attack modes
             setPhase('gameOver');
             setGameOver(true);
+            setGameStarted(false);
             
             if (isRecording) {
               stopRecording({ 
@@ -332,6 +342,7 @@ export const useGameLogic = ({
         if (gameMode.targetLines && lines >= gameMode.targetLines) {
           setPhase('gameOver');
           setGameOver(true);
+          setGameStarted(false);
           
           if (isRecording) {
             stopRecording({ 

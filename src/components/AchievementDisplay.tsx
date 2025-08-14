@@ -44,7 +44,7 @@ const AchievementItem: React.FC<AchievementItemProps> = ({ achievement, onComple
       setVisible(false);
       const hideTimer = setTimeout(() => onComplete(achievement.id), 250);
       return () => clearTimeout(hideTimer);
-    }, 1500);
+    }, 500);
 
     return () => clearTimeout(showTimer);
   }, [achievement.id, onComplete]);
