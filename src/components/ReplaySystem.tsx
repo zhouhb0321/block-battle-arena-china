@@ -32,7 +32,7 @@ const ReplaySystem: React.FC = () => {
       const { data: compressedReplays, error: compressedError } = await supabase
         .from('compressed_replays')
         .select('*')
-        .eq('user_id', user.id)
+        .or(`user_id.eq.${user.id},opponent_id.eq.${user.id}`)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -114,7 +114,7 @@ const ReplaySystem: React.FC = () => {
             actions: actions,
             finalBoard: Array(20).fill(null).map(() => Array(10).fill(0)),
             date: replay.created_at,
-            playerName: userProfile?.username || 'Unknown Player',
+            playerName: replay.username || userProfile?.username || 'Unknown Player',
             isPersonalBest: replay.is_personal_best || false,
             metadata: {
               version: isCompressed ? '2.0' : '1.0',

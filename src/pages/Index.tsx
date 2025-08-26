@@ -9,6 +9,7 @@ import RankedMatchmakingSystem from '@/components/RankedMatchmakingSystem';
 import AuthModal from '@/components/AuthModal';
 import NavigationBar from '@/components/NavigationBar';
 import ReplaySystem from '@/components/ReplaySystem';
+import LeaderboardView from '@/components/LeaderboardView';
 import TestReplayCreator from '@/components/TestReplayCreator';
 import FixSummary from '@/components/FixSummary';
 import AdminPanel from '@/components/AdminPanel';
@@ -101,6 +102,8 @@ const Index = () => {
         );
       case 'admin':
         return <AdminPanel />;
+      case 'leaderboard':
+        return <LeaderboardView />;
       case 'profile':
         return (
           <div className="text-center p-8">

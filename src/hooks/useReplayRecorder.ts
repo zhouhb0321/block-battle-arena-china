@@ -194,7 +194,8 @@ export const useReplayRecorder = () => {
         is_world_record: false,
         is_featured: isNewRecord && !is1v1League,
         checksum: checksum,
-        version: '2.1'
+        version: '2.1',
+        username: user.username || 'Player'
       }).select().single();
 
     if (error) {
