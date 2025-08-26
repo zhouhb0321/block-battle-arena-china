@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -303,6 +303,7 @@ export type Database = {
           seed: string
           updated_at: string
           user_id: string
+          username: string | null
           version: string
         }
         Insert: {
@@ -331,6 +332,7 @@ export type Database = {
           seed: string
           updated_at?: string
           user_id: string
+          username?: string | null
           version?: string
         }
         Update: {
@@ -359,6 +361,7 @@ export type Database = {
           seed?: string
           updated_at?: string
           user_id?: string
+          username?: string | null
           version?: string
         }
         Relationships: [
@@ -1383,16 +1386,16 @@ export type Database = {
     }
     Functions: {
       calculate_elo_change: {
-        Args: { winner_rating: number; loser_rating: number; k_factor?: number }
+        Args: { k_factor?: number; loser_rating: number; winner_rating: number }
         Returns: {
-          winner_new_rating: number
           loser_new_rating: number
+          winner_new_rating: number
         }[]
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
