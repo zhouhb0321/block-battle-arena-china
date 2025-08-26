@@ -86,34 +86,71 @@ export const useReplayRecorder = () => {
     const isTimeAttack2 = mode === 'timeAttack2' || mode === 'ultra2min';
     const is1v1League = gameStats.gameType === '1v1' || gameStats.gameType === 'ranked';
 
-    // Save top 500 for sprint40 and timeAttack2, always save 1v1/ranked
+    // Check for top 500 qualification for sprint40 and timeAttack2, always save 1v1/ranked
     if (isSprint40 || isTimeAttack2 || is1v1League) {
-      let query = supabase.from('compressed_replays').select('id, final_score, duration_seconds');
-      if (isTimeAttack2) {
-        query = query.in('game_mode', ['timeAttack2', 'ultra2min']).order('final_score', { ascending: false }).limit(500);
-      } else {
-        query = query.eq('game_mode', 'sprint40').order('duration_seconds', { ascending: true }).limit(500);
-      }
-      const { data: existing, error: fetchError } = await query;
+      // For 1v1/ranked, always save but may not be featured
+      if (!is1v1League) {
+        let query = supabase.from('compressed_replays').select('id, final_score, duration_seconds, is_featured');
+        
+        if (isTimeAttack2) {
+          // For 2-minute mode: rank by score (higher is better)
+          query = query.in('game_mode', ['timeAttack2', 'ultra2min'])
+            .eq('is_featured', true)
+            .order('final_score', { ascending: false })
+            .limit(500);
+        } else if (isSprint40) {
+          // For 40-line mode: rank by time (lower is better)
+          query = query.eq('game_mode', 'sprint40')
+            .eq('is_featured', true)
+            .order('duration_seconds', { ascending: true })
+            .limit(500);
+        }
+        
+        const { data: existing, error: fetchError } = await query;
 
-      if (fetchError) {
-        console.warn('Could not fetch leaderboard. Saving replay without checking rank.', fetchError);
-      } else {
-        if (existing.length < 500) {
-          isNewRecord = true;
+        if (fetchError) {
+          console.warn('Could not fetch leaderboard. Saving replay without checking rank.', fetchError);
         } else {
-          const worst = existing[existing.length - 1];
           const gameDurationInSeconds = gameStats.duration / 1000;
-          const isWorseOrEqual = isTimeAttack2
-            ? gameStats.score <= (worst.final_score ?? 0)
-            : gameDurationInSeconds >= (worst.duration_seconds ?? Number.MAX_SAFE_INTEGER);
-          if (isWorseOrEqual) {
-            setIsRecording(false);
-            return { saved: false, isNewRecord: false };
+          
+          if (existing && existing.length >= 500) {
+            const worst = existing[existing.length - 1];
+            const isWorseOrEqual = isTimeAttack2
+              ? gameStats.score <= (worst.final_score ?? 0)
+              : gameDurationInSeconds >= (worst.duration_seconds ?? Number.MAX_SAFE_INTEGER);
+            
+            if (isWorseOrEqual) {
+              console.log(`Score not in top 500. ${isTimeAttack2 ? 'Score' : 'Time'}: ${isTimeAttack2 ? gameStats.score : gameDurationInSeconds}, Worst in top 500: ${isTimeAttack2 ? worst.final_score : worst.duration_seconds}`);
+              setIsRecording(false);
+              return { saved: false, isNewRecord: false };
+            }
           }
+          
+          // Qualifies for top 500
           isNewRecord = true;
         }
       }
+    }
+
+    // Check if this is a personal best
+    let isPersonalBest = false;
+    try {
+      const { data: userBests } = await supabase
+        .from('compressed_replays')
+        .select('final_score, duration_seconds')
+        .eq('user_id', user.id)
+        .eq('game_mode', mode);
+        
+      if (userBests) {
+        const gameDurationInSeconds = gameStats.duration / 1000;
+        isPersonalBest = isTimeAttack2 
+          ? !userBests.some(best => (best.final_score ?? 0) >= gameStats.score)
+          : !userBests.some(best => (best.duration_seconds ?? Number.MAX_SAFE_INTEGER) <= gameDurationInSeconds);
+      } else {
+        isPersonalBest = true; // First replay
+      }
+    } catch (e) {
+      console.warn('Could not check personal best status:', e);
     }
 
     const compressed = ReplayCompressor.compressActions(actionsRef.current);
@@ -153,6 +190,9 @@ export const useReplayRecorder = () => {
         pps: gameStats.pps,
         apm: gameStats.apm,
         duration_seconds: gameStats.duration / 1000,
+        is_personal_best: isPersonalBest,
+        is_world_record: false,
+        is_featured: isNewRecord && !is1v1League,
         checksum: checksum,
         version: '2.1'
       }).select().single();

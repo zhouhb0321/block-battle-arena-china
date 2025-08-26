@@ -120,6 +120,18 @@ export const useGameLogic = ({
   }, [nextPieces, board, createGamePiece, gameMode.id]);
 
   const handlePieceLock = useCallback((pieceToLock: GamePiece) => {
+    if (!pieceToLock) return;
+
+    // Record piece placement action before locking
+    if (isRecording) {
+      recordAction('place', { 
+        piece: pieceToLock.type, 
+        x: pieceToLock.x, 
+        y: pieceToLock.y, 
+        rotation: pieceToLock.rotation 
+      });
+    }
+
     // 1. T-Spin Check
     const tSpinResult = checkTSpin(board, pieceToLock, 'rotate'); // Assuming last action was rotate for check
 
@@ -176,7 +188,7 @@ export const useGameLogic = ({
     // 5. Spawn next piece
     spawnNewPiece();
 
-  }, [board, isB2B, comboCount, lines, spawnNewPiece, showTSpin, showTetris, showCombo, showPerfectClear]);
+  }, [board, isB2B, comboCount, lines, spawnNewPiece, showTSpin, showTetris, showCombo, showPerfectClear, isRecording, recordAction]);
 
   const lockPiece = useCallback(() => {
     if (!currentPiece) return;
@@ -213,9 +225,12 @@ export const useGameLogic = ({
 
     if (isValidPosition(board, newPiece)) {
       setCurrentPiece(newPiece);
-      // Record move action
-      if (isRecording) {
-        recordAction('move', { dx, dy, piece: newPiece });
+      // Record move action (only for horizontal moves or explicit soft drops)
+      if (isRecording && (dx !== 0 || (dy > 0 && dx === 0))) {
+        recordAction('move', { 
+          direction: dx < 0 ? 'left' : dx > 0 ? 'right' : 'down',
+          piece: newPiece 
+        });
       }
     } else if (dy > 0) {
       // Only start lock delay if piece fails to move down
@@ -227,6 +242,11 @@ export const useGameLogic = ({
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused) return;
     
+    // Record hard drop action before execution
+    if (isRecording) {
+      recordAction('drop', { type: 'hard', piece: currentPiece });
+    }
+    
     const dropY = calculateDropPosition(board, currentPiece);
     const pieceToLock = { ...currentPiece, y: dropY };
     
@@ -235,7 +255,7 @@ export const useGameLogic = ({
     setScore(prev => prev + dropDistance);
 
     handlePieceLock(pieceToLock);
-  }, [currentPiece, board, gameOver, isPaused, handlePieceLock]);
+  }, [currentPiece, board, gameOver, isPaused, handlePieceLock, isRecording, recordAction]);
 
   const rotatePiece = (clockwise: boolean) => {
     if (!currentPiece || gameOver || isPaused) return;
@@ -288,7 +308,11 @@ export const useGameLogic = ({
       console.log('Starting replay recording for mode:', gameMode.id);
       startRecording(
         createEmptyBoard(),
-        { /* game settings */ },
+        {
+          das: 167,
+          arr: 33,
+          sdf: 20
+        },
         replaySeed || seedRef.current
       );
     }

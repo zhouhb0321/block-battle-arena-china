@@ -172,10 +172,15 @@ const ReplaySystem: React.FC = () => {
 
   const getGameModeLabel = (mode: string) => {
     const modes: { [key: string]: string } = {
+      'sprint40': '40行竞速',
       'sprint_40': '40行竞速',
+      'timeAttack2': '2分钟竞速',
+      'ultra2min': '2分钟竞速',
       'ultra_2min': '2分钟极限',
       'endless': '无尽模式',
-      'multiplayer': '多人对战'
+      'multiplayer': '多人对战',
+      '1v1': '1v1对战',
+      'ranked': '排位赛'
     };
     return modes[mode] || mode;
   };

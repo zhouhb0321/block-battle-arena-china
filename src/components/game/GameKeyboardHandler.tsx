@@ -63,6 +63,7 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
     onSoftDrop: () => {
       debugLog.debug('Keyboard: Soft drop');
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
+        // Record soft drop action through game logic
         const moved = gameLogic.movePiece(0, 1);
         if (moved !== undefined) {
           // Add soft drop points if needed
