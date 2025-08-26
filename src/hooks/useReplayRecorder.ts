@@ -73,12 +73,21 @@ export const useReplayRecorder = () => {
       return { saved: false, isNewRecord: false };
     }
 
+    // Don't save replays for endless mode
+    if (gameStats.gameMode === 'endless') {
+      console.log('Endless mode - not saving replay');
+      setIsRecording(false);
+      return { saved: false, isNewRecord: false };
+    }
+
     let isNewRecord = false;
     const mode = gameStats.gameMode;
     const isSprint40 = mode === 'sprint40';
     const isTimeAttack2 = mode === 'timeAttack2' || mode === 'ultra2min';
+    const is1v1League = gameStats.gameType === '1v1' || gameStats.gameType === 'ranked';
 
-    if (isSprint40 || isTimeAttack2) {
+    // Save top 500 for sprint40 and timeAttack2, always save 1v1/ranked
+    if (isSprint40 || isTimeAttack2 || is1v1League) {
       let query = supabase.from('compressed_replays').select('id, final_score, duration_seconds');
       if (isTimeAttack2) {
         query = query.in('game_mode', ['timeAttack2', 'ultra2min']).order('final_score', { ascending: false }).limit(500);

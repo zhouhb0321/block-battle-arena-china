@@ -146,10 +146,15 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
                         />
                       </svg>
                     )}
-                    <span>
+                    <span className={showTimeWarning ? 'text-red-500 font-bold animate-pulse' : ''}>
                       {gameMode.isTimeAttack && gameMode.timeLimit 
                         ? formatMs(remainingTimeMs || 0)
                         : formatMs(displayTimeMs)}
+                      {showTimeWarning && (
+                        <span className="ml-1 text-xs">
+                          ⚠️ {Math.ceil((remainingTimeMs || 0) / 1000)}秒!
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -176,13 +181,6 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
               show={gameLogic.isPaused && gameLogic.phase === 'playing' && !gameLogic.gameOver}
               onResume={gameLogic.resumeGame}
             />
-            {remainingTimeMs !== null && remainingTimeMs <= 10000 && remainingTimeMs > 0 && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-8xl font-bold text-red-500/80 animate-ping">
-                  {Math.ceil((remainingTimeMs || 0) / 1000)}
-                </div>
-              </div>
-            )}
           </div>
           <div className="w-48">
             <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>

@@ -213,11 +213,15 @@ export const useGameLogic = ({
 
     if (isValidPosition(board, newPiece)) {
       setCurrentPiece(newPiece);
+      // Record move action
+      if (isRecording) {
+        recordAction('move', { dx, dy, piece: newPiece });
+      }
     } else if (dy > 0) {
       // Only start lock delay if piece fails to move down
       startLockDelay();
     }
-  }, [currentPiece, board, gameOver, isPaused, startLockDelay, clearLockDelayTimer]);
+  }, [currentPiece, board, gameOver, isPaused, startLockDelay, clearLockDelayTimer, isRecording, recordAction]);
 
 
   const hardDrop = useCallback(() => {
@@ -238,6 +242,10 @@ export const useGameLogic = ({
     const srsResult = performSRSRotation(board, currentPiece, clockwise);
     if (srsResult.success && srsResult.newPiece) {
       setCurrentPiece(srsResult.newPiece);
+      // Record rotation action
+      if (isRecording) {
+        recordAction('rotate', { clockwise, piece: srsResult.newPiece, wasKicked: srsResult.wasKicked });
+      }
     }
   };
   const rotatePieceClockwise = useCallback(() => rotatePiece(true), [currentPiece, board, gameOver, isPaused]);
@@ -275,13 +283,23 @@ export const useGameLogic = ({
     setCurrentPiece(initialPieces[0]);
     setNextPieces(initialPieces.slice(1));
     
+    // Start recording for non-endless modes
+    if (!isReplay && gameMode.id !== 'endless') {
+      console.log('Starting replay recording for mode:', gameMode.id);
+      startRecording(
+        createEmptyBoard(),
+        { /* game settings */ },
+        replaySeed || seedRef.current
+      );
+    }
+    
     setTimeout(() => {
       setGameStarted(true);
       setPhase('playing');
       gameStartTime.current = Date.now();
     }, 3000); // 3-second countdown
 
-  }, [createGamePiece]);
+  }, [createGamePiece, isReplay, gameMode.id, startRecording, replaySeed]);
 
   // Main Game Loop (Gravity)
   useEffect(() => {
