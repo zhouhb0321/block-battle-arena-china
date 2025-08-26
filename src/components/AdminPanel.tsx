@@ -15,6 +15,7 @@ import GameRecordManagement from './GameRecordManagement';
 import RevenueManagement from '../RevenueManagement';
 import AdvertisingManagement from '../AdvertisingManagement';
 import DatabaseOptimization from '../DatabaseOptimization';
+import SecurityDashboard from './SecurityDashboard';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -169,8 +170,9 @@ const AdminPanel: React.FC = () => {
         </Card>
       </div>
 
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs defaultValue="security" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="security">安全管理</TabsTrigger>
           <TabsTrigger value="users">{t('userManagement')}</TabsTrigger>
           <TabsTrigger value="logs">{t('systemLogs')}</TabsTrigger>
           <TabsTrigger value="games">{t('gameRecords')}</TabsTrigger>
@@ -182,6 +184,10 @@ const AdminPanel: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="database">数据结构优化</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="security" className="space-y-4">
+          <SecurityDashboard />
+        </TabsContent>
 
         <TabsContent value="users" className="space-y-4">
           <UserManagementTable users={users} />

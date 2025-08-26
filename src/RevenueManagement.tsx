@@ -55,14 +55,9 @@ const RevenueManagement: React.FC = () => {
 
   const fetchSubscribers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('subscribers')
-        .select(`
-          *,
-          user_profiles(username)
-        `)
-        .order('created_at', { ascending: false });
-
+      // Use the secure function instead of direct table access
+      const { data, error } = await supabase.rpc('get_subscribers_safe');
+      
       if (error) throw error;
 
       const formattedSubscribers = data?.map(sub => ({
