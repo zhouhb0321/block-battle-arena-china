@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import ReplayPlayer from './ReplayPlayer';
 import type { GameReplay, ReplayAction } from '@/utils/gameTypes';
 import { ReplayCompressor } from '@/utils/replayCompression';
+import { toUint8Array } from '@/utils/byteArrayUtils';
 
 interface LeaderboardEntry {
   id: string;
@@ -81,26 +82,19 @@ const LeaderboardView: React.FC = () => {
       
       if (entry.compressed_actions) {
         try {
-          const raw = entry.compressed_actions;
-          let bytes: Uint8Array | null = null;
+          console.log('LeaderboardView: Processing compressed actions for replay:', entry.id);
+          const bytes = toUint8Array(entry.compressed_actions);
           
-          if (raw instanceof Uint8Array) {
-            bytes = raw;
-          } else if (Array.isArray(raw)) {
-            bytes = new Uint8Array(raw);
-          } else if (typeof raw === 'string') {
-            const bstr = atob(raw);
-            const arr = new Uint8Array(bstr.length);
-            for (let i = 0; i < bstr.length; i++) arr[i] = bstr.charCodeAt(i);
-            bytes = arr;
-          }
-          
-          if (bytes) {
+          if (bytes.length > 0) {
+            console.log('LeaderboardView: Successfully converted to Uint8Array, length:', bytes.length);
             const compressed = ReplayCompressor.decodeFromBinary(bytes);
             actions = ReplayCompressor.decompressActions(compressed);
+            console.log('LeaderboardView: Decompressed actions count:', actions.length);
+          } else {
+            console.warn('LeaderboardView: Empty byte array for replay:', entry.id);
           }
         } catch (e) {
-          console.error('Failed to decompress replay:', e);
+          console.error('LeaderboardView: Failed to decompress replay:', entry.id, e);
           actions = [];
         }
       }

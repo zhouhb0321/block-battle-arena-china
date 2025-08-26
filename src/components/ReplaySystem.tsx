@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import ReplayPlayer from './ReplayPlayer';
 import type { GameReplay, ReplayAction } from '@/utils/gameTypes';
 import { ReplayCompressor } from '@/utils/replayCompression';
+import { toUint8Array } from '@/utils/byteArrayUtils';
 
 const ReplaySystem: React.FC = () => {
   const { user } = useAuth();
@@ -39,17 +40,33 @@ const ReplaySystem: React.FC = () => {
       let data = compressedReplays;
       let error = compressedError;
 
-      // 如果压缩回放表没有数据，则尝试旧的回放表
+      // 如果压缩回放表没有数据，则尝试旧的回放表，包括1v1和排位赛回放
       if (!compressedReplays || compressedReplays.length === 0) {
-        const { data: oldReplays, error: oldError } = await supabase
+        console.log('ReplaySystem: No compressed replays found, trying fallback tables');
+        
+        // 尝试新格式的回放表
+        const { data: newReplays, error: newError } = await supabase
           .from('game_replays_new')
           .select('*')
           .or(`user_id.eq.${user.id},opponent_id.eq.${user.id}`)
           .order('created_at', { ascending: false })
           .limit(50);
         
-        data = oldReplays;
-        error = oldError;
+        if (newReplays && newReplays.length > 0) {
+          data = newReplays;
+          error = newError;
+        } else {
+          // 最后尝试旧的回放表
+          const { data: oldReplays, error: oldError } = await supabase
+            .from('game_replays')
+            .select('*')
+            .or(`user_id.eq.${user.id}`)
+            .order('created_at', { ascending: false })
+            .limit(50);
+          
+          data = oldReplays;
+          error = oldError;
+        }
       }
 
       if (error) {
@@ -66,32 +83,36 @@ const ReplaySystem: React.FC = () => {
           if (isCompressed) {
             // 压缩回放数据处理：二进制解码 + 动作解压缩
             try {
-              const raw = replay.compressed_actions as any;
-              let bytes: Uint8Array | null = null;
-              if (raw instanceof Uint8Array) {
-                bytes = raw;
-              } else if (Array.isArray(raw)) {
-                bytes = new Uint8Array(raw);
-              } else if (typeof raw === 'string') {
-                const bstr = atob(raw);
-                const arr = new Uint8Array(bstr.length);
-                for (let i = 0; i < bstr.length; i++) arr[i] = bstr.charCodeAt(i);
-                bytes = arr;
-              }
-              if (bytes) {
+              console.log('ReplaySystem: Processing compressed replay:', replay.id);
+              const bytes = toUint8Array(replay.compressed_actions);
+              
+              if (bytes.length > 0) {
+                console.log('ReplaySystem: Successfully converted to Uint8Array, length:', bytes.length);
                 const compressed = ReplayCompressor.decodeFromBinary(bytes);
                 actions = ReplayCompressor.decompressActions(compressed);
+                console.log('ReplaySystem: Decompressed actions count:', actions.length);
+                
+                // 验证动作数量与预期是否一致
+                if (replay.actions_count && actions.length !== replay.actions_count) {
+                  console.warn('ReplaySystem: Action count mismatch!', {
+                    expected: replay.actions_count,
+                    actual: actions.length,
+                    replayId: replay.id
+                  });
+                }
               } else {
+                console.warn('ReplaySystem: Empty byte array for replay:', replay.id);
                 actions = [];
               }
             } catch (e) {
-              console.error('解压缩回放失败:', e);
+              console.error('ReplaySystem: 解压缩回放失败:', replay.id, e);
               actions = [];
             }
           } else {
             // 旧回放数据处理
             const replayData = replay.replay_data as any;
             actions = replayData?.actions || [];
+            console.log('ReplaySystem: Using legacy replay data, actions count:', actions.length);
           }
           
           const userProfile = replay.user_profiles as any;
