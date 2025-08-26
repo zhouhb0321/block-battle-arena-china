@@ -73,6 +73,7 @@ type NavTranslations = {
   game: string;
   ranked: string;
   replays: string;
+  leaderboard: string;
 };
 
 type AuthTranslations = {
@@ -215,6 +216,7 @@ export const translations: Translations = {
       game: 'Game',
       ranked: 'Ranked',
       replays: 'Replays',
+      leaderboard: 'Leaderboard',
     },
     auth: {
       login: 'Login',
@@ -345,6 +347,7 @@ export const translations: Translations = {
       game: '游戏',
       ranked: '排位',
       replays: '回放',
+      leaderboard: '排行榜',
     },
     auth: {
       login: '登录',
@@ -475,6 +478,7 @@ export const translations: Translations = {
       game: 'ゲーム',
       ranked: 'ランク',
       replays: 'リプレイ',
+      leaderboard: 'リーダーボード',
     },
     auth: {
       login: 'ログイン',
