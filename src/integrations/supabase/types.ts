@@ -1382,7 +1382,48 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      subscribers_safe: {
+        Row: {
+          created_at: string | null
+          friend_limit: number | null
+          id: string | null
+          masked_email: string | null
+          stripe_status: string | null
+          subscribed: boolean | null
+          subscription_end: string | null
+          subscription_tier: string | null
+          updated_at: string | null
+          user_id: string | null
+          username_changes_used: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          friend_limit?: number | null
+          id?: string | null
+          masked_email?: never
+          stripe_status?: never
+          subscribed?: boolean | null
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          username_changes_used?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          friend_limit?: number | null
+          id?: string | null
+          masked_email?: never
+          stripe_status?: never
+          subscribed?: boolean | null
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          username_changes_used?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_elo_change: {
@@ -1391,6 +1432,10 @@ export type Database = {
           loser_new_rating: number
           winner_new_rating: number
         }[]
+      }
+      get_user_subscription_status: {
+        Args: { check_user_id?: string }
+        Returns: Json
       }
       has_role: {
         Args: {
