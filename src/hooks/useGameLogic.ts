@@ -45,6 +45,15 @@ export const useGameLogic = ({
 }: UseGameLogicProps) => {
   const [board, setBoard] = useState<Board>(createEmptyBoard());
   const [currentPiece, setCurrentPiece] = useState<GamePiece | null>(null);
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    boardRef.current = board;
+  }, [board]);
+  
+  useEffect(() => {
+    currentPieceRef.current = currentPiece;
+  }, [currentPiece]);
   const [nextPieces, setNextPieces] = useState<GamePiece[]>([]);
   const [holdPiece, setHoldPiece] = useState<GamePiece | null>(null);
   const [canHold, setCanHold] = useState(true);
@@ -79,6 +88,10 @@ export const useGameLogic = ({
   const lockDelayTimer = useRef<NodeJS.Timeout | null>(null);
   const [lockDelayResetCount, setLockDelayResetCount] = useState(0);
   const lastTSpinCheck = useRef<{ piece: GamePiece; board: Board; wasKicked: boolean } | null>(null);
+  
+  // Use refs to ensure lock delay operations use current state
+  const currentPieceRef = useRef<GamePiece | null>(null);
+  const boardRef = useRef<Board>(createEmptyBoard());
 
   const LOCK_DELAY_TIME = 500;
   const MAX_LOCK_RESETS = 15;
@@ -207,24 +220,38 @@ export const useGameLogic = ({
   }, [lockDelayResetCount, lockPiece, clearLockDelayTimer]);
 
   const startLockDelay = useCallback(() => {
-    if (!currentPiece) return;
-    const testPiece = { ...currentPiece, y: currentPiece.y + 1 };
-    if (isValidPosition(board, testPiece)) return;
+    const piece = currentPieceRef.current;
+    if (!piece) return;
+    const testPiece = { ...piece, y: piece.y + 1 };
+    if (isValidPosition(boardRef.current, testPiece)) return;
     
-    lockDelayTimer.current = setTimeout(() => lockPiece(), LOCK_DELAY_TIME);
-  }, [currentPiece, board, lockPiece]);
+    lockDelayTimer.current = setTimeout(() => {
+      const finalPiece = currentPieceRef.current;
+      if (finalPiece) {
+        handlePieceLock(finalPiece);
+      }
+    }, LOCK_DELAY_TIME);
+  }, [handlePieceLock]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
     if (!currentPiece || gameOver || isPaused) return;
 
     const newPiece = { ...currentPiece, x: currentPiece.x + dx, y: currentPiece.y + dy };
-    // Clear any existing lock timer on horizontal move
-    if (dx !== 0) {
-        clearLockDelayTimer();
-    }
 
     if (isValidPosition(board, newPiece)) {
       setCurrentPiece(newPiece);
+      
+      // Reset lock delay for horizontal moves or rotations when piece is on ground
+      if (dx !== 0) {
+        const testDownPiece = { ...newPiece, y: newPiece.y + 1 };
+        if (!isValidPosition(board, testDownPiece)) {
+          // Piece is on ground, reset lock delay
+          if (resetLockDelay()) {
+            startLockDelay();
+          }
+        }
+      }
+      
       // Record move action (only for horizontal moves or explicit soft drops)
       if (isRecording && (dx !== 0 || (dy > 0 && dx === 0))) {
         recordAction('move', { 
@@ -236,7 +263,7 @@ export const useGameLogic = ({
       // Only start lock delay if piece fails to move down
       startLockDelay();
     }
-  }, [currentPiece, board, gameOver, isPaused, startLockDelay, clearLockDelayTimer, isRecording, recordAction]);
+  }, [currentPiece, board, gameOver, isPaused, startLockDelay, resetLockDelay, isRecording, recordAction]);
 
 
   const hardDrop = useCallback(() => {
@@ -262,6 +289,16 @@ export const useGameLogic = ({
     const srsResult = performSRSRotation(board, currentPiece, clockwise);
     if (srsResult.success && srsResult.newPiece) {
       setCurrentPiece(srsResult.newPiece);
+      
+      // Reset lock delay when rotating on ground
+      const testDownPiece = { ...srsResult.newPiece, y: srsResult.newPiece.y + 1 };
+      if (!isValidPosition(board, testDownPiece)) {
+        // Piece is on ground, reset lock delay
+        if (resetLockDelay()) {
+          startLockDelay();
+        }
+      }
+      
       // Record rotation action
       if (isRecording) {
         recordAction('rotate', { clockwise, piece: srsResult.newPiece, wasKicked: srsResult.wasKicked });

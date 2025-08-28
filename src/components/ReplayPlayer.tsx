@@ -201,9 +201,10 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
   if (!replay) return null;
 
   const formatTime = (ms: number) => {
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const progress = maxTimeRef.current > 0 ? (currentTime / maxTimeRef.current) * 100 : 0;
@@ -262,7 +263,7 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
                 <Button
                   size="sm"
                   onClick={isPlaying ? pauseReplay : playReplay}
-                  disabled={currentTime >= maxTimeRef.current}
+                  disabled={actionsRef.current.length === 0 || currentTime >= maxTimeRef.current}
                 >
                   {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   {isPlaying ? '暂停' : '播放'}

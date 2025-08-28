@@ -14,6 +14,11 @@ export function toUint8Array(data: any): Uint8Array {
       return data;
     }
 
+    // ArrayBuffer support
+    if (data instanceof ArrayBuffer) {
+      return new Uint8Array(data);
+    }
+
     // Regular array of numbers
     if (Array.isArray(data)) {
       return new Uint8Array(data);
