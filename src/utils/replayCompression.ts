@@ -105,20 +105,25 @@ export class ReplayCompressor {
     const actions: CompressedAction[] = [];
     let offset = 0;
 
-    while (offset < data.length) {
-      const action: CompressedAction = {
-        t: view.getUint32(offset, true),
-        a: view.getUint8(offset + 4)
-      };
-      offset += 5;
+    while (offset + 7 <= data.length) {
+      try {
+        const action: CompressedAction = {
+          t: view.getUint32(offset, true),
+          a: view.getUint8(offset + 4)
+        };
+        offset += 5;
 
-      const dataValue = view.getUint16(offset, true);
-      if (dataValue !== 0xFFFF) {
-        action.d = dataValue;
+        const dataValue = view.getUint16(offset, true);
+        if (dataValue !== 0xFFFF) {
+          action.d = dataValue;
+        }
+        offset += 2;
+
+        actions.push(action);
+      } catch (e) {
+        console.warn('ReplayCompressor: Failed to decode action at offset', offset, e);
+        break;
       }
-      offset += 2;
-
-      actions.push(action);
     }
 
     return actions;

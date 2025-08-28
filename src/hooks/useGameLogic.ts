@@ -86,6 +86,7 @@ export const useGameLogic = ({
   const totalPieces = useRef<number>(0);
   const totalActions = useRef<number>(0);
   const lockDelayTimer = useRef<NodeJS.Timeout | null>(null);
+  const lockDelayTimerId = useRef<number | null>(null);
   const [lockDelayResetCount, setLockDelayResetCount] = useState(0);
   const lastTSpinCheck = useRef<{ piece: GamePiece; board: Board; wasKicked: boolean } | null>(null);
   
@@ -103,6 +104,7 @@ export const useGameLogic = ({
       clearTimeout(lockDelayTimer.current);
       lockDelayTimer.current = null;
     }
+    lockDelayTimerId.current = null;
   }, []);
   
   const spawnNewPiece = useCallback(() => {
@@ -209,29 +211,52 @@ export const useGameLogic = ({
     handlePieceLock(currentPiece);
   }, [currentPiece, handlePieceLock, clearLockDelayTimer]);
 
-  const resetLockDelay = useCallback(() => {
-    if (lockDelayResetCount >= MAX_LOCK_RESETS) {
-      lockPiece();
-      return false;
-    }
-    clearLockDelayTimer();
-    setLockDelayResetCount(prev => prev + 1);
-    return true;
-  }, [lockDelayResetCount, lockPiece, clearLockDelayTimer]);
-
   const startLockDelay = useCallback(() => {
     const piece = currentPieceRef.current;
     if (!piece) return;
     const testPiece = { ...piece, y: piece.y + 1 };
     if (isValidPosition(boardRef.current, testPiece)) return;
     
+    const timerId = Date.now();
+    lockDelayTimerId.current = timerId;
+    
     lockDelayTimer.current = setTimeout(() => {
-      const finalPiece = currentPieceRef.current;
-      if (finalPiece) {
-        handlePieceLock(finalPiece);
+      // Only proceed if this is still the active timer and game is running
+      if (lockDelayTimerId.current === timerId && !gameOver && !isPaused && gameStarted) {
+        const finalPiece = currentPieceRef.current;
+        if (finalPiece) {
+          // Double check piece is still on ground
+          const testPiece = { ...finalPiece, y: finalPiece.y + 1 };
+          if (!isValidPosition(boardRef.current, testPiece)) {
+            handlePieceLock(finalPiece);
+          }
+        }
       }
+      lockDelayTimer.current = null;
+      lockDelayTimerId.current = null;
     }, LOCK_DELAY_TIME);
-  }, [handlePieceLock]);
+  }, [handlePieceLock, gameOver, isPaused, gameStarted]);
+
+  const resetLockDelay = useCallback(() => {
+    if (lockDelayResetCount >= MAX_LOCK_RESETS) {
+      lockPiece();
+      return false;
+    }
+    
+    const piece = currentPieceRef.current;
+    if (piece) {
+      const testPiece = { ...piece, y: piece.y + 1 };
+      const isOnGround = !isValidPosition(boardRef.current, testPiece);
+      
+      if (isOnGround) {
+        clearLockDelayTimer();
+        setLockDelayResetCount(prev => prev + 1);
+        startLockDelay();
+        return true;
+      }
+    }
+    return false;
+  }, [lockDelayResetCount, lockPiece, clearLockDelayTimer, startLockDelay]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
     if (!currentPiece || gameOver || isPaused) return;
@@ -241,14 +266,12 @@ export const useGameLogic = ({
     if (isValidPosition(board, newPiece)) {
       setCurrentPiece(newPiece);
       
-      // Reset lock delay for horizontal moves or rotations when piece is on ground
+      // Reset lock delay for horizontal moves when piece is on ground
       if (dx !== 0) {
         const testDownPiece = { ...newPiece, y: newPiece.y + 1 };
         if (!isValidPosition(board, testDownPiece)) {
           // Piece is on ground, reset lock delay
-          if (resetLockDelay()) {
-            startLockDelay();
-          }
+          resetLockDelay();
         }
       }
       
@@ -294,9 +317,7 @@ export const useGameLogic = ({
       const testDownPiece = { ...srsResult.newPiece, y: srsResult.newPiece.y + 1 };
       if (!isValidPosition(board, testDownPiece)) {
         // Piece is on ground, reset lock delay
-        if (resetLockDelay()) {
-          startLockDelay();
-        }
+        resetLockDelay();
       }
       
       // Record rotation action
@@ -317,6 +338,9 @@ export const useGameLogic = ({
   }, [canHold, gameOver, isPaused, currentPiece, holdPiece, createGamePiece]);
 
   const startGame = useCallback(() => {
+    // Clear any existing lock delay timer
+    clearLockDelayTimer();
+    
     setBoard(createEmptyBoard());
     setScore(0);
     setLines(0);
@@ -329,6 +353,7 @@ export const useGameLogic = ({
     setComboCount(0);
     setIsB2B(0);
     setIsNewRecord(false);
+    setLockDelayResetCount(0);
     setPhase('countdown');
 
     if (!seedRef.current) {
