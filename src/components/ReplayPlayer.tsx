@@ -320,6 +320,10 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
                 <div>旋转: {actionsRef.current.filter(a => a.action === 'rotate').length}</div>
                 <div>硬降: {actionsRef.current.filter(a => a.action === 'drop').length}</div>
                 <div>暂存: {actionsRef.current.filter(a => a.action === 'hold').length}</div>
+                <div>放置: {actionsRef.current.filter(a => a.action === 'place').length}</div>
+                {actionsRef.current.filter(a => a.action === 'place').length === 0 && (
+                  <div className="text-yellow-400 mt-2">⚠️ 无放置动作记录，回放可能无法正常显示</div>
+                )}
               </div>
             </div>
           </div>

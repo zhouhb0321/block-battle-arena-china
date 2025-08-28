@@ -92,6 +92,22 @@ const ReplaySystem: React.FC = () => {
                 actions = ReplayCompressor.decompressActions(compressed);
                 console.log('ReplaySystem: Decompressed actions count:', actions.length);
                 
+                // 检查数据完整性并尝试修复
+                let placeActions = actions.filter(a => a.action === 'place');
+                console.log('ReplaySystem: Place actions count:', placeActions.length);
+                
+                // 如果没有place动作，尝试将action=10的动作解释为place
+                if (placeActions.length === 0) {
+                  console.warn('ReplaySystem: No place actions found, trying fallback interpretation');
+                  const fallbackPlaces = actions.filter(a => (a as any).a === 10);
+                  if (fallbackPlaces.length > 0) {
+                    console.log('ReplaySystem: Found', fallbackPlaces.length, 'actions with a=10, converting to place actions');
+                    fallbackPlaces.forEach(action => {
+                      action.action = 'place';
+                    });
+                  }
+                }
+                
                 // 验证动作数量与预期是否一致
                 if (replay.actions_count && actions.length !== replay.actions_count) {
                   console.warn('ReplaySystem: Action count mismatch!', {

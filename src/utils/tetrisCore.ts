@@ -22,7 +22,13 @@ export const isValidPosition = (board: number[][], piece: GamePiece): boolean =>
         let boardX = x + col;
         let boardY = y + row;
 
-        if (boardX < 0 || boardX >= BOARD_WIDTH || boardY >= BOARD_HEIGHT || boardY < 0 || board[boardY][boardX] !== 0) {
+        // 允许在顶部区域旋转（允许负Y），但仍检查水平边界和下方边界
+        if (boardX < 0 || boardX >= BOARD_WIDTH || boardY >= BOARD_HEIGHT) {
+          return false;
+        }
+        
+        // 只有在棋盘范围内才检查碰撞
+        if (boardY >= 0 && board[boardY][boardX] !== 0) {
           return false;
         }
       }
