@@ -6,7 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Play, Trophy, Clock, Target, Medal } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import ReplayPlayer from './ReplayPlayer';
+import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
 import type { GameReplay, ReplayAction } from '@/utils/gameTypes';
+import type { CompressedReplay } from '@/utils/replayTypes';
 import { ReplayCompressor } from '@/utils/replayCompression';
 import { toUint8Array } from '@/utils/byteArrayUtils';
 
@@ -33,7 +35,9 @@ const LeaderboardView: React.FC = () => {
   const [timeAttack2Leaderboard, setTimeAttack2Leaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReplay, setSelectedReplay] = useState<GameReplay | null>(null);
+  const [selectedCompressedReplay, setSelectedCompressedReplay] = useState<CompressedReplay | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [isEnhancedPlayerOpen, setIsEnhancedPlayerOpen] = useState(false);
 
   useEffect(() => {
     loadLeaderboards();
@@ -77,8 +81,9 @@ const LeaderboardView: React.FC = () => {
 
   const handlePlayReplay = async (entry: LeaderboardEntry) => {
     try {
-      // Convert leaderboard entry to GameReplay format
+      // 检查数据完整性 - 先验证是否有可播放的动作
       let actions: ReplayAction[] = [];
+      let isPlayable = false;
       
       if (entry.compressed_actions) {
         try {
@@ -91,14 +96,15 @@ const LeaderboardView: React.FC = () => {
             actions = ReplayCompressor.decompressActions(compressed);
             console.log('LeaderboardView: Decompressed actions count:', actions.length);
             
-          // 检查数据完整性
-          let placeActions = actions.filter(a => a.action === 'place');
-          console.log('LeaderboardView: Place actions count:', placeActions.length);
-          
-          // 验证解码后的数据质量
-          if (actions.length > 0 && placeActions.length === 0) {
-            console.warn('LeaderboardView: Replay has actions but no place actions - data may be corrupted');
-          }
+            // 检查数据完整性
+            let placeActions = actions.filter(a => a.action === 'place');
+            console.log('LeaderboardView: Place actions count:', placeActions.length);
+            isPlayable = placeActions.length > 0;
+            
+            // 验证解码后的数据质量
+            if (actions.length > 0 && placeActions.length === 0) {
+              console.warn('LeaderboardView: Replay has actions but no place actions - data may be corrupted');
+            }
           } else {
             console.warn('LeaderboardView: Empty byte array for replay:', entry.id);
           }
@@ -108,35 +114,67 @@ const LeaderboardView: React.FC = () => {
         }
       }
 
-      const gameReplay: GameReplay = {
-        id: entry.id,
-        matchId: entry.id,
-        userId: '',
-        gameType: entry.game_mode,
-        gameMode: entry.game_mode,
-        score: entry.final_score,
-        lines: entry.final_lines,
-        level: 1,
-        pps: entry.pps,
-        apm: entry.apm,
-        duration: entry.duration_seconds * 1000,
-        startTime: new Date(entry.created_at).getTime(),
-        endTime: new Date(entry.created_at).getTime() + (entry.duration_seconds * 1000),
-        actions: actions,
-        finalBoard: Array(20).fill(null).map(() => Array(10).fill(0)),
-        date: entry.created_at,
-        playerName: entry.username,
-        isPersonalBest: entry.is_personal_best,
-        metadata: {
+      if (isPlayable) {
+        // 使用增强播放器播放可播放的回放
+        const compressedReplay: CompressedReplay = {
+          id: entry.id,
+          userId: '',
+          gameType: 'single' as const,
+          gameMode: entry.game_mode,
+          finalScore: entry.final_score,
+          finalLines: entry.final_lines,
+          finalLevel: 1,
+          durationSeconds: entry.duration_seconds,
+          pps: entry.pps,
+          apm: entry.apm,
+          seed: entry.seed || '',
+          actionsCount: actions.length,
+          compressedActions: new Uint8Array(), // 这个会被ReplayCompressor处理
+          compressionRatio: 0.8, // 估算值
           version: '2.0',
-          settings: entry.game_settings || {},
-          seed: entry.seed,
-          initialBoard: entry.initial_board
-        }
-      };
-
-      setSelectedReplay(gameReplay);
-      setIsPlayerOpen(true);
+          isPersonalBest: entry.is_personal_best,
+          isWorldRecord: false,
+          isFeatured: true,
+          createdAt: entry.created_at,
+          updatedAt: entry.created_at,
+          gameSettings: entry.game_settings || {},
+          initialBoard: entry.initial_board || Array(20).fill(null).map(() => Array(10).fill(0)),
+          checksum: entry.checksum || ''
+        };
+        setSelectedCompressedReplay(compressedReplay);
+        setIsEnhancedPlayerOpen(true);
+      } else {
+        // 使用旧播放器显示不可播放回放的信息
+        const gameReplay: GameReplay = {
+          id: entry.id,
+          matchId: entry.id,
+          userId: '',
+          gameType: entry.game_mode,
+          gameMode: entry.game_mode,
+          score: entry.final_score,
+          lines: entry.final_lines,
+          level: 1,
+          pps: entry.pps,
+          apm: entry.apm,
+          duration: entry.duration_seconds * 1000,
+          startTime: new Date(entry.created_at).getTime(),
+          endTime: new Date(entry.created_at).getTime() + (entry.duration_seconds * 1000),
+          actions: actions,
+          finalBoard: Array(20).fill(null).map(() => Array(10).fill(0)),
+          date: entry.created_at,
+          playerName: entry.username,
+          isPersonalBest: entry.is_personal_best,
+          isPlayable: isPlayable,
+          metadata: {
+            version: '2.0',
+            settings: entry.game_settings || {},
+            seed: entry.seed,
+            initialBoard: entry.initial_board
+          }
+        };
+        setSelectedReplay(gameReplay);
+        setIsPlayerOpen(true);
+      }
     } catch (error) {
       console.error('Error preparing replay:', error);
     }
@@ -323,6 +361,17 @@ const LeaderboardView: React.FC = () => {
           setSelectedReplay(null);
         }}
       />
+      
+      {selectedCompressedReplay && (
+        <EnhancedReplayPlayer
+          replay={selectedCompressedReplay}
+          isOpen={isEnhancedPlayerOpen}
+          onClose={() => {
+            setIsEnhancedPlayerOpen(false);
+            setSelectedCompressedReplay(null);
+          }}
+        />
+      )}
     </div>
   );
 };

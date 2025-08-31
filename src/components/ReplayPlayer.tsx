@@ -122,6 +122,13 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
     }
   };
 
+  if (!replay) {
+    return null;
+  }
+
+  // 检查回放是否可播放
+  const isPlayable = replay.isPlayable !== false && replay.actions.filter(a => a.action === 'place').length > 0;
+
   const playReplay = () => {
     if (!replay) return;
 

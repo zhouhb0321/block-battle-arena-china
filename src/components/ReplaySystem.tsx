@@ -3,11 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Play, Trophy, Clock, Target } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import ReplayPlayer from './ReplayPlayer';
+import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
 import type { GameReplay, ReplayAction } from '@/utils/gameTypes';
+import type { CompressedReplay } from '@/utils/replayTypes';
 import { ReplayCompressor } from '@/utils/replayCompression';
 import { toUint8Array } from '@/utils/byteArrayUtils';
 
@@ -16,7 +19,10 @@ const ReplaySystem: React.FC = () => {
   const [replays, setReplays] = useState<GameReplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReplay, setSelectedReplay] = useState<GameReplay | null>(null);
+  const [selectedCompressedReplay, setSelectedCompressedReplay] = useState<CompressedReplay | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [isEnhancedPlayerOpen, setIsEnhancedPlayerOpen] = useState(false);
+  const [showOldReplays, setShowOldReplays] = useState(false);
 
   useEffect(() => {
     loadReplays();
@@ -79,6 +85,7 @@ const ReplaySystem: React.FC = () => {
           // 处理压缩回放和旧回放的不同数据结构
           const isCompressed = 'compressed_actions' in replay;
           let actions: ReplayAction[] = [];
+          let isPlayable = false;
           
           if (isCompressed) {
             // 压缩回放数据处理：二进制解码 + 动作解压缩
@@ -100,6 +107,7 @@ const ReplaySystem: React.FC = () => {
                 // 检查数据完整性
                 let placeActions = actions.filter(a => a.action === 'place');
                 console.log('ReplaySystem: Place actions count:', placeActions.length);
+                isPlayable = placeActions.length > 0;
                 
                 // 验证动作数量与预期是否一致
                 if (replay.actions_count && actions.length !== replay.actions_count) {
@@ -179,6 +187,7 @@ const ReplaySystem: React.FC = () => {
             date: replay.created_at,
             playerName: replay.username || userProfile?.username || 'Unknown Player',
             isPersonalBest: replay.is_personal_best || false,
+            isPlayable: isPlayable,
             metadata: {
               version: isCompressed ? '2.0' : '1.0',
               settings: replay.game_settings || {
@@ -213,7 +222,12 @@ const ReplaySystem: React.FC = () => {
           };
         });
 
-        setReplays(formattedReplays);
+        // 过滤不可播放的回放（除非用户选择显示旧回放）
+        const filteredReplays = showOldReplays 
+          ? formattedReplays 
+          : formattedReplays.filter(r => r.isPlayable);
+        
+        setReplays(filteredReplays);
       }
     } catch (error) {
       console.error('Error loading replays:', error);
@@ -223,8 +237,40 @@ const ReplaySystem: React.FC = () => {
   };
 
   const handlePlayReplay = (replay: GameReplay) => {
-    setSelectedReplay(replay);
-    setIsPlayerOpen(true);
+    if (replay.isPlayable && replay.metadata.version === '2.0') {
+      // 使用增强播放器播放新格式回放
+      const compressedReplay: CompressedReplay = {
+        id: replay.id,
+        userId: replay.userId,
+        gameType: 'single' as const,
+        gameMode: replay.gameMode,
+        finalScore: replay.score,
+        finalLines: replay.lines,
+        finalLevel: replay.level,
+        durationSeconds: replay.duration / 1000,
+        pps: replay.pps,
+        apm: replay.apm,
+        seed: replay.metadata.seed || '',
+        actionsCount: replay.actions.length,
+        compressedActions: new Uint8Array(), // 这个会被ReplayCompressor处理
+        compressionRatio: 0.8, // 估算值
+        version: '2.0',
+        isPersonalBest: replay.isPersonalBest,
+        isWorldRecord: false,
+        isFeatured: false,
+        createdAt: replay.date,
+        updatedAt: replay.date,
+        gameSettings: replay.metadata.settings,
+        initialBoard: replay.metadata.initialBoard || Array(20).fill(null).map(() => Array(10).fill(0)),
+        checksum: ''
+      };
+      setSelectedCompressedReplay(compressedReplay);
+      setIsEnhancedPlayerOpen(true);
+    } else {
+      // 使用旧播放器播放不可播放的回放
+      setSelectedReplay(replay);
+      setIsPlayerOpen(true);
+    }
   };
 
   const formatDuration = (duration: number) => {
@@ -273,9 +319,21 @@ const ReplaySystem: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">游戏回放</h2>
-        <Button onClick={loadReplays} variant="outline" size="sm">
-          刷新
-        </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={showOldReplays}
+              onCheckedChange={(checked) => {
+                setShowOldReplays(checked);
+                loadReplays(); // 重新加载以应用过滤
+              }}
+            />
+            <span className="text-sm">显示旧回放</span>
+          </div>
+          <Button onClick={loadReplays} variant="outline" size="sm">
+            刷新
+          </Button>
+        </div>
       </div>
 
       {replays.length === 0 ? (
@@ -304,9 +362,9 @@ const ReplaySystem: React.FC = () => {
                         PB
                       </Badge>
                     )}
-                    {replay.actions.filter(a => a.action === 'place').length === 0 && (
+                    {!replay.isPlayable && (
                       <Badge variant="destructive" className="text-xs">
-                        数据不完整
+                        数据不完整（旧格式）
                       </Badge>
                     )}
                   </div>
@@ -343,10 +401,10 @@ const ReplaySystem: React.FC = () => {
                     onClick={() => handlePlayReplay(replay)}
                     className="ml-4"
                     size="sm"
-                    disabled={replay.actions.filter(a => a.action === 'place').length === 0}
+                    disabled={!replay.isPlayable}
                   >
                     <Play className="w-4 h-4 mr-1" />
-                    {replay.actions.filter(a => a.action === 'place').length === 0 ? '无法播放' : '播放'}
+                    {!replay.isPlayable ? '无法播放' : '播放'}
                   </Button>
                 </div>
               </CardContent>
@@ -363,6 +421,17 @@ const ReplaySystem: React.FC = () => {
           setSelectedReplay(null);
         }}
       />
+      
+      {selectedCompressedReplay && (
+        <EnhancedReplayPlayer
+          replay={selectedCompressedReplay}
+          isOpen={isEnhancedPlayerOpen}
+          onClose={() => {
+            setIsEnhancedPlayerOpen(false);
+            setSelectedCompressedReplay(null);
+          }}
+        />
+      )}
     </div>
   );
 };

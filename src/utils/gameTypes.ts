@@ -118,6 +118,7 @@ export interface GameReplay {
   finalBoard?: number[][];
   date?: string;
   playerName?: string;
+  isPlayable?: boolean;
   isPersonalBest?: boolean;
   metadata: {
     version: string;
