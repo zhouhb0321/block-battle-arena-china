@@ -54,12 +54,42 @@ export function toUint8Array(data: any): Uint8Array {
       }
     }
 
-    // Buffer-like object
+    // Buffer-like object with data array (Node.js Buffer format)
     if (data && typeof data === 'object' && 'data' in data && Array.isArray(data.data)) {
       return new Uint8Array(data.data);
     }
 
-    console.warn('toUint8Array: Unknown data format, returning empty array', typeof data);
+    // Handle JSON stringified arrays like "[1,2,3]"
+    if (typeof data === 'string' && data.startsWith('[') && data.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          return new Uint8Array(parsed);
+        }
+      } catch (e) {
+        console.warn('toUint8Array: Failed to parse JSON array string');
+      }
+    }
+
+    // Handle JSON objects that look like {"0":1,"1":2,"2":3,...} 
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const keys = Object.keys(data);
+      if (keys.length > 0 && keys.every(k => /^\d+$/.test(k))) {
+        const maxIndex = Math.max(...keys.map(Number));
+        const array = new Array(maxIndex + 1);
+        for (const key of keys) {
+          array[parseInt(key)] = data[key];
+        }
+        return new Uint8Array(array);
+      }
+    }
+
+    console.warn('toUint8Array: Unknown data format, returning empty array', {
+      type: typeof data,
+      isArray: Array.isArray(data),
+      hasData: data && 'data' in data,
+      sample: typeof data === 'string' ? data.substring(0, 50) : data
+    });
     return new Uint8Array(0);
   } catch (error) {
     console.error('toUint8Array: Error converting data:', error);

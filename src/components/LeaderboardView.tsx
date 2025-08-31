@@ -91,21 +91,14 @@ const LeaderboardView: React.FC = () => {
             actions = ReplayCompressor.decompressActions(compressed);
             console.log('LeaderboardView: Decompressed actions count:', actions.length);
             
-            // 检查数据完整性并尝试修复
-            let placeActions = actions.filter(a => a.action === 'place');
-            console.log('LeaderboardView: Place actions count:', placeActions.length);
-            
-            // 如果没有place动作，尝试将action=10的动作解释为place
-            if (placeActions.length === 0) {
-              console.warn('LeaderboardView: No place actions found, trying fallback interpretation');
-              const fallbackPlaces = actions.filter(a => (a as any).a === 10);
-              if (fallbackPlaces.length > 0) {
-                console.log('LeaderboardView: Found', fallbackPlaces.length, 'actions with a=10, converting to place actions');
-                fallbackPlaces.forEach(action => {
-                  action.action = 'place';
-                });
-              }
-            }
+          // 检查数据完整性
+          let placeActions = actions.filter(a => a.action === 'place');
+          console.log('LeaderboardView: Place actions count:', placeActions.length);
+          
+          // 验证解码后的数据质量
+          if (actions.length > 0 && placeActions.length === 0) {
+            console.warn('LeaderboardView: Replay has actions but no place actions - data may be corrupted');
+          }
           } else {
             console.warn('LeaderboardView: Empty byte array for replay:', entry.id);
           }

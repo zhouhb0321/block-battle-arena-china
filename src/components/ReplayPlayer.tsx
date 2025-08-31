@@ -200,6 +200,10 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
 
   if (!replay) return null;
 
+  // 检查回放是否有足够的数据进行播放
+  const placeCount = replay.actions.filter(action => action.action === 'place').length;
+  const hasPlayableData = placeCount > 0 && replay.actions.length > 0;
+
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
@@ -263,13 +267,17 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
                 <Button
                   size="sm"
                   onClick={isPlaying ? pauseReplay : playReplay}
-                  disabled={actionsRef.current.length === 0 || currentTime >= maxTimeRef.current}
+                  disabled={!hasPlayableData || currentTime >= maxTimeRef.current}
                 >
                   {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   {isPlaying ? '暂停' : '播放'}
                 </Button>
                 
-                <Button size="sm" onClick={resetReplay}>
+                <Button 
+                  size="sm" 
+                  onClick={resetReplay}
+                  disabled={!hasPlayableData}
+                >
                   <RotateCcw className="w-4 h-4" />
                   重置
                 </Button>
@@ -287,9 +295,10 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
                   type="range"
                   min="0"
                   max={maxTimeRef.current}
-                  value={currentTime}
+                  value={Math.min(currentTime, maxTimeRef.current)}
                   onChange={(e) => seekTo(Number(e.target.value))}
                   className="w-full"
+                  disabled={!hasPlayableData}
                 />
               </div>
 

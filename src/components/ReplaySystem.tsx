@@ -83,7 +83,12 @@ const ReplaySystem: React.FC = () => {
           if (isCompressed) {
             // 压缩回放数据处理：二进制解码 + 动作解压缩
             try {
-              console.log('ReplaySystem: Processing compressed replay:', replay.id);
+              console.log('ReplaySystem: Processing compressed replay:', replay.id, {
+                dataType: typeof replay.compressed_actions,
+                dataLength: replay.compressed_actions?.length || 0,
+                expectedActions: replay.actions_count
+              });
+              
               const bytes = toUint8Array(replay.compressed_actions);
               
               if (bytes.length > 0) {
@@ -92,21 +97,9 @@ const ReplaySystem: React.FC = () => {
                 actions = ReplayCompressor.decompressActions(compressed);
                 console.log('ReplaySystem: Decompressed actions count:', actions.length);
                 
-                // 检查数据完整性并尝试修复
+                // 检查数据完整性
                 let placeActions = actions.filter(a => a.action === 'place');
                 console.log('ReplaySystem: Place actions count:', placeActions.length);
-                
-                // 如果没有place动作，尝试将action=10的动作解释为place
-                if (placeActions.length === 0) {
-                  console.warn('ReplaySystem: No place actions found, trying fallback interpretation');
-                  const fallbackPlaces = actions.filter(a => (a as any).a === 10);
-                  if (fallbackPlaces.length > 0) {
-                    console.log('ReplaySystem: Found', fallbackPlaces.length, 'actions with a=10, converting to place actions');
-                    fallbackPlaces.forEach(action => {
-                      action.action = 'place';
-                    });
-                  }
-                }
                 
                 // 验证动作数量与预期是否一致
                 if (replay.actions_count && actions.length !== replay.actions_count) {
@@ -115,6 +108,28 @@ const ReplaySystem: React.FC = () => {
                     actual: actions.length,
                     replayId: replay.id
                   });
+                }
+
+                // 尝试自动修复并更新数据库（仅针对当前用户的回放）
+                if (placeActions.length > 0 && replay.user_id === user.id && typeof replay.compressed_actions !== 'string') {
+                  try {
+                    console.log('ReplaySystem: Attempting to migrate replay data to base64 format');
+                    const base64Data = btoa(String.fromCharCode(...bytes));
+                    
+                    supabase
+                      .from('compressed_replays')
+                      .update({ compressed_actions: base64Data })
+                      .eq('id', replay.id)
+                      .then(({ error: updateError }) => {
+                        if (!updateError) {
+                          console.log('ReplaySystem: Successfully migrated replay to base64 format:', replay.id);
+                        } else {
+                          console.warn('ReplaySystem: Failed to migrate replay:', updateError);
+                        }
+                      });
+                  } catch (migrationError) {
+                    console.warn('ReplaySystem: Failed to migrate replay data:', migrationError);
+                  }
                 }
               } else {
                 console.warn('ReplaySystem: Empty byte array for replay:', replay.id);

@@ -155,6 +155,10 @@ export const useReplayRecorder = () => {
 
     const compressed = ReplayCompressor.compressActions(actionsRef.current);
     const compressedActions = ReplayCompressor.encodeToBinary(compressed);
+    
+    // Convert Uint8Array to base64 string for proper storage
+    const base64Actions = btoa(String.fromCharCode(...compressedActions));
+    
     const checksumData: OptimizedReplayData = {
       gameMetadata: {
         gameMode: gameStats.gameMode,
@@ -171,6 +175,14 @@ export const useReplayRecorder = () => {
     };
     const checksum = ReplayCompressor.generateChecksum(checksumData);
 
+    console.log('Replay save:', {
+      actionsRecorded: actionsRef.current.length,
+      compressedSize: compressed.length,
+      binarySize: compressedActions.length,
+      base64Length: base64Actions.length,
+      placeActions: actionsRef.current.filter(a => a.action === 'place').length
+    });
+
     const { data, error } = await supabase
       .from('compressed_replays')
       .insert({
@@ -181,7 +193,7 @@ export const useReplayRecorder = () => {
         seed: replayData?.seed || `${Date.now()}`,
         initial_board: replayData?.initialBoard || [],
         game_settings: replayData?.settings || {},
-        compressed_actions: compressedActions,
+        compressed_actions: base64Actions,
         actions_count: actionsRef.current.length,
         compression_ratio: ReplayCompressor.calculateCompressionRatio(actionsRef.current, compressedActions),
         final_score: gameStats.score,
