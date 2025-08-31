@@ -50,8 +50,20 @@ const GameOverDialog: React.FC<GameOverDialogProps> = ({
   const { t } = useLanguage();
 
   const formatTime = (seconds: number): string => {
+    // For 2-minute challenge modes, show milliseconds precision and clamp to 120 seconds
+    const isTimeAttack = gameMode === 'timeAttack2' || gameMode === 'ultra2min';
+    
+    if (isTimeAttack) {
+      const clampedSeconds = Math.min(seconds, 120);
+      const mins = Math.floor(clampedSeconds / 60);
+      const secs = Math.floor(clampedSeconds % 60);
+      const ms = Math.floor((clampedSeconds % 1) * 1000);
+      return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+    }
+    
+    // For other modes, use standard mm:ss format
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 

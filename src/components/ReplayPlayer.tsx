@@ -331,7 +331,10 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
                 <div>暂存: {actionsRef.current.filter(a => a.action === 'hold').length}</div>
                 <div>放置: {actionsRef.current.filter(a => a.action === 'place').length}</div>
                 {actionsRef.current.filter(a => a.action === 'place').length === 0 && (
-                  <div className="text-yellow-400 mt-2">⚠️ 无放置动作记录，回放可能无法正常显示</div>
+                  <div className="text-red-400 mt-2 text-xs border border-red-400 rounded p-2">
+                    ⚠️ 此回放缺少"放置"动作记录，无法重建游戏棋盘状态。<br/>
+                    这可能是旧格式数据或录制时出现的问题。
+                  </div>
                 )}
               </div>
             </div>

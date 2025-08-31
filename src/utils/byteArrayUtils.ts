@@ -29,11 +29,33 @@ export function toUint8Array(data: any): Uint8Array {
       // Try hex format first (PostgreSQL BYTEA default)
       if (data.startsWith('\\x')) {
         const hex = data.slice(2);
-        const bytes = new Uint8Array(hex.length / 2);
-        for (let i = 0; i < hex.length; i += 2) {
-          bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+        
+        // Check if hex contains ASCII representation of base64
+        if (hex.length > 0 && hex.length % 2 === 0) {
+          const bytes = new Uint8Array(hex.length / 2);
+          for (let i = 0; i < hex.length; i += 2) {
+            bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+          }
+          
+          // Check if this looks like ASCII base64 (common issue with BYTEA storage)
+          const ascii = String.fromCharCode(...bytes);
+          if (/^[A-Za-z0-9+/]+=*$/.test(ascii.trim())) {
+            console.log('toUint8Array: Detected base64 ASCII in hex, attempting secondary decode');
+            try {
+              const decodedBase64 = atob(ascii.trim());
+              const finalBytes = new Uint8Array(decodedBase64.length);
+              for (let i = 0; i < decodedBase64.length; i++) {
+                finalBytes[i] = decodedBase64.charCodeAt(i);
+              }
+              console.log('toUint8Array: Successfully decoded base64 ASCII from hex');
+              return finalBytes;
+            } catch (e) {
+              console.warn('toUint8Array: Failed to decode base64 ASCII, using raw hex bytes');
+            }
+          }
+          
+          return bytes;
         }
-        return bytes;
       }
       
       // Try base64 format

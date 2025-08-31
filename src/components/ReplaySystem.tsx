@@ -109,6 +109,17 @@ const ReplaySystem: React.FC = () => {
                     replayId: replay.id
                   });
                 }
+                
+                // 记录解码状态和完整性
+                console.log('ReplaySystem: Decode status:', {
+                  replayId: replay.id,
+                  originalDataType: typeof replay.compressed_actions,
+                  originalDataLength: replay.compressed_actions?.length || 0,
+                  convertedBytesLength: bytes.length,
+                  decompressedActionsLength: actions.length,
+                  placeActionsCount: placeActions.length,
+                  hasPlayableData: placeActions.length > 0
+                });
 
                 // 尝试自动修复并更新数据库（仅针对当前用户的回放）
                 if (placeActions.length > 0 && replay.user_id === user.id && typeof replay.compressed_actions !== 'string') {
@@ -282,18 +293,23 @@ const ReplaySystem: React.FC = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold">{replay.playerName}</h3>
-                      <Badge variant="secondary">
-                        {getGameModeLabel(replay.gameType)}
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="font-semibold">{replay.playerName}</h3>
+                    <Badge variant="secondary">
+                      {getGameModeLabel(replay.gameType)}
+                    </Badge>
+                    {replay.isPersonalBest && (
+                      <Badge className="bg-yellow-500 text-black">
+                        <Trophy className="w-3 h-3 mr-1" />
+                        PB
                       </Badge>
-                      {replay.isPersonalBest && (
-                        <Badge className="bg-yellow-500 text-black">
-                          <Trophy className="w-3 h-3 mr-1" />
-                          PB
-                        </Badge>
-                      )}
-                    </div>
+                    )}
+                    {replay.actions.filter(a => a.action === 'place').length === 0 && (
+                      <Badge variant="destructive" className="text-xs">
+                        数据不完整
+                      </Badge>
+                    )}
+                  </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div className="flex items-center gap-1">
@@ -327,9 +343,10 @@ const ReplaySystem: React.FC = () => {
                     onClick={() => handlePlayReplay(replay)}
                     className="ml-4"
                     size="sm"
+                    disabled={replay.actions.filter(a => a.action === 'place').length === 0}
                   >
                     <Play className="w-4 h-4 mr-1" />
-                    播放
+                    {replay.actions.filter(a => a.action === 'place').length === 0 ? '无法播放' : '播放'}
                   </Button>
                 </div>
               </CardContent>
