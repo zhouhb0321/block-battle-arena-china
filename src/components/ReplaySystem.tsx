@@ -239,6 +239,15 @@ const ReplaySystem: React.FC = () => {
   const handlePlayReplay = (replay: GameReplay) => {
     if (replay.isPlayable && replay.metadata.version === '2.0') {
       // 使用增强播放器播放新格式回放
+      // 重新压缩动作以获得正确的压缩数据
+      const sortedActions = [...replay.actions].sort((a, b) => a.timestamp - b.timestamp);
+      const compressed = ReplayCompressor.compressActions(sortedActions);
+      const compressedBytes = ReplayCompressor.encodeToBinary(compressed);
+      
+      // 计算真实的压缩率
+      const originalSize = JSON.stringify(sortedActions).length;
+      const realCompressionRatio = compressedBytes.length / originalSize;
+      
       const compressedReplay: CompressedReplay = {
         id: replay.id,
         userId: replay.userId,
@@ -251,9 +260,9 @@ const ReplaySystem: React.FC = () => {
         pps: replay.pps,
         apm: replay.apm,
         seed: replay.metadata.seed || '',
-        actionsCount: replay.actions.length,
-        compressedActions: new Uint8Array(), // 这个会被ReplayCompressor处理
-        compressionRatio: 0.8, // 估算值
+        actionsCount: sortedActions.length,
+        compressedActions: compressedBytes,
+        compressionRatio: realCompressionRatio,
         version: '2.0',
         isPersonalBest: replay.isPersonalBest,
         isWorldRecord: false,

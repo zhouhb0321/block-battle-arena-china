@@ -78,9 +78,11 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   };
 
   const handleActionsReady = useCallback((decompressedActions, logic) => {
-    actionsRef.current = decompressedActions;
+    // Sort actions by timestamp to ensure proper playback order
+    const sortedActions = [...decompressedActions].sort((a, b) => a.timestamp - b.timestamp);
+    actionsRef.current = sortedActions;
     gameLogicRef.current = logic;
-    const lastAction = decompressedActions[decompressedActions.length - 1];
+    const lastAction = sortedActions[sortedActions.length - 1];
     setTotalTime(lastAction ? lastAction.timestamp : replay.durationSeconds * 1000);
     // 准备好后，将指针重置为0
     currentActionIndexRef.current = 0;
@@ -278,21 +280,18 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                 {/* 播放速度 */}
                 <div className="flex items-center justify-center gap-2">
                   <span className="text-sm font-medium">播放速度:</span>
-                  <Select 
-                    value={playbackSpeed.toString()}
-                    onValueChange={(value) => setPlaybackSpeed(parseFloat(value))}
-                  >
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {playerConfig.speedOptions.map(speed => (
-                        <SelectItem key={speed} value={speed.toString()}>
-                          {speed}x
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-1">
+                    {[0.5, 1, 1.5, 2, 3].map(speed => (
+                      <Button
+                        key={speed}
+                        variant={playbackSpeed === speed ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPlaybackSpeed(speed)}
+                      >
+                        {speed}x
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>

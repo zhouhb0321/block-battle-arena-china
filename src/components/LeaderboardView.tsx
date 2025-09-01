@@ -116,6 +116,15 @@ const LeaderboardView: React.FC = () => {
 
       if (isPlayable) {
         // 使用增强播放器播放可播放的回放
+        // 重新压缩动作以获得正确的压缩数据
+        const sortedActions = [...actions].sort((a, b) => a.timestamp - b.timestamp);
+        const compressed = ReplayCompressor.compressActions(sortedActions);
+        const compressedBytes = ReplayCompressor.encodeToBinary(compressed);
+        
+        // 计算真实的压缩率
+        const originalSize = JSON.stringify(sortedActions).length;
+        const realCompressionRatio = compressedBytes.length / originalSize;
+        
         const compressedReplay: CompressedReplay = {
           id: entry.id,
           userId: '',
@@ -128,9 +137,9 @@ const LeaderboardView: React.FC = () => {
           pps: entry.pps,
           apm: entry.apm,
           seed: entry.seed || '',
-          actionsCount: actions.length,
-          compressedActions: new Uint8Array(), // 这个会被ReplayCompressor处理
-          compressionRatio: 0.8, // 估算值
+          actionsCount: sortedActions.length,
+          compressedActions: compressedBytes,
+          compressionRatio: realCompressionRatio,
           version: '2.0',
           isPersonalBest: entry.is_personal_best,
           isWorldRecord: false,

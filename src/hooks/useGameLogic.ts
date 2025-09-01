@@ -329,6 +329,26 @@ export const useGameLogic = ({
   const rotatePieceClockwise = useCallback(() => rotatePiece(true), [currentPiece, board, gameOver, isPaused]);
   const rotatePieceCounterclockwise = useCallback(() => rotatePiece(false), [currentPiece, board, gameOver, isPaused]);
 
+  const rotatePiece180 = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused) return;
+    const srsResult = performSRS180Rotation(board, currentPiece);
+    if (srsResult.success && srsResult.newPiece) {
+      setCurrentPiece(srsResult.newPiece);
+      
+      // Reset lock delay when rotating on ground
+      const testDownPiece = { ...srsResult.newPiece, y: srsResult.newPiece.y + 1 };
+      if (!isValidPosition(board, testDownPiece)) {
+        // Piece is on ground, reset lock delay
+        resetLockDelay();
+      }
+      
+      // Record rotation action
+      if (isRecording) {
+        recordAction('rotate', { clockwise: false, is180: true, piece: srsResult.newPiece, wasKicked: srsResult.wasKicked });
+      }
+    }
+  }, [currentPiece, board, gameOver, isPaused, resetLockDelay, isRecording, recordAction]);
+
   const holdCurrentPiece = useCallback(() => {
     if (!canHold || gameOver || isPaused) return;
     const newHoldPiece = currentPiece;
@@ -354,7 +374,15 @@ export const useGameLogic = ({
     setIsB2B(0);
     setIsNewRecord(false);
     setLockDelayResetCount(0);
-    setPhase('countdown');
+    
+    // Skip countdown for replay mode
+    if (isReplay) {
+      setPhase('playing');
+      setGameStarted(true);
+      gameStartTime.current = Date.now();
+    } else {
+      setPhase('countdown');
+    }
 
     if (!seedRef.current) {
       seedRef.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -365,7 +393,7 @@ export const useGameLogic = ({
     setCurrentPiece(initialPieces[0]);
     setNextPieces(initialPieces.slice(1));
     
-    // Start recording for non-endless modes
+    // Start recording for non-endless modes (and non-replay modes)
     if (!isReplay && gameMode.id !== 'endless') {
       console.log('Starting replay recording for mode:', gameMode.id);
       startRecording(
@@ -379,26 +407,29 @@ export const useGameLogic = ({
       );
     }
     
-    setTimeout(() => {
-      setGameStarted(true);
-      setPhase('playing');
-      gameStartTime.current = Date.now();
-    }, 3000); // 3-second countdown
+    // Only start countdown timer if not in replay mode
+    if (!isReplay) {
+      setTimeout(() => {
+        setGameStarted(true);
+        setPhase('playing');
+        gameStartTime.current = Date.now();
+      }, 3000); // 3-second countdown
+    }
 
   }, [createGamePiece, isReplay, gameMode.id, startRecording, replaySeed]);
 
-  // Main Game Loop (Gravity)
+  // Main Game Loop (Gravity) - disabled in replay mode
   useEffect(() => {
-    if (!gameStarted || gameOver || isPaused || phase !== 'playing') return;
+    if (isReplay || !gameStarted || gameOver || isPaused || phase !== 'playing') return;
 
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
     const timer = setTimeout(() => movePiece(0, 1), dropInterval);
     return () => clearTimeout(timer);
-  }, [gameStarted, gameOver, isPaused, level, movePiece]);
+  }, [isReplay, gameStarted, gameOver, isPaused, level, movePiece, phase]);
 
-  // RAF-based precise timing with immediate 2min mode termination
+  // RAF-based precise timing with immediate 2min mode termination - disabled in replay mode
   useEffect(() => {
-    if (!gameStarted || gameOver || isPaused) return;
+    if (isReplay || !gameStarted || gameOver || isPaused) return;
 
     let animationFrameId: number;
 
@@ -477,7 +508,7 @@ export const useGameLogic = ({
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [gameStarted, gameOver, isPaused, gameMode, score, lines, level, totalPieces, totalActions, isRecording, stopRecording]);
+  }, [isReplay, gameStarted, gameOver, isPaused, gameMode, score, lines, level, totalPieces, totalActions, isRecording, stopRecording]);
 
   const ghostPiece = currentPiece ? { ...currentPiece, y: calculateDropPosition(board, currentPiece) } : null;
 
@@ -509,7 +540,7 @@ export const useGameLogic = ({
     movePiece,
     rotatePieceClockwise,
     rotatePieceCounterclockwise,
-    rotatePiece180: () => {}, // Placeholder
+    rotatePiece180,
     holdCurrentPiece,
     spawnNewPiece,
     lockPiece,
