@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import GameBoard from '@/components/GameBoard';
+import EnhancedGameBoard from '@/components/EnhancedGameBoard';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { ReplayCompressor } from '@/utils/replayCompression';
 import { 
@@ -66,6 +66,8 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [totalTime, setTotalTime] = useState(0);
   const [replayKey, setReplayKey] = useState(Date.now());
+  const [piecesPlaced, setPiecesPlaced] = useState(0);
+  const [actionsProcessed, setActionsProcessed] = useState(0);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const actionsRef = useRef<DecompressedReplayAction[]>([]);
@@ -98,6 +100,8 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
 
     const actions = actionsRef.current;
     const logic = gameLogicRef.current;
+    let newPiecesPlaced = piecesPlaced;
+    let newActionsProcessed = actionsProcessed;
 
     while (currentActionIndexRef.current < actions.length) {
       const action = actions[currentActionIndexRef.current];
@@ -121,34 +125,47 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
           logic.holdCurrentPiece();
           break;
         case 'place':
-          // 'place' is a result of hardDrop or lockDelay, not a direct action to call.
-          // The game logic handles placing pieces automatically.
+          // Force lock the current piece to simulate placing
+          if (logic.currentPiece) {
+            logic.lockPiece();
+            newPiecesPlaced++;
+          }
           break;
       }
+      newActionsProcessed++;
       currentActionIndexRef.current++;
     }
-  }, []);
+
+    // Update statistics if changed
+    if (newPiecesPlaced !== piecesPlaced) setPiecesPlaced(newPiecesPlaced);
+    if (newActionsProcessed !== actionsProcessed) setActionsProcessed(newActionsProcessed);
+  }, [piecesPlaced, actionsProcessed]);
 
   const resetReplay = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     setIsPlaying(false);
     setCurrentTime(0);
+    setPiecesPlaced(0);
+    setActionsProcessed(0);
+    currentActionIndexRef.current = 0;
     setReplayKey(Date.now()); // 改变key来强制ReplayGame重新挂载和初始化
   }, []);
 
   const seekTo = useCallback((time: number) => {
      const targetTime = Math.max(0, Math.min(time, totalTime));
 
-     // 通过重置key和时间来从头开始
+     // Reset all state and start from beginning
      setReplayKey(Date.now());
      setCurrentTime(targetTime);
-     setIsPlaying(false); // 寻址后暂停
+     setIsPlaying(false);
+     setPiecesPlaced(0);
+     setActionsProcessed(0);
+     currentActionIndexRef.current = 0;
 
-     // 我们需要等待新的 gameLogic 实例准备好
-     // 这里用一个短暂的延迟来等待ReplayGame重新初始化
+     // Wait for new gameLogic instance to be ready
      setTimeout(() => {
        processActionsUntilTime(targetTime);
-     }, 50);
+     }, 100);
   }, [totalTime, processActionsUntilTime]);
 
   const togglePlayback = useCallback(() => {
@@ -220,12 +237,14 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
               <CardContent className="p-4">
                 <div className="flex justify-center">
                   {gameLogicState && (
-                    <GameBoard
+                    <EnhancedGameBoard
                       board={gameLogicState.board}
                       currentPiece={gameLogicState.currentPiece}
                       ghostPiece={gameLogicState.ghostPiece}
                       clearingLines={[]}
                       cellSize={24}
+                      showGrid={true}
+                      showHiddenRows={false}
                     />
                   )}
                 </div>
@@ -355,7 +374,9 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                       <Clock className="w-4 h-4" />
                       <span>PPS:</span>
                     </div>
-                    <span className="font-mono">{gameLogicState.pps.toFixed(2)}</span>
+                    <span className="font-mono">
+                      {currentTime > 0 ? (piecesPlaced / (currentTime / 1000 / 60)).toFixed(2) : '0.00'}
+                    </span>
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -363,7 +384,9 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                       <Zap className="w-4 h-4" />
                       <span>APM:</span>
                     </div>
-                    <span className="font-mono">{Math.round(gameLogicState.apm)}</span>
+                    <span className="font-mono">
+                      {currentTime > 0 ? Math.round(actionsProcessed / (currentTime / 1000 / 60)) : 0}
+                    </span>
                   </div>
                   
                   <Separator />
@@ -388,7 +411,17 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                 </div>
                 <div className="flex justify-between">
                   <span>压缩大小:</span>
-                  <span className="font-mono">{(replay.compressedActions.length / 1024).toFixed(1)} KB</span>
+                  <span className="font-mono">
+                    {(replay.compressedActions instanceof Uint8Array 
+                      ? replay.compressedActions.length 
+                      : new TextEncoder().encode(replay.compressedActions).length) / 1024 > 1 
+                      ? `${((replay.compressedActions instanceof Uint8Array 
+                          ? replay.compressedActions.length 
+                          : new TextEncoder().encode(replay.compressedActions).length) / 1024).toFixed(1)} KB`
+                      : `${(replay.compressedActions instanceof Uint8Array 
+                          ? replay.compressedActions.length 
+                          : new TextEncoder().encode(replay.compressedActions).length)} B`}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>版本:</span>
