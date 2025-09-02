@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Play, Trophy, Clock, Target } from 'lucide-react';
+import { ReplayImporter } from './ReplayImporter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import ReplayPlayer from './ReplayPlayer';
@@ -329,6 +330,7 @@ const ReplaySystem: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">游戏回放</h2>
         <div className="flex items-center gap-4">
+          <ReplayImporter />
           <div className="flex items-center gap-2">
             <Switch
               checked={showOldReplays}

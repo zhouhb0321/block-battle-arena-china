@@ -15,18 +15,19 @@ export class ReplayCompressor {
       // 根据动作类型添加数据
       switch (action.action) {
         case 'move':
-          compressed.d = action.data?.direction === 'left' ? 0 : 1;
+          compressed.d = action.data?.direction === 'left' ? 0 : 
+                        action.data?.direction === 'right' ? 1 : 2; // down for soft drop
           break;
         case 'rotate':
           compressed.d = action.data?.direction === 'clockwise' ? 0 : 
-                        action.data?.direction === 'counterclockwise' ? 1 : 2;
+                        action.data?.direction === 'counterclockwise' ? 1 : 2; // 180 degree rotation
           break;
         case 'drop':
           compressed.d = action.data?.type === 'soft' ? 0 : 1;
           break;
         case 'place':
-          // 编码位置信息 (x坐标 + y坐标*16)
-          compressed.d = (action.data?.x || 0) + ((action.data?.y || 0) * 16);
+          // 编码位置信息 (x坐标 + y坐标*16 + rotation*256)
+          compressed.d = (action.data?.x || 0) + ((action.data?.y || 0) * 16) + ((action.data?.rotation || 0) * 256);
           break;
       }
 
@@ -45,7 +46,10 @@ export class ReplayCompressor {
       // 根据动作类型解析数据
       switch (decompressed.action) {
         case 'move':
-          decompressed.data = { direction: action.d === 0 ? 'left' : 'right' };
+          decompressed.data = { 
+            direction: action.d === 0 ? 'left' : 
+                      action.d === 1 ? 'right' : 'down' // soft drop
+          };
           break;
         case 'rotate':
           decompressed.data = { 
@@ -60,7 +64,8 @@ export class ReplayCompressor {
           if (action.d !== undefined) {
             decompressed.data = {
               x: action.d % 16,
-              y: Math.floor(action.d / 16)
+              y: Math.floor((action.d % 256) / 16),
+              rotation: Math.floor(action.d / 256)
             };
           }
           break;

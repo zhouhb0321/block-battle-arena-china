@@ -110,7 +110,9 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
       // 执行动作
       switch (action.action) {
         case 'move':
-          logic.movePiece(action.data.direction === 'left' ? -1 : 1, 0);
+          if (action.data.direction === 'left') logic.movePiece(-1, 0);
+          else if (action.data.direction === 'right') logic.movePiece(1, 0);
+          else if (action.data.direction === 'down') logic.movePiece(0, 1); // Soft drop
           break;
         case 'rotate':
           if (action.data.direction === 'clockwise') logic.rotatePieceClockwise();
@@ -125,8 +127,14 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
           logic.holdCurrentPiece();
           break;
         case 'place':
-          // Force lock the current piece to simulate placing
+          // Force lock the current piece at the recorded position
           if (logic.currentPiece) {
+            // Set final position and rotation based on recorded data
+            if (action.data.x !== undefined && action.data.y !== undefined) {
+              logic.currentPiece.x = action.data.x;
+              logic.currentPiece.y = action.data.y;
+              logic.currentPiece.rotation = action.data.rotation || 0;
+            }
             logic.lockPiece();
             newPiecesPlaced++;
           }

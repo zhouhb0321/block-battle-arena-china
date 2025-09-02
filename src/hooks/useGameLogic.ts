@@ -277,6 +277,7 @@ export const useGameLogic = ({
       
       // Record move action (only for horizontal moves or explicit soft drops)
       if (isRecording && (dx !== 0 || (dy > 0 && dx === 0))) {
+        totalActions.current++;
         recordAction('move', { 
           direction: dx < 0 ? 'left' : dx > 0 ? 'right' : 'down',
           piece: newPiece 
@@ -294,6 +295,7 @@ export const useGameLogic = ({
     
     // Record hard drop action before execution
     if (isRecording) {
+      totalActions.current++;
       recordAction('drop', { type: 'hard', piece: currentPiece });
     }
     
@@ -322,7 +324,12 @@ export const useGameLogic = ({
       
       // Record rotation action
       if (isRecording) {
-        recordAction('rotate', { clockwise, piece: srsResult.newPiece, wasKicked: srsResult.wasKicked });
+        totalActions.current++;
+        recordAction('rotate', { 
+          direction: clockwise ? 'clockwise' : 'counterclockwise',
+          piece: srsResult.newPiece, 
+          wasKicked: srsResult.wasKicked 
+        });
       }
     }
   };
@@ -344,7 +351,12 @@ export const useGameLogic = ({
       
       // Record rotation action
       if (isRecording) {
-        recordAction('rotate', { clockwise: false, is180: true, piece: srsResult.newPiece, wasKicked: srsResult.wasKicked });
+        totalActions.current++;
+        recordAction('rotate', { 
+          direction: '180',
+          piece: srsResult.newPiece, 
+          wasKicked: srsResult.wasKicked 
+        });
       }
     }
   }, [currentPiece, board, gameOver, isPaused, resetLockDelay, isRecording, recordAction]);
@@ -355,7 +367,13 @@ export const useGameLogic = ({
     setCurrentPiece(holdPiece || createGamePiece(generateRandomPiece()));
     setHoldPiece(newHoldPiece);
     setCanHold(false);
-  }, [canHold, gameOver, isPaused, currentPiece, holdPiece, createGamePiece]);
+    
+    // Record hold action
+    if (isRecording) {
+      totalActions.current++;
+      recordAction('hold', { piece: newHoldPiece });
+    }
+  }, [canHold, gameOver, isPaused, currentPiece, holdPiece, createGamePiece, isRecording, recordAction]);
 
   const startGame = useCallback(() => {
     // Clear any existing lock delay timer
@@ -384,10 +402,14 @@ export const useGameLogic = ({
       setPhase('countdown');
     }
 
+    // Apply replay seed for deterministic playback
+    const useSeed = replaySeed || seedRef.current || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     if (!seedRef.current) {
-      seedRef.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      seedRef.current = useSeed;
     }
-    resetSevenBag(seedRef.current);
+    
+    // Reset 7-bag with proper seed for replay consistency
+    resetSevenBag(useSeed);
     
     const initialPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
     setCurrentPiece(initialPieces[0]);
@@ -403,7 +425,7 @@ export const useGameLogic = ({
           arr: 33,
           sdf: 20
         },
-        replaySeed || seedRef.current
+        useSeed
       );
     }
     
@@ -416,7 +438,7 @@ export const useGameLogic = ({
       }, 3000); // 3-second countdown
     }
 
-  }, [createGamePiece, isReplay, gameMode.id, startRecording, replaySeed]);
+  }, [createGamePiece, isReplay, gameMode.id, startRecording, replaySeed, clearLockDelayTimer]);
 
   // Main Game Loop (Gravity) - disabled in replay mode
   useEffect(() => {
