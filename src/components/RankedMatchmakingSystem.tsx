@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import RankingSystem, { getRankByPoints } from '@/components/RankingSystem';
+import { RankedDuelLayout } from '@/components/RankedDuelLayout';
 import { Trophy, Users, Clock, Target, AlertTriangle, ArrowLeft } from 'lucide-react';
 
 interface RankedMatchmakingSystemProps {
@@ -14,12 +15,27 @@ interface RankedMatchmakingSystemProps {
   onBack: () => void;
 }
 
+// Mock match data for testing
+const mockMatch = {
+  id: 'match-123',
+  player1_username: 'Player1',
+  player2_username: 'Player2',
+  player1_rating: 1250,
+  player2_rating: 1180,
+  best_of: 5,
+  player1_wins: 2,
+  player2_wins: 1,
+  current_game: 4,
+  status: 'playing'
+};
+
 const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onStartMatch, onBack }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [isSearching, setIsSearching] = useState(false);
   const [searchTime, setSearchTime] = useState(0);
   const [playerRating] = useState(1250);
+  const [matchFound, setMatchFound] = useState(false);
   const [queueStats] = useState({
     playersInQueue: 31,
     playersInGame: 452
@@ -52,7 +68,7 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
     setTimeout(() => {
       setIsSearching(false);
       setSearchTime(0);
-      onStartMatch();
+      setMatchFound(true);
     }, actualWaitTime);
   };
 
@@ -60,6 +76,64 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
     setIsSearching(false);
     setSearchTime(0);
   };
+
+  // Show ranked duel layout when match is found
+  if (matchFound) {
+    return (
+      <RankedDuelLayout
+        player1={{
+          username: mockMatch.player1_username,
+          rating: mockMatch.player1_rating,
+          rank: 'B+',
+          gameState: {
+            board: Array(20).fill(null).map(() => Array(10).fill(0)),
+            currentPiece: null,
+            nextPieces: [],
+            holdPiece: null,
+            canHold: true
+          },
+          gameSettings: {},
+          statistics: {
+            score: 15420,
+            lines: 32,
+            level: 4,
+            pps: 2.35,
+            apm: 145,
+            elapsedTime: 1234567
+          }
+        }}
+        player2={{
+          username: mockMatch.player2_username,
+          rating: mockMatch.player2_rating,
+          rank: 'A-',
+          gameState: {
+            board: Array(20).fill(null).map(() => Array(10).fill(0)),
+            currentPiece: null,
+            nextPieces: [],
+            holdPiece: null,
+            canHold: true
+          },
+          gameSettings: {},
+          statistics: {
+            score: 18750,
+            lines: 38,
+            level: 4,
+            pps: 2.68,
+            apm: 158,
+            elapsedTime: 1234567
+          }
+        }}
+        matchInfo={{
+          bestOf: mockMatch.best_of,
+          player1Wins: mockMatch.player1_wins,
+          player2Wins: mockMatch.player2_wins,
+          currentGame: mockMatch.current_game
+        }}
+        isGameActive={true}
+        isGamePaused={false}
+      />
+    );
+  }
 
   const currentRank = getRankByPoints(playerRating);
   const estimatedWaitTime = calculateEstimatedWaitTime();

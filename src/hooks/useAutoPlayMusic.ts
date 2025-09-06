@@ -57,8 +57,16 @@ export const useAutoPlayMusic = (isGameActive: boolean) => {
       const musicTracks = await fetchMusicTracks();
       setTracks(musicTracks);
       
-      // 选择第一首音轨作为默认
-      if (musicTracks.length > 0 && !currentTrackRef.current) {
+      // 如果没有从 Supabase 获取到音乐，使用本地默认音乐
+      if (musicTracks.length === 0) {
+        const defaultTrack = {
+          id: 'default',
+          title: 'WotLK Main Title',
+          url: '/music/WotLK_main_title.mp3'
+        };
+        setTracks([defaultTrack]);
+        currentTrackRef.current = defaultTrack;
+      } else if (!currentTrackRef.current) {
         currentTrackRef.current = musicTracks[0];
       }
     };
@@ -113,15 +121,31 @@ export const useAutoPlayMusic = (isGameActive: boolean) => {
       audio.loop = true;
       audio.volume = (settings.musicVolume || 30) / 100;
       audioRef.current = audio;
+    } else if (audioRef.current && currentTrackRef.current && audioRef.current.src !== currentTrackRef.current.url) {
+      audioRef.current.src = currentTrackRef.current.url;
     }
     
+    // 添加用户手势解锁音频
+    const unlockAudio = () => {
+      if (audioRef.current) {
+        audioRef.current.play().then(() => {
+          audioRef.current?.pause();
+        }).catch(() => {});
+      }
+    };
+    
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
+    
     return () => {
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
       }
     };
-  }, [settings.musicVolume]);
+  }, [tracks, currentTrackRef.current, settings.musicVolume]);
 
   return {
     playMusic,

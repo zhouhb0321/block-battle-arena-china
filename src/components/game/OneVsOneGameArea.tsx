@@ -3,6 +3,7 @@ import GameBoard from '../GameBoard';
 import NextPiecePreview from '../NextPiecePreview';
 import HoldPieceDisplay from '../HoldPieceDisplay';
 import GameCountdownInArea from '../GameCountdownInArea';
+import { GameMusicManager } from '../GameMusicManager';
 import type { GameState, GameSettings } from '@/utils/gameTypes';
 
 interface OneVsOneGameAreaProps {
@@ -36,6 +37,10 @@ const OneVsOneGameArea: React.FC<OneVsOneGameAreaProps> = ({
 
   return (
     <div className="flex flex-col h-screen bg-gray-900">
+      <GameMusicManager 
+        isGameActive={true}
+        isGamePaused={player1State.paused || player2State.paused}
+      />
       {/* 顶部玩家信息栏 */}
       <div className="bg-gray-800 p-4 border-b border-gray-700">
         <div className="flex justify-between items-center max-w-6xl mx-auto">

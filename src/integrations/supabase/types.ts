@@ -1423,6 +1423,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      join_room_by_code: {
+        Args: { room_code_input: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

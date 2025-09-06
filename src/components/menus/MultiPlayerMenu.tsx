@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Users, Bot, Trophy, Gamepad2, Crown, Zap, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { debugLog } from '@/utils/debugLogger';
@@ -20,6 +21,8 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
   const [onlinePlayers, setOnlinePlayers] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [roomCode, setRoomCode] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
     loadRoomStats();
@@ -86,6 +89,43 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
       toast.error('访客登录失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleJoinByCode = async () => {
+    if (!roomCode.trim()) {
+      setError('请输入房间号');
+      return;
+    }
+
+    if (!user) {
+      await handleGuestLogin();
+      // Wait a moment for auth to complete
+      setTimeout(() => handleJoinByCode(), 1000);
+      return;
+    }
+
+    setIsJoining(true);
+    setError('');
+
+    try {
+      const { data, error } = await supabase.rpc('join_room_by_code', {
+        room_code_input: roomCode.trim()
+      });
+
+      if (error) throw error;
+
+      if (!data.success) {
+        setError(data.error || '加入房间失败');
+        return;
+      }
+
+      onSelectMode('battle', { roomId: data.room_id });
+    } catch (error) {
+      debugLog.error('加入房间失败:', error);
+      setError('加入房间失败，请重试');
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -187,6 +227,39 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
           </div>
         )}
       </div>
+
+      {/* Quick Join by Room Code */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            快速加入房间
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="输入4位数字房间号"
+              value={roomCode}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                setRoomCode(value);
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && handleJoinByCode()}
+              className="flex-1"
+              maxLength={4}
+            />
+            <Button 
+              onClick={handleJoinByCode}
+              disabled={!roomCode.trim() || isJoining}
+              className="px-6"
+            >
+              {isJoining ? '加入中...' : '加入'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {menuOptions.map((option) => {

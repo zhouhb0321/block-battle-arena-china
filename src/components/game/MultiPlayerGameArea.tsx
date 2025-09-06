@@ -5,6 +5,7 @@ import GameControlsPanel from './GameControlsPanel';
 import GameCountdown from '../GameCountdown';
 import OneVsOneGameArea from './OneVsOneGameArea';
 import AdSpace from '../AdSpace';
+import { GameMusicManager } from '../GameMusicManager';
 import type { GameState, GameSettings } from '@/utils/gameTypes';
 
 interface MultiPlayerGameAreaProps {
@@ -57,6 +58,10 @@ const MultiPlayerGameArea: React.FC<MultiPlayerGameAreaProps> = ({
   // 原有的多人游戏界面
   return (
     <div className="flex gap-6 items-center justify-center w-full min-h-screen">
+      <GameMusicManager 
+        isGameActive={gameStarted}
+        isGamePaused={gameState.paused}
+      />
       {/* 左侧广告位 */}
       <div className="hidden xl:block">
         <AdSpace position="left" width={240} height={600} />

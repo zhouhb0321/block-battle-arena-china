@@ -93,7 +93,29 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
     setError(null);
     
     try {
-      const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      let roomCode: string;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      // Generate unique 4-digit room code
+      do {
+        roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+        attempts++;
+        
+        // Check if code already exists
+        const { data: existingRoom } = await supabase
+          .from('battle_rooms')
+          .select('id')
+          .eq('room_code', roomCode)
+          .eq('status', 'waiting')
+          .single();
+          
+        if (!existingRoom) break;
+      } while (attempts < maxAttempts);
+
+      if (attempts >= maxAttempts) {
+        throw new Error('无法生成唯一房间号，请重试');
+      }
       
       const { data, error } = await supabase
         .from('battle_rooms')
@@ -222,24 +244,28 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
       return;
     }
 
+    if (!user) {
+      toast.error('需要登录才能加入房间');
+      return;
+    }
+
     try {
       setError(null);
       
-      const { data: room, error } = await supabase
-        .from('battle_rooms')
-        .select('*')
-        .eq('room_code', joinCode.toUpperCase())
-        .eq('status', 'waiting')
-        .single();
+      const { data, error } = await supabase.rpc('join_room_by_code', {
+        room_code_input: joinCode.trim()
+      });
 
-      if (error || !room) {
-        debugLog.error('Room not found:', error);
-        toast.error('房间不存在或已开始游戏');
+      if (error) throw error;
+
+      if (!data.success) {
+        toast.error(data.error || '加入房间失败');
         return;
       }
 
-      await joinRoom(room.id);
+      onJoinRoom(data.room_id);
       setJoinCode('');
+      await loadRooms();
     } catch (error) {
       debugLog.error('Exception joining by code:', error);
       setError('通过房间号加入失败');
@@ -350,12 +376,15 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
         <CardContent>
           <div className="flex gap-2">
             <Input
-              placeholder="输入房间号"
+              placeholder="输入4位数字房间号"
               value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-              className="uppercase"
-              maxLength={6}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                setJoinCode(value);
+              }}
               onKeyPress={(e) => e.key === 'Enter' && joinByCode()}
+              className="flex-1"
+              maxLength={4}
             />
             <Button onClick={joinByCode} disabled={!joinCode.trim()}>
               加入
