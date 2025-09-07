@@ -95,29 +95,16 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   const { 
     sendMessage, 
     isConnected, 
-    lastMessage 
-  } = useBattleWebSocket(roomId, user?.id);
-    if (!gameStarted || !user) return;
+    lastMessage,
+    connect 
+  } = useBattleWebSocket();
 
-    const attackLines = calculateAttack(
-      attackData.linesCleared,
-      attackData.isTSpin,
-      attackData.isB2B,
-      attackData.combo
-    );
-
-    if (attackLines > 0) {
-      sendMessage({
-        type: 'team_attack',
-        data: {
-          lines: attackLines,
-          fromTeam: userTeam,
-          strategy: garbageStrategy,
-          sourceId: user.id
-        }
-      });
+  // Connect to room on mount
+  useEffect(() => {
+    if (roomId && user?.id) {
+      connect(roomId);
     }
-  }, [gameStarted, user, sendMessage, userTeam, garbageStrategy]);
+  }, [roomId, user?.id, connect]);
 
   // Handle incoming garbage (simplified for now)
   useEffect(() => {
@@ -331,18 +318,22 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
                   
                   <div className="flex flex-col items-center gap-2">
                     <GameStatusIndicators
-                      score={gameLogic.score}
-                      lines={gameLogic.lines}
-                      level={gameLogic.level}
-                      time={gameLogic.time}
+                      combo={0}
+                      b2b={0}
+                      totalAttack={0}
                     />
+                    <div className="text-center space-y-1 mb-2">
+                      <div className="text-2xl font-bold">{gameLogic.score.toLocaleString()}</div>
+                      <div className="text-xs text-muted-foreground">Score</div>
+                      <div className="text-sm">Lines: {gameLogic.lines} | Level: {gameLogic.level}</div>
+                    </div>
                     
                     <EnhancedGameBoard
                       board={gameLogic.board}
                       currentPiece={gameLogic.currentPiece}
                       ghostPiece={gameLogic.ghostPiece}
                       cellSize={28}
-                      showGrid={settings?.enable_grid}
+                      showGrid={true}
                       showHiddenRows={false}
                     />
                     
@@ -366,7 +357,7 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
             </Card>
 
             {/* Ad Space */}
-            <AdSpace position="game_bottom" />
+            <AdSpace position="bottom" width={300} height={100} />
           </div>
 
           {/* Team B Panel */}

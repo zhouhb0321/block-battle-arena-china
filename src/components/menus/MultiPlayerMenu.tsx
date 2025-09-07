@@ -9,6 +9,8 @@ import { Users, Bot, Trophy, Gamepad2, Crown, Zap, AlertCircle } from 'lucide-re
 import { supabase } from '@/integrations/supabase/client';
 import { debugLog } from '@/utils/debugLogger';
 import { toast } from 'sonner';
+import RankedMatchmakingSystem from '@/components/RankedMatchmakingSystem';
+import TeamBattleMenu from './TeamBattleMenu';
 
 interface MultiPlayerMenuProps {
   onSelectMode: (mode: string, config?: any) => void;
