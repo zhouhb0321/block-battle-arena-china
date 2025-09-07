@@ -4,6 +4,7 @@ import PlayerGameSection from './PlayerGameSection';
 import GameControlsPanel from './GameControlsPanel';
 import GameCountdown from '../GameCountdown';
 import OneVsOneGameArea from './OneVsOneGameArea';
+import TeamGameArea from './TeamGameArea';
 import AdSpace from '../AdSpace';
 import { GameMusicManager } from '../GameMusicManager';
 import type { GameState, GameSettings } from '@/utils/gameTypes';

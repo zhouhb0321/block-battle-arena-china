@@ -141,6 +141,7 @@ export type Database = {
           room_id: string
           score: number
           status: string
+          team: string | null
           user_id: string
           username: string
           wins: number
@@ -154,6 +155,7 @@ export type Database = {
           room_id: string
           score?: number
           status?: string
+          team?: string | null
           user_id: string
           username: string
           wins?: number
@@ -167,6 +169,7 @@ export type Database = {
           room_id?: string
           score?: number
           status?: string
+          team?: string | null
           user_id?: string
           username?: string
           wins?: number
@@ -247,6 +250,8 @@ export type Database = {
           settings: Json | null
           started_at: string | null
           status: string
+          team_mode: boolean | null
+          team_size: number | null
         }
         Insert: {
           created_at?: string
@@ -260,6 +265,8 @@ export type Database = {
           settings?: Json | null
           started_at?: string | null
           status?: string
+          team_mode?: boolean | null
+          team_size?: number | null
         }
         Update: {
           created_at?: string
@@ -273,6 +280,8 @@ export type Database = {
           settings?: Json | null
           started_at?: string | null
           status?: string
+          team_mode?: boolean | null
+          team_size?: number | null
         }
         Relationships: []
       }

@@ -9,9 +9,13 @@ interface BattleRoom {
   id: string;
   participants: Map<string, WebSocket>;
   gameState: Map<string, any>;
-  mode: 'versus' | 'battle_royale' | 'league';
+  mode: 'versus' | 'battle_royale' | 'league' | 'team_battle';
   currentMatch: number;
   scores: Map<string, number>;
+  teamMode?: boolean;
+  teamSize?: number;
+  teams?: Map<string, 'A' | 'B'>;
+  teamStats?: Map<'A' | 'B', { alive: number; totalScore: number; avgAPM: number }>;
 }
 
 class BattleManager {
@@ -46,14 +50,34 @@ class BattleManager {
       if (!roomData) return false;
       
       room = await this.createRoom(roomId, roomData.mode);
+      room.teamMode = roomData.team_mode || false;
+      room.teamSize = roomData.team_size || 1;
+      room.teams = new Map();
+      room.teamStats = new Map([['A', { alive: 0, totalScore: 0, avgAPM: 0 }], ['B', { alive: 0, totalScore: 0, avgAPM: 0 }]]);
     }
 
-    if (room.participants.size >= (room.mode === 'versus' ? 2 : 8)) {
+    const maxPlayers = room.teamMode ? (room.teamSize || 1) * 2 : (room.mode === 'versus' ? 2 : 8);
+    if (room.participants.size >= maxPlayers) {
       return false;
     }
 
+    // Assign team for team battle mode
+    if (room.teamMode) {
+      const teamACount = Array.from(room.teams?.values() || []).filter(team => team === 'A').length;
+      const teamBCount = Array.from(room.teams?.values() || []).filter(team => team === 'B').length;
+      const assignedTeam = teamACount <= teamBCount ? 'A' : 'B';
+      room.teams?.set(userId, assignedTeam);
+      
+      // Update participant in database with team assignment
+      await this.supabase
+        .from('battle_participants')
+        .update({ team: assignedTeam })
+        .eq('room_id', roomId)
+        .eq('user_id', userId);
+    }
+
     room.participants.set(userId, socket);
-    room.gameState.set(userId, { alive: true, score: 0 });
+    room.gameState.set(userId, { alive: true, score: 0, apm: 0, stackHeight: 0 });
     room.scores.set(userId, 0);
 
     // 设置WebSocket消息处理
@@ -113,12 +137,32 @@ class BattleManager {
         }, userId);
         break;
 
+      case 'team_state_update':
+        room.gameState.set(userId, message.data);
+        if (room.teamMode) {
+          this.updateTeamStats(roomId);
+        }
+        this.broadcastToRoom(roomId, {
+          type: 'team_state_update',
+          userId,
+          data: message.data
+        }, userId);
+        break;
+
       case 'attack':
         this.handleAttack(roomId, userId, message.data);
         break;
 
+      case 'team_attack':
+        this.handleTeamAttack(roomId, userId, message.data);
+        break;
+
       case 'game_over':
         await this.handleGameOver(roomId, userId, message.data);
+        break;
+
+      case 'team_member_eliminated':
+        await this.handleTeamMemberEliminated(roomId, userId, message.data);
         break;
 
       case 'replay_data':
@@ -157,9 +201,116 @@ class BattleManager {
     }
   }
 
+  handleTeamAttack(roomId: string, fromUserId: string, attackData: any) {
+    const room = this.rooms.get(roomId);
+    if (!room || !room.teamMode) return;
+
+    const fromTeam = room.teams?.get(fromUserId);
+    if (!fromTeam) return;
+
+    const opponentTeam = fromTeam === 'A' ? 'B' : 'A';
+    const opponentPlayers = [...room.participants.keys()].filter(id => 
+      room.teams?.get(id) === opponentTeam && room.gameState.get(id)?.alive
+    );
+
+    if (opponentPlayers.length === 0) return;
+
+    const strategy = attackData.strategy || 'focus';
+    let targets: string[] = [];
+
+    switch (strategy) {
+      case 'focus':
+        // Target highest APM player
+        const highestAPM = opponentPlayers.reduce((highest, playerId) => {
+          const playerAPM = room.gameState.get(playerId)?.apm || 0;
+          const currentHighestAPM = room.gameState.get(highest)?.apm || 0;
+          return playerAPM > currentHighestAPM ? playerId : highest;
+        }, opponentPlayers[0]);
+        targets = [highestAPM];
+        break;
+
+      case 'random':
+        // Random target
+        targets = [opponentPlayers[Math.floor(Math.random() * opponentPlayers.length)]];
+        break;
+
+      case 'even':
+        // Distribute evenly among all opponents
+        targets = opponentPlayers;
+        break;
+    }
+
+    // Distribute attack
+    const linesPerTarget = strategy === 'even' ? Math.max(1, Math.floor(attackData.lines / targets.length)) : attackData.lines;
+    
+    targets.forEach(targetId => {
+      const targetSocket = room.participants.get(targetId);
+      if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
+        targetSocket.send(JSON.stringify({
+          type: 'receive_team_attack',
+          data: {
+            lines: linesPerTarget,
+            fromTeam: fromTeam,
+            fromUserId: fromUserId,
+            strategy: strategy
+          }
+        }));
+      }
+    });
+  }
+
+  updateTeamStats(roomId: string) {
+    const room = this.rooms.get(roomId);
+    if (!room || !room.teamMode || !room.teamStats) return;
+
+    ['A', 'B'].forEach(team => {
+      const teamPlayers = [...room.participants.keys()].filter(id => room.teams?.get(id) === team);
+      const aliveCount = teamPlayers.filter(id => room.gameState.get(id)?.alive !== false).length;
+      const totalScore = teamPlayers.reduce((sum, id) => sum + (room.gameState.get(id)?.score || 0), 0);
+      const avgAPM = teamPlayers.length > 0 
+        ? teamPlayers.reduce((sum, id) => sum + (room.gameState.get(id)?.apm || 0), 0) / teamPlayers.length 
+        : 0;
+
+      room.teamStats?.set(team as 'A' | 'B', { alive: aliveCount, totalScore, avgAPM });
+    });
+  }
+
+  async handleTeamMemberEliminated(roomId: string, userId: string, gameData: any) {
+    const room = this.rooms.get(roomId);
+    if (!room || !room.teamMode) return;
+
+    const userState = room.gameState.get(userId);
+    if (userState) {
+      userState.alive = false;
+      userState.finalScore = gameData.finalScore || 0;
+    }
+
+    this.updateTeamStats(roomId);
+
+    // Check if any team is completely eliminated
+    const teamAAlive = room.teamStats?.get('A')?.alive || 0;
+    const teamBAlive = room.teamStats?.get('B')?.alive || 0;
+
+    if (teamAAlive === 0 || teamBAlive === 0) {
+      const winningTeam = teamAAlive > 0 ? 'A' : 'B';
+      await this.endTeamMatch(roomId, winningTeam);
+    } else {
+      this.broadcastToRoom(roomId, {
+        type: 'team_member_eliminated',
+        userId,
+        remainingA: teamAAlive,
+        remainingB: teamBAlive
+      });
+    }
+  }
+
   async handleGameOver(roomId: string, userId: string, gameData: any) {
     const room = this.rooms.get(roomId);
     if (!room) return;
+
+    if (room.teamMode) {
+      return this.handleTeamMemberEliminated(roomId, userId, gameData);
+    }
 
     const userState = room.gameState.get(userId);
     if (userState) {
@@ -245,6 +396,52 @@ class BattleManager {
       type: 'match_ended',
       winner: winnerId,
       finalScores: Object.fromEntries(room.scores)
+    });
+
+    // 清理房间
+    this.rooms.delete(roomId);
+  }
+
+  async endTeamMatch(roomId: string, winningTeam: 'A' | 'B') {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+
+    // 更新数据库中的房间状态
+    await this.supabase
+      .from('battle_rooms')
+      .update({
+        status: 'finished',
+        finished_at: new Date().toISOString()
+      })
+      .eq('id', roomId);
+
+    // 记录团战结果
+    const winningPlayers = [...room.participants.keys()].filter(id => room.teams?.get(id) === winningTeam);
+    const losingPlayers = [...room.participants.keys()].filter(id => room.teams?.get(id) !== winningTeam);
+
+    for (const winnerId of winningPlayers) {
+      for (const loserId of losingPlayers) {
+        await this.supabase
+          .from('battle_records')
+          .insert({
+            room_id: roomId,
+            match_number: 1,
+            winner_id: winnerId,
+            loser_id: loserId,
+            winner_score: room.gameState.get(winnerId)?.finalScore || 0,
+            loser_score: room.gameState.get(loserId)?.finalScore || 0,
+            duration_seconds: 0,
+            attack_sent: 0,
+            attack_received: 0,
+            lines_cleared: 0
+          });
+      }
+    }
+
+    this.broadcastToRoom(roomId, {
+      type: 'team_victory',
+      winningTeam: winningTeam,
+      teamStats: Object.fromEntries(room.teamStats || [])
     });
 
     // 清理房间

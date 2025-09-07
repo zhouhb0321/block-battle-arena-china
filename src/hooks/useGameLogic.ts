@@ -33,6 +33,9 @@ interface UseGameLogicProps {
   undoSteps?: number;
   isReplay?: boolean;
   replaySeed?: string;
+  enableReplayGravity?: boolean;
+  onAttack?: (attackData: any) => void;
+  onIncomingGarbage?: (lines: number[]) => void;
 }
 
 export const useGameLogic = ({
@@ -41,7 +44,10 @@ export const useGameLogic = ({
   onAchievement,
   undoSteps = 50,
   isReplay = false,
-  replaySeed
+  replaySeed,
+  enableReplayGravity = false,
+  onAttack,
+  onIncomingGarbage
 }: UseGameLogicProps) => {
   const [board, setBoard] = useState<Board>(createEmptyBoard());
   const [currentPiece, setCurrentPiece] = useState<GamePiece | null>(null);
@@ -440,18 +446,18 @@ export const useGameLogic = ({
 
   }, [createGamePiece, isReplay, gameMode.id, startRecording, replaySeed, clearLockDelayTimer]);
 
-  // Main Game Loop (Gravity) - disabled in replay mode
+  // Main Game Loop (Gravity) - enabled in replay with gravity simulation
   useEffect(() => {
-    if (isReplay || !gameStarted || gameOver || isPaused || phase !== 'playing') return;
+    if ((isReplay && !enableReplayGravity) || !gameStarted || gameOver || isPaused || phase !== 'playing') return;
 
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
     const timer = setTimeout(() => movePiece(0, 1), dropInterval);
     return () => clearTimeout(timer);
-  }, [isReplay, gameStarted, gameOver, isPaused, level, movePiece, phase]);
+  }, [isReplay, enableReplayGravity, gameStarted, gameOver, isPaused, level, movePiece, phase]);
 
-  // RAF-based precise timing with immediate 2min mode termination - disabled in replay mode
+  // RAF-based precise timing with immediate 2min mode termination - enabled in replay with gravity
   useEffect(() => {
-    if (isReplay || !gameStarted || gameOver || isPaused) return;
+    if ((isReplay && !enableReplayGravity) || !gameStarted || gameOver || isPaused) return;
 
     let animationFrameId: number;
 
