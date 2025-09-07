@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Users, Bot, Trophy, Gamepad2, Crown, Zap, AlertCircle } from 'lucide-react';
+import { Sword, Users, Zap, Target, Coffee, User, Gamepad2, Bot, Trophy, Crown, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { debugLog } from '@/utils/debugLogger';
 import { toast } from 'sonner';
-import RankedMatchmakingSystem from '@/components/RankedMatchmakingSystem';
 import TeamBattleMenu from './TeamBattleMenu';
 
 interface MultiPlayerMenuProps {
@@ -19,12 +19,14 @@ interface MultiPlayerMenuProps {
 
 const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack }) => {
   const { user, loginAsGuest } = useAuth();
+  const { t } = useLanguage();
   const [activeRooms, setActiveRooms] = useState(0);
   const [onlinePlayers, setOnlinePlayers] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [roomCode, setRoomCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
+  const [subView, setSubView] = useState<'menu' | 'team-battle'>('menu');
 
   useEffect(() => {
     loadRoomStats();
@@ -133,61 +135,53 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
 
   const menuOptions = [
     {
-      id: 'quick-match',
-      title: '快速匹配',
-      description: '立即匹配在线玩家进行1v1对战',
-      icon: <Zap className="w-6 h-6" />,
-      color: 'bg-blue-500',
+      id: 'one-vs-one',
+      title: '1v1 对战',
+      description: '经典一对一俄罗斯方块对战',
+      icon: <Sword className="w-8 h-8" />,
       disabled: false,
       guestAllowed: true
     },
     {
-      id: 'create-room',
-      title: '创建房间',
-      description: '创建自定义房间，邀请好友对战',
-      icon: <Users className="w-6 h-6" />,
-      color: 'bg-green-500',
+      id: 'team-battle',
+      title: t('teamBattle.title'),
+      description: t('teamBattle.entryDesc'),
+      icon: <Users className="w-8 h-8" />,
       disabled: false,
-      guestAllowed: true
-    },
-    {
-      id: 'join-room',
-      title: '加入房间',
-      description: '输入房间代码加入现有房间',
-      icon: <Gamepad2 className="w-6 h-6" />,
-      color: 'bg-purple-500',
-      disabled: false,
-      guestAllowed: true
-    },
-    {
-      id: 'bot-room',
-      title: 'Bot 对战室',
-      description: '与AI机器人对战，练习技巧',
-      icon: <Bot className="w-6 h-6" />,
-      color: 'bg-orange-500',
-      disabled: false,
-      guestAllowed: true,
-      note: '🤖 与智能AI对战，有初级、中级、高级三种难度可选择'
+      guestAllowed: false
     },
     {
       id: 'ranked',
       title: '排位赛',
-      description: '参与排位赛，提升你的段位',
-      icon: <Trophy className="w-6 h-6" />,
-      color: 'bg-yellow-500',
-      disabled: true,
-      guestAllowed: false,
-      comingSoon: true
+      description: '参与排位匹配，提升段位',
+      icon: <Target className="w-8 h-8" />,
+      disabled: false,
+      guestAllowed: false
     },
     {
-      id: 'tournament',
-      title: '锦标赛',
-      description: '参加多人锦标赛，争夺冠军',
-      icon: <Crown className="w-6 h-6" />,
-      color: 'bg-red-500',
+      id: 'custom-room',
+      title: '自定义房间',
+      description: '创建或加入自定义对战房间',
+      icon: <Users className="w-8 h-8" />,
+      disabled: false,
+      guestAllowed: true
+    },
+    {
+      id: 'battle-royal',
+      title: '大逃杀模式',
+      description: '多人混战，最后一人获胜',
+      icon: <Zap className="w-8 h-8" />,
       disabled: true,
-      guestAllowed: false,
-      comingSoon: true
+      comingSoon: true,
+      guestAllowed: false
+    },
+    {
+      id: 'bot-room',
+      title: 'AI 机器人对战',
+      description: '与不同难度的 AI 机器人对战',
+      icon: <Coffee className="w-8 h-8" />,
+      disabled: false,
+      guestAllowed: true
     }
   ];
 
@@ -276,27 +270,34 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
               }`}
               onClick={() => !finalDisabled && handleModeSelect(option.id)}
             >
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${option.color} text-white`}>
-                    {option.icon}
-                  </div>
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{option.title}</CardTitle>
-                    {option.comingSoon && (
-                      <Badge variant="secondary" className="mt-1">即将推出</Badge>
-                    )}
-                    {isDisabledForGuest && (
-                      <Badge variant="outline" className="mt-1">需要注册</Badge>
-                    )}
-                  </div>
+              <CardContent className="p-8 text-center space-y-4">
+                <div className={`mx-auto w-20 h-20 rounded-2xl flex items-center justify-center transition-colors ${
+                  option.disabled 
+                    ? 'bg-muted text-muted-foreground' 
+                    : 'bg-primary/10 text-primary group-hover:bg-primary/20'
+                }`}>
+                  {option.icon}
                 </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 mb-2">{option.description}</p>
-                {option.note && (
-                  <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">{option.note}</p>
-                )}
+                
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold">
+                    {option.title}
+                    {option.comingSoon && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
+                        即将推出
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {option.description}
+                  </p>
+                  
+                  {!user && !option.guestAllowed && (
+                    <div className="text-xs text-amber-600 font-medium bg-amber-100 px-2 py-1 rounded">
+                      需要登录
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           );

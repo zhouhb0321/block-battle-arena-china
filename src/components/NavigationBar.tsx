@@ -47,8 +47,8 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             </Button>
 
             <Button
-              variant={currentView === 'ranked' ? 'default' : 'ghost'}
-              onClick={() => onViewChange('ranked')}
+              variant={currentView === 'multiplayer' ? 'default' : 'ghost'}
+              onClick={() => onViewChange('multiplayer')}
               className="flex items-center gap-2"
               disabled={!isAuthenticated}
             >

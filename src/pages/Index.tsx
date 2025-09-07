@@ -50,7 +50,7 @@ const Index = () => {
   const handleViewChange = (view: ViewType) => {
     console.log('视图切换请求:', { view, isAuthenticated, isAdmin: user?.isAdmin });
     
-    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked' || view === 'admin')) {
+    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked' || view === 'admin' || view === 'multiplayer')) {
       setShowAuthModal(true);
       return;
     }
@@ -77,6 +77,13 @@ const Index = () => {
         return (
           <GameLauncher 
             onBackToMenu={handleBackToMenu}
+          />
+        );
+      case 'multiplayer':
+        return (
+          <MultiPlayerMenu 
+            onSelectMode={(mode) => setCurrentView('game')} 
+            onBack={handleBackToMenu}
           />
         );
       case 'ranked':
@@ -152,12 +159,12 @@ const Index = () => {
               <Button 
                 size="lg"
                 variant="outline"
-                onClick={() => handleViewChange('ranked')}
+                onClick={() => handleViewChange('multiplayer')}
                 disabled={!isAuthenticated}
                 className="border-2 border-primary px-8 py-4 text-lg font-medium rounded-xl hover:bg-primary hover:text-primary-foreground transition-all duration-300"
               >
-                <Trophy className="w-6 h-6 mr-3" />
-                {t('game.ranked')}
+                <Users className="w-6 h-6 mr-3" />
+                {t('nav.multiplayer')}
               </Button>
               
               {!isAuthenticated && (
@@ -210,14 +217,14 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('ranked')}>
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('multiplayer')}>
                 <CardContent className="p-8 text-center space-y-4">
                   <div className="w-20 h-20 mx-auto bg-game-purple/10 rounded-2xl flex items-center justify-center group-hover:bg-game-purple/20 transition-colors">
                     <Users className="w-10 h-10 text-game-purple" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.ranked')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('game.rankedDesc')}</p>
+                    <h3 className="text-xl font-bold text-foreground mb-2">{t('nav.multiplayer')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('game.multiPlayerDesc')}</p>
                     {!isAuthenticated && (
                       <div className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
                         {t('common.needLogin')}

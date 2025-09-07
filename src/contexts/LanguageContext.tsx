@@ -91,7 +91,16 @@ const translations = {
     'game.multiPlayerDesc': '与全球玩家实时对战',
     'game.rankedDesc': '争夺最高段位排名',
     'settings.controlsDesc': '自定义按键和游戏参数',
-    'common.copyright': '基于现代俄罗斯方块规则'
+    'common.copyright': '基于现代俄罗斯方块规则',
+    'teamBattle.title': '团战模式',
+    'teamBattle.entryDesc': '2v2/3v3/4v4 团队对战，支持三种垃圾分配策略',
+    'teamBattle.createRoom': '创建团战房间',
+    'teamBattle.joinRoom': '加入房间',
+    'teamBattle.activeRooms': '活跃房间',
+    'teamBattle.strategy.focus': '集中打击',
+    'teamBattle.strategy.random': '随机分配',
+    'teamBattle.strategy.even': '平均分配',
+    'teamBattle.tabHint': '对局中按 Tab 键切换垃圾分配策略'
   },
   'zh-TW': {
     'game.title': '俄羅斯方塊競技平台',
@@ -173,7 +182,16 @@ const translations = {
     'game.multiPlayerDesc': '與全球玩家實時對戰',
     'game.rankedDesc': '爭奪最高段位排名',
     'settings.controlsDesc': '自定義按鍵和遊戲參數',
-    'common.copyright': '基於現代俄羅斯方塊規則'
+    'common.copyright': '基於現代俄羅斯方塊規則',
+    'teamBattle.title': '團戰模式',
+    'teamBattle.entryDesc': '2v2/3v3/4v4 團隊對戰，支持三種垃圾分配策略',
+    'teamBattle.createRoom': '創建團戰房間',
+    'teamBattle.joinRoom': '加入房間',
+    'teamBattle.activeRooms': '活躍房間',
+    'teamBattle.strategy.focus': '集中打擊',
+    'teamBattle.strategy.random': '隨機分配',
+    'teamBattle.strategy.even': '平均分配',
+    'teamBattle.tabHint': '對局中按 Tab 鍵切換垃圾分配策略'
   },
   en: {
     'game.title': 'Tetris Gaming Platform',
@@ -257,7 +275,16 @@ const translations = {
     'game.multiPlayerDesc': 'Real-time battles with global players',
     'game.rankedDesc': 'Compete for the highest rank',
     'settings.controlsDesc': 'Customize keys and game parameters',
-    'common.copyright': 'Based on modern Tetris rules'
+    'common.copyright': 'Based on modern Tetris rules',
+    'teamBattle.title': 'Team Battle',
+    'teamBattle.entryDesc': '2v2/3v3/4v4 team battles with three garbage strategies',
+    'teamBattle.createRoom': 'Create Team Room',
+    'teamBattle.joinRoom': 'Join Room',
+    'teamBattle.activeRooms': 'Active Rooms',
+    'teamBattle.strategy.focus': 'Focus Attack',
+    'teamBattle.strategy.random': 'Random',
+    'teamBattle.strategy.even': 'Even',
+    'teamBattle.tabHint': 'Press Tab in match to switch garbage strategy'
   },
   ja: {
     'game.title': 'テトリスゲーミングプラットフォーム',
@@ -339,7 +366,16 @@ const translations = {
     'game.multiPlayerDesc': '世界中のプレイヤーとリアルタイムバトル',
     'game.rankedDesc': '最高ランクを目指して競争',
     'settings.controlsDesc': 'キーとゲームパラメータをカスタマイズ',
-    'common.copyright': '現代テトリスルールに基づく'
+    'common.copyright': '現代テトリスルールに基づく',
+    'teamBattle.title': '団体戦',
+    'teamBattle.entryDesc': '2v2/3v3/4v4 チーム戦、3つの攻撃戦略',
+    'teamBattle.createRoom': 'ルーム作成',
+    'teamBattle.joinRoom': 'ルーム参加',
+    'teamBattle.activeRooms': 'アクティブルーム',
+    'teamBattle.strategy.focus': '集中攻撃',
+    'teamBattle.strategy.random': 'ランダム',
+    'teamBattle.strategy.even': '均等配分',
+    'teamBattle.tabHint': '試合中にTabで攻撃配分を切替'
   },
   ko: {
     'game.title': '테트리스 게이밍 플랫폼',
@@ -421,7 +457,16 @@ const translations = {
     'game.multiPlayerDesc': '전 세계 플레이어와 실시간 배틀',
     'game.rankedDesc': '최고 랭크를 위한 경쟁',
     'settings.controlsDesc': '키와 게임 매개변수 커스터마이징',
-    'common.copyright': '현대 테트리스 규칙 기반'
+    'common.copyright': '현대 테트리스 규칙 기반',
+    'teamBattle.title': '팀 배틀',
+    'teamBattle.entryDesc': '2v2/3v3/4v4 팀 전투, 3가지 공격 전략',
+    'teamBattle.createRoom': '팀 룸 생성',
+    'teamBattle.joinRoom': '룸 참가',
+    'teamBattle.activeRooms': '활성 룸',
+    'teamBattle.strategy.focus': '집중 공격',
+    'teamBattle.strategy.random': '랜덤',
+    'teamBattle.strategy.even': '균등 배분',
+    'teamBattle.tabHint': '경기 중 Tab으로 공격 전략 전환'
   },
   es: {
     'game.title': 'Plataforma de Gaming Tetris',
@@ -503,7 +548,16 @@ const translations = {
     'game.multiPlayerDesc': 'Batallas en tiempo real con jugadores globales',
     'game.rankedDesc': 'Compite por el rango más alto',
     'settings.controlsDesc': 'Personalizar teclas y parámetros de juego',
-    'common.copyright': 'Basado en las reglas modernas de Tetris'
+    'common.copyright': 'Basado en las reglas modernas de Tetris',
+    'teamBattle.title': 'Batalla en Equipo',
+    'teamBattle.entryDesc': 'Batallas 2v2/3v3/4v4 con tres estrategias de basura',
+    'teamBattle.createRoom': 'Crear Sala de Equipo',
+    'teamBattle.joinRoom': 'Unirse a Sala',
+    'teamBattle.activeRooms': 'Salas Activas',
+    'teamBattle.strategy.focus': 'Ataque Concentrado',
+    'teamBattle.strategy.random': 'Aleatorio',
+    'teamBattle.strategy.even': 'Uniforme',
+    'teamBattle.tabHint': 'Presiona Tab en la partida para cambiar estrategia'
   }
 };
 

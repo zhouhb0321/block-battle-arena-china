@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -44,6 +45,7 @@ interface TeamRoom {
 
 const TeamBattleMenu: React.FC<TeamBattleMenuProps> = ({ onRoomJoin, onBack }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [activeRooms, setActiveRooms] = useState<TeamRoom[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

@@ -6,7 +6,9 @@ import { Separator } from '@/components/ui/separator';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useBattleWebSocket } from '@/hooks/useBattleWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { toast } from 'sonner';
 import EnhancedGameBoard from '@/components/EnhancedGameBoard';
 import HoldPieceDisplay from '@/components/HoldPieceDisplay';
 import NextPiecePreview from '@/components/NextPiecePreview';
@@ -55,12 +57,16 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   onBackToMenu
 }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { settings } = useUserSettings();
   const [participants, setParticipants] = useState<TeamMember[]>([]);
   const [gameStarted, setGameStarted] = useState(false);
   const [matchWinner, setMatchWinner] = useState<'A' | 'B' | null>(null);
   const [incomingGarbage, setIncomingGarbage] = useState<number[]>([]);
   const [teamScore, setTeamScore] = useState({ A: 0, B: 0 });
+  const [localGarbageStrategy, setLocalGarbageStrategy] = useState<string>(
+    roomData?.settings?.garbageStrategy || 'focus'
+  );
 
   // Determine user's team
   const userTeam = participants.find(p => p.id === user?.id)?.team || 'A';
@@ -105,6 +111,31 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
       connect(roomId);
     }
   }, [roomId, user?.id, connect]);
+
+  // Tab key handler for cycling garbage strategy
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Tab' && gameStarted) {
+        e.preventDefault();
+        const strategies = ['focus', 'random', 'even'];
+        const currentIndex = strategies.indexOf(localGarbageStrategy);
+        const nextIndex = (currentIndex + 1) % strategies.length;
+        const newStrategy = strategies[nextIndex];
+        setLocalGarbageStrategy(newStrategy);
+        
+        // Show toast notification
+        const strategyNames = {
+          focus: t('teamBattle.strategy.focus'),
+          random: t('teamBattle.strategy.random'),
+          even: t('teamBattle.strategy.even')
+        };
+        toast(`Attack Strategy: ${strategyNames[newStrategy as keyof typeof strategyNames]}`);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameStarted, localGarbageStrategy, t]);
 
   // Handle incoming garbage (simplified for now)
   useEffect(() => {
