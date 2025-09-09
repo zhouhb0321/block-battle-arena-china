@@ -34,6 +34,7 @@ interface UseGameLogicProps {
   isReplay?: boolean;
   replaySeed?: string;
   enableReplayGravity?: boolean;
+  replayClockControlled?: boolean;
   onAttack?: (attackData: any) => void;
   onIncomingGarbage?: (lines: number[]) => void;
 }
@@ -46,6 +47,7 @@ export const useGameLogic = ({
   isReplay = false,
   replaySeed,
   enableReplayGravity = false,
+  replayClockControlled = false,
   onAttack,
   onIncomingGarbage
 }: UseGameLogicProps) => {
@@ -79,6 +81,10 @@ export const useGameLogic = ({
   const [isB2B, setIsB2B] = useState(0);
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [phase, setPhase] = useState<'ready' | 'countdown' | 'playing' | 'gameOver'>('ready');
+  
+  // Replay clock control states
+  const [gravityAccumulatorMs, setGravityAccumulatorMs] = useState(0);
+  const [lockDelayRemainingMs, setLockDelayRemainingMs] = useState(0);
 
   
   const { startRecording, recordAction, stopRecording, isRecording } = useReplayRecorder();
@@ -95,6 +101,10 @@ export const useGameLogic = ({
   const lockDelayTimerId = useRef<number | null>(null);
   const [lockDelayResetCount, setLockDelayResetCount] = useState(0);
   const lastTSpinCheck = useRef<{ piece: GamePiece; board: Board; wasKicked: boolean } | null>(null);
+  
+  // Track last move for proper T-spin detection
+  const lastMoveRef = useRef<string>('spawn');
+  const lastWasKickedRef = useRef<boolean>(false);
   
   // Use refs to ensure lock delay operations use current state
   const currentPieceRef = useRef<GamePiece | null>(null);
@@ -153,8 +163,8 @@ export const useGameLogic = ({
       });
     }
 
-    // 1. T-Spin Check
-    const tSpinResult = checkTSpin(board, pieceToLock, 'rotate'); // Assuming last action was rotate for check
+    // 1. T-Spin Check using tracked last move
+    const tSpinResult = checkTSpin(board, pieceToLock, lastMoveRef.current, lastWasKickedRef.current);
 
     // 2. Place piece and clear lines
     const newBoard = placePiece(board, pieceToLock);
@@ -206,7 +216,11 @@ export const useGameLogic = ({
     setLines(newTotalLines);
     setLevel(Math.floor(newTotalLines / 10) + 1);
 
-    // 5. Spawn next piece
+    // 5. Reset move tracking for next piece
+    lastMoveRef.current = 'spawn';
+    lastWasKickedRef.current = false;
+    
+    // 6. Spawn next piece
     spawnNewPiece();
 
   }, [board, isB2B, comboCount, lines, spawnNewPiece, showTSpin, showTetris, showCombo, showPerfectClear, isRecording, recordAction]);
@@ -222,6 +236,12 @@ export const useGameLogic = ({
     if (!piece) return;
     const testPiece = { ...piece, y: piece.y + 1 };
     if (isValidPosition(boardRef.current, testPiece)) return;
+    
+    if (replayClockControlled) {
+      // In replay mode, use virtual timer
+      setLockDelayRemainingMs(LOCK_DELAY_TIME);
+      return;
+    }
     
     const timerId = Date.now();
     lockDelayTimerId.current = timerId;
@@ -241,7 +261,7 @@ export const useGameLogic = ({
       lockDelayTimer.current = null;
       lockDelayTimerId.current = null;
     }, LOCK_DELAY_TIME);
-  }, [handlePieceLock, gameOver, isPaused, gameStarted]);
+  }, [handlePieceLock, gameOver, isPaused, gameStarted, replayClockControlled]);
 
   const resetLockDelay = useCallback(() => {
     if (lockDelayResetCount >= MAX_LOCK_RESETS) {
@@ -255,14 +275,18 @@ export const useGameLogic = ({
       const isOnGround = !isValidPosition(boardRef.current, testPiece);
       
       if (isOnGround) {
-        clearLockDelayTimer();
+        if (replayClockControlled) {
+          setLockDelayRemainingMs(LOCK_DELAY_TIME);
+        } else {
+          clearLockDelayTimer();
+          startLockDelay();
+        }
         setLockDelayResetCount(prev => prev + 1);
-        startLockDelay();
         return true;
       }
     }
     return false;
-  }, [lockDelayResetCount, lockPiece, clearLockDelayTimer, startLockDelay]);
+  }, [lockDelayResetCount, lockPiece, clearLockDelayTimer, startLockDelay, replayClockControlled]);
 
   const movePiece = useCallback((dx: number, dy: number) => {
     if (!currentPiece || gameOver || isPaused) return;
@@ -271,6 +295,10 @@ export const useGameLogic = ({
 
     if (isValidPosition(board, newPiece)) {
       setCurrentPiece(newPiece);
+      
+      // Track move for T-spin detection
+      lastMoveRef.current = dx !== 0 ? 'move' : 'drop';
+      lastWasKickedRef.current = false;
       
       // Reset lock delay for horizontal moves when piece is on ground
       if (dx !== 0) {
@@ -308,6 +336,10 @@ export const useGameLogic = ({
     const dropY = calculateDropPosition(board, currentPiece);
     const pieceToLock = { ...currentPiece, y: dropY };
     
+    // Track hard drop for T-spin detection
+    lastMoveRef.current = 'drop';
+    lastWasKickedRef.current = false;
+    
     // Also add score for the drop distance
     const dropDistance = dropY - currentPiece.y;
     setScore(prev => prev + dropDistance);
@@ -320,6 +352,10 @@ export const useGameLogic = ({
     const srsResult = performSRSRotation(board, currentPiece, clockwise);
     if (srsResult.success && srsResult.newPiece) {
       setCurrentPiece(srsResult.newPiece);
+      
+      // Track rotation for T-spin detection
+      lastMoveRef.current = 'rotate';
+      lastWasKickedRef.current = srsResult.wasKicked;
       
       // Reset lock delay when rotating on ground
       const testDownPiece = { ...srsResult.newPiece, y: srsResult.newPiece.y + 1 };
@@ -348,6 +384,10 @@ export const useGameLogic = ({
     if (srsResult.success && srsResult.newPiece) {
       setCurrentPiece(srsResult.newPiece);
       
+      // Track 180 rotation for T-spin detection
+      lastMoveRef.current = 'rotate';
+      lastWasKickedRef.current = srsResult.wasKicked;
+      
       // Reset lock delay when rotating on ground
       const testDownPiece = { ...srsResult.newPiece, y: srsResult.newPiece.y + 1 };
       if (!isValidPosition(board, testDownPiece)) {
@@ -373,6 +413,10 @@ export const useGameLogic = ({
     setCurrentPiece(holdPiece || createGamePiece(generateRandomPiece()));
     setHoldPiece(newHoldPiece);
     setCanHold(false);
+    
+    // Track hold for T-spin detection
+    lastMoveRef.current = 'hold';
+    lastWasKickedRef.current = false;
     
     // Record hold action
     if (isRecording) {
@@ -446,18 +490,51 @@ export const useGameLogic = ({
 
   }, [createGamePiece, isReplay, gameMode.id, startRecording, replaySeed, clearLockDelayTimer]);
 
-  // Main Game Loop (Gravity) - enabled in replay with gravity simulation
+  // Virtual clock tick for replay mode
+  const tickReplay = useCallback((deltaMs: number) => {
+    if (!replayClockControlled || !gameStarted || gameOver || isPaused) return;
+    
+    const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+    
+    // Handle gravity
+    setGravityAccumulatorMs(prev => {
+      const newAccumulator = prev + deltaMs;
+      if (newAccumulator >= dropInterval) {
+        movePiece(0, 1);
+        return newAccumulator - dropInterval;
+      }
+      return newAccumulator;
+    });
+    
+    // Handle lock delay
+    if (lockDelayRemainingMs > 0) {
+      setLockDelayRemainingMs(prev => {
+        const newRemaining = Math.max(0, prev - deltaMs);
+        if (newRemaining === 0 && currentPieceRef.current) {
+          // Check if piece is still on ground before locking
+          const piece = currentPieceRef.current;
+          const testPiece = { ...piece, y: piece.y + 1 };
+          if (!isValidPosition(boardRef.current, testPiece)) {
+            handlePieceLock(piece);
+          }
+        }
+        return newRemaining;
+      });
+    }
+  }, [replayClockControlled, gameStarted, gameOver, isPaused, level, movePiece, lockDelayRemainingMs, handlePieceLock]);
+
+  // Main Game Loop (Gravity) - disabled in replay clock controlled mode
   useEffect(() => {
-    if ((isReplay && !enableReplayGravity) || !gameStarted || gameOver || isPaused || phase !== 'playing') return;
+    if (replayClockControlled || (isReplay && !enableReplayGravity) || !gameStarted || gameOver || isPaused || phase !== 'playing') return;
 
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
     const timer = setTimeout(() => movePiece(0, 1), dropInterval);
     return () => clearTimeout(timer);
-  }, [isReplay, enableReplayGravity, gameStarted, gameOver, isPaused, level, movePiece, phase]);
+  }, [replayClockControlled, isReplay, enableReplayGravity, gameStarted, gameOver, isPaused, level, movePiece, phase]);
 
-  // RAF-based precise timing with immediate 2min mode termination - enabled in replay with gravity
+  // RAF-based precise timing with immediate 2min mode termination - disabled in replay clock controlled mode
   useEffect(() => {
-    if ((isReplay && !enableReplayGravity) || !gameStarted || gameOver || isPaused) return;
+    if (replayClockControlled || (isReplay && !enableReplayGravity) || !gameStarted || gameOver || isPaused) return;
 
     let animationFrameId: number;
 
@@ -578,5 +655,6 @@ export const useGameLogic = ({
     isValidPosition,
     gameStartTime,
     getGameStats: () => ({ score, lines, level, time, pps, apm, gameMode: gameMode.id }),
+    tickReplay,
   };
 };

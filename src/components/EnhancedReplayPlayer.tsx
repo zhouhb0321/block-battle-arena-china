@@ -35,7 +35,8 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
     gameMode: { id: replay.gameMode } as GameMode,
     isReplay: true,
     replaySeed: replay.seed,
-    enableReplayGravity: true, // Enable gravity simulation for replay
+    enableReplayGravity: false, // Disable internal gravity
+    replayClockControlled: true, // Enable controlled clock mode
   });
 
   useEffect(() => {
@@ -96,17 +97,24 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
     setGameLogicState(newState);
   }, []);
 
-  const processActionsUntilTime = useCallback((targetTime: number) => {
+  const processActionsUntilTime = useCallback((targetTime: number, fromTime: number = 0) => {
     if (!gameLogicRef.current) return;
 
     const actions = actionsRef.current;
     const logic = gameLogicRef.current;
     let newPiecesPlaced = piecesPlaced;
     let newActionsProcessed = actionsProcessed;
+    let lastActionTime = fromTime;
 
     while (currentActionIndexRef.current < actions.length) {
       const action = actions[currentActionIndexRef.current];
       if (action.timestamp > targetTime) break;
+
+      // Tick game physics from last action time to current action time
+      if (action.timestamp > lastActionTime && logic.tickReplay) {
+        const deltaMs = action.timestamp - lastActionTime;
+        logic.tickReplay(deltaMs);
+      }
 
       // Execute actions at their exact timestamp
       switch (action.action) {
@@ -128,12 +136,31 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
           logic.holdCurrentPiece();
           break;
         case 'place':
-          // Treat place action as a verification point - piece should naturally fall and lock
+          // Verify piece placement consistency
+          if (action.data && logic.currentPiece) {
+            const expectedPiece = action.data;
+            const actualPiece = logic.currentPiece;
+            if (expectedPiece.x !== actualPiece.x || expectedPiece.y !== actualPiece.y || 
+                expectedPiece.rotation !== actualPiece.rotation) {
+              console.warn('Replay inconsistency detected at place action:', {
+                expected: expectedPiece,
+                actual: actualPiece,
+                timestamp: action.timestamp
+              });
+            }
+          }
           newPiecesPlaced++;
           break;
       }
+      
+      lastActionTime = action.timestamp;
       newActionsProcessed++;
       currentActionIndexRef.current++;
+    }
+
+    // Tick any remaining time after last action
+    if (targetTime > lastActionTime && logic.tickReplay) {
+      logic.tickReplay(targetTime - lastActionTime);
     }
 
     // Update statistics if changed
@@ -154,7 +181,7 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   const seekTo = useCallback((time: number) => {
     const targetTime = Math.max(0, Math.min(time, totalTime));
 
-    // Reset completely and replay from start
+    // Reset completely and replay from start using "fast-forward replay"
     setReplayKey(Date.now());
     setCurrentTime(0);
     setIsPlaying(false);
@@ -162,9 +189,10 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
     setActionsProcessed(0);
     currentActionIndexRef.current = 0;
 
-    // Wait for new gameLogic instance to be ready, then replay to target time
+    // Wait for new gameLogic instance to be ready, then fast-forward to target time
     setTimeout(() => {
-      processActionsUntilTime(targetTime);
+      // Fast-forward replay with physics simulation
+      processActionsUntilTime(targetTime, 0);
       setCurrentTime(targetTime);
     }, 100);
   }, [totalTime, processActionsUntilTime]);
@@ -181,9 +209,23 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
           if (newTime >= totalTime) {
             setIsPlaying(false);
             if (intervalRef.current) clearInterval(intervalRef.current);
+            
+            // Final consistency check
+            if (gameLogicRef.current && replay.finalScore) {
+              const currentScore = gameLogicRef.current.score;
+              const currentLines = gameLogicRef.current.lines;
+              if (Math.abs(currentScore - replay.finalScore) > 100 || 
+                  Math.abs(currentLines - replay.finalLines) > 2) {
+                console.warn('Replay ended with score/lines discrepancy:', {
+                  expected: { score: replay.finalScore, lines: replay.finalLines },
+                  actual: { score: currentScore, lines: currentLines }
+                });
+              }
+            }
+            
             return totalTime;
           }
-          processActionsUntilTime(newTime);
+          processActionsUntilTime(newTime, prev);
           return newTime;
         });
       }, 16);
