@@ -121,7 +121,7 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
         case 'move':
           if (action.data.direction === 'left') logic.movePiece(-1, 0);
           else if (action.data.direction === 'right') logic.movePiece(1, 0);
-          else if (action.data.direction === 'down') logic.movePiece(0, 1); // Soft drop
+          // Ignore 'down' moves - let gravity handle falling
           break;
         case 'rotate':
           if (action.data.direction === 'clockwise') logic.rotatePieceClockwise();
@@ -130,23 +130,27 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
           break;
         case 'drop':
           if (action.data.type === 'hard') logic.hardDrop();
-          else logic.movePiece(0, 1); // Soft drop
+          // Ignore soft drops - let gravity handle falling
           break;
         case 'hold':
           logic.holdCurrentPiece();
           break;
         case 'place':
-          // Verify piece placement consistency
-          if (action.data && logic.currentPiece) {
+          // Use place as authoritative anchor for position correction
+          if (action.data && logic.currentPiece && logic.forcePlace) {
             const expectedPiece = action.data;
             const actualPiece = logic.currentPiece;
+            
+            // Check for inconsistency and correct if needed
             if (expectedPiece.x !== actualPiece.x || expectedPiece.y !== actualPiece.y || 
                 expectedPiece.rotation !== actualPiece.rotation) {
-              console.warn('Replay inconsistency detected at place action:', {
+              console.warn('Replay inconsistency detected - correcting position:', {
                 expected: expectedPiece,
                 actual: actualPiece,
                 timestamp: action.timestamp
               });
+              // Force correct position and immediate lock
+              logic.forcePlace(expectedPiece.x, expectedPiece.y, expectedPiece.rotation);
             }
           }
           newPiecesPlaced++;

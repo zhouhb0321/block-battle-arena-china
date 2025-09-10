@@ -490,38 +490,87 @@ export const useGameLogic = ({
 
   }, [createGamePiece, isReplay, gameMode.id, startRecording, replaySeed, clearLockDelayTimer]);
 
-  // Virtual clock tick for replay mode
+  // Virtual clock tick for replay mode - synchronous processing with refs
   const tickReplay = useCallback((deltaMs: number) => {
     if (!replayClockControlled || !gameStarted || gameOver || isPaused) return;
     
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+    let remainingDelta = deltaMs;
     
-    // Handle gravity
-    setGravityAccumulatorMs(prev => {
-      const newAccumulator = prev + deltaMs;
-      if (newAccumulator >= dropInterval) {
-        movePiece(0, 1);
-        return newAccumulator - dropInterval;
+    // Use refs for synchronous processing
+    let currentGravityAccumulator = gravityAccumulatorMs;
+    let currentLockDelayRemaining = lockDelayRemainingMs;
+    
+    // Process gravity in a while loop for multiple steps per tick
+    while (remainingDelta > 0) {
+      // Handle gravity accumulation
+      currentGravityAccumulator += remainingDelta;
+      
+      // Check if gravity should trigger a drop
+      if (currentGravityAccumulator >= dropInterval && currentPieceRef.current) {
+        const piece = currentPieceRef.current;
+        const newPiece = { ...piece, y: piece.y + 1 };
+        
+        if (isValidPosition(boardRef.current, newPiece)) {
+          // Piece can move down
+          setCurrentPiece(newPiece);
+          currentPieceRef.current = newPiece;
+          currentGravityAccumulator -= dropInterval;
+          
+          // Track move for T-spin detection
+          lastMoveRef.current = 'drop';
+          lastWasKickedRef.current = false;
+        } else {
+          // Piece cannot move down, start lock delay if not already started
+          if (currentLockDelayRemaining <= 0) {
+            currentLockDelayRemaining = LOCK_DELAY_TIME;
+          }
+          currentGravityAccumulator = 0; // Reset gravity accumulator
+        }
       }
-      return newAccumulator;
-    });
-    
-    // Handle lock delay
-    if (lockDelayRemainingMs > 0) {
-      setLockDelayRemainingMs(prev => {
-        const newRemaining = Math.max(0, prev - deltaMs);
-        if (newRemaining === 0 && currentPieceRef.current) {
-          // Check if piece is still on ground before locking
+      
+      // Handle lock delay countdown
+      if (currentLockDelayRemaining > 0) {
+        currentLockDelayRemaining = Math.max(0, currentLockDelayRemaining - remainingDelta);
+        
+        // If lock delay expired, lock the piece
+        if (currentLockDelayRemaining === 0 && currentPieceRef.current) {
           const piece = currentPieceRef.current;
           const testPiece = { ...piece, y: piece.y + 1 };
           if (!isValidPosition(boardRef.current, testPiece)) {
             handlePieceLock(piece);
           }
         }
-        return newRemaining;
-      });
+      }
+      
+      remainingDelta = 0; // Exit loop after processing
     }
-  }, [replayClockControlled, gameStarted, gameOver, isPaused, level, movePiece, lockDelayRemainingMs, handlePieceLock]);
+    
+    // Update state with final values
+    setGravityAccumulatorMs(currentGravityAccumulator);
+    setLockDelayRemainingMs(currentLockDelayRemaining);
+  }, [replayClockControlled, gameStarted, gameOver, isPaused, level, gravityAccumulatorMs, lockDelayRemainingMs, handlePieceLock]);
+
+  // Force place method for replay position correction
+  const forcePlace = useCallback((x: number, y: number, rotation: number) => {
+    if (!currentPieceRef.current) return;
+    
+    const correctedPiece = {
+      ...currentPieceRef.current,
+      x,
+      y, 
+      rotation
+    };
+    
+    // Validate and set the corrected position
+    if (isValidPosition(boardRef.current, correctedPiece)) {
+      setCurrentPiece(correctedPiece);
+      currentPieceRef.current = correctedPiece;
+    }
+    
+    // Immediately lock the piece
+    handlePieceLock(correctedPiece);
+  }, [handlePieceLock]);
 
   // Main Game Loop (Gravity) - disabled in replay clock controlled mode
   useEffect(() => {
@@ -656,5 +705,6 @@ export const useGameLogic = ({
     gameStartTime,
     getGameStats: () => ({ score, lines, level, time, pps, apm, gameMode: gameMode.id }),
     tickReplay,
+    forcePlace,
   };
 };

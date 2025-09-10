@@ -153,7 +153,10 @@ export const useReplayRecorder = () => {
       console.warn('Could not check personal best status:', e);
     }
 
-    const compressed = ReplayCompressor.compressActions(actionsRef.current);
+    // Sort actions by timestamp before compression to ensure proper playback order
+    const sortedActions = [...actionsRef.current].sort((a, b) => a.timestamp - b.timestamp);
+    
+    const compressed = ReplayCompressor.compressActions(sortedActions);
     const compressedActions = ReplayCompressor.encodeToBinary(compressed);
     
     // Convert Uint8Array to base64 string for proper storage
@@ -176,11 +179,11 @@ export const useReplayRecorder = () => {
     const checksum = ReplayCompressor.generateChecksum(checksumData);
 
     console.log('Replay save:', {
-      actionsRecorded: actionsRef.current.length,
+      actionsRecorded: sortedActions.length,
       compressedSize: compressed.length,
       binarySize: compressedActions.length,
       base64Length: base64Actions.length,
-      placeActions: actionsRef.current.filter(a => a.action === 'place').length
+      placeActions: sortedActions.filter(a => a.action === 'place').length
     });
 
     const { data, error } = await supabase
