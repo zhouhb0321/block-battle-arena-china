@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,270 +18,183 @@ import { toUint8Array } from '@/utils/byteArrayUtils';
 const ReplaySystem: React.FC = () => {
   const { user } = useAuth();
   const [replays, setReplays] = useState<GameReplay[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedReplay, setSelectedReplay] = useState<GameReplay | null>(null);
   const [selectedCompressedReplay, setSelectedCompressedReplay] = useState<CompressedReplay | null>(null);
-  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
-  const [isEnhancedPlayerOpen, setIsEnhancedPlayerOpen] = useState(false);
+  const [showReplayPlayer, setShowReplayPlayer] = useState(false);
+  const [showEnhancedPlayer, setShowEnhancedPlayer] = useState(false);
   const [showOldReplays, setShowOldReplays] = useState(false);
 
   useEffect(() => {
     loadReplays();
   }, [user]);
 
-  const loadReplays = async () => {
-    if (!user || user.isGuest) {
-      setLoading(false);
+  const loadReplays = useCallback(async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      // Load only metadata from compressed_replays (no compressed_actions)
+      const { data: compressedReplays, error: compressedError } = await supabase
+        .from('compressed_replays')
+        .select(`
+          id, user_id, username, game_mode, duration_seconds, 
+          final_score, final_lines, pps, apm, is_personal_best, 
+          created_at, version, actions_count, seed, 
+          initial_board, game_settings
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      const processedReplays: GameReplay[] = [];
+
+      if (compressedReplays && !compressedError) {
+        console.info('ReplaySystem: Loading compressed replays metadata count:', compressedReplays.length);
+        
+        for (const replay of compressedReplays) {
+          // Check playability based on metadata only
+          const { isReplayPlayable } = await import('@/utils/replayLoader');
+          const isPlayable = isReplayPlayable(replay);
+
+          processedReplays.push({
+            id: replay.id,
+            userId: replay.user_id,
+            gameMode: replay.game_mode,
+            score: replay.final_score,
+            lines: replay.final_lines,
+            duration: replay.duration_seconds * 1000,
+            pps: replay.pps,
+            apm: replay.apm,
+            isPersonalBest: replay.is_personal_best,
+            date: replay.created_at,
+            replayData: {
+              actions: [],
+              startTime: 0,
+              initialBoard: replay.initial_board,
+              gameSettings: replay.game_settings
+            },
+            gameSettings: replay.game_settings,
+            keyInputs: [],
+            gameEvents: [],
+            isPlayable,
+            compressedData: null
+          });
+        }
+      }
+      // If no compressed replays, try fallback tables
+      if (!compressedReplays || compressedReplays.length === 0) {
+        console.info('ReplaySystem: No compressed replays found, trying fallback tables');
+        
+        // Try new format replay table
+        const { data: newReplays, error: newError } = await supabase
+          .from('game_replays_new')
+          .select(`
+            id, user_id, game_mode, final_score, final_lines, 
+            pps, apm, duration, is_personal_best, created_at
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        
+        if (newReplays && newReplays.length > 0) {
+          for (const replay of newReplays) {
+            processedReplays.push({
+              id: replay.id,
+              userId: replay.user_id,
+              gameMode: replay.game_mode,
+              score: replay.final_score,
+              lines: replay.final_lines,
+              duration: replay.duration,
+              pps: replay.pps,
+              apm: replay.apm,
+              isPersonalBest: replay.is_personal_best,
+              date: replay.created_at,
+              replayData: { actions: [], startTime: 0, initialBoard: [], gameSettings: {} },
+              gameSettings: {},
+              keyInputs: [],
+              gameEvents: [],
+              isPlayable: false,
+              compressedData: null
+            });
+          }
+        }
+      }
+
+      setReplays(processedReplays);
+    } catch (error) {
+      console.error('Error loading replays:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  const handlePlayReplay = useCallback(async (replay: GameReplay) => {
+    console.info('ReplaySystem: Playing replay:', replay.id, 'isPlayable:', replay.isPlayable);
+
+    if (!replay.isPlayable) {
+      console.warn('ReplaySystem: Replay is not playable');
       return;
     }
 
     try {
-      // 首先尝试从压缩回放表获取数据
-      const { data: compressedReplays, error: compressedError } = await supabase
-        .from('compressed_replays')
-        .select('*')
-        .or(`user_id.eq.${user.id},opponent_id.eq.${user.id}`)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      let data = compressedReplays;
-      let error = compressedError;
-
-      // 如果压缩回放表没有数据，则尝试旧的回放表，包括1v1和排位赛回放
-      if (!compressedReplays || compressedReplays.length === 0) {
-        console.log('ReplaySystem: No compressed replays found, trying fallback tables');
-        
-        // 尝试新格式的回放表
-        const { data: newReplays, error: newError } = await supabase
-          .from('game_replays_new')
-          .select('*')
-          .or(`user_id.eq.${user.id},opponent_id.eq.${user.id}`)
-          .order('created_at', { ascending: false })
-          .limit(50);
-        
-        if (newReplays && newReplays.length > 0) {
-          data = newReplays;
-          error = newError;
-        } else {
-          // 最后尝试旧的回放表
-          const { data: oldReplays, error: oldError } = await supabase
-            .from('game_replays')
-            .select('*')
-            .or(`user_id.eq.${user.id}`)
-            .order('created_at', { ascending: false })
-            .limit(50);
-          
-          data = oldReplays;
-          error = oldError;
-        }
-      }
-
-      if (error) {
-        console.error('Error loading replays:', error);
-        return;
-      }
-
-      if (data) {
-        const formattedReplays: GameReplay[] = data.map(replay => {
-          // 处理压缩回放和旧回放的不同数据结构
-          const isCompressed = 'compressed_actions' in replay;
-          let actions: ReplayAction[] = [];
-          let isPlayable = false;
-          
-          if (isCompressed) {
-            // 压缩回放数据处理：二进制解码 + 动作解压缩
-            try {
-              console.log('ReplaySystem: Processing compressed replay:', replay.id, {
-                dataType: typeof replay.compressed_actions,
-                dataLength: replay.compressed_actions?.length || 0,
-                expectedActions: replay.actions_count
-              });
-              
-              const bytes = toUint8Array(replay.compressed_actions);
-              
-              if (bytes.length > 0) {
-                console.log('ReplaySystem: Successfully converted to Uint8Array, length:', bytes.length);
-                const compressed = ReplayCompressor.decodeFromBinary(bytes);
-                actions = ReplayCompressor.decompressActions(compressed);
-                console.log('ReplaySystem: Decompressed actions count:', actions.length);
-                
-                // 检查数据完整性
-                let placeActions = actions.filter(a => a.action === 'place');
-                console.log('ReplaySystem: Place actions count:', placeActions.length);
-                isPlayable = placeActions.length > 0;
-                
-                // 验证动作数量与预期是否一致
-                if (replay.actions_count && actions.length !== replay.actions_count) {
-                  console.warn('ReplaySystem: Action count mismatch!', {
-                    expected: replay.actions_count,
-                    actual: actions.length,
-                    replayId: replay.id
-                  });
-                }
-                
-                // 记录解码状态和完整性
-                console.log('ReplaySystem: Decode status:', {
-                  replayId: replay.id,
-                  originalDataType: typeof replay.compressed_actions,
-                  originalDataLength: replay.compressed_actions?.length || 0,
-                  convertedBytesLength: bytes.length,
-                  decompressedActionsLength: actions.length,
-                  placeActionsCount: placeActions.length,
-                  hasPlayableData: placeActions.length > 0
-                });
-
-                // 尝试自动修复并更新数据库（仅针对当前用户的回放）
-                if (placeActions.length > 0 && replay.user_id === user.id && typeof replay.compressed_actions !== 'string') {
-                  try {
-                    console.log('ReplaySystem: Attempting to migrate replay data to base64 format');
-                    const base64Data = btoa(String.fromCharCode(...bytes));
-                    
-                    supabase
-                      .from('compressed_replays')
-                      .update({ compressed_actions: base64Data })
-                      .eq('id', replay.id)
-                      .then(({ error: updateError }) => {
-                        if (!updateError) {
-                          console.log('ReplaySystem: Successfully migrated replay to base64 format:', replay.id);
-                        } else {
-                          console.warn('ReplaySystem: Failed to migrate replay:', updateError);
-                        }
-                      });
-                  } catch (migrationError) {
-                    console.warn('ReplaySystem: Failed to migrate replay data:', migrationError);
-                  }
-                }
-              } else {
-                console.warn('ReplaySystem: Empty byte array for replay:', replay.id);
-                actions = [];
-              }
-            } catch (e) {
-              console.error('ReplaySystem: 解压缩回放失败:', replay.id, e);
-              actions = [];
-            }
-          } else {
-            // 旧回放数据处理
-            const replayData = replay.replay_data as any;
-            actions = replayData?.actions || [];
-            console.log('ReplaySystem: Using legacy replay data, actions count:', actions.length);
-          }
-          
-          const userProfile = replay.user_profiles as any;
-          const duration = isCompressed ? (replay.duration_seconds * 1000) : replay.duration;
-          
-          return {
-            id: replay.id,
-            matchId: replay.id,
-            userId: replay.user_id,
-            gameType: replay.game_mode || replay.game_type,
-            gameMode: replay.game_mode || replay.game_type,
-            score: replay.final_score,
-            lines: replay.final_lines,
-            level: replay.final_level,
-            pps: parseFloat((replay.pps || 0).toString()),
-            apm: parseFloat((replay.apm || 0).toString()),
-            duration: duration,
-            startTime: new Date(replay.created_at).getTime(),
-            endTime: new Date(replay.created_at).getTime() + duration,
-            actions: actions,
-            finalBoard: Array(20).fill(null).map(() => Array(10).fill(0)),
-            date: replay.created_at,
-            playerName: replay.username || userProfile?.username || 'Unknown Player',
-            isPersonalBest: replay.is_personal_best || false,
-            isPlayable: isPlayable,
-            metadata: {
-              version: isCompressed ? '2.0' : '1.0',
-              settings: replay.game_settings || {
-                das: 167,
-                arr: 33,
-                sdf: 20,
-                controls: {
-                  moveLeft: 'ArrowLeft',
-                  moveRight: 'ArrowRight',
-                  softDrop: 'ArrowDown',
-                  hardDrop: 'Space',
-                  rotateClockwise: 'ArrowUp',
-                  rotateCounterclockwise: 'KeyZ',
-                  rotate180: 'KeyA',
-                  hold: 'KeyC',
-                  pause: 'Escape',
-                  backToMenu: 'KeyB'
-                },
-                enableGhost: true,
-                enableSound: true,
-                masterVolume: 50,
-                backgroundMusic: '',
-                musicVolume: 30,
-                ghostOpacity: 50,
-                enableWallpaper: true,
-                undoSteps: 50,
-                wallpaperChangeInterval: 120
-              },
-              seed: replay.seed || undefined,
-              initialBoard: replay.initial_board || undefined
-            }
-          };
-        });
-
-        // 过滤不可播放的回放（除非用户选择显示旧回放）
-        const filteredReplays = showOldReplays 
-          ? formattedReplays 
-          : formattedReplays.filter(r => r.isPlayable);
-        
-        setReplays(filteredReplays);
-      }
-    } catch (error) {
-      console.error('Error loading replays:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePlayReplay = (replay: GameReplay) => {
-    if (replay.isPlayable && replay.metadata.version === '2.0') {
-      // 使用增强播放器播放新格式回放
-      // 重新压缩动作以获得正确的压缩数据
-      const sortedActions = [...replay.actions].sort((a, b) => a.timestamp - b.timestamp);
-      const compressed = ReplayCompressor.compressActions(sortedActions);
-      const compressedBytes = ReplayCompressor.encodeToBinary(compressed);
+      // Load full replay data on-demand
+      const { loadReplayById } = await import('@/utils/replayLoader');
+      const fullReplayData = await loadReplayById(replay.id);
       
-      // 计算真实的压缩率
-      const originalSize = JSON.stringify(sortedActions).length;
-      const realCompressionRatio = compressedBytes.length / originalSize;
+      console.info('ReplaySystem: Loaded replay data:', {
+        replayId: replay.id,
+        actionsCount: fullReplayData.decodedActions.length,
+        encoding: fullReplayData.decodingInfo.encoding,
+        placeActionsCount: fullReplayData.decodingInfo.placeActionsCount
+      });
+
+      // Check final stats consistency
+      const expectedScore = fullReplayData.final_score;
+      const expectedLines = fullReplayData.final_lines;
+      
+      console.info('ReplaySystem: Final stats check:', {
+        expectedScore,
+        expectedLines,
+        replayId: replay.id
+      });
+
+      // Use enhanced player for all replays
+      const compressedActions = ReplayCompressor.compressActions(fullReplayData.decodedActions);
+      const compressedData = ReplayCompressor.encodeToBinary(compressedActions);
       
       const compressedReplay: CompressedReplay = {
         id: replay.id,
-        userId: replay.userId,
+        userId: fullReplayData.user_id,
         gameType: 'single' as const,
-        gameMode: replay.gameMode,
-        finalScore: replay.score,
-        finalLines: replay.lines,
-        finalLevel: replay.level,
-        durationSeconds: replay.duration / 1000,
-        pps: replay.pps,
-        apm: replay.apm,
-        seed: replay.metadata.seed || '',
-        actionsCount: sortedActions.length,
-        compressedActions: compressedBytes,
-        compressionRatio: realCompressionRatio,
-        version: '2.0',
-        isPersonalBest: replay.isPersonalBest,
+        gameMode: fullReplayData.game_mode,
+        finalScore: fullReplayData.final_score,
+        finalLines: fullReplayData.final_lines,
+        finalLevel: 1,
+        durationSeconds: fullReplayData.duration_seconds,
+        pps: fullReplayData.pps,
+        apm: fullReplayData.apm,
+        seed: fullReplayData.seed || 'replay-seed',
+        actionsCount: fullReplayData.decodedActions.length,
+        compressedActions: compressedData,
+        compressionRatio: fullReplayData.decodingInfo.decodedSize / fullReplayData.decodingInfo.originalSize,
+        version: fullReplayData.version || '2.0',
+        isPersonalBest: fullReplayData.is_personal_best,
         isWorldRecord: false,
         isFeatured: false,
-        createdAt: replay.date,
-        updatedAt: replay.date,
-        gameSettings: replay.metadata.settings,
-        initialBoard: replay.metadata.initialBoard || Array(20).fill(null).map(() => Array(10).fill(0)),
-        checksum: ''
+        createdAt: fullReplayData.created_at,
+        updatedAt: fullReplayData.updated_at,
+        gameSettings: fullReplayData.game_settings,
+        initialBoard: fullReplayData.initial_board,
+        checksum: fullReplayData.checksum || ''
       };
+
       setSelectedCompressedReplay(compressedReplay);
-      setIsEnhancedPlayerOpen(true);
-    } else {
-      // 使用旧播放器播放不可播放的回放
-      setSelectedReplay(replay);
-      setIsPlayerOpen(true);
+      setShowEnhancedPlayer(true);
+      
+    } catch (error) {
+      console.error('ReplaySystem: Failed to load replay data:', error);
     }
-  };
+  }, []);
 
   const formatDuration = (duration: number) => {
     const minutes = Math.floor(duration / 60000);
@@ -304,7 +217,7 @@ const ReplaySystem: React.FC = () => {
     return modes[mode] || mode;
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
@@ -426,9 +339,9 @@ const ReplaySystem: React.FC = () => {
 
       <ReplayPlayer
         replay={selectedReplay}
-        isOpen={isPlayerOpen}
+        isOpen={showReplayPlayer}
         onClose={() => {
-          setIsPlayerOpen(false);
+          setShowReplayPlayer(false);
           setSelectedReplay(null);
         }}
       />
@@ -436,9 +349,9 @@ const ReplaySystem: React.FC = () => {
       {selectedCompressedReplay && (
         <EnhancedReplayPlayer
           replay={selectedCompressedReplay}
-          isOpen={isEnhancedPlayerOpen}
+          isOpen={showEnhancedPlayer}
           onClose={() => {
-            setIsEnhancedPlayerOpen(false);
+            setShowEnhancedPlayer(false);
             setSelectedCompressedReplay(null);
           }}
         />

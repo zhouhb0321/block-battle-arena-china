@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import EnhancedGameBoard from '@/components/EnhancedGameBoard';
@@ -258,23 +258,20 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   }, []);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <ReplayGame
-          key={replayKey}
-          replay={replay}
-          onStateUpdate={handleStateUpdate}
-          onActionsReady={handleActionsReady}
-        />
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Trophy className="w-5 h-5" />
-            录像回放 - {replay.gameMode}
-            <Badge variant="secondary">
-              压缩率: {Math.round(replay.compressionRatio * 100)}%
-            </Badge>
-          </DialogTitle>
-        </DialogHeader>
+        <Dialog open={isOpen} onOpenChange={onClose}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" aria-describedby="enhanced-replay-description">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Trophy className="w-5 h-5" />
+                录像回放 - {replay.gameMode}
+                <Badge variant="secondary">
+                  压缩率: {Math.round(replay.compressionRatio * 100)}%
+                </Badge>
+                <DialogDescription id="enhanced-replay-description" className="sr-only">
+                  Enhanced replay player with multi-speed playback and seeking functionality
+                </DialogDescription>
+              </DialogTitle>
+            </DialogHeader>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 游戏区域 */}
