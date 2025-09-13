@@ -63,21 +63,31 @@ const ReplaySystem: React.FC = () => {
             score: replay.final_score,
             lines: replay.final_lines,
             duration: replay.duration_seconds * 1000,
-            pps: replay.pps,
-            apm: replay.apm,
+            startTime: 0,
+            endTime: replay.duration_seconds * 1000,
+            pps: replay.pps || 0,
+            apm: replay.apm || 0,
             isPersonalBest: replay.is_personal_best,
             date: replay.created_at,
-            replayData: {
-              actions: [],
-              startTime: 0,
-              initialBoard: replay.initial_board,
-              gameSettings: replay.game_settings
-            },
-            gameSettings: replay.game_settings,
-            keyInputs: [],
-            gameEvents: [],
+            actions: [],
             isPlayable,
-            compressedData: null
+            playerName: replay.username || 'Unknown',
+            metadata: {
+              version: replay.version || '2.0',
+              settings: replay.game_settings || {
+                das: 167, arr: 33, sdf: 41,
+                controls: {
+                  moveLeft: 'ArrowLeft', moveRight: 'ArrowRight', softDrop: 'ArrowDown',
+                  hardDrop: 'Space', rotateClockwise: 'ArrowUp', rotateCounterclockwise: 'KeyZ',
+                  rotate180: 'KeyA', hold: 'KeyC', pause: 'Escape', backToMenu: 'KeyQ'
+                },
+                enableGhost: true, enableSound: true, masterVolume: 0.7, backgroundMusic: '',
+                musicVolume: 0.5, ghostOpacity: 0.5, enableWallpaper: true, undoSteps: 10,
+                wallpaperChangeInterval: 30000
+              },
+              seed: replay.seed,
+              initialBoard: replay.initial_board
+            }
           });
         }
       }
@@ -105,16 +115,30 @@ const ReplaySystem: React.FC = () => {
               score: replay.final_score,
               lines: replay.final_lines,
               duration: replay.duration,
-              pps: replay.pps,
-              apm: replay.apm,
+              startTime: 0,
+              endTime: replay.duration,
+              pps: replay.pps || 0,
+              apm: replay.apm || 0,
               isPersonalBest: replay.is_personal_best,
               date: replay.created_at,
-              replayData: { actions: [], startTime: 0, initialBoard: [], gameSettings: {} },
-              gameSettings: {},
-              keyInputs: [],
-              gameEvents: [],
+              actions: [],
               isPlayable: false,
-              compressedData: null
+              playerName: 'Unknown',
+              metadata: {
+                version: '1.0',
+                settings: {
+                  das: 167, arr: 33, sdf: 41,
+                  controls: {
+                    moveLeft: 'ArrowLeft', moveRight: 'ArrowRight', softDrop: 'ArrowDown',
+                    hardDrop: 'Space', rotateClockwise: 'ArrowUp', rotateCounterclockwise: 'KeyZ',
+                    rotate180: 'KeyA', hold: 'KeyC', pause: 'Escape', backToMenu: 'KeyQ'
+                  },
+                  enableGhost: true, enableSound: true, masterVolume: 0.7, backgroundMusic: '',
+                  musicVolume: 0.5, ghostOpacity: 0.5, enableWallpaper: true, undoSteps: 10,
+                  wallpaperChangeInterval: 30000
+                },
+                initialBoard: []
+              }
             });
           }
         }
