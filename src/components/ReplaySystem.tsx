@@ -8,21 +8,15 @@ import { Play, Trophy, Clock, Target } from 'lucide-react';
 import { ReplayImporter } from './ReplayImporter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import ReplayPlayer from './ReplayPlayer';
-import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
-import type { GameReplay, ReplayAction } from '@/utils/gameTypes';
-import type { CompressedReplay } from '@/utils/replayTypes';
-import { ReplayCompressor } from '@/utils/replayCompression';
-import { toUint8Array } from '@/utils/byteArrayUtils';
+import { ReplayPreparationDialog } from './ReplayPreparationDialog';
+import type { GameReplay } from '@/utils/gameTypes';
 
 const ReplaySystem: React.FC = () => {
   const { user } = useAuth();
   const [replays, setReplays] = useState<GameReplay[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedReplay, setSelectedReplay] = useState<GameReplay | null>(null);
-  const [selectedCompressedReplay, setSelectedCompressedReplay] = useState<CompressedReplay | null>(null);
-  const [showReplayPlayer, setShowReplayPlayer] = useState(false);
-  const [showEnhancedPlayer, setShowEnhancedPlayer] = useState(false);
+  const [selectedReplayForPreparation, setSelectedReplayForPreparation] = useState<GameReplay | null>(null);
+  const [isPreparationDialogOpen, setIsPreparationDialogOpen] = useState(false);
   const [showOldReplays, setShowOldReplays] = useState(false);
 
   useEffect(() => {
@@ -152,73 +146,10 @@ const ReplaySystem: React.FC = () => {
     }
   }, [user]);
 
-  const handlePlayReplay = useCallback(async (replay: GameReplay) => {
-    console.info('ReplaySystem: Playing replay:', replay.id, 'isPlayable:', replay.isPlayable);
-
-    if (!replay.isPlayable) {
-      console.warn('ReplaySystem: Replay is not playable');
-      return;
-    }
-
-    try {
-      // Load full replay data on-demand
-      const { loadReplayById } = await import('@/utils/replayLoader');
-      const fullReplayData = await loadReplayById(replay.id);
-      
-      console.info('ReplaySystem: Loaded replay data:', {
-        replayId: replay.id,
-        actionsCount: fullReplayData.decodedActions.length,
-        encoding: fullReplayData.decodingInfo.encoding,
-        placeActionsCount: fullReplayData.decodingInfo.placeActionsCount
-      });
-
-      // Check final stats consistency
-      const expectedScore = fullReplayData.final_score;
-      const expectedLines = fullReplayData.final_lines;
-      
-      console.info('ReplaySystem: Final stats check:', {
-        expectedScore,
-        expectedLines,
-        replayId: replay.id
-      });
-
-      // Use enhanced player for all replays
-      const compressedActions = ReplayCompressor.compressActions(fullReplayData.decodedActions);
-      const compressedData = ReplayCompressor.encodeToBinary(compressedActions);
-      
-      const compressedReplay: CompressedReplay = {
-        id: replay.id,
-        userId: fullReplayData.user_id,
-        gameType: 'single' as const,
-        gameMode: fullReplayData.game_mode,
-        finalScore: fullReplayData.final_score,
-        finalLines: fullReplayData.final_lines,
-        finalLevel: 1,
-        durationSeconds: fullReplayData.duration_seconds,
-        pps: fullReplayData.pps,
-        apm: fullReplayData.apm,
-        seed: fullReplayData.seed || 'replay-seed',
-        actionsCount: fullReplayData.decodedActions.length,
-        compressedActions: compressedData,
-        compressionRatio: fullReplayData.decodingInfo.decodedSize / fullReplayData.decodingInfo.originalSize,
-        version: fullReplayData.version || '2.0',
-        isPersonalBest: fullReplayData.is_personal_best,
-        isWorldRecord: false,
-        isFeatured: false,
-        createdAt: fullReplayData.created_at,
-        updatedAt: fullReplayData.updated_at,
-        gameSettings: fullReplayData.game_settings,
-        initialBoard: fullReplayData.initial_board,
-        checksum: fullReplayData.checksum || ''
-      };
-
-      setSelectedCompressedReplay(compressedReplay);
-      setShowEnhancedPlayer(true);
-      
-    } catch (error) {
-      console.error('ReplaySystem: Failed to load replay data:', error);
-    }
-  }, []);
+  const handleViewReplay = (replay: GameReplay) => {
+    setSelectedReplayForPreparation(replay);
+    setIsPreparationDialogOpen(true);
+  };
 
   const formatDuration = (duration: number) => {
     const minutes = Math.floor(duration / 60000);
@@ -346,13 +277,12 @@ const ReplaySystem: React.FC = () => {
                   </div>
 
                   <Button
-                    onClick={() => handlePlayReplay(replay)}
+                    onClick={() => handleViewReplay(replay)}
                     className="ml-4"
                     size="sm"
-                    disabled={!replay.isPlayable}
                   >
                     <Play className="w-4 h-4 mr-1" />
-                    {!replay.isPlayable ? '无法播放' : '播放'}
+                    观看回放
                   </Button>
                 </div>
               </CardContent>
@@ -361,22 +291,24 @@ const ReplaySystem: React.FC = () => {
         </div>
       )}
 
-      <ReplayPlayer
-        replay={selectedReplay}
-        isOpen={showReplayPlayer}
-        onClose={() => {
-          setShowReplayPlayer(false);
-          setSelectedReplay(null);
-        }}
-      />
-      
-      {selectedCompressedReplay && (
-        <EnhancedReplayPlayer
-          replay={selectedCompressedReplay}
-          isOpen={showEnhancedPlayer}
+      {selectedReplayForPreparation && (
+        <ReplayPreparationDialog
+          isOpen={isPreparationDialogOpen}
           onClose={() => {
-            setShowEnhancedPlayer(false);
-            setSelectedCompressedReplay(null);
+            setIsPreparationDialogOpen(false);
+            setSelectedReplayForPreparation(null);
+          }}
+          replayId={selectedReplayForPreparation.id}
+          replayInfo={{
+            username: selectedReplayForPreparation.playerName || 'Unknown',
+            gameMode: selectedReplayForPreparation.gameMode,
+            finalScore: selectedReplayForPreparation.score,
+            finalLines: selectedReplayForPreparation.lines,
+            durationSeconds: selectedReplayForPreparation.duration / 1000,
+            pps: selectedReplayForPreparation.pps,
+            apm: selectedReplayForPreparation.apm,
+            isPersonalBest: selectedReplayForPreparation.isPersonalBest,
+            createdAt: selectedReplayForPreparation.date
           }}
         />
       )}
