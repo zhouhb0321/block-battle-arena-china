@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Trophy, Clock, Target, Medal } from 'lucide-react';
+import { Play, Trophy, Clock, Target, Medal, FileX } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ReplayPreparationDialog } from './ReplayPreparationDialog';
 
@@ -18,11 +18,8 @@ interface LeaderboardEntry {
   created_at: string;
   game_mode: string;
   is_personal_best: boolean;
-  compressed_actions: any;
-  initial_board: any;
-  game_settings: any;
-  seed: string;
-  checksum: string;
+  actions_count?: number;
+  version?: string;
 }
 
 const LeaderboardView: React.FC = () => {
@@ -121,6 +118,17 @@ const LeaderboardView: React.FC = () => {
                         PB
                       </Badge>
                     )}
+                    {(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 2.0) ? (
+                      <Badge variant="outline" className="text-green-600 border-green-600">
+                        <Play className="w-3 h-3 mr-1" />
+                        可播放
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-gray-500">
+                        <FileX className="w-3 h-3 mr-1" />
+                        数据不完整
+                      </Badge>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -170,9 +178,19 @@ const LeaderboardView: React.FC = () => {
                 onClick={() => handleViewReplay(entry)}
                 className="ml-4"
                 size="sm"
+                disabled={!(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 2.0)}
               >
-                <Play className="w-4 h-4 mr-1" />
-                观看回放
+                {(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 2.0) ? (
+                  <>
+                    <Play className="w-4 h-4 mr-1" />
+                    观看回放
+                  </>
+                ) : (
+                  <>
+                    <FileX className="w-4 h-4 mr-1" />
+                    数据不完整
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>

@@ -25,9 +25,15 @@ export async function decodeCompressedActionsAny(input: any): Promise<DecodedAct
   const originalSize = typeof input === 'string' ? input.length : (input?.byteLength || input?.length || 0);
 
   try {
-    // Case 1: Already Uint8Array/ArrayBuffer/base64
-    if (input instanceof Uint8Array || input instanceof ArrayBuffer || 
-        (typeof input === 'string' && !input.startsWith('\\x') && !input.startsWith('{'))) {
+    // Case 1: Already Uint8Array/ArrayBuffer
+    if (input instanceof Uint8Array || input instanceof ArrayBuffer) {
+      bytes = toUint8Array(input);
+      encoding = 'binary';
+    }
+    // Case 1b: Base64 string (not starting with \x or { and looks like base64)
+    else if (typeof input === 'string' && !input.startsWith('\\x') && !input.startsWith('{') && 
+             /^[A-Za-z0-9+/]+=*$/.test(input.trim())) {
+      console.info('replayLoader: Detected base64 string, length:', input.length);
       bytes = toUint8Array(input);
       encoding = 'base64';
     }
@@ -174,7 +180,13 @@ export async function loadReplayById(replayId: string) {
   }
 
   // Decode the compressed actions
+  console.info('replayLoader: Starting to decode compressed_actions for replay:', replayId);
   const decodedResult = await decodeCompressedActionsAny(data.compressed_actions);
+  console.info('replayLoader: Decoding completed:', {
+    actionsLength: decodedResult.actions.length,
+    encoding: decodedResult.info.encoding,
+    placeActionsCount: decodedResult.info.placeActionsCount
+  });
   
   // Optionally migrate old format to base64 for future efficiency
   if (decodedResult.info.encoding !== 'base64' && decodedResult.info.encoding !== 'binary') {

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Play, Trophy, Clock, Target } from 'lucide-react';
+import { Play, Trophy, Clock, Target, FileX } from 'lucide-react';
 import { ReplayImporter } from './ReplayImporter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -230,23 +230,29 @@ const ReplaySystem: React.FC = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold">{replay.playerName}</h3>
-                    <Badge variant="secondary">
-                      {getGameModeLabel(replay.gameType)}
-                    </Badge>
-                    {replay.isPersonalBest && (
-                      <Badge className="bg-yellow-500 text-black">
-                        <Trophy className="w-3 h-3 mr-1" />
-                        PB
-                      </Badge>
-                    )}
-                    {!replay.isPlayable && (
-                      <Badge variant="destructive" className="text-xs">
-                        数据不完整（旧格式）
-                      </Badge>
-                    )}
-                  </div>
+                   <div className="flex items-center gap-3 mb-2">
+                     <h3 className="font-semibold">{replay.playerName}</h3>
+                     <Badge variant="secondary">
+                       {getGameModeLabel(replay.gameType)}
+                     </Badge>
+                     {replay.isPersonalBest && (
+                       <Badge className="bg-yellow-500 text-black">
+                         <Trophy className="w-3 h-3 mr-1" />
+                         PB
+                       </Badge>
+                     )}
+                     {replay.isPlayable ? (
+                       <Badge variant="outline" className="text-green-600 border-green-600">
+                         <Play className="w-3 h-3 mr-1" />
+                         可播放
+                       </Badge>
+                     ) : (
+                       <Badge variant="secondary" className="text-gray-500">
+                         <FileX className="w-3 h-3 mr-1" />
+                         数据不完整
+                       </Badge>
+                     )}
+                   </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div className="flex items-center gap-1">

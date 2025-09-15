@@ -79,12 +79,18 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
       clearInterval(progressInterval);
       setLoadProgress(100);
 
-      if (loadedReplay && loadedReplay.compressedReplay) {
-        setReplayData(loadedReplay.compressedReplay);
+      if (loadedReplay && loadedReplay.decodedActions) {
+        // 创建完整的回放数据结构
+        const compressedReplay = {
+          ...loadedReplay,
+          actions: loadedReplay.decodedActions,
+          decodingInfo: loadedReplay.decodingInfo
+        };
+        setReplayData(compressedReplay);
         setLoadingState('success');
         toast({
           title: "录像加载成功",
-          description: `成功载入 ${loadedReplay.decodedResult.actionsCount} 个动作`
+          description: `成功载入 ${loadedReplay.decodingInfo?.placeActionsCount || loadedReplay.actions_count || 0} 个动作`
         });
       } else {
         throw new Error('录像数据无效或无法播放');
