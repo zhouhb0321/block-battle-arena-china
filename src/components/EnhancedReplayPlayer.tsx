@@ -43,9 +43,19 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
     gameLogic.initializeForCountdown();
     gameLogic.startGame();
 
-    const decompressedActions = ReplayCompressor.decompressActions(
-      ReplayCompressor.decodeFromBinary(replay.compressedActions)
-    );
+    // Use pre-decoded actions if available, otherwise decode from binary
+    let decompressedActions;
+    if (replay.actions) {
+      decompressedActions = replay.actions;
+    } else if (replay.compressedActions) {
+      decompressedActions = ReplayCompressor.decompressActions(
+        ReplayCompressor.decodeFromBinary(replay.compressedActions)
+      );
+    } else {
+      console.error('No replay actions available');
+      return;
+    }
+    
     onActionsReady(decompressedActions, gameLogic);
   }, [replay.id]);
 
@@ -265,8 +275,13 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                 <Trophy className="w-5 h-5" />
                 录像回放 - {replay.gameMode}
                 <Badge variant="secondary">
-                  压缩率: {Math.round(replay.compressionRatio * 100)}%
+                  压缩率: {Math.round((replay.compressionRatio || 0) * 100)}%
                 </Badge>
+                {replay.compressedActions && (
+                  <Badge variant="outline">
+                    大小: {(replay.compressedActions.length / 1024).toFixed(1)}KB
+                  </Badge>
+                )}
                 <DialogDescription id="enhanced-replay-description" className="sr-only">
                   Enhanced replay player with multi-speed playback and seeking functionality
                 </DialogDescription>

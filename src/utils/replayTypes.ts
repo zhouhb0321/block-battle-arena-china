@@ -77,29 +77,33 @@ export interface CompressedReplay {
   id: string;
   matchId?: string;
   gameId?: string;
-  userId: string;
+  userId?: string;
   opponentId?: string;
   gameMode: string;
-  gameType: 'single' | 'ranked' | '1v1';
+  gameType?: 'single' | 'ranked' | '1v1';
   seed: string;
-  initialBoard: number[][];
-  gameSettings: any;
-  compressedActions: Uint8Array;
-  actionsCount: number;
-  compressionRatio: number;
+  initialBoard?: number[][];
+  gameSettings?: any;
+  compressedActions?: Uint8Array;
+  actionsCount?: number;
+  compressionRatio?: number;
   finalScore: number;
   finalLines: number;
-  finalLevel: number;
+  finalLevel?: number;
   pps: number;
   apm: number;
   durationSeconds: number;
-  isPersonalBest: boolean;
-  isWorldRecord: boolean;
-  isFeatured: boolean;
-  checksum: string;
-  version: string;
-  createdAt: string;
-  updatedAt: string;
+  isPersonalBest?: boolean;
+  isWorldRecord?: boolean;
+  isFeatured?: boolean;
+  checksum?: string;
+  version?: string;
+  // Additional properties for v3.0+
+  actions?: any[]; // Decoded actions array
+  username?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  decodedResult?: any; // Decoding metadata
 }
 
 export interface ReplayBookmark {

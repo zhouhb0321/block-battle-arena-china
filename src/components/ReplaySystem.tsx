@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Play, Trophy, Clock, Target, FileX } from 'lucide-react';
+import { Play, Upload, RefreshCw, Trophy, Clock, Target, AlertCircle } from 'lucide-react';
 import { ReplayImporter } from './ReplayImporter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +28,7 @@ const ReplaySystem: React.FC = () => {
     
     setIsLoading(true);
     try {
-      // Load only metadata from compressed_replays (no compressed_actions)
+      // Load only v3.0+ metadata from compressed_replays
       const { data: compressedReplays, error: compressedError } = await supabase
         .from('compressed_replays')
         .select(`
@@ -38,6 +38,7 @@ const ReplaySystem: React.FC = () => {
           initial_board, game_settings
         `)
         .eq('user_id', user.id)
+        .gte('version', '3.0')
         .order('created_at', { ascending: false });
 
       const processedReplays: GameReplay[] = [];
@@ -241,17 +242,17 @@ const ReplaySystem: React.FC = () => {
                          PB
                        </Badge>
                      )}
-                     {replay.isPlayable ? (
-                       <Badge variant="outline" className="text-green-600 border-green-600">
-                         <Play className="w-3 h-3 mr-1" />
-                         可播放
-                       </Badge>
-                     ) : (
-                       <Badge variant="secondary" className="text-gray-500">
-                         <FileX className="w-3 h-3 mr-1" />
-                         数据不完整
-                       </Badge>
-                     )}
+                      {replay.isPlayable ? (
+                        <Badge variant="default" className="bg-green-500 text-white">
+                          <Play className="w-3 h-3 mr-1" />
+                          可播放
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-muted-foreground">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          数据不完整
+                        </Badge>
+                      )}
                    </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -282,14 +283,38 @@ const ReplaySystem: React.FC = () => {
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => handleViewReplay(replay)}
-                    className="ml-4"
-                    size="sm"
-                  >
-                    <Play className="w-4 h-4 mr-1" />
-                    观看回放
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {replay.isPlayable ? (
+                      <Badge variant="default" className="bg-green-500 text-white">
+                        <Play className="w-3 h-3 mr-1" />
+                        可播放
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-muted-foreground">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        数据不完整
+                      </Badge>
+                    )}
+                    
+                    <Button 
+                      onClick={() => handleViewReplay(replay)}
+                      className="ml-4"
+                      size="sm"
+                      disabled={!replay.isPlayable}
+                    >
+                      {replay.isPlayable ? (
+                        <>
+                          <Play className="w-4 h-4 mr-1" />
+                          观看回放
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          数据不完整
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

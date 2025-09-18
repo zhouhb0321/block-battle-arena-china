@@ -79,18 +79,13 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
       clearInterval(progressInterval);
       setLoadProgress(100);
 
-      if (loadedReplay && loadedReplay.decodedActions) {
-        // 创建完整的回放数据结构
-        const compressedReplay = {
-          ...loadedReplay,
-          actions: loadedReplay.decodedActions,
-          decodingInfo: loadedReplay.decodingInfo
-        };
-        setReplayData(compressedReplay);
+      if (loadedReplay && loadedReplay.actions) {
+        // loadReplayById now returns a complete CompressedReplay object
+        setReplayData(loadedReplay);
         setLoadingState('success');
         toast({
           title: "录像加载成功",
-          description: `成功载入 ${loadedReplay.decodingInfo?.placeActionsCount || loadedReplay.actions_count || 0} 个动作`
+          description: `成功载入 ${loadedReplay.decodedResult?.placeActionsCount || loadedReplay.actionsCount || 0} 个动作`
         });
       } else {
         throw new Error('录像数据无效或无法播放');
@@ -272,8 +267,8 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
         </DialogContent>
       </Dialog>
 
-      {/* 增强回放播放器 */}
-      {replayData && (
+      {/* 增强回放播放器 - 只在数据完整且对话框打开时渲染 */}
+      {replayData && isPlayerOpen && (
         <EnhancedReplayPlayer
           replay={replayData}
           isOpen={isPlayerOpen}

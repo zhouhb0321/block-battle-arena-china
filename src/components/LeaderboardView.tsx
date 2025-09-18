@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Trophy, Clock, Target, Medal, FileX } from 'lucide-react';
+import { Play, Trophy, Clock, Target, Medal, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ReplayPreparationDialog } from './ReplayPreparationDialog';
 
@@ -36,12 +36,13 @@ const LeaderboardView: React.FC = () => {
   const loadLeaderboards = async () => {
     setLoading(true);
     try {
-      // Load 40-line sprint leaderboard (fastest times)
+      // Load v3.0+ 40-line sprint leaderboard (fastest times)
       const { data: sprint40Data, error: sprint40Error } = await supabase
         .from('compressed_replays')
-        .select('*')
+        .select('id, username, game_mode, final_score, final_lines, duration_seconds, pps, apm, is_personal_best, created_at, actions_count, version')
         .eq('game_mode', 'sprint40')
         .eq('is_featured', true)
+        .gte('version', '3.0')
         .order('duration_seconds', { ascending: true })
         .limit(500);
 
@@ -49,12 +50,13 @@ const LeaderboardView: React.FC = () => {
         setSprint40Leaderboard(sprint40Data);
       }
 
-      // Load 2-minute time attack leaderboard (highest scores)
+      // Load v3.0+ 2-minute time attack leaderboard (highest scores)
       const { data: timeAttack2Data, error: timeAttack2Error } = await supabase
         .from('compressed_replays')
-        .select('*')
+        .select('id, username, game_mode, final_score, final_lines, duration_seconds, pps, apm, is_personal_best, created_at, actions_count, version')
         .in('game_mode', ['timeAttack2', 'ultra2min'])
         .eq('is_featured', true)
+        .gte('version', '3.0')
         .order('final_score', { ascending: false })
         .limit(500);
 
@@ -118,14 +120,14 @@ const LeaderboardView: React.FC = () => {
                         PB
                       </Badge>
                     )}
-                    {(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 2.0) ? (
-                      <Badge variant="outline" className="text-green-600 border-green-600">
+                    {(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 3.0) ? (
+                      <Badge variant="default" className="bg-green-500 text-white">
                         <Play className="w-3 h-3 mr-1" />
                         可播放
                       </Badge>
                     ) : (
-                      <Badge variant="secondary" className="text-gray-500">
-                        <FileX className="w-3 h-3 mr-1" />
+                      <Badge variant="secondary" className="text-muted-foreground">
+                        <AlertCircle className="w-3 h-3 mr-1" />
                         数据不完整
                       </Badge>
                     )}
@@ -178,17 +180,17 @@ const LeaderboardView: React.FC = () => {
                 onClick={() => handleViewReplay(entry)}
                 className="ml-4"
                 size="sm"
-                disabled={!(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 2.0)}
+                disabled={!(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 3.0)}
               >
-                {(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 2.0) ? (
+                {(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 3.0) ? (
                   <>
                     <Play className="w-4 h-4 mr-1" />
                     观看回放
                   </>
                 ) : (
                   <>
-                    <FileX className="w-4 h-4 mr-1" />
-                    数据不完整
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    无法播放
                   </>
                 )}
               </Button>
