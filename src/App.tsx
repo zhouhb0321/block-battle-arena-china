@@ -11,11 +11,14 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import AuthErrorBoundary from "@/components/AuthErrorBoundary";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import "@/utils/securityHeaders";
 
 const queryClient = new QueryClient();
 
 function App() {
+  useSessionTimeout();
+  
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

@@ -23,7 +23,8 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
   const [loading, setLoading] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
-  const [devMode, setDevMode] = useState(process.env.NODE_ENV === 'development');
+  // Remove development mode MFA bypass for security
+  const [devMode] = useState(false); // Always require MFA for admin access
 
   // 检查现有用户登录状态 - 使用角色系统
   useEffect(() => {
@@ -103,13 +104,25 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
 
   const sendMFACode = async (userEmail: string) => {
     const code = generateMFACode();
-    // 在实际应用中，这里应该发送到用户的邮箱或短信
-    // 现在我们存储在localStorage中模拟
-    localStorage.setItem('admin_mfa_code', JSON.stringify({
+    // Store in sessionStorage for better security
+    sessionStorage.setItem('admin_mfa_code', JSON.stringify({
       code,
       email: userEmail,
       expires: Date.now() + (5 * 60 * 1000) // 5分钟有效期
     }));
+    
+    // Log security event
+    try {
+      await supabase.from('security_events').insert({
+        user_id: null,
+        event_type: 'admin_mfa_request',
+        event_data: { email: userEmail },
+        severity: 'info',
+        source: 'admin_auth'
+      });
+    } catch (error) {
+      console.warn('Failed to log MFA request:', error);
+    }
     
     // 模拟发送延迟
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -210,27 +223,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
           // Don't fail the login for logging errors
         }
         
-        // 开发模式下跳过MFA验证
-        if (devMode) {
-          console.log('开发模式：跳过MFA验证');
-          setFailedAttempts(0);
-          localStorage.removeItem('admin_lockout');
-          
-          // 设置管理员会话
-          const adminSession = {
-            email,
-            authenticated: true,
-            timestamp: Date.now(),
-            expires: Date.now() + (4 * 60 * 60 * 1000),
-            devMode: true
-          };
-          localStorage.setItem('admin_session', JSON.stringify(adminSession));
-          
-          onAuthenticated();
-          return;
-        }
-        
-        // 生产模式发送MFA验证码
+        // Always require MFA for admin access - no development bypass
         try {
           await sendMFACode(email);
           setStep('mfa');
@@ -257,7 +250,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
     setError('');
 
     try {
-      const savedMFA = localStorage.getItem('admin_mfa_code');
+      const savedMFA = sessionStorage.getItem('admin_mfa_code');
       if (!savedMFA) {
         throw new Error('验证码已过期，请重新登录');
       }
@@ -275,11 +268,13 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
       } catch (parseError) {
         console.error('Failed to parse MFA data:', parseError);
         localStorage.removeItem('admin_mfa_code');
+        sessionStorage.removeItem('admin_mfa_code');
         throw new Error('验证码数据无效，请重新登录');
       }
 
       if (Date.now() > mfaData.expires) {
         localStorage.removeItem('admin_mfa_code');
+        sessionStorage.removeItem('admin_mfa_code');
         throw new Error('验证码已过期，请重新登录');
       }
 
@@ -290,6 +285,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
 
       // 验证成功
       localStorage.removeItem('admin_mfa_code');
+      sessionStorage.removeItem('admin_mfa_code');
       setFailedAttempts(0);
       localStorage.removeItem('admin_lockout');
       setStep('verified');

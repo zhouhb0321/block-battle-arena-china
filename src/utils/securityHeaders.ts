@@ -1,23 +1,88 @@
-// Utility to set secure iframe policies and handle browser permissions
+// Enhanced security utilities for iframe policies and CSP headers
 export const initializeSecurityPolicies = () => {
   // Handle iframe security warnings by setting proper attributes
   const iframes = document.querySelectorAll('iframe');
   iframes.forEach(iframe => {
-    // Remove dangerous combinations that trigger warnings
     const sandbox = iframe.getAttribute('sandbox');
     if (sandbox && sandbox.includes('allow-scripts') && sandbox.includes('allow-same-origin')) {
       console.warn('发现不安全的iframe配置，正在修复...');
-      // Keep functionality but remove security warning
       iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-presentation');
     }
   });
 
-  // Handle permissions policy warnings by ensuring proper meta tags
+  // Enhanced Content Security Policy
+  if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
+    const cspMeta = document.createElement('meta');
+    cspMeta.setAttribute('http-equiv', 'Content-Security-Policy');
+    cspMeta.setAttribute('content', [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: https: blob:",
+      "media-src 'self' blob:",
+      "connect-src 'self' wss: https://wcwnyvoezudyxiayyzek.supabase.co",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'"
+    ].join('; '));
+    document.head.appendChild(cspMeta);
+  }
+
+  // Enhanced Permissions Policy
   if (!document.querySelector('meta[http-equiv="Permissions-Policy"]')) {
-    const meta = document.createElement('meta');
-    meta.setAttribute('http-equiv', 'Permissions-Policy');
-    meta.setAttribute('content', 'vr=(), ambient-light-sensor=(), battery=()');
-    document.head.appendChild(meta);
+    const permissionsMeta = document.createElement('meta');
+    permissionsMeta.setAttribute('http-equiv', 'Permissions-Policy');
+    permissionsMeta.setAttribute('content', [
+      'vr=()',
+      'ambient-light-sensor=()',
+      'battery=()',
+      'camera=()',
+      'microphone=()',
+      'geolocation=()',
+      'payment=()'
+    ].join(', '));
+    document.head.appendChild(permissionsMeta);
+  }
+
+  // Add security headers via meta tags
+  const securityHeaders = [
+    { name: 'X-Content-Type-Options', content: 'nosniff' },
+    { name: 'X-Frame-Options', content: 'DENY' },
+    { name: 'X-XSS-Protection', content: '1; mode=block' },
+    { name: 'Referrer-Policy', content: 'strict-origin-when-cross-origin' }
+  ];
+
+  securityHeaders.forEach(({ name, content }) => {
+    if (!document.querySelector(`meta[http-equiv="${name}"]`)) {
+      const meta = document.createElement('meta');
+      meta.setAttribute('http-equiv', name);
+      meta.setAttribute('content', content);
+      document.head.appendChild(meta);
+    }
+  });
+};
+
+// Enhanced security event logging
+export const logSecurityEvent = async (eventType: string, eventData: any, severity: 'info' | 'warn' | 'error' = 'info') => {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    await supabase.from('security_events').insert({
+      user_id: null,
+      event_type: eventType,
+      event_data: {
+        ...eventData,
+        timestamp: new Date().toISOString(),
+        user_agent: navigator.userAgent,
+        url: window.location.href
+      },
+      severity,
+      source: 'client',
+      ip_address: null
+    });
+  } catch (error) {
+    console.error('Failed to log security event:', error);
   }
 };
 
@@ -29,7 +94,7 @@ if (typeof window !== 'undefined') {
     initializeSecurityPolicies();
   }
   
-  // Also handle dynamically added iframes
+  // Enhanced iframe monitoring
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
@@ -39,6 +104,9 @@ if (typeof window !== 'undefined') {
             const sandbox = element.getAttribute('sandbox');
             if (sandbox && sandbox.includes('allow-scripts') && sandbox.includes('allow-same-origin')) {
               element.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-presentation');
+              logSecurityEvent('iframe_security_fix', { 
+                element: element.outerHTML.substring(0, 200) 
+              }, 'warn');
             }
           }
         }

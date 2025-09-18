@@ -1037,6 +1037,9 @@ export type Database = {
           event_type: string
           id: string
           ip_address: unknown | null
+          session_id: string | null
+          severity: string | null
+          source: string | null
           user_agent: string | null
           user_id: string | null
         }
@@ -1046,6 +1049,9 @@ export type Database = {
           event_type: string
           id?: string
           ip_address?: unknown | null
+          session_id?: string | null
+          severity?: string | null
+          source?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -1055,6 +1061,9 @@ export type Database = {
           event_type?: string
           id?: string
           ip_address?: unknown | null
+          session_id?: string | null
+          severity?: string | null
+          source?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -1305,6 +1314,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: unknown | null
+          last_activity: string
+          session_token: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          last_activity?: string
+          session_token: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          last_activity?: string
+          session_token?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           arr: number
@@ -1400,6 +1442,10 @@ export type Database = {
           loser_new_rating: number
           winner_new_rating: number
         }[]
+      }
+      cleanup_expired_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       get_subscribers_safe: {
         Args: Record<PropertyKey, never>
