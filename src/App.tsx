@@ -16,8 +16,13 @@ import "@/utils/securityHeaders";
 
 const queryClient = new QueryClient();
 
-function App() {
+// Component to handle session timeout inside AuthProvider
+const SessionManager = () => {
   useSessionTimeout();
+  return null;
+};
+
+function App() {
   
   return (
     <QueryClientProvider client={queryClient}>
@@ -25,6 +30,7 @@ function App() {
         <TooltipProvider>
           <AuthErrorBoundary>
             <AuthProvider>
+              <SessionManager />
               <LanguageProvider>
                 <GameProvider>
                   <Toaster />
