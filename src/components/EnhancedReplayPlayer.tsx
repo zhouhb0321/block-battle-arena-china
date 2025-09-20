@@ -288,6 +288,14 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
               </DialogTitle>
             </DialogHeader>
 
+            {/* Mount ReplayGame to initialize game logic */}
+            <ReplayGame 
+              key={replayKey}
+              replay={replay}
+              onStateUpdate={handleStateUpdate}
+              onActionsReady={handleActionsReady}
+            />
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 游戏区域 */}
           <div className="lg:col-span-2 space-y-4">
