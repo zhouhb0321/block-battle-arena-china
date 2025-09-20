@@ -94,7 +94,18 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
       console.error('Failed to load replay:', error);
       setLoadingState('error');
       setLoadProgress(0);
-      const errorMsg = error instanceof Error ? error.message : '加载录像失败';
+      
+      let errorMsg = error instanceof Error ? error.message : '加载录像失败';
+      
+      // Provide more helpful error messages for common issues
+      if (errorMsg.includes('base64') || errorMsg.includes('Invalid base64 format')) {
+        errorMsg = `数据格式问题: ${errorMsg}。这可能是由于录像在数据库中的存储格式导致的。`;
+      } else if (errorMsg.includes('No data after decoding')) {
+        errorMsg = '录像数据为空或已损坏，无法解码。';
+      } else if (errorMsg.includes('zero actions')) {
+        errorMsg = '录像中没有有效的游戏动作，可能是录制不完整。';
+      }
+      
       setErrorMessage(errorMsg);
       toast({
         variant: "destructive",

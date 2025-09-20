@@ -15,46 +15,106 @@ export interface DecodedActionsResult {
 }
 
 /**
- * V3.0+ replay decoder - only handles base64 encoded binary data
+ * V3.0+ replay decoder - handles various encoded binary data formats
  */
-export async function decodeV3ReplayActions(base64Input: string): Promise<DecodedActionsResult> {
-  console.info('replayLoader: Decoding v3.0 replay actions, base64 length:', base64Input.length);
+export async function decodeV3ReplayActions(dataInput: string): Promise<DecodedActionsResult> {
+  console.info('replayLoader: Decoding v3.0 replay actions, input length:', dataInput?.length || 0);
 
   try {
-    // Validate base64 format
-    if (!/^[A-Za-z0-9+/]+=*$/.test(base64Input.trim())) {
-      throw new Error('Invalid base64 format');
+    if (!dataInput) {
+      throw new Error('Empty replay data');
     }
 
-    // Convert base64 to Uint8Array
-    const bytes = toUint8Array(base64Input);
+    // Normalize the input - remove whitespace and data URL prefixes
+    let normalizedInput = dataInput.trim();
     
+    // Handle data URLs (data:application/octet-stream;base64,...)
+    if (normalizedInput.startsWith('data:')) {
+      const commaIndex = normalizedInput.indexOf(',');
+      if (commaIndex !== -1) {
+        normalizedInput = normalizedInput.substring(commaIndex + 1);
+        console.info('replayLoader: Stripped data URL prefix');
+      }
+    }
+
+    // Handle URL-safe base64 (replace - with + and _ with /)
+    normalizedInput = normalizedInput.replace(/-/g, '+').replace(/_/g, '/');
+    
+    // Add padding if needed
+    while (normalizedInput.length % 4) {
+      normalizedInput += '=';
+    }
+
+    console.info('replayLoader: Input analysis', {
+      originalLength: dataInput.length,
+      normalizedLength: normalizedInput.length,
+      startsWithHex: dataInput.startsWith('\\x'),
+      startsWithData: dataInput.startsWith('data:'),
+      isObject: typeof dataInput === 'object',
+      sample: dataInput.substring(0, 50)
+    });
+
+    // Use toUint8Array to handle various formats (hex, base64, arrays, etc.)
+    const bytes = toUint8Array(normalizedInput);
+    
+    if (bytes.length === 0) {
+      throw new Error('No data after decoding');
+    }
+    
+    console.info('replayLoader: Decoded bytes', {
+      byteLength: bytes.length,
+      firstBytes: Array.from(bytes.slice(0, 10)),
+      lastBytes: Array.from(bytes.slice(-10))
+    });
+
     // Decode binary data using ReplayCompressor
     const compressedActions = ReplayCompressor.decodeFromBinary(bytes);
     const actions = ReplayCompressor.decompressActions(compressedActions);
     
     const placeActionsCount = actions.filter(action => action.action === 'place').length;
     
+    // Determine the encoding type based on input characteristics
+    let encoding: 'base64' | 'bytea-hex' | 'ascii-json' | 'json-array' | 'binary' = 'base64';
+    if (dataInput.startsWith('\\x')) {
+      encoding = 'bytea-hex';
+    } else if (dataInput.startsWith('[') && dataInput.endsWith(']')) {
+      encoding = 'json-array';
+    } else if (typeof dataInput === 'object') {
+      encoding = 'binary';
+    }
+    
     console.info('replayLoader: V3.0 decode successful', {
-      originalSize: base64Input.length,
+      encoding,
+      originalSize: dataInput.length,
       decodedSize: bytes.length,
       actionsCount: actions.length,
       placeActionsCount
     });
 
+    // Gentle warnings for potentially problematic replays
+    if (actions.length === 0) {
+      console.warn('replayLoader: Replay has zero actions, may not be playable');
+    } else if (placeActionsCount === 0) {
+      console.warn('replayLoader: Replay has no place actions, may be incomplete');
+    }
+
     return {
       bytes,
       actions,
       info: {
-        encoding: 'base64',
-        originalSize: base64Input.length,
+        encoding,
+        originalSize: dataInput.length,
         decodedSize: bytes.length,
         placeActionsCount
       }
     };
 
   } catch (error) {
-    console.error('replayLoader: V3.0 decode failed:', error);
+    console.error('replayLoader: V3.0 decode failed:', error, {
+      inputType: typeof dataInput,
+      inputLength: dataInput?.length || 0,
+      inputSample: typeof dataInput === 'string' ? dataInput.substring(0, 100) : dataInput
+    });
     throw new Error(`Failed to decode v3.0 replay: ${error.message}`);
   }
 }
@@ -82,8 +142,8 @@ export async function loadReplayById(replayId: string) {
     throw new Error('V3.0+ replay not found');
   }
 
-  if (!data.compressed_actions || typeof data.compressed_actions !== 'string') {
-    throw new Error('Invalid replay data: compressed_actions must be base64 string');
+  if (!data.compressed_actions) {
+    throw new Error('Invalid replay data: compressed_actions is missing');
   }
 
   // Decode the v3.0 compressed actions
