@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import EnhancedGameBoard from '@/components/EnhancedGameBoard';
+import HoldPieceDisplay from '@/components/HoldPieceDisplay';
+import NextPiecePreview from '@/components/NextPiecePreview';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { ReplayCompressor } from '@/utils/replayCompression';
 import { 
@@ -40,6 +42,7 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
   });
 
   useEffect(() => {
+    console.log('ReplayGame: Initializing game for replay:', replay.id);
     gameLogic.initializeForCountdown();
     gameLogic.startGame();
 
@@ -47,21 +50,33 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
     let decompressedActions;
     if (replay.actions) {
       decompressedActions = replay.actions;
+      console.log('ReplayGame: Using pre-decoded actions:', decompressedActions.length);
     } else if (replay.compressedActions) {
+      console.log('ReplayGame: Decoding compressed actions...');
       decompressedActions = ReplayCompressor.decompressActions(
         ReplayCompressor.decodeFromBinary(replay.compressedActions)
       );
+      console.log('ReplayGame: Decoded actions:', decompressedActions.length);
     } else {
-      console.error('No replay actions available');
+      console.error('ReplayGame: No replay actions available');
       return;
     }
     
     onActionsReady(decompressedActions, gameLogic);
   }, [replay.id]);
 
+  // Trigger state updates when key game properties change
   useEffect(() => {
     onStateUpdate(gameLogic);
-  }, [gameLogic, onStateUpdate]);
+  }, [
+    gameLogic.board, 
+    gameLogic.currentPiece, 
+    gameLogic.score, 
+    gameLogic.lines, 
+    gameLogic.nextPieces, 
+    gameLogic.holdPiece,
+    onStateUpdate
+  ]);
 
   return null;
 };
@@ -92,14 +107,43 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   };
 
   const handleActionsReady = useCallback((decompressedActions, logic) => {
+    console.log('handleActionsReady: Processing actions...', {
+      totalActions: decompressedActions.length,
+      replayDuration: replay.durationSeconds
+    });
+
     // Sort actions by timestamp to ensure proper playback order
     const sortedActions = [...decompressedActions].sort((a, b) => a.timestamp - b.timestamp);
     actionsRef.current = sortedActions;
     gameLogicRef.current = logic;
+    
+    // Calculate total time more accurately
     const lastAction = sortedActions[sortedActions.length - 1];
-    setTotalTime(lastAction ? lastAction.timestamp : replay.durationSeconds * 1000);
-    // 准备好后，将指针重置为0
+    const calculatedTotalTime = lastAction ? 
+      Math.max(lastAction.timestamp, replay.durationSeconds * 1000) : 
+      replay.durationSeconds * 1000;
+    
+    console.log('handleActionsReady: Time calculation', {
+      lastActionTimestamp: lastAction?.timestamp,
+      replayDurationMs: replay.durationSeconds * 1000,
+      calculatedTotalTime
+    });
+    
+    // Validate time values
+    if (calculatedTotalTime > 86400000) { // More than 24 hours seems wrong
+      console.warn('handleActionsReady: Suspiciously large total time, using replay duration instead');
+      setTotalTime(replay.durationSeconds * 1000);
+    } else {
+      setTotalTime(calculatedTotalTime);
+    }
+    
+    // Reset action pointer
     currentActionIndexRef.current = 0;
+    
+    console.log('handleActionsReady: Ready to play', {
+      actionsCount: sortedActions.length,
+      totalTime: calculatedTotalTime
+    });
   }, [replay.durationSeconds]);
 
   const [gameLogicState, setGameLogicState] = useState(null);
@@ -108,13 +152,24 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   }, []);
 
   const processActionsUntilTime = useCallback((targetTime: number, fromTime: number = 0) => {
-    if (!gameLogicRef.current) return;
+    if (!gameLogicRef.current) {
+      console.warn('processActionsUntilTime: No game logic available');
+      return;
+    }
 
     const actions = actionsRef.current;
     const logic = gameLogicRef.current;
     let newPiecesPlaced = piecesPlaced;
     let newActionsProcessed = actionsProcessed;
     let lastActionTime = fromTime;
+    let actionsExecuted = 0;
+
+    console.log('processActionsUntilTime: Processing', {
+      targetTime,
+      fromTime,
+      totalActions: actions.length,
+      currentIndex: currentActionIndexRef.current
+    });
 
     while (currentActionIndexRef.current < actions.length) {
       const action = actions[currentActionIndexRef.current];
@@ -127,19 +182,25 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
       }
 
       // Execute actions at their exact timestamp
+      console.log('processActionsUntilTime: Executing action', {
+        action: action.action,
+        timestamp: action.timestamp,
+        data: action.data
+      });
+
       switch (action.action) {
         case 'move':
-          if (action.data.direction === 'left') logic.movePiece(-1, 0);
-          else if (action.data.direction === 'right') logic.movePiece(1, 0);
+          if (action.data?.direction === 'left') logic.movePiece(-1, 0);
+          else if (action.data?.direction === 'right') logic.movePiece(1, 0);
           // Ignore 'down' moves - let gravity handle falling
           break;
         case 'rotate':
-          if (action.data.direction === 'clockwise') logic.rotatePieceClockwise();
-          else if (action.data.direction === 'counterclockwise') logic.rotatePieceCounterclockwise();
-          else if (action.data.direction === '180') logic.rotatePiece180();
+          if (action.data?.direction === 'clockwise') logic.rotatePieceClockwise();
+          else if (action.data?.direction === 'counterclockwise') logic.rotatePieceCounterclockwise();
+          else if (action.data?.direction === '180') logic.rotatePiece180();
           break;
         case 'drop':
-          if (action.data.type === 'hard') logic.hardDrop();
+          if (action.data?.type === 'hard') logic.hardDrop();
           // Ignore soft drops - let gravity handle falling
           break;
         case 'hold':
@@ -154,7 +215,7 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
             // Check for inconsistency and correct if needed
             if (expectedPiece.x !== actualPiece.x || expectedPiece.y !== actualPiece.y || 
                 expectedPiece.rotation !== actualPiece.rotation) {
-              console.warn('Replay inconsistency detected - correcting position:', {
+              console.warn('processActionsUntilTime: Correcting position inconsistency', {
                 expected: expectedPiece,
                 actual: actualPiece,
                 timestamp: action.timestamp
@@ -170,16 +231,29 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
       lastActionTime = action.timestamp;
       newActionsProcessed++;
       currentActionIndexRef.current++;
+      actionsExecuted++;
     }
 
     // Tick any remaining time after last action
     if (targetTime > lastActionTime && logic.tickReplay) {
-      logic.tickReplay(targetTime - lastActionTime);
+      const remainingDelta = targetTime - lastActionTime;
+      logic.tickReplay(remainingDelta);
     }
+
+    console.log('processActionsUntilTime: Completed', {
+      actionsExecuted,
+      newPiecesPlaced,
+      finalTime: targetTime
+    });
 
     // Update statistics if changed
     if (newPiecesPlaced !== piecesPlaced) setPiecesPlaced(newPiecesPlaced);
     if (newActionsProcessed !== actionsProcessed) setActionsProcessed(newActionsProcessed);
+    
+    // Force state update to trigger re-render
+    if (gameLogicRef.current) {
+      setGameLogicState({...gameLogicRef.current});
+    }
   }, [piecesPlaced, actionsProcessed]);
 
   const resetReplay = useCallback(() => {
@@ -194,21 +268,30 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
 
   const seekTo = useCallback((time: number) => {
     const targetTime = Math.max(0, Math.min(time, totalTime));
+    
+    console.log('seekTo: Seeking to time', { targetTime, totalTime });
+
+    // Pause playback during seek
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    setIsPlaying(false);
 
     // Reset completely and replay from start using "fast-forward replay"
     setReplayKey(Date.now());
     setCurrentTime(0);
-    setIsPlaying(false);
     setPiecesPlaced(0);
     setActionsProcessed(0);
     currentActionIndexRef.current = 0;
 
     // Wait for new gameLogic instance to be ready, then fast-forward to target time
     setTimeout(() => {
+      console.log('seekTo: Fast-forwarding to target time');
       // Fast-forward replay with physics simulation
       processActionsUntilTime(targetTime, 0);
       setCurrentTime(targetTime);
-    }, 100);
+      console.log('seekTo: Seek completed');
+    }, 150); // Slightly longer wait to ensure game is ready
   }, [totalTime, processActionsUntilTime]);
 
   const togglePlayback = useCallback(() => {
@@ -251,10 +334,18 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
     };
   }, [isPlaying, playbackSpeed, totalTime, processActionsUntilTime]);
 
-  // 格式化时间
+  // 格式化时间 - 带输入验证
   const formatTime = (ms: number): string => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
+    // Validate input
+    if (!ms || ms < 0 || !isFinite(ms)) {
+      return '0:00';
+    }
+    
+    // Cap at reasonable maximum (1 hour)  
+    const cappedMs = Math.min(ms, 3600000);
+    
+    const minutes = Math.floor(cappedMs / 60000);
+    const seconds = Math.floor((cappedMs % 60000) / 1000);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
@@ -302,18 +393,47 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
             {/* 游戏画面 */}
             <Card>
               <CardContent className="p-4">
-                <div className="flex justify-center">
-                  {gameLogicState && (
-                    <EnhancedGameBoard
-                      board={gameLogicState.board}
-                      currentPiece={gameLogicState.currentPiece}
-                      ghostPiece={gameLogicState.ghostPiece}
-                      clearingLines={[]}
-                      cellSize={24}
-                      showGrid={true}
-                      showHiddenRows={false}
-                    />
-                  )}
+                <div className="flex justify-center items-start gap-6">
+                  {/* Hold区域 */}
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-sm font-medium text-center">HOLD</h3>
+                    {gameLogicState && (
+                      <HoldPieceDisplay
+                        holdPiece={gameLogicState.holdPiece}
+                        canHold={gameLogicState.canHold}
+                      />
+                    )}
+                  </div>
+
+                  {/* 游戏板 */}
+                  <div className="flex flex-col items-center">
+                    {gameLogicState ? (
+                      <EnhancedGameBoard
+                        board={gameLogicState.board}
+                        currentPiece={gameLogicState.currentPiece}
+                        ghostPiece={gameLogicState.ghostPiece}
+                        clearingLines={[]}
+                        cellSize={24}
+                        showGrid={true}
+                        showHiddenRows={false}
+                      />
+                    ) : (
+                      <div className="w-60 h-96 bg-muted/50 rounded border flex items-center justify-center">
+                        <span className="text-muted-foreground">加载中...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Next区域 */}
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-sm font-medium text-center">NEXT</h3>
+                    {gameLogicState && (
+                      <NextPiecePreview
+                        nextPieces={gameLogicState.nextPieces}
+                        compact={false}
+                      />
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -329,10 +449,14 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                   </div>
                   <Slider
                     value={[currentTime]}
-                    max={totalTime}
-                    step={100}
-                    onValueChange={(value) => seekTo(value[0])}
-                    className="w-full"
+                    max={totalTime || 1}
+                    step={Math.max(100, Math.floor((totalTime || 1) / 1000))}
+                    onValueChange={(value) => {
+                      const newTime = value[0];
+                      console.log('Slider: Seeking to', newTime);
+                      seekTo(newTime);
+                    }}
+                    className="w-full cursor-pointer"
                   />
                   <Progress 
                     value={(currentTime / totalTime) * 100}
