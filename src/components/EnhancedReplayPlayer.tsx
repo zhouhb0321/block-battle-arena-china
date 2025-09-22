@@ -100,7 +100,7 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   const actionsRef = useRef<DecompressedReplayAction[]>([]);
   const gameLogicRef = useRef<any>(null);
   const currentActionIndexRef = useRef(0);
-
+  const timeScaleRef = useRef(1);
   const playerConfig = {
     speedOptions: [0.25, 0.5, 1, 2, 4],
     ...config
@@ -114,34 +114,59 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
 
     // Sort actions by timestamp to ensure proper playback order
     const sortedActions = [...decompressedActions].sort((a, b) => a.timestamp - b.timestamp);
-    actionsRef.current = sortedActions;
+
+    // Detect and normalize timestamp unit (seconds, ms, or micros)
+    const firstTs = sortedActions[0]?.timestamp ?? 0;
+    const lastTs = sortedActions[sortedActions.length - 1]?.timestamp ?? 0;
+    const expectedMs = (replay.durationSeconds || 0) * 1000;
+
+    let multiplier = 1; // default: already ms
+    if (expectedMs > 0) {
+      if (lastTs < expectedMs / 10) {
+        // Looks like seconds → convert to ms
+        multiplier = 1000;
+      } else if (lastTs > expectedMs * 10) {
+        // Looks like microseconds → convert to ms
+        multiplier = 0.001;
+      }
+    }
+    timeScaleRef.current = multiplier;
+
+    const normalizedActions = multiplier !== 1
+      ? sortedActions.map(a => ({ ...a, timestamp: Math.round(a.timestamp * multiplier) }))
+      : sortedActions;
+
+    actionsRef.current = normalizedActions;
     gameLogicRef.current = logic;
     
-    // Calculate total time more accurately
-    const lastAction = sortedActions[sortedActions.length - 1];
-    const calculatedTotalTime = lastAction ? 
-      Math.max(lastAction.timestamp, replay.durationSeconds * 1000) : 
-      replay.durationSeconds * 1000;
+    // Calculate total time using normalized timestamps
+    const normalizedLast = normalizedActions[normalizedActions.length - 1]?.timestamp ?? 0;
+    const calculatedTotalTime = normalizedLast ? 
+      Math.max(normalizedLast, expectedMs) : 
+      expectedMs;
     
-    console.log('handleActionsReady: Time calculation', {
-      lastActionTimestamp: lastAction?.timestamp,
-      replayDurationMs: replay.durationSeconds * 1000,
+    console.log('handleActionsReady: Time normalization', {
+      firstTs,
+      lastTs,
+      expectedMs,
+      multiplier,
+      normalizedLast,
       calculatedTotalTime
     });
     
     // Validate time values
-    if (calculatedTotalTime > 86400000) { // More than 24 hours seems wrong
-      console.warn('handleActionsReady: Suspiciously large total time, using replay duration instead');
-      setTotalTime(replay.durationSeconds * 1000);
+    if (calculatedTotalTime > 86400000) { // > 24h seems wrong
+      console.warn('handleActionsReady: Suspiciously large total time, falling back to replay duration');
+      setTotalTime(expectedMs || normalizedLast);
     } else {
-      setTotalTime(calculatedTotalTime);
+      setTotalTime(calculatedTotalTime || expectedMs || 0);
     }
     
     // Reset action pointer
     currentActionIndexRef.current = 0;
     
     console.log('handleActionsReady: Ready to play', {
-      actionsCount: sortedActions.length,
+      actionsCount: normalizedActions.length,
       totalTime: calculatedTotalTime
     });
   }, [replay.durationSeconds]);
