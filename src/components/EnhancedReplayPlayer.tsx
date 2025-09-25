@@ -43,8 +43,18 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
 
   useEffect(() => {
     console.log('ReplayGame: Initializing game for replay:', replay.id);
-    gameLogic.initializeForCountdown();
+    
+    // Only call startGame, not initializeForCountdown
     gameLogic.startGame();
+    
+    // Ensure we have initial pieces after starting
+    if (!gameLogic.currentPiece && gameLogic.spawnNewPiece) {
+      console.log('ReplayGame: Force spawning initial piece');
+      gameLogic.spawnNewPiece();
+    }
+    
+    // Immediately trigger first state update to populate HOLD/NEXT areas
+    onStateUpdate(gameLogic);
 
     // Use pre-decoded actions if available, otherwise decode from binary
     let decompressedActions;
@@ -62,6 +72,13 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
       return;
     }
     
+    // Log action statistics for debugging
+    const actionCounts = decompressedActions.reduce((acc, action) => {
+      acc[action.action] = (acc[action.action] || 0) + 1;
+      return acc;
+    }, {});
+    console.log('ReplayGame: Action statistics:', actionCounts);
+    
     onActionsReady(decompressedActions, gameLogic);
   }, [replay.id]);
 
@@ -75,6 +92,7 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
     gameLogic.lines, 
     gameLogic.nextPieces, 
     gameLogic.holdPiece,
+    gameLogic.canHold,
     onStateUpdate
   ]);
 
@@ -165,8 +183,18 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
     // Reset action pointer
     currentActionIndexRef.current = 0;
     
+    // Log detailed action statistics for debugging
+    const actionStats = normalizedActions.reduce((acc, action) => {
+      acc[action.action] = (acc[action.action] || 0) + 1;
+      return acc;
+    }, {});
+    
     console.log('handleActionsReady: Ready to play', {
       actionsCount: normalizedActions.length,
+      actionStats,
+      firstActionTime: normalizedActions[0]?.timestamp,
+      lastActionTime: normalizedActions[normalizedActions.length - 1]?.timestamp,
+      timeScaleApplied: multiplier !== 1 ? `×${multiplier}` : 'none',
       totalTime: calculatedTotalTime
     });
   }, [replay.durationSeconds]);
@@ -217,19 +245,27 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
         case 'move':
           if (action.data?.direction === 'left') logic.movePiece(-1, 0);
           else if (action.data?.direction === 'right') logic.movePiece(1, 0);
-          // Ignore 'down' moves - let gravity handle falling
+          else if (action.data?.direction === 'down') logic.movePiece(0, 1); // Execute soft drop
           break;
         case 'rotate':
-          if (action.data?.direction === 'clockwise') logic.rotatePieceClockwise();
-          else if (action.data?.direction === 'counterclockwise') logic.rotatePieceCounterclockwise();
+          if (action.data?.direction === 'clockwise') logic.rotatePiece(true);
+          else if (action.data?.direction === 'counterclockwise') logic.rotatePiece(false);
           else if (action.data?.direction === '180') logic.rotatePiece180();
           break;
         case 'drop':
           if (action.data?.type === 'hard') logic.hardDrop();
-          // Ignore soft drops - let gravity handle falling
+          else if (action.data?.type === 'soft') logic.movePiece(0, 1); // Execute soft drop
           break;
         case 'hold':
           logic.holdCurrentPiece();
+          break;
+        case 'pause':
+          // Handle pause/resume actions
+          if (action.data?.paused && logic.pauseGame) {
+            logic.pauseGame();
+          } else if (!action.data?.paused && logic.resumeGame) {
+            logic.resumeGame();
+          }
           break;
         case 'place':
           // Use place as authoritative anchor for position correction
@@ -248,8 +284,13 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
               // Force correct position and immediate lock
               logic.forcePlace(expectedPiece.x, expectedPiece.y, expectedPiece.rotation);
             }
+            // Always lock the piece after place action
+            logic.lockPiece();
           }
           newPiecesPlaced++;
+          break;
+        default:
+          console.log('processActionsUntilTime: Unknown action type', action.action);
           break;
       }
       
@@ -270,6 +311,15 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
       newPiecesPlaced,
       finalTime: targetTime
     });
+
+    // Runtime consistency check - warn if no actions were executed for extended time
+    if (actionsExecuted === 0 && targetTime > 1000) {
+      console.warn('processActionsUntilTime: No actions executed for 1+ seconds', {
+        targetTime,
+        totalActions: actions.length,
+        currentIndex: currentActionIndexRef.current
+      });
+    }
 
     // Update statistics if changed
     if (newPiecesPlaced !== piecesPlaced) setPiecesPlaced(newPiecesPlaced);
