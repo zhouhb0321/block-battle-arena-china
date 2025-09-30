@@ -124,7 +124,32 @@ export const useGameLogic = ({
   }, []);
   
   const spawnNewPiece = useCallback(() => {
+    // Defensive check: ensure nextPieces has at least one piece
+    if (!nextPieces || nextPieces.length === 0) {
+      console.error('[useGameLogic] spawnNewPiece: nextPieces is empty, generating initial pieces');
+      // Generate initial pieces if array is empty
+      const initialPieces = Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece()));
+      setCurrentPiece(initialPieces[0]);
+      setNextPieces(initialPieces.slice(1));
+      setCanHold(true);
+      setLockDelayResetCount(0);
+      totalPieces.current++;
+      return;
+    }
+    
     const newPiece = nextPieces[0];
+    
+    // Additional safety check
+    if (!newPiece) {
+      console.error('[useGameLogic] spawnNewPiece: newPiece is undefined from nextPieces[0]');
+      const emergencyPiece = createGamePiece(generateRandomPiece());
+      setCurrentPiece(emergencyPiece);
+      setCanHold(true);
+      setLockDelayResetCount(0);
+      totalPieces.current++;
+      return;
+    }
+    
     const newNextPieces = [...nextPieces.slice(1)];
     if (newNextPieces.length < 6) {
       newNextPieces.push(...Array.from({ length: 7 }, () => createGamePiece(generateRandomPiece())));

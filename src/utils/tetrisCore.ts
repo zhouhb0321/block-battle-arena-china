@@ -13,6 +13,12 @@ export const createEmptyBoard = (): number[][] => {
 
 // 检查给定的方块位置是否有效
 export const isValidPosition = (board: number[][], piece: GamePiece): boolean => {
+  // Defensive check: ensure piece is defined
+  if (!piece || !piece.type) {
+    console.error('[tetrisCore] isValidPosition: piece is undefined or invalid', piece);
+    return false;
+  }
+  
   const { type, x, y, rotation } = piece;
   const shape = type.shape;
 

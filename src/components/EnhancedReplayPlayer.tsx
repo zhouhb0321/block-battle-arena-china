@@ -42,72 +42,97 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady, onError }) => {
   });
 
   useEffect(() => {
-    try {
-      console.log('ReplayGame: Initializing game for replay:', replay.id);
-      
-      // Only call startGame, not initializeForCountdown
-      gameLogic.startGame();
-      
-      // Ensure we have initial pieces after starting
-      if (!gameLogic.currentPiece && gameLogic.spawnNewPiece) {
-        console.log('ReplayGame: Force spawning initial piece');
-        gameLogic.spawnNewPiece();
-      }
-      
-      // Immediately trigger first state update to populate HOLD/NEXT areas
-      onStateUpdate(gameLogic);
+    if (!replay) return;
+    
+    console.log('[ReplayGame] Initializing with replay:', {
+      hasReplay: !!replay,
+      replayId: replay.id
+    });
 
-      // Use pre-decoded actions if available, otherwise decode from binary
-      let decompressedActions;
-      if (replay.actions) {
-        decompressedActions = replay.actions;
-        console.log('ReplayGame: Using pre-decoded actions:', decompressedActions.length);
-      } else if (replay.compressedActions) {
-        console.log('ReplayGame: Decoding compressed actions...');
-        try {
-          decompressedActions = ReplayCompressor.decompressActions(
-            ReplayCompressor.decodeFromBinary(replay.compressedActions)
-          );
-          console.log('ReplayGame: Decoded actions:', decompressedActions.length);
-        } catch (error) {
-          console.error('ReplayGame: Failed to decode compressed actions:', error);
-          onError && onError('数据解码失败：压缩格式损坏');
+    const initializeReplay = async () => {
+      try {
+        console.log('[ReplayGame] Step 1: Decoding actions...');
+        
+        // Decode and validate actions FIRST (before starting game)
+        let decompressedActions;
+        
+        if (replay.actions) {
+          decompressedActions = replay.actions;
+          console.log('[ReplayGame] Using pre-decoded actions:', decompressedActions.length);
+        } else if (replay.compressedActions) {
+          console.log('[ReplayGame] Decoding compressed actions...');
+          try {
+            decompressedActions = ReplayCompressor.decompressActions(
+              ReplayCompressor.decodeFromBinary(replay.compressedActions)
+            );
+            console.log('[ReplayGame] Decoded actions:', decompressedActions.length);
+          } catch (error) {
+            console.error('[ReplayGame] Failed to decode compressed actions:', error);
+            onError && onError('数据解码失败：压缩格式损坏');
+            return;
+          }
+        } else {
+          console.error('[ReplayGame] No replay actions available');
+          onError && onError('录像数据缺失：无法找到动作数据');
           return;
         }
-      } else {
-        console.error('ReplayGame: No replay actions available');
-        onError && onError('录像数据缺失：无法找到动作数据');
-        return;
+        
+        // Validate actions array
+        if (!Array.isArray(decompressedActions) || decompressedActions.length === 0) {
+          console.error('[ReplayGame] Invalid or empty actions array');
+          onError && onError('录像数据无效：动作数组为空');
+          return;
+        }
+        
+        // Log action statistics for debugging
+        const actionCounts = decompressedActions.reduce((acc, action) => {
+          acc[action.action] = (acc[action.action] || 0) + 1;
+          return acc;
+        }, {});
+        console.log('[ReplayGame] Action statistics:', actionCounts);
+        
+        // Check for essential place actions
+        const placeCount = actionCounts.place || 0;
+        if (placeCount === 0) {
+          console.warn('[ReplayGame] No place actions found - replay may be incomplete');
+          onError && onError('录像数据不完整：缺少方块锁定动作，无法正常播放');
+          return;
+        }
+        
+        console.log('[ReplayGame] Step 2: Starting game initialization...');
+        
+        // Start game and wait for state to stabilize
+        gameLogic.startGame();
+        
+        // Wait for next tick to ensure state updates are applied
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        console.log('[ReplayGame] Step 3: Verifying game state...');
+        
+        // Verify game state is properly initialized
+        if (!gameLogic.currentPiece) {
+          console.error('[ReplayGame] currentPiece is null after startGame');
+          onError && onError('游戏状态初始化失败：当前方块为空');
+          return;
+        }
+        
+        console.log('[ReplayGame] Step 4: State verified, triggering initial update...');
+        
+        // Trigger first state update to populate HOLD/NEXT areas
+        onStateUpdate(gameLogic);
+        
+        console.log('[ReplayGame] Step 5: Actions ready, currentPiece:', gameLogic.currentPiece?.type?.type);
+        onActionsReady(decompressedActions, gameLogic);
+        
+        console.log('[ReplayGame] Initialization complete successfully');
+      } catch (error) {
+        console.error('[ReplayGame] Initialization error:', error);
+        onError && onError('录像初始化失败：' + (error instanceof Error ? error.message : String(error)));
       }
-      
-      // Validate actions array
-      if (!Array.isArray(decompressedActions) || decompressedActions.length === 0) {
-        console.error('ReplayGame: Invalid or empty actions array');
-        onError && onError('录像数据无效：动作数组为空');
-        return;
-      }
-      
-      // Log action statistics for debugging
-      const actionCounts = decompressedActions.reduce((acc, action) => {
-        acc[action.action] = (acc[action.action] || 0) + 1;
-        return acc;
-      }, {});
-      console.log('ReplayGame: Action statistics:', actionCounts);
-      
-      // Check for essential place actions
-      const placeCount = actionCounts.place || 0;
-      if (placeCount === 0) {
-        console.warn('ReplayGame: No place actions found - replay may be incomplete');
-        onError && onError('录像数据不完整：缺少方块锁定动作，无法正常播放');
-        return;
-      }
-      
-      onActionsReady(decompressedActions, gameLogic);
-    } catch (error) {
-      console.error('ReplayGame: Initialization failed:', error);
-      onError && onError('录像初始化失败：' + error.message);
-    }
-  }, [replay.id]);
+    };
+    
+    initializeReplay();
+  }, [replay?.id]);
 
   // Trigger state updates when key game properties change
   useEffect(() => {
@@ -276,64 +301,81 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
         logic.tickReplay(deltaMs);
       }
 
+      // Verify game state before executing action (except place which doesn't need currentPiece)
+      if (!logic.currentPiece && action.action !== 'place' && action.action !== 'pause') {
+        console.error('processActionsUntilTime: currentPiece is null, cannot process action:', action.action, {
+          timestamp: action.timestamp,
+          currentIndex: currentActionIndexRef.current
+        });
+        // Skip this action and continue
+        currentActionIndexRef.current++;
+        continue;
+      }
+      
       // Execute actions at their exact timestamp
       console.log('processActionsUntilTime: Executing action', {
         action: action.action,
         timestamp: action.timestamp,
-        data: action.data
+        data: action.data,
+        hasCurrentPiece: !!logic.currentPiece
       });
 
-      switch (action.action) {
-        case 'move':
-          if (action.data?.direction === 'left') logic.movePiece(-1, 0);
-          else if (action.data?.direction === 'right') logic.movePiece(1, 0);
-          else if (action.data?.direction === 'down') logic.movePiece(0, 1); // Execute soft drop
-          break;
-        case 'rotate':
-          if (action.data?.direction === 'clockwise') logic.rotatePiece(true);
-          else if (action.data?.direction === 'counterclockwise') logic.rotatePiece(false);
-          else if (action.data?.direction === '180') logic.rotatePiece180();
-          break;
-        case 'drop':
-          if (action.data?.type === 'hard') logic.hardDrop();
-          else if (action.data?.type === 'soft') logic.movePiece(0, 1); // Execute soft drop
-          break;
-        case 'hold':
-          logic.holdCurrentPiece();
-          break;
-        case 'pause':
-          // Handle pause/resume actions
-          if (action.data?.paused && logic.pauseGame) {
-            logic.pauseGame();
-          } else if (!action.data?.paused && logic.resumeGame) {
-            logic.resumeGame();
-          }
-          break;
-        case 'place':
-          // Use place as authoritative anchor for position correction
-          if (action.data && logic.currentPiece && logic.forcePlace) {
-            const expectedPiece = action.data;
-            const actualPiece = logic.currentPiece;
-            
-            // Check for inconsistency and correct if needed
-            if (expectedPiece.x !== actualPiece.x || expectedPiece.y !== actualPiece.y || 
-                expectedPiece.rotation !== actualPiece.rotation) {
-              console.warn('processActionsUntilTime: Correcting position inconsistency', {
-                expected: expectedPiece,
-                actual: actualPiece,
-                timestamp: action.timestamp
-              });
-              // Force correct position and immediate lock
-              logic.forcePlace(expectedPiece.x, expectedPiece.y, expectedPiece.rotation);
+      try {
+        switch (action.action) {
+          case 'move':
+            if (action.data?.direction === 'left') logic.movePiece(-1, 0);
+            else if (action.data?.direction === 'right') logic.movePiece(1, 0);
+            else if (action.data?.direction === 'down') logic.movePiece(0, 1); // Execute soft drop
+            break;
+          case 'rotate':
+            if (action.data?.direction === 'clockwise') logic.rotatePiece(true);
+            else if (action.data?.direction === 'counterclockwise') logic.rotatePiece(false);
+            else if (action.data?.direction === '180') logic.rotatePiece180();
+            break;
+          case 'drop':
+            if (action.data?.type === 'hard') logic.hardDrop();
+            else if (action.data?.type === 'soft') logic.movePiece(0, 1); // Execute soft drop
+            break;
+          case 'hold':
+            logic.holdCurrentPiece();
+            break;
+          case 'pause':
+            // Handle pause/resume actions
+            if (action.data?.paused && logic.pauseGame) {
+              logic.pauseGame();
+            } else if (!action.data?.paused && logic.resumeGame) {
+              logic.resumeGame();
             }
-            // Always lock the piece after place action
-            logic.lockPiece();
-          }
-          newPiecesPlaced++;
-          break;
-        default:
-          console.log('processActionsUntilTime: Unknown action type', action.action);
-          break;
+            break;
+          case 'place':
+            // Use place as authoritative anchor for position correction
+            if (action.data && logic.currentPiece && logic.forcePlace) {
+              const expectedPiece = action.data;
+              const actualPiece = logic.currentPiece;
+              
+              // Check for inconsistency and correct if needed
+              if (expectedPiece.x !== actualPiece.x || expectedPiece.y !== actualPiece.y || 
+                  expectedPiece.rotation !== actualPiece.rotation) {
+                console.warn('processActionsUntilTime: Correcting position inconsistency', {
+                  expected: expectedPiece,
+                  actual: actualPiece,
+                  timestamp: action.timestamp
+                });
+                // Force correct position and immediate lock
+                logic.forcePlace(expectedPiece.x, expectedPiece.y, expectedPiece.rotation);
+              }
+              // Always lock the piece after place action
+              logic.lockPiece();
+            }
+            newPiecesPlaced++;
+            break;
+          default:
+            console.log('processActionsUntilTime: Unknown action type', action.action);
+            break;
+        }
+      } catch (error) {
+        console.error('processActionsUntilTime: Error executing action:', action.action, error);
+        // Continue with next action rather than crashing
       }
       
       lastActionTime = action.timestamp;
