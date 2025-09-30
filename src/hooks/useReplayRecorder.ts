@@ -156,6 +156,31 @@ export const useReplayRecorder = () => {
     // Sort actions by timestamp before compression to ensure proper playback order
     const sortedActions = [...actionsRef.current].sort((a, b) => a.timestamp - b.timestamp);
     
+    // Validate essential actions before saving
+    const placeActions = sortedActions.filter(a => a.action === 'place').length;
+    const moveActions = sortedActions.filter(a => a.action === 'move').length;
+    const rotateActions = sortedActions.filter(a => a.action === 'rotate').length;
+    
+    console.log('Replay validation:', {
+      totalActions: sortedActions.length,
+      placeActions,
+      moveActions,
+      rotateActions,
+      duration: gameStats.duration
+    });
+    
+    // Critical validation: refuse to save if no place actions
+    if (placeActions === 0) {
+      console.error('Replay save rejected: No place actions recorded');
+      setIsRecording(false);
+      return { saved: false, isNewRecord: false };
+    }
+    
+    // Warning for suspicious patterns
+    if (moveActions === 0 && rotateActions === 0) {
+      console.warn('Replay save warning: No move/rotate actions - may indicate recording issue');
+    }
+    
     const compressed = ReplayCompressor.compressActions(sortedActions);
     const compressedActions = ReplayCompressor.encodeToBinary(compressed);
     
@@ -183,7 +208,8 @@ export const useReplayRecorder = () => {
       compressedSize: compressed.length,
       binarySize: compressedActions.length,
       base64Length: base64Actions.length,
-      placeActions: sortedActions.filter(a => a.action === 'place').length
+      placeActions: placeActions,
+      actionBreakdown: { moveActions, rotateActions, placeActions }
     });
 
     const { data, error } = await supabase
@@ -210,7 +236,8 @@ export const useReplayRecorder = () => {
         is_featured: isNewRecord && !is1v1League,
         checksum: checksum,
         version: '3.0',
-        username: user.username || 'Player'
+        username: user.username || 'Player',
+        place_actions_count: placeActions
       }).select().single();
 
     if (error) {

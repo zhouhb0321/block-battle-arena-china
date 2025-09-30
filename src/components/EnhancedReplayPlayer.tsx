@@ -16,7 +16,7 @@ import { useGameLogic } from '@/hooks/useGameLogic';
 import { ReplayCompressor } from '@/utils/replayCompression';
 import { 
   Play, Pause, RotateCcw, SkipBack, SkipForward, Bookmark,
-  TrendingUp, Trophy, Target, Clock, Zap
+  TrendingUp, Trophy, Target, Clock, Zap, AlertCircle
 } from 'lucide-react';
 import type { 
   CompressedReplay, 
@@ -32,7 +32,7 @@ interface EnhancedReplayPlayerProps {
   config?: Partial<ReplayPlayerConfig>;
 }
 
-const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
+const ReplayGame = ({ replay, onStateUpdate, onActionsReady, onError }) => {
   const gameLogic = useGameLogic({
     gameMode: { id: replay.gameMode } as GameMode,
     isReplay: true,
@@ -42,44 +42,71 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady }) => {
   });
 
   useEffect(() => {
-    console.log('ReplayGame: Initializing game for replay:', replay.id);
-    
-    // Only call startGame, not initializeForCountdown
-    gameLogic.startGame();
-    
-    // Ensure we have initial pieces after starting
-    if (!gameLogic.currentPiece && gameLogic.spawnNewPiece) {
-      console.log('ReplayGame: Force spawning initial piece');
-      gameLogic.spawnNewPiece();
-    }
-    
-    // Immediately trigger first state update to populate HOLD/NEXT areas
-    onStateUpdate(gameLogic);
+    try {
+      console.log('ReplayGame: Initializing game for replay:', replay.id);
+      
+      // Only call startGame, not initializeForCountdown
+      gameLogic.startGame();
+      
+      // Ensure we have initial pieces after starting
+      if (!gameLogic.currentPiece && gameLogic.spawnNewPiece) {
+        console.log('ReplayGame: Force spawning initial piece');
+        gameLogic.spawnNewPiece();
+      }
+      
+      // Immediately trigger first state update to populate HOLD/NEXT areas
+      onStateUpdate(gameLogic);
 
-    // Use pre-decoded actions if available, otherwise decode from binary
-    let decompressedActions;
-    if (replay.actions) {
-      decompressedActions = replay.actions;
-      console.log('ReplayGame: Using pre-decoded actions:', decompressedActions.length);
-    } else if (replay.compressedActions) {
-      console.log('ReplayGame: Decoding compressed actions...');
-      decompressedActions = ReplayCompressor.decompressActions(
-        ReplayCompressor.decodeFromBinary(replay.compressedActions)
-      );
-      console.log('ReplayGame: Decoded actions:', decompressedActions.length);
-    } else {
-      console.error('ReplayGame: No replay actions available');
-      return;
+      // Use pre-decoded actions if available, otherwise decode from binary
+      let decompressedActions;
+      if (replay.actions) {
+        decompressedActions = replay.actions;
+        console.log('ReplayGame: Using pre-decoded actions:', decompressedActions.length);
+      } else if (replay.compressedActions) {
+        console.log('ReplayGame: Decoding compressed actions...');
+        try {
+          decompressedActions = ReplayCompressor.decompressActions(
+            ReplayCompressor.decodeFromBinary(replay.compressedActions)
+          );
+          console.log('ReplayGame: Decoded actions:', decompressedActions.length);
+        } catch (error) {
+          console.error('ReplayGame: Failed to decode compressed actions:', error);
+          onError && onError('数据解码失败：压缩格式损坏');
+          return;
+        }
+      } else {
+        console.error('ReplayGame: No replay actions available');
+        onError && onError('录像数据缺失：无法找到动作数据');
+        return;
+      }
+      
+      // Validate actions array
+      if (!Array.isArray(decompressedActions) || decompressedActions.length === 0) {
+        console.error('ReplayGame: Invalid or empty actions array');
+        onError && onError('录像数据无效：动作数组为空');
+        return;
+      }
+      
+      // Log action statistics for debugging
+      const actionCounts = decompressedActions.reduce((acc, action) => {
+        acc[action.action] = (acc[action.action] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('ReplayGame: Action statistics:', actionCounts);
+      
+      // Check for essential place actions
+      const placeCount = actionCounts.place || 0;
+      if (placeCount === 0) {
+        console.warn('ReplayGame: No place actions found - replay may be incomplete');
+        onError && onError('录像数据不完整：缺少方块锁定动作，无法正常播放');
+        return;
+      }
+      
+      onActionsReady(decompressedActions, gameLogic);
+    } catch (error) {
+      console.error('ReplayGame: Initialization failed:', error);
+      onError && onError('录像初始化失败：' + error.message);
     }
-    
-    // Log action statistics for debugging
-    const actionCounts = decompressedActions.reduce((acc, action) => {
-      acc[action.action] = (acc[action.action] || 0) + 1;
-      return acc;
-    }, {});
-    console.log('ReplayGame: Action statistics:', actionCounts);
-    
-    onActionsReady(decompressedActions, gameLogic);
   }, [replay.id]);
 
   // Trigger state updates when key game properties change
@@ -113,6 +140,9 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   const [replayKey, setReplayKey] = useState(Date.now());
   const [piecesPlaced, setPiecesPlaced] = useState(0);
   const [actionsProcessed, setActionsProcessed] = useState(0);
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isStaticMode, setIsStaticMode] = useState(false);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const actionsRef = useRef<DecompressedReplayAction[]>([]);
@@ -202,6 +232,18 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   const [gameLogicState, setGameLogicState] = useState(null);
   const handleStateUpdate = useCallback((newState) => {
     setGameLogicState(newState);
+  }, []);
+
+  const handleError = useCallback((message: string) => {
+    console.error('ReplayPlayer Error:', message);
+    setHasError(true);
+    setErrorMessage(message);
+    setIsPlaying(false);
+    
+    // Check if this is a "no place actions" error - enable static mode
+    if (message.includes('缺少方块锁定动作') || message.includes('place')) {
+      setIsStaticMode(true);
+    }
   }, []);
 
   const processActionsUntilTime = useCallback((targetTime: number, fromTime: number = 0) => {
@@ -454,13 +496,32 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
               </DialogTitle>
             </DialogHeader>
 
+            {/* Error/Static Mode Banners */}
+            {hasError && (
+              <div className="mx-6 mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-2 text-red-800">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="font-medium">播放错误</span>
+                </div>
+                <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+                {isStaticMode && (
+                  <p className="mt-2 text-xs text-red-600">
+                    已切换到静态展示模式。您可以查看录像的基本信息，但无法播放回放。
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Mount ReplayGame to initialize game logic */}
-            <ReplayGame 
-              key={replayKey}
-              replay={replay}
-              onStateUpdate={handleStateUpdate}
-              onActionsReady={handleActionsReady}
-            />
+            {!hasError && (
+              <ReplayGame 
+                key={replayKey}
+                replay={replay}
+                onStateUpdate={handleStateUpdate}
+                onActionsReady={handleActionsReady}
+                onError={handleError}
+              />
+            )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 游戏区域 */}
@@ -472,26 +533,33 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                   {/* Hold区域 */}
                   <div className="flex flex-col gap-2">
                     <h3 className="text-sm font-medium text-center">HOLD</h3>
-                    {gameLogicState && (
+                    {(gameLogicState || isStaticMode) && (
                       <HoldPieceDisplay
-                        holdPiece={gameLogicState.holdPiece}
-                        canHold={gameLogicState.canHold}
+                        holdPiece={gameLogicState?.holdPiece || null}
+                        canHold={gameLogicState?.canHold ?? true}
                       />
                     )}
                   </div>
 
                   {/* 游戏板 */}
                   <div className="flex flex-col items-center">
-                    {gameLogicState ? (
-                      <EnhancedGameBoard
-                        board={gameLogicState.board}
-                        currentPiece={gameLogicState.currentPiece}
-                        ghostPiece={gameLogicState.ghostPiece}
-                        clearingLines={[]}
-                        cellSize={24}
-                        showGrid={true}
-                        showHiddenRows={false}
-                      />
+                    {gameLogicState || isStaticMode ? (
+                      <>
+                        <EnhancedGameBoard
+                          board={gameLogicState?.board || Array(20).fill(null).map(() => Array(10).fill(0))}
+                          currentPiece={gameLogicState?.currentPiece || null}
+                          ghostPiece={gameLogicState?.ghostPiece || null}
+                          clearingLines={[]}
+                          cellSize={24}
+                          showGrid={true}
+                          showHiddenRows={false}
+                        />
+                        {isStaticMode && (
+                          <div className="mt-2 text-xs text-yellow-600 text-center">
+                            静态展示模式
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="w-60 h-96 bg-muted/50 rounded border flex items-center justify-center">
                         <span className="text-muted-foreground">加载中...</span>
@@ -502,9 +570,9 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                   {/* Next区域 */}
                   <div className="flex flex-col gap-2">
                     <h3 className="text-sm font-medium text-center">NEXT</h3>
-                    {gameLogicState && (
+                    {(gameLogicState || isStaticMode) && (
                       <NextPiecePreview
-                        nextPieces={gameLogicState.nextPieces}
+                        nextPieces={gameLogicState?.nextPieces || []}
                         compact={false}
                       />
                     )}
@@ -526,6 +594,7 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                     value={[currentTime]}
                     max={totalTime || 1}
                     step={Math.max(100, Math.floor((totalTime || 1) / 1000))}
+                    disabled={hasError || isStaticMode}
                     onValueChange={(value) => {
                       const newTime = value[0];
                       console.log('Slider: Seeking to', newTime);
@@ -533,6 +602,11 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                     }}
                     className="w-full cursor-pointer"
                   />
+                  {(hasError || isStaticMode) && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      {isStaticMode ? '静态模式下无法播放' : '发生错误，无法控制播放'}
+                    </p>
+                  )}
                   <Progress 
                     value={(currentTime / totalTime) * 100}
                     className="w-full"
@@ -541,23 +615,23 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
 
                 {/* 控制按钮 */}
                 <div className="flex items-center justify-center gap-4">
-                  <Button variant="outline" size="icon" onClick={resetReplay}>
+                  <Button variant="outline" size="icon" onClick={resetReplay} disabled={hasError || isStaticMode}>
                     <RotateCcw className="w-4 h-4" />
                   </Button>
                   
-                  <Button variant="outline" size="icon" onClick={() => seekTo(currentTime - 10000)}>
+                  <Button variant="outline" size="icon" onClick={() => seekTo(currentTime - 10000)} disabled={hasError || isStaticMode}>
                     <SkipBack className="w-4 h-4" />
                   </Button>
                   
-                  <Button onClick={togglePlayback} size="lg">
+                  <Button onClick={togglePlayback} size="lg" disabled={hasError || isStaticMode}>
                     {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
                   </Button>
                   
-                  <Button variant="outline" size="icon" onClick={() => seekTo(currentTime + 10000)}>
+                  <Button variant="outline" size="icon" onClick={() => seekTo(currentTime + 10000)} disabled={hasError || isStaticMode}>
                     <SkipForward className="w-4 h-4" />
                   </Button>
                   
-                  <Button variant="outline" size="icon">
+                  <Button variant="outline" size="icon" disabled={hasError || isStaticMode}>
                     <Bookmark className="w-4 h-4" />
                   </Button>
                 </div>
@@ -571,6 +645,7 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                         key={speed}
                         variant={playbackSpeed === speed ? "default" : "outline"}
                         size="sm"
+                        disabled={hasError || isStaticMode}
                         onClick={() => setPlaybackSpeed(speed)}
                       >
                         {speed}x
