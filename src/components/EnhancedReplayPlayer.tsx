@@ -32,12 +32,12 @@ interface EnhancedReplayPlayerProps {
   config?: Partial<ReplayPlayerConfig>;
 }
 
-const ReplayGame = ({ replay, onStateUpdate, onActionsReady, onError }) => {
+const ReplayGame = ({ replay, onStateUpdate, onActionsReady, onError, allowNoPlace = false, enableFallbackGravity = false }) => {
   const gameLogic = useGameLogic({
     gameMode: { id: replay.gameMode } as GameMode,
     isReplay: true,
     replaySeed: replay.seed,
-    enableReplayGravity: false, // Disable internal gravity
+    enableReplayGravity: enableFallbackGravity, // Enable gravity in fallback mode
     replayClockControlled: true, // Enable controlled clock mode
   });
 
@@ -100,11 +100,17 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady, onError }) => {
         
         // Check for essential place actions
         const placeCount = actionCounts.place || 0;
+        
         if (placeCount === 0) {
           console.error('[ReplayGame] CRITICAL: No place actions found in replay');
           console.error('[ReplayGame] This indicates a recording failure or corrupted data');
-          onError && onError(`录像数据不完整：缺少方块锁定动作 (place=0)，无法正常播放。\n\n可能原因：\n• 录制时游戏逻辑未正确初始化\n• 录制状态异常中断\n• 数据损坏或版本不兼容\n\n建议：重新录制该游戏`);
-          return;
+          
+          if (!allowNoPlace) {
+            onError && onError(`录像数据不完整：缺少方块锁定动作 (place=0)，无法正常播放。\n\n可能原因：\n• 录制时游戏逻辑未正确初始化\n• 录制状态异常中断\n• 数据损坏或版本不兼容\n\n建议：重新录制该游戏`);
+            return;
+          } else {
+            console.warn('[ReplayGame] Compatibility mode: Continuing with place=0');
+          }
         }
         
         // Data health check
@@ -209,7 +215,8 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
     place: number;
     total: number;
   }>({ move: 0, rotate: 0, drop: 0, hold: 0, place: 0, total: 0 });
-  const [dataHealth, setDataHealth] = useState<'good' | 'warning' | 'error'>('good');
+  const [dataHealth, setDataHealth] = useState<'good' | 'warning' | 'error'>('warning');
+  const [fallbackMode, setFallbackMode] = useState<'off' | 'inferFromDrops' | 'enableGravity'>('off');
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const actionsRef = useRef<DecompressedReplayAction[]>([]);
@@ -343,6 +350,7 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
     setHasError(true);
     setErrorMessage(message);
     setIsPlaying(false);
+    setDataHealth('error');
     
     // Check if this is a "no place actions" error - enable static mode
     if (message.includes('缺少方块锁定动作') || message.includes('place')) {
@@ -412,7 +420,14 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
             else if (action.data?.direction === '180') logic.rotatePiece180();
             break;
           case 'drop':
-            if (action.data?.type === 'hard') logic.hardDrop();
+            if (action.data?.type === 'hard') {
+              logic.hardDrop();
+              // In inferFromDrops fallback mode, treat hard drop as place
+              if (fallbackMode === 'inferFromDrops') {
+                console.log('Fallback mode: Inferring place from hard drop');
+                newPiecesPlaced++;
+              }
+            }
             else if (action.data?.type === 'soft') logic.movePiece(0, 1); // Execute soft drop
             break;
           case 'hold':
@@ -618,13 +633,42 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
             </DialogHeader>
 
             {/* Error/Static Mode Banners */}
+            {fallbackMode !== 'off' && (
+              <div className="mx-6 mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center gap-2 text-yellow-800">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="font-medium">兼容模式</span>
+                </div>
+                <p className="mt-1 text-sm text-yellow-700">
+                  {fallbackMode === 'inferFromDrops' 
+                    ? '正在使用硬降推断锁定模式。方块锁定由硬降动作推断，统计数据可能与原始略有出入。'
+                    : '正在使用重力模拟模式。方块锁定由重力自然触发，结果可能与原始有偏差。'}
+                </p>
+              </div>
+            )}
             {hasError && (
               <div className="mx-6 mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-center gap-2 text-red-800">
                   <AlertCircle className="w-4 h-4" />
                   <span className="font-medium">播放错误</span>
                 </div>
-                <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+                <p className="mt-1 text-sm text-red-700 whitespace-pre-line">{errorMessage}</p>
+                {isStaticMode && actionStats.place === 0 && actionStats.drop > 0 && fallbackMode === 'off' && (
+                  <div className="mt-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setFallbackMode('inferFromDrops');
+                        setHasError(false);
+                        setIsStaticMode(false);
+                        setReplayKey(Date.now());
+                      }}
+                    >
+                      尝试兼容回放（降级模式）
+                    </Button>
+                  </div>
+                )}
                 {isStaticMode && (
                   <p className="mt-2 text-xs text-red-600">
                     已切换到静态展示模式。您可以查看录像的基本信息，但无法播放回放。
@@ -641,6 +685,8 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                 onStateUpdate={handleStateUpdate}
                 onActionsReady={handleActionsReady}
                 onError={handleError}
+                allowNoPlace={fallbackMode !== 'off'}
+                enableFallbackGravity={fallbackMode === 'enableGravity'}
               />
             )}
 
@@ -879,16 +925,18 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                   <span>数据健康度:</span>
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${
+                      hasError ? 'bg-red-500' :
                       dataHealth === 'good' ? 'bg-green-500' : 
                       dataHealth === 'warning' ? 'bg-yellow-500' : 
                       'bg-red-500'
                     }`} />
-                    <span className={`font-medium ${
-                      dataHealth === 'good' ? 'text-green-600 dark:text-green-400' : 
-                      dataHealth === 'warning' ? 'text-yellow-600 dark:text-yellow-400' : 
-                      'text-red-600 dark:text-red-400'
-                    }`}>
-                      {dataHealth === 'good' ? '良好' : dataHealth === 'warning' ? '可接受' : '异常'}
+                    <span className={
+                      hasError ? 'text-red-600' :
+                      dataHealth === 'good' ? 'text-green-600' : 
+                      dataHealth === 'warning' ? 'text-yellow-600' : 
+                      'text-red-600'
+                    }>
+                      {hasError ? '异常' : dataHealth === 'good' ? '良好' : dataHealth === 'warning' ? '可接受' : '异常'}
                     </span>
                   </div>
                 </div>
@@ -897,39 +945,43 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                 
                 {/* Action statistics */}
                 <div className="space-y-1">
-                  <div className="font-medium mb-1">动作统计:</div>
-                  <div className="flex justify-between pl-3">
-                    <span>移动 (move):</span>
-                    <span className="font-mono">{actionStats.move}</span>
+                  <span className="font-medium">动作统计:</span>
+                  <div className="grid grid-cols-2 gap-1 text-xs pl-2">
+                    <div className="flex justify-between">
+                      <span>移动:</span>
+                      <span className="font-mono">{actionStats.move}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>旋转:</span>
+                      <span className="font-mono">{actionStats.rotate}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>下落:</span>
+                      <span className="font-mono">{actionStats.drop}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>暂存:</span>
+                      <span className="font-mono">{actionStats.hold}</span>
+                    </div>
+                    <div className={`flex justify-between ${actionStats.place === 0 ? 'text-red-600 font-bold' : ''}`}>
+                      <span>锁定:</span>
+                      <span className="font-mono">{actionStats.place}</span>
+                    </div>
+                    <div className="flex justify-between font-medium">
+                      <span>总计:</span>
+                      <span className="font-mono">{actionStats.total}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between pl-3">
-                    <span>旋转 (rotate):</span>
-                    <span className="font-mono">{actionStats.rotate}</span>
-                  </div>
-                  <div className="flex justify-between pl-3">
-                    <span>下落 (drop):</span>
-                    <span className="font-mono">{actionStats.drop}</span>
-                  </div>
-                  <div className="flex justify-between pl-3">
-                    <span>暂存 (hold):</span>
-                    <span className="font-mono">{actionStats.hold}</span>
-                  </div>
-                  <div className="flex justify-between pl-3 font-semibold">
-                    <span className="flex items-center gap-1">
-                      锁定 (place):
-                      {actionStats.place === 0 && (
-                        <AlertCircle className="w-3 h-3 text-red-500" />
-                      )}
-                    </span>
-                    <span className={`font-mono ${actionStats.place === 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
-                      {actionStats.place}
-                    </span>
-                  </div>
-                  <Separator className="my-1" />
-                  <div className="flex justify-between pl-3">
-                    <span>总计:</span>
-                    <span className="font-mono">{actionStats.total}</span>
-                  </div>
+                  {actionStats.place === 0 && actionStats.total > 0 && (
+                    <p className="text-xs text-red-600 mt-1">
+                      ⚠️ 缺少方块锁定动作 (place=0)，可能是录制失败导致
+                    </p>
+                  )}
+                  {actionStats.total === 0 && !hasError && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      未完成解析或解析失败
+                    </p>
+                  )}
                 </div>
                 
                 <Separator className="my-2" />
@@ -938,34 +990,6 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
                   <span>压缩比:</span>
                   <span className="font-mono">{(replay.compressionRatio || 0).toFixed(2)}x</span>
                 </div>
-                
-                {actionStats.place === 0 && (
-                  <div className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-semibold text-red-600 dark:text-red-400">数据异常</div>
-                        <div className="text-muted-foreground mt-1">
-                          缺少方块锁定动作 (place=0)，可能是录制失败导致。建议重新录制。
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {dataHealth === 'warning' && actionStats.place > 0 && (
-                  <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-semibold text-yellow-600 dark:text-yellow-400">数据警告</div>
-                        <div className="text-muted-foreground mt-1">
-                          锁定动作数量偏少，播放可能不完整。
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>

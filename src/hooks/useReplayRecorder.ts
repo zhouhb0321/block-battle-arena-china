@@ -201,7 +201,19 @@ export const useReplayRecorder = () => {
     
     // Critical validation: refuse to save if no place actions
     if (placeActions === 0) {
-      console.error('Replay save rejected: No place actions recorded');
+      console.error('❌ Replay save rejected: No place actions recorded');
+      console.error('Action statistics:', {
+        totalActions: sortedActions.length,
+        placeActions,
+        moveActions,
+        rotateActions,
+        duration: gameStats.duration
+      });
+      console.warn('⚠️ This indicates a critical recording failure:');
+      console.warn('  • handlePieceLock may not have been called');
+      console.warn('  • recordAction("place") was never invoked');
+      console.warn('  • Game logic may have been improperly initialized');
+      console.warn('  • Replay will be unplayable - refusing to save');
       setIsRecording(false);
       return { saved: false, isNewRecord: false };
     }
