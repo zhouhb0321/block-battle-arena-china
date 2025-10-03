@@ -180,12 +180,22 @@ export const useGameLogic = ({
 
     // Record piece placement action before locking
     if (isRecording) {
+      console.log('[Recording] Place action:', { 
+        piece: pieceToLock.type, 
+        x: pieceToLock.x, 
+        y: pieceToLock.y, 
+        rotation: pieceToLock.rotation,
+        timestamp: Date.now(),
+        totalPieces: totalPieces.current
+      });
       recordAction('place', { 
         piece: pieceToLock.type, 
         x: pieceToLock.x, 
         y: pieceToLock.y, 
         rotation: pieceToLock.rotation 
       });
+    } else {
+      console.log('[Not Recording] Piece locked but not recorded:', pieceToLock.type);
     }
 
     // 1. T-Spin Check using tracked last move

@@ -42,18 +42,48 @@ export const useReplayRecorder = () => {
       gameId
     });
     setIsRecording(true);
+    
+    // 录制启动日志
+    console.log('[Recording] Started recording replay:', {
+      startTime: startTimeRef.current,
+      seed: gameSeed,
+      settings,
+      initialBoardSize: initialBoard.length
+    });
+    
+    // 健康检查：确保录制状态正确设置
+    setTimeout(() => {
+      console.log('[Recording] Health check (1s after start):', {
+        isRecording: true, // Should be true
+        actionsRecorded: actionsRef.current.length
+      });
+    }, 1000);
   }, []);
 
   const recordAction = useCallback((
     action: 'move' | 'rotate' | 'drop' | 'hold' | 'place',
     data: Record<string, unknown>
   ) => {
-    if (!isRecording) return;
-    actionsRef.current.push({
+    if (!isRecording) {
+      console.warn('[Recording] Attempted to record action but recording is not active:', action);
+      return;
+    }
+    
+    const actionRecord = {
       timestamp: Date.now() - startTimeRef.current,
       action,
       data
-    });
+    };
+    actionsRef.current.push(actionRecord);
+    
+    // 详细日志记录 place 动作
+    if (action === 'place') {
+      console.log('[Recording] Place action recorded:', {
+        totalActions: actionsRef.current.length,
+        timestamp: actionRecord.timestamp,
+        data: actionRecord.data
+      });
+    }
   }, [isRecording]);
 
   const stopRecording = useCallback(async (gameStats: {

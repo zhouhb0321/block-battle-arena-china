@@ -305,9 +305,11 @@ export type Database = {
           initial_board: Json
           is_featured: boolean
           is_personal_best: boolean
+          is_playable: boolean | null
           is_world_record: boolean
           match_id: string | null
           opponent_id: string | null
+          place_actions_count: number | null
           pps: number
           seed: string
           updated_at: string
@@ -334,9 +336,11 @@ export type Database = {
           initial_board?: Json
           is_featured?: boolean
           is_personal_best?: boolean
+          is_playable?: boolean | null
           is_world_record?: boolean
           match_id?: string | null
           opponent_id?: string | null
+          place_actions_count?: number | null
           pps?: number
           seed: string
           updated_at?: string
@@ -363,9 +367,11 @@ export type Database = {
           initial_board?: Json
           is_featured?: boolean
           is_personal_best?: boolean
+          is_playable?: boolean | null
           is_world_record?: boolean
           match_id?: string | null
           opponent_id?: string | null
+          place_actions_count?: number | null
           pps?: number
           seed?: string
           updated_at?: string

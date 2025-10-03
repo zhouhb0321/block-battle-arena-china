@@ -90,14 +90,47 @@ const ReplayGame = ({ replay, onStateUpdate, onActionsReady, onError }) => {
           return acc;
         }, {});
         console.log('[ReplayGame] Action statistics:', actionCounts);
+        console.log('[ReplayGame] Replay metadata:', {
+          replayId: replay.id,
+          gameMode: replay.gameMode,
+          duration: replay.durationSeconds,
+          finalScore: replay.finalScore,
+          placeActionsCount: replay.placeActionsCount || 'not recorded'
+        });
         
         // Check for essential place actions
         const placeCount = actionCounts.place || 0;
         if (placeCount === 0) {
-          console.warn('[ReplayGame] No place actions found - replay may be incomplete');
-          onError && onError('录像数据不完整：缺少方块锁定动作，无法正常播放');
+          console.error('[ReplayGame] CRITICAL: No place actions found in replay');
+          console.error('[ReplayGame] This indicates a recording failure or corrupted data');
+          onError && onError(`录像数据不完整：缺少方块锁定动作 (place=0)，无法正常播放。\n\n可能原因：\n• 录制时游戏逻辑未正确初始化\n• 录制状态异常中断\n• 数据损坏或版本不兼容\n\n建议：重新录制该游戏`);
           return;
         }
+        
+        // Data health check
+        const moveCount = actionCounts.move || 0;
+        const rotateCount = actionCounts.rotate || 0;
+        const dropCount = actionCounts.drop || 0;
+        const expectedPiecesPerMinute = 60; // Conservative estimate
+        const expectedPieces = (replay.durationSeconds / 60) * expectedPiecesPerMinute;
+        const healthRatio = placeCount / Math.max(expectedPieces, 1);
+        
+        if (healthRatio < 0.5) {
+          console.warn('[ReplayGame] Data health warning: Place count lower than expected', {
+            placeCount,
+            expectedPieces,
+            healthRatio
+          });
+        }
+        
+        console.log('[ReplayGame] Data health check:', {
+          placeCount,
+          moveCount,
+          rotateCount,
+          dropCount,
+          healthRatio: `${(healthRatio * 100).toFixed(0)}%`,
+          status: healthRatio >= 0.8 ? '良好' : healthRatio >= 0.5 ? '可接受' : '异常'
+        });
         
         console.log('[ReplayGame] Step 2: Starting game initialization...');
         
@@ -168,6 +201,15 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isStaticMode, setIsStaticMode] = useState(false);
+  const [actionStats, setActionStats] = useState<{
+    move: number;
+    rotate: number;
+    drop: number;
+    hold: number;
+    place: number;
+    total: number;
+  }>({ move: 0, rotate: 0, drop: 0, hold: 0, place: 0, total: 0 });
+  const [dataHealth, setDataHealth] = useState<'good' | 'warning' | 'error'>('good');
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const actionsRef = useRef<DecompressedReplayAction[]>([]);
@@ -187,6 +229,43 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
 
     // Sort actions by timestamp to ensure proper playback order
     const sortedActions = [...decompressedActions].sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Calculate action statistics
+    const stats = {
+      move: 0,
+      rotate: 0,
+      drop: 0,
+      hold: 0,
+      place: 0,
+      total: sortedActions.length
+    };
+    
+    sortedActions.forEach(action => {
+      if (action.action in stats) {
+        stats[action.action]++;
+      }
+    });
+    
+    setActionStats(stats);
+    
+    // Determine data health
+    const expectedPiecesPerMinute = 60;
+    const expectedPieces = (replay.durationSeconds / 60) * expectedPiecesPerMinute;
+    const healthRatio = stats.place / Math.max(expectedPieces, 1);
+    
+    if (stats.place === 0) {
+      setDataHealth('error');
+    } else if (healthRatio < 0.5) {
+      setDataHealth('warning');
+    } else {
+      setDataHealth('good');
+    }
+    
+    console.log('Action statistics:', stats);
+    console.log('Data health:', {
+      healthRatio: `${(healthRatio * 100).toFixed(0)}%`,
+      status: stats.place === 0 ? 'error' : healthRatio < 0.5 ? 'warning' : 'good'
+    });
 
     // Detect and normalize timestamp unit (seconds, ms, or micros)
     const firstTs = sortedActions[0]?.timestamp ?? 0;
@@ -789,36 +868,103 @@ export const EnhancedReplayPlayer: React.FC<EnhancedReplayPlayerProps> = ({
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>动作数量:</span>
-                  <span className="font-mono">{replay.actionsCount}</span>
+                  <span>录像版本:</span>
+                  <Badge variant="outline">{replay.version || 'unknown'}</Badge>
                 </div>
+                
+                <Separator className="my-2" />
+                
+                {/* Data health indicator */}
+                <div className="flex justify-between items-center">
+                  <span>数据健康度:</span>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      dataHealth === 'good' ? 'bg-green-500' : 
+                      dataHealth === 'warning' ? 'bg-yellow-500' : 
+                      'bg-red-500'
+                    }`} />
+                    <span className={`font-medium ${
+                      dataHealth === 'good' ? 'text-green-600 dark:text-green-400' : 
+                      dataHealth === 'warning' ? 'text-yellow-600 dark:text-yellow-400' : 
+                      'text-red-600 dark:text-red-400'
+                    }`}>
+                      {dataHealth === 'good' ? '良好' : dataHealth === 'warning' ? '可接受' : '异常'}
+                    </span>
+                  </div>
+                </div>
+                
+                <Separator className="my-2" />
+                
+                {/* Action statistics */}
+                <div className="space-y-1">
+                  <div className="font-medium mb-1">动作统计:</div>
+                  <div className="flex justify-between pl-3">
+                    <span>移动 (move):</span>
+                    <span className="font-mono">{actionStats.move}</span>
+                  </div>
+                  <div className="flex justify-between pl-3">
+                    <span>旋转 (rotate):</span>
+                    <span className="font-mono">{actionStats.rotate}</span>
+                  </div>
+                  <div className="flex justify-between pl-3">
+                    <span>下落 (drop):</span>
+                    <span className="font-mono">{actionStats.drop}</span>
+                  </div>
+                  <div className="flex justify-between pl-3">
+                    <span>暂存 (hold):</span>
+                    <span className="font-mono">{actionStats.hold}</span>
+                  </div>
+                  <div className="flex justify-between pl-3 font-semibold">
+                    <span className="flex items-center gap-1">
+                      锁定 (place):
+                      {actionStats.place === 0 && (
+                        <AlertCircle className="w-3 h-3 text-red-500" />
+                      )}
+                    </span>
+                    <span className={`font-mono ${actionStats.place === 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
+                      {actionStats.place}
+                    </span>
+                  </div>
+                  <Separator className="my-1" />
+                  <div className="flex justify-between pl-3">
+                    <span>总计:</span>
+                    <span className="font-mono">{actionStats.total}</span>
+                  </div>
+                </div>
+                
+                <Separator className="my-2" />
+                
                 <div className="flex justify-between">
-                  <span>压缩大小:</span>
-                  <span className="font-mono">
-                    {(replay.compressedActions instanceof Uint8Array 
-                      ? replay.compressedActions.length 
-                      : new TextEncoder().encode(replay.compressedActions).length) / 1024 > 1 
-                      ? `${((replay.compressedActions instanceof Uint8Array 
-                          ? replay.compressedActions.length 
-                          : new TextEncoder().encode(replay.compressedActions).length) / 1024).toFixed(1)} KB`
-                      : `${(replay.compressedActions instanceof Uint8Array 
-                          ? replay.compressedActions.length 
-                          : new TextEncoder().encode(replay.compressedActions).length)} B`}
-                  </span>
+                  <span>压缩比:</span>
+                  <span className="font-mono">{(replay.compressionRatio || 0).toFixed(2)}x</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>版本:</span>
-                  <span className="font-mono">v{replay.version}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>种子:</span>
-                  <span className="font-mono text-xs">{replay.seed.slice(0, 12)}...</span>
-                </div>
-                {replay.isPersonalBest && (
-                  <Badge className="w-full justify-center">个人最佳记录</Badge>
+                
+                {actionStats.place === 0 && (
+                  <div className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-semibold text-red-600 dark:text-red-400">数据异常</div>
+                        <div className="text-muted-foreground mt-1">
+                          缺少方块锁定动作 (place=0)，可能是录制失败导致。建议重新录制。
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
-                {replay.isWorldRecord && (
-                  <Badge variant="destructive" className="w-full justify-center">世界记录</Badge>
+                
+                {dataHealth === 'warning' && actionStats.place > 0 && (
+                  <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-semibold text-yellow-600 dark:text-yellow-400">数据警告</div>
+                        <div className="text-muted-foreground mt-1">
+                          锁定动作数量偏少，播放可能不完整。
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
