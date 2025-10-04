@@ -191,6 +191,22 @@ export function useReplayRecorderV4() {
     
     setIsRecording(false);
     
+    // Verify user authentication before saving
+    const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !currentUser) {
+      console.error('[RecorderV4] ❌ User not authenticated:', authError);
+      toast.error('无法保存录像', {
+        description: '用户未登录或会话已过期'
+      });
+      return { saved: false };
+    }
+    
+    console.log('[RecorderV4] User authenticated:', {
+      userId: currentUser.id,
+      email: currentUser.email
+    });
+    
     // Add END event
     const timestamp = Date.now() - startTimeRef.current;
     eventsRef.current.push({
@@ -264,11 +280,16 @@ export function useReplayRecorderV4() {
         sizeKB: (binaryData.length / 1024).toFixed(2)
       });
       
-      // Save to database
+      // Extract checksum from binary (last 16 bytes as text)
+      const checksumBytes = binaryData.slice(-16);
+      const extractedChecksum = new TextDecoder().decode(checksumBytes);
+      console.log('[RecorderV4] Extracted checksum from binary:', extractedChecksum);
+      
+      // Save to database using authenticated user ID
       const { data, error } = await supabase
         .from('compressed_replays')
         .insert({
-          user_id: metadataRef.current.userId,
+          user_id: currentUser.id,  // Use confirmed authenticated user ID
           game_mode: gameMode,
           version: '4.0',
           compressed_actions: binaryData,
@@ -282,15 +303,18 @@ export function useReplayRecorderV4() {
           duration_seconds: Math.floor(gameStats.duration / 1000),
           seed: metadataRef.current.seed,
           game_settings: metadataRef.current.settings,
-          checksum: replayData.checksum,
+          checksum: extractedChecksum,
           is_playable: true,
-          username: metadataRef.current.username
+          username: currentUser.email?.split('@')[0] || metadataRef.current.username
         })
         .select('id')
         .single();
       
       if (error) {
-        console.error('[RecorderV4] Database save error:', error);
+        console.error('[RecorderV4] Database save error:', error, {
+          attemptedUserId: currentUser.id,
+          authUserId: currentUser.id
+        });
         toast.error('录像保存失败', { description: error.message });
         return { saved: false };
       }

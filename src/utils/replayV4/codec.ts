@@ -116,7 +116,9 @@ function encodeEvent(event: V4Event): Uint8Array {
     
     case Op.END: {
       const e = event as V4EndEvent;
-      parts.push(new TextEncoder().encode(e.reason));
+      const reasonBytes = new TextEncoder().encode(e.reason);
+      parts.push(encodeVarint(reasonBytes.length));
+      parts.push(reasonBytes);
       break;
     }
   }
@@ -206,16 +208,14 @@ function decodeEvent(data: Uint8Array, offset: number): [V4Event | null, number]
       }
       
       case Op.END: {
-        const reasonBytes: number[] = [];
-        while (pos < data.length && data[pos] !== 0) {
-          reasonBytes.push(data[pos++]);
-        }
-        const reason = new TextDecoder().decode(new Uint8Array(reasonBytes));
+        const [reasonLen, pos2] = decodeVarint(data, pos);
+        const reasonBytes = data.slice(pos2, pos2 + reasonLen);
+        const reason = new TextDecoder().decode(reasonBytes);
         return [{
           type: Op.END,
           timestamp,
           reason: reason as any
-        }, pos];
+        }, pos2 + reasonLen];
       }
       
       default:
@@ -282,32 +282,57 @@ export async function encodeV4Replay(replay: V4ReplayData): Promise<Uint8Array> 
 // Main decoding
 export async function decodeV4Replay(data: Uint8Array): Promise<V4ReplayData | null> {
   try {
+    console.log('[V4 Decoder] Starting decode, data length:', data.length);
+    console.log('[V4 Decoder] First 8 bytes:', Array.from(data.slice(0, 8)));
+    
     let pos = 0;
     
-    // Check magic
-    if (data.slice(pos, pos + 4).toString() !== MAGIC.toString()) {
-      console.error('Invalid magic bytes');
-      return null;
+    // Check magic (byte-by-byte comparison)
+    const magic = data.slice(pos, pos + 4);
+    let magicMatch = true;
+    for (let i = 0; i < 4; i++) {
+      if (magic[i] !== MAGIC[i]) {
+        magicMatch = false;
+        break;
+      }
     }
+    
+    if (!magicMatch) {
+      console.error('[V4 Decoder] Invalid magic bytes', {
+        expected: Array.from(MAGIC),
+        received: Array.from(magic),
+        expectedString: new TextDecoder().decode(MAGIC),
+        receivedString: new TextDecoder().decode(magic)
+      });
+      throw new Error(`Invalid magic bytes: expected RPV4, got ${new TextDecoder().decode(magic)}`);
+    }
+    console.log('[V4 Decoder] Magic bytes verified: RPV4');
     pos += 4;
     
     // Check version
     const version = data[pos++];
+    console.log('[V4 Decoder] Version byte:', version);
     if (version !== VERSION) {
-      console.error(`Unsupported version: ${version}`);
-      return null;
+      console.error('[V4 Decoder] Unsupported version:', version, 'expected:', VERSION);
+      throw new Error(`Unsupported version: ${version}, expected ${VERSION}`);
     }
     
     // Decode header
+    const headerStart = pos;
     const [headerSize, pos1] = decodeVarint(data, pos);
     pos = pos1;
+    console.log('[V4 Decoder] Header size:', headerSize, 'starts at:', headerStart);
+    
     const headerBytes = data.slice(pos, pos + headerSize);
     pos += headerSize;
     const header = JSON.parse(new TextDecoder().decode(headerBytes));
+    console.log('[V4 Decoder] Header decoded:', { metadata: header.metadata, stats: header.stats });
     
     // Decode events
+    const eventStart = pos;
     const [eventCount, pos2] = decodeVarint(data, pos);
     pos = pos2;
+    console.log('[V4 Decoder] Event count:', eventCount, 'starts at:', eventStart);
     
     const events: V4Event[] = [];
     for (let i = 0; i < eventCount; i++) {
@@ -317,18 +342,36 @@ export async function decodeV4Replay(data: Uint8Array): Promise<V4ReplayData | n
       }
       pos = nextPos;
     }
+    const eventEnd = pos;
+    console.log('[V4 Decoder] Events decoded:', events.length, 'ends at:', eventEnd);
     
     // Read checksum (last 16 bytes of hex string)
     const checksumBytes = data.slice(pos, pos + 16);
     const storedChecksum = new TextDecoder().decode(checksumBytes);
+    console.log('[V4 Decoder] Stored checksum:', storedChecksum);
     
-    // Verify checksum
-    const dataForChecksum = data.slice(9, pos);  // From header to end of events
-    const calculatedChecksum = await calculateChecksum(dataForChecksum);
+    // Verify checksum - Use header + events range
+    const headerAndEventsBytes = new Uint8Array(headerBytes.length + (eventEnd - eventStart));
+    headerAndEventsBytes.set(headerBytes, 0);
+    headerAndEventsBytes.set(data.slice(eventStart, eventEnd), headerBytes.length);
+    const calculatedChecksum = await calculateChecksum(headerAndEventsBytes);
+    console.log('[V4 Decoder] Calculated checksum:', calculatedChecksum);
     
     if (storedChecksum !== calculatedChecksum) {
-      console.warn('Checksum mismatch - data may be corrupted');
+      console.warn('[V4 Decoder] ⚠️ Checksum mismatch - data may be corrupted', {
+        stored: storedChecksum,
+        calculated: calculatedChecksum
+      });
+    } else {
+      console.log('[V4 Decoder] ✅ Checksum verified');
     }
+    
+    console.log('[V4 Decoder] ✅ Decode successful', {
+      version: '4.0',
+      eventCount: events.length,
+      lockCount: events.filter(e => e.type === Op.LOCK).length,
+      keyframeCount: events.filter(e => e.type === Op.KF).length
+    });
     
     return {
       version: '4.0',
@@ -338,8 +381,11 @@ export async function decodeV4Replay(data: Uint8Array): Promise<V4ReplayData | n
       checksum: storedChecksum
     };
   } catch (err) {
-    console.error('V4 decode error:', err);
-    return null;
+    console.error('[V4 Decoder] ❌ Decode failed:', err);
+    if (err instanceof Error) {
+      throw err;
+    }
+    throw new Error(`V4 decode error: ${err}`);
   }
 }
 

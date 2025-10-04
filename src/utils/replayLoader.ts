@@ -151,23 +151,37 @@ export async function loadReplayById(replayId: string): Promise<any> {
   
   // V4.0 format
   if (version >= 4.0) {
-    console.info('replayLoader: Decoding V4.0 replay');
+    console.info('replayLoader: Decoding V4.0 replay, id:', replayId);
     
     const bytes = data.compressed_actions instanceof Uint8Array
       ? data.compressed_actions
       : toUint8Array(data.compressed_actions);
     
-    const v4Data = await decodeV4Replay(bytes);
-    
-    if (!v4Data) {
-      throw new Error('Failed to decode V4 replay');
-    }
-    
-    console.info('replayLoader: V4.0 decoding completed:', {
-      eventCount: v4Data.events.length,
-      lockCount: v4Data.stats.lockCount,
-      keyframeCount: v4Data.stats.keyframeCount
+    console.info('replayLoader: Binary data prepared', {
+      length: bytes.length,
+      firstBytes: Array.from(bytes.slice(0, 8)),
+      versionByte: bytes[4]
     });
+    
+    let v4Data: V4ReplayData;
+    try {
+      const decoded = await decodeV4Replay(bytes);
+      
+      if (!decoded) {
+        throw new Error('Decoder returned null - check console for specific error');
+      }
+      
+      v4Data = decoded;
+      
+      console.info('replayLoader: V4.0 decoding completed:', {
+        eventCount: v4Data.events.length,
+        lockCount: v4Data.stats.lockCount,
+        keyframeCount: v4Data.stats.keyframeCount
+      });
+    } catch (decodeError) {
+      console.error('replayLoader: V4 decode failed:', decodeError);
+      throw new Error(`Failed to decode V4 replay: ${decodeError instanceof Error ? decodeError.message : String(decodeError)}`);
+    }
     
     return {
       id: data.id,

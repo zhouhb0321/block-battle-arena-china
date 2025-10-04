@@ -510,25 +510,30 @@ export const useGameLogic = ({
     
     // Start V4 recording for non-endless modes (and non-replay modes)
     if (!isReplay && gameMode.id !== 'endless') {
-      console.log('[V4] Starting replay recording for mode:', gameMode.id);
-      
-      // Get initial piece sequence (first 2 bags = 14 pieces)
-      const initialSequence = initialPieces.map(p => p.type);
-      const nextSequence = Array.from({ length: 7 }, () => generateRandomPiece());
-      const fullSequence = [...initialSequence, ...nextSequence];
-      
-      startRecording(
-        useSeed,
-        fullSequence.slice(0, 14).map(p => String(p)),
-        {
-          das: 167,
-          arr: 33,
-          sdf: 20
-        },
-        user?.id || 'guest',
-        user?.email?.split('@')[0] || 'Guest Player',
-        gameMode.id
-      );
+      // Only start recording if user is authenticated
+      if (user && user.id) {
+        console.log('[V4] Starting replay recording for mode:', gameMode.id, 'user:', user.id);
+        
+        // Get initial piece sequence (first 2 bags = 14 pieces)
+        const initialSequence = initialPieces.map(p => p.type);
+        const nextSequence = Array.from({ length: 7 }, () => generateRandomPiece());
+        const fullSequence = [...initialSequence, ...nextSequence];
+        
+        startRecording(
+          useSeed,
+          fullSequence.slice(0, 14).map(p => String(p)),
+          {
+            das: 167,
+            arr: 33,
+            sdf: 20
+          },
+          user.id,
+          user.email?.split('@')[0] || user.username || 'Player',
+          gameMode.id
+        );
+      } else {
+        console.warn('[V4] User not authenticated, replay recording skipped');
+      }
     }
     
     // Only start countdown timer if not in replay mode
@@ -540,7 +545,7 @@ export const useGameLogic = ({
       }, 3000); // 3-second countdown
     }
 
-  }, [createGamePiece, isReplay, gameMode.id, startRecording, replaySeed, clearLockDelayTimer]);
+  }, [createGamePiece, isReplay, gameMode.id, startRecording, replaySeed, clearLockDelayTimer, user]);
 
   // Virtual clock tick for replay mode - synchronous processing with refs
   const tickReplay = useCallback((deltaMs: number) => {
