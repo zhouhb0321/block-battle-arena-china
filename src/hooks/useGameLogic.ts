@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWindowFocus } from './useWindowFocus';
 import { useGameState } from './useGameState';
 import { useAchievements } from './useAchievements';
-import { useReplayRecorder } from './useReplayRecorder';
+import { useReplayRecorderV4 } from './useReplayRecorderV4';
 import { debugLog } from '@/utils/debugLogger';
 import { 
   createEmptyBoard, 
@@ -86,8 +86,15 @@ export const useGameLogic = ({
   const [gravityAccumulatorMs, setGravityAccumulatorMs] = useState(0);
   const [lockDelayRemainingMs, setLockDelayRemainingMs] = useState(0);
 
-  
-  const { startRecording, recordAction, stopRecording, isRecording } = useReplayRecorder();
+  const { 
+    isRecording, 
+    startRecording, 
+    recordSpawn, 
+    recordInput, 
+    recordLock, 
+    stopRecording, 
+    clearRecording 
+  } = useReplayRecorderV4();
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
   const isUndoRedoEnabled = gameMode.id === 'endless';
   const gameStateManager = useGameState({ maxHistorySize: undoSteps, enabled: isUndoRedoEnabled });
@@ -160,6 +167,11 @@ export const useGameLogic = ({
     setCanHold(true);
     setLockDelayResetCount(0);
     totalPieces.current++;
+    
+    // Record SPAWN event for V4
+    if (isRecording) {
+      recordSpawn(String(newPiece.type), newPiece.x, newPiece.y);
+    }
 
     if (!isValidPosition(board, newPiece)) {
       // 无尽模式：堆满时重新开始游戏但保留状态
@@ -177,26 +189,6 @@ export const useGameLogic = ({
 
   const handlePieceLock = useCallback((pieceToLock: GamePiece) => {
     if (!pieceToLock) return;
-
-    // Record piece placement action before locking
-    if (isRecording) {
-      console.log('[Recording] Place action:', { 
-        piece: pieceToLock.type, 
-        x: pieceToLock.x, 
-        y: pieceToLock.y, 
-        rotation: pieceToLock.rotation,
-        timestamp: Date.now(),
-        totalPieces: totalPieces.current
-      });
-      recordAction('place', { 
-        piece: pieceToLock.type, 
-        x: pieceToLock.x, 
-        y: pieceToLock.y, 
-        rotation: pieceToLock.rotation 
-      });
-    } else {
-      console.log('[Not Recording] Piece locked but not recorded:', pieceToLock.type);
-    }
 
     // 1. T-Spin Check using tracked last move
     const tSpinResult = checkTSpin(board, pieceToLock, lastMoveRef.current, lastWasKickedRef.current);
@@ -249,7 +241,36 @@ export const useGameLogic = ({
     }
 
     setLines(newTotalLines);
-    setLevel(Math.floor(newTotalLines / 10) + 1);
+    const newLevel = Math.floor(newTotalLines / 10) + 1;
+    setLevel(newLevel);
+    
+    // Record LOCK event for V4 (after state updates for accurate data)
+    if (isRecording) {
+      const isDifficultClear = tSpinResult !== null || linesCleared === 4;
+      const currentScore = score + (linesCleared > 0 ? calculateScore({
+        linesCleared,
+        tSpin: tSpinResult ? (tSpinResult.isMini ? 'mini' : 'normal') : 'none',
+        isB2B: (isDifficultClear ? isB2B + 1 : 0) > 1,
+        combo: linesCleared > 0 ? comboCount + 1 : comboCount,
+        isPerfectClear,
+      }).score : 0);
+      
+      recordLock(
+        String(pieceToLock.type),
+        pieceToLock.x,
+        pieceToLock.y,
+        pieceToLock.rotation,
+        linesCleared,
+        tSpinResult !== null,
+        tSpinResult?.isMini || false,
+        clearedBoard,
+        nextPieces.map(p => String(p.type)),
+        holdPiece?.type ? String(holdPiece.type) : null,
+        currentScore,
+        newTotalLines,
+        newLevel
+      );
+    }
 
     // 5. Reset move tracking for next piece
     lastMoveRef.current = 'spawn';
@@ -258,7 +279,7 @@ export const useGameLogic = ({
     // 6. Spawn next piece
     spawnNewPiece();
 
-  }, [board, isB2B, comboCount, lines, spawnNewPiece, showTSpin, showTetris, showCombo, showPerfectClear, isRecording, recordAction]);
+  }, [board, isB2B, comboCount, lines, score, nextPieces, holdPiece, spawnNewPiece, showTSpin, showTetris, showCombo, showPerfectClear, isRecording, recordLock]);
 
   const lockPiece = useCallback(() => {
     if (!currentPiece) return;
@@ -344,28 +365,24 @@ export const useGameLogic = ({
         }
       }
       
-      // Record move action (only for horizontal moves or explicit soft drops)
+      // Record input for V4
       if (isRecording && (dx !== 0 || (dy > 0 && dx === 0))) {
-        totalActions.current++;
-        recordAction('move', { 
-          direction: dx < 0 ? 'left' : dx > 0 ? 'right' : 'down',
-          piece: newPiece 
-        });
+        const action = dx < 0 ? 'moveLeft' : dx > 0 ? 'moveRight' : 'softDrop';
+        recordInput(action, true);
       }
     } else if (dy > 0) {
       // Only start lock delay if piece fails to move down
       startLockDelay();
     }
-  }, [currentPiece, board, gameOver, isPaused, startLockDelay, resetLockDelay, isRecording, recordAction]);
+  }, [currentPiece, board, gameOver, isPaused, startLockDelay, resetLockDelay, isRecording, recordInput]);
 
 
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused) return;
     
-    // Record hard drop action before execution
+    // Record hard drop input for V4
     if (isRecording) {
-      totalActions.current++;
-      recordAction('drop', { type: 'hard', piece: currentPiece });
+      recordInput('hardDrop', true);
     }
     
     const dropY = calculateDropPosition(board, currentPiece);
@@ -380,7 +397,7 @@ export const useGameLogic = ({
     setScore(prev => prev + dropDistance);
 
     handlePieceLock(pieceToLock);
-  }, [currentPiece, board, gameOver, isPaused, handlePieceLock, isRecording, recordAction]);
+  }, [currentPiece, board, gameOver, isPaused, handlePieceLock, isRecording, recordInput]);
 
   const rotatePiece = (clockwise: boolean) => {
     if (!currentPiece || gameOver || isPaused) return;
@@ -399,14 +416,9 @@ export const useGameLogic = ({
         resetLockDelay();
       }
       
-      // Record rotation action
+      // Record rotation input for V4
       if (isRecording) {
-        totalActions.current++;
-        recordAction('rotate', { 
-          direction: clockwise ? 'clockwise' : 'counterclockwise',
-          piece: srsResult.newPiece, 
-          wasKicked: srsResult.wasKicked 
-        });
+        recordInput(clockwise ? 'rotateClockwise' : 'rotateCounterclockwise', true);
       }
     }
   };
@@ -430,17 +442,12 @@ export const useGameLogic = ({
         resetLockDelay();
       }
       
-      // Record rotation action
+      // Record rotation input for V4
       if (isRecording) {
-        totalActions.current++;
-        recordAction('rotate', { 
-          direction: '180',
-          piece: srsResult.newPiece, 
-          wasKicked: srsResult.wasKicked 
-        });
+        recordInput('rotate180', true);
       }
     }
-  }, [currentPiece, board, gameOver, isPaused, resetLockDelay, isRecording, recordAction]);
+  }, [currentPiece, board, gameOver, isPaused, resetLockDelay, isRecording, recordInput]);
 
   const holdCurrentPiece = useCallback(() => {
     if (!canHold || gameOver || isPaused) return;
@@ -453,12 +460,11 @@ export const useGameLogic = ({
     lastMoveRef.current = 'hold';
     lastWasKickedRef.current = false;
     
-    // Record hold action
+    // Record hold input for V4
     if (isRecording) {
-      totalActions.current++;
-      recordAction('hold', { piece: newHoldPiece });
+      recordInput('hold', true);
     }
-  }, [canHold, gameOver, isPaused, currentPiece, holdPiece, createGamePiece, isRecording, recordAction]);
+  }, [canHold, gameOver, isPaused, currentPiece, holdPiece, createGamePiece, isRecording, recordInput]);
 
   const startGame = useCallback(() => {
     // Clear any existing lock delay timer
@@ -500,17 +506,26 @@ export const useGameLogic = ({
     setCurrentPiece(initialPieces[0]);
     setNextPieces(initialPieces.slice(1));
     
-    // Start recording for non-endless modes (and non-replay modes)
+    // Start V4 recording for non-endless modes (and non-replay modes)
     if (!isReplay && gameMode.id !== 'endless') {
-      console.log('Starting replay recording for mode:', gameMode.id);
+      console.log('[V4] Starting replay recording for mode:', gameMode.id);
+      
+      // Get initial piece sequence (first 2 bags = 14 pieces)
+      const initialSequence = initialPieces.map(p => p.type);
+      const nextSequence = Array.from({ length: 7 }, () => generateRandomPiece());
+      const fullSequence = [...initialSequence, ...nextSequence];
+      
       startRecording(
-        createEmptyBoard(),
+        useSeed,
+        fullSequence.slice(0, 14).map(p => String(p)),
         {
           das: 167,
           arr: 33,
           sdf: 20
         },
-        useSeed
+        'user-id-placeholder',
+        'Player',
+        gameMode.id
       );
     }
     
@@ -644,15 +659,14 @@ export const useGameLogic = ({
             setGameStarted(false);
             
             if (isRecording) {
-              stopRecording({ 
-                score, 
-                lines, 
-                level, 
-                pps: totalPieces.current / elapsed, 
-                apm: (totalActions.current / elapsed) * 60, 
-                duration: timeLimitMs, // Use exact time limit for consistency
-                gameMode: gameMode.id 
-              }).then(result => {
+              stopRecording({
+                score,
+                lines,
+                level,
+                duration: timeLimitMs,
+                pps: totalPieces.current / elapsed,
+                apm: (totalActions.current / elapsed) * 60
+              }, gameMode.id, 'complete').then(result => {
                 if (result.isNewRecord) {
                   setIsNewRecord(true);
                 }
@@ -668,16 +682,15 @@ export const useGameLogic = ({
           setGameOver(true);
           setGameStarted(false);
           
-          if (isRecording) {
-            stopRecording({ 
-              score, 
-              lines, 
-              level, 
-              pps: totalPieces.current / elapsed, 
-              apm: (totalActions.current / elapsed) * 60, 
-              duration: elapsedMs, 
-              gameMode: gameMode.id 
-            }).then(result => {
+            if (isRecording) {
+              stopRecording({
+                score,
+                lines,
+                level,
+                duration: elapsedMs,
+                pps: totalPieces.current / elapsed,
+                apm: (totalActions.current / elapsed) * 60
+              }, gameMode.id, 'complete').then(result => {
               if (result.isNewRecord) {
                 setIsNewRecord(true);
               }

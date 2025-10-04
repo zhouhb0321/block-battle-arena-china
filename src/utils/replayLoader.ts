@@ -1,7 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toUint8Array } from './byteArrayUtils';
 import { ReplayCompressor } from './replayCompression';
+import { decodeV4Replay } from './replayV4/codec';
 import type { ReplayAction } from './gameTypes';
+import type { V4ReplayData } from './replayV4/types';
 
 export interface DecodedActionsResult {
   bytes: Uint8Array;
@@ -121,33 +123,72 @@ export async function decodeV3ReplayActions(dataInput: string): Promise<DecodedA
 
 
 /**
- * Load V3.0+ replay by ID - streamlined for latest format only
+ * Load replay by ID - supports V3.0 and V4.0 formats
  */
-export async function loadReplayById(replayId: string) {
-  console.info('replayLoader: Loading v3.0+ replay by ID:', replayId);
+export async function loadReplayById(replayId: string): Promise<any> {
+  console.info('replayLoader: Loading replay by ID:', replayId);
   
   const { data, error } = await supabase
     .from('compressed_replays')
     .select('*')
     .eq('id', replayId)
-    .gte('version', '3.0')
     .single();
 
   if (error) {
-    console.error('replayLoader: Failed to load v3.0+ replay:', error);
+    console.error('replayLoader: Failed to load replay:', error);
     throw new Error(`Failed to load replay: ${error.message}`);
   }
 
   if (!data) {
-    throw new Error('V3.0+ replay not found');
+    throw new Error('Replay not found');
   }
 
   if (!data.compressed_actions) {
     throw new Error('Invalid replay data: compressed_actions is missing');
   }
-
-  // Decode the v3.0 compressed actions
-  console.info('replayLoader: Decoding v3.0 compressed_actions for replay:', replayId);
+  
+  const version = parseFloat(data.version || '1.0');
+  
+  // V4.0 format
+  if (version >= 4.0) {
+    console.info('replayLoader: Decoding V4.0 replay');
+    
+    const bytes = data.compressed_actions instanceof Uint8Array
+      ? data.compressed_actions
+      : toUint8Array(data.compressed_actions);
+    
+    const v4Data = await decodeV4Replay(bytes);
+    
+    if (!v4Data) {
+      throw new Error('Failed to decode V4 replay');
+    }
+    
+    console.info('replayLoader: V4.0 decoding completed:', {
+      eventCount: v4Data.events.length,
+      lockCount: v4Data.stats.lockCount,
+      keyframeCount: v4Data.stats.keyframeCount
+    });
+    
+    return {
+      id: data.id,
+      version: '4.0',
+      format: 'v4',
+      v4Data,
+      // Legacy fields for compatibility
+      gameMode: v4Data.metadata.gameMode,
+      seed: v4Data.metadata.seed,
+      durationSeconds: Math.floor(v4Data.stats.duration / 1000),
+      finalScore: v4Data.stats.finalScore,
+      finalLines: v4Data.stats.finalLines,
+      username: v4Data.metadata.username,
+      pps: v4Data.stats.pps,
+      apm: v4Data.stats.apm,
+      createdAt: data.created_at
+    };
+  }
+  
+  // V3.0 format (legacy)
+  console.info('replayLoader: Decoding v3.0 replay');
   const decodedResult = await decodeV3ReplayActions(data.compressed_actions);
   
   console.info('replayLoader: V3.0 decoding completed:', {
@@ -156,9 +197,10 @@ export async function loadReplayById(replayId: string) {
     binarySize: decodedResult.bytes.length
   });
 
-  // Return a complete CompressedReplay object
   return {
     id: data.id,
+    version: data.version,
+    format: 'v3',
     gameMode: data.game_mode,
     seed: data.seed,
     durationSeconds: data.duration_seconds,
@@ -168,23 +210,32 @@ export async function loadReplayById(replayId: string) {
     actions: decodedResult.actions,
     compressedActions: decodedResult.bytes,
     decodedResult: decodedResult.info,
-    // Include other metadata
     username: data.username,
     createdAt: data.created_at,
     pps: data.pps,
     apm: data.apm,
     isPersonalBest: data.is_personal_best,
     isWorldRecord: data.is_world_record,
-    version: data.version,
     actionsCount: data.actions_count
   };
 }
 
 /**
- * Check if a replay can be played based on v3.0+ criteria
+ * Check if a replay can be played
  */
-export function isReplayPlayable(replay: { actions_count?: number; version?: string }): boolean {
-  return (replay.actions_count || 0) > 0 && 
-         replay.version && 
-         parseFloat(replay.version) >= 3.0;
+export function isReplayPlayable(replay: { 
+  actions_count?: number; 
+  version?: string;
+  format?: string;
+  v4Data?: V4ReplayData;
+}): boolean {
+  const version = parseFloat(replay.version || '1.0');
+  
+  // V4 is always playable if it has v4Data
+  if (version >= 4.0 || replay.format === 'v4') {
+    return !!replay.v4Data && replay.v4Data.stats.lockCount > 0;
+  }
+  
+  // V3 requires actions
+  return (replay.actions_count || 0) > 0 && version >= 3.0;
 }
