@@ -3,6 +3,7 @@ import { useWindowFocus } from './useWindowFocus';
 import { useGameState } from './useGameState';
 import { useAchievements } from './useAchievements';
 import { useReplayRecorderV4 } from './useReplayRecorderV4';
+import { useAuth } from '@/contexts/AuthContext';
 import { debugLog } from '@/utils/debugLogger';
 import { 
   createEmptyBoard, 
@@ -96,6 +97,7 @@ export const useGameLogic = ({
     clearRecording 
   } = useReplayRecorderV4();
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
+  const { user } = useAuth();
   const isUndoRedoEnabled = gameMode.id === 'endless';
   const gameStateManager = useGameState({ maxHistorySize: undoSteps, enabled: isUndoRedoEnabled });
   const { isWindowFocused, setWasManuallyPaused } = useWindowFocus();
@@ -523,8 +525,8 @@ export const useGameLogic = ({
           arr: 33,
           sdf: 20
         },
-        'user-id-placeholder',
-        'Player',
+        user?.id || 'guest',
+        user?.email?.split('@')[0] || 'Guest Player',
         gameMode.id
       );
     }

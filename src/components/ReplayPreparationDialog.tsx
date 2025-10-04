@@ -8,7 +8,9 @@ import { Clock, Trophy, Target, Play, Download, AlertCircle, CheckCircle } from 
 import { useToast } from '@/hooks/use-toast';
 import { loadReplayById } from '@/utils/replayLoader';
 import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
+import ReplayPlayerV4 from './ReplayPlayerV4';
 import type { CompressedReplay } from '@/utils/replayTypes';
+import type { V4ReplayData } from '@/utils/replayV4/types';
 
 interface ReplayPreparationDialogProps {
   isOpen: boolean;
@@ -37,10 +39,23 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
 }) => {
   const [loadingState, setLoadingState] = useState<LoadingState>('idle');
   const [loadProgress, setLoadProgress] = useState(0);
-  const [replayData, setReplayData] = useState<CompressedReplay | null>(null);
+  const [replayData, setReplayData] = useState<CompressedReplay | V4ReplayData | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const { toast } = useToast();
+
+  // Check if replay is V4 format (from loadReplayById wrapper)
+  const isV4Replay = (data: any): boolean => {
+    return data && (data.format === 'v4' || (data.version === '4.0' && data.v4Data));
+  };
+
+  // Extract V4 data from wrapper
+  const getV4Data = (data: any): V4ReplayData | null => {
+    if (data && data.v4Data) {
+      return data.v4Data;
+    }
+    return null;
+  };
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -79,14 +94,37 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
       clearInterval(progressInterval);
       setLoadProgress(100);
 
-      if (loadedReplay && loadedReplay.actions) {
-        // loadReplayById now returns a complete CompressedReplay object
-        setReplayData(loadedReplay);
-        setLoadingState('success');
-        toast({
-          title: "录像加载成功",
-          description: `成功载入 ${loadedReplay.decodedResult?.placeActionsCount || loadedReplay.actionsCount || 0} 个动作`
-        });
+      if (loadedReplay) {
+        // Check if it's V4 or V3
+        if (isV4Replay(loadedReplay)) {
+          const v4Data = getV4Data(loadedReplay);
+          if (v4Data) {
+            console.log('[ReplayPreparation] Loaded V4 replay:', {
+              lockCount: v4Data.stats.lockCount,
+              keyframeCount: v4Data.stats.keyframeCount,
+              eventCount: v4Data.events.length
+            });
+            
+            setReplayData(loadedReplay);
+            setLoadingState('success');
+            toast({
+              title: "V4 录像加载成功",
+              description: `${v4Data.stats.lockCount} 个锁定, ${v4Data.stats.keyframeCount} 个关键帧`
+            });
+          } else {
+            throw new Error('V4 录像数据结构无效');
+          }
+        } else if (loadedReplay.actions) {
+          // V3 format
+          setReplayData(loadedReplay);
+          setLoadingState('success');
+          toast({
+            title: "录像加载成功",
+            description: `成功载入 ${loadedReplay.decodedResult?.placeActionsCount || loadedReplay.actionsCount || 0} 个动作`
+          });
+        } else {
+          throw new Error('录像数据无效或无法播放');
+        }
       } else {
         throw new Error('录像数据无效或无法播放');
       }
@@ -278,13 +316,27 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
         </DialogContent>
       </Dialog>
 
-      {/* 增强回放播放器 - 只在数据完整且对话框打开时渲染 */}
+      {/* Replay Player - V4 or V3 based on data format */}
       {replayData && isPlayerOpen && (
-        <EnhancedReplayPlayer
-          replay={replayData}
-          isOpen={isPlayerOpen}
-          onClose={handleClosePlayer}
-        />
+        <>
+          {isV4Replay(replayData) ? (
+            (() => {
+              const v4Data = getV4Data(replayData);
+              return v4Data ? (
+                <ReplayPlayerV4
+                  replay={v4Data}
+                  onClose={handleClosePlayer}
+                />
+              ) : null;
+            })()
+          ) : (
+            <EnhancedReplayPlayer
+              replay={replayData as CompressedReplay}
+              isOpen={isPlayerOpen}
+              onClose={handleClosePlayer}
+            />
+          )}
+        </>
       )}
     </>
   );

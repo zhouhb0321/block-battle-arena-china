@@ -28,13 +28,13 @@ const ReplaySystem: React.FC = () => {
     
     setIsLoading(true);
     try {
-      // Load only v3.0+ metadata from compressed_replays
+      // Load v4.0+ and v3.0+ metadata from compressed_replays
       const { data: compressedReplays, error: compressedError } = await supabase
         .from('compressed_replays')
         .select(`
           id, user_id, username, game_mode, duration_seconds, 
           final_score, final_lines, pps, apm, is_personal_best, 
-          created_at, version, actions_count, seed, 
+          created_at, version, actions_count, place_actions_count, seed, 
           initial_board, game_settings
         `)
         .eq('user_id', user.id)
@@ -49,7 +49,18 @@ const ReplaySystem: React.FC = () => {
         for (const replay of compressedReplays) {
           // Check playability based on metadata only
           const { isReplayPlayable } = await import('@/utils/replayLoader');
-          const isPlayable = isReplayPlayable(replay);
+          
+          // For V4, check place_actions_count; for V3+, check actions_count
+          const version = parseFloat(replay.version || '1.0');
+          let isPlayable = false;
+          
+          if (version >= 4.0) {
+            // V4 requires place_actions_count > 0
+            isPlayable = (replay.place_actions_count || 0) > 0;
+          } else {
+            // V3 uses isReplayPlayable function
+            isPlayable = isReplayPlayable(replay);
+          }
 
           processedReplays.push({
             id: replay.id,
