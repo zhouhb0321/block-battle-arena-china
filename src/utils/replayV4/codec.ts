@@ -137,7 +137,8 @@ function encodeEvent(event: V4Event): Uint8Array {
 
 // Event decoding
 function decodeEvent(data: Uint8Array, offset: number): [V4Event | null, number] {
-  if (offset >= data.length) return [null, offset];
+  // 留 16 字节给 checksum
+  if (offset >= data.length - 16) return [null, offset];
   
   const opcode = data[offset++];
   const [timestamp, pos1] = decodeVarint(data, offset);
@@ -219,8 +220,15 @@ function decodeEvent(data: Uint8Array, offset: number): [V4Event | null, number]
       }
       
       default:
-        console.warn(`Unknown opcode: ${opcode}`);
-        return [null, pos];
+        console.warn(`Unknown opcode: ${opcode} at offset ${offset - 1}`);
+        console.warn(`First 8 bytes from this position:`, 
+          Array.from(data.slice(offset - 1, Math.min(offset + 7, data.length)))
+            .map(b => `${b}(${String.fromCharCode(b)})`)
+            .join(' ')
+        );
+        // 跳过这个损坏的事件，尝试恢复解码
+        const skipBytes = Math.min(64, data.length - pos - 16);
+        return [null, pos + skipBytes];
     }
   } catch (err) {
     console.error('Event decode error:', err);
@@ -360,18 +368,44 @@ export async function decodeV4Replay(data: Uint8Array): Promise<V4ReplayData | n
     console.log('[V4 Decoder] Event count:', eventCount, 'starts at:', eventStart);
     
     const events: V4Event[] = [];
+    let successfulDecodes = 0;
+    let failedDecodes = 0;
+    
     for (let i = 0; i < eventCount; i++) {
+      // 边界检查：留 16 字节给 checksum
+      if (pos >= data.length - 16) {
+        console.warn(`[V4 Decoder] Reached end of data at event ${i}/${eventCount}`);
+        break;
+      }
+      
+      const beforePos = pos;
       const [event, nextPos] = decodeEvent(data, pos);
+      
       if (event) {
         events.push(event);
+        successfulDecodes++;
+      } else {
+        failedDecodes++;
+        if (failedDecodes > 10) {
+          console.error(`[V4 Decoder] Too many decode failures (${failedDecodes}), aborting`);
+          break;
+        }
       }
+      
       pos = nextPos;
+      
+      // 防止无限循环
+      if (pos <= beforePos) {
+        console.error(`[V4 Decoder] Position not advancing at event ${i}, breaking loop`);
+        pos = beforePos + 1; // 强制前进
+      }
     }
+    
     const eventEnd = pos;
-    console.log('[V4 Decoder] Events decoded:', events.length, 'ends at:', eventEnd);
+    console.log(`[V4 Decoder] Events decoded: ${successfulDecodes} successful, ${failedDecodes} failed, ends at: ${eventEnd}`);
     
     // Read checksum (last 16 bytes of hex string)
-    const checksumBytes = data.slice(pos, pos + 16);
+    const checksumBytes = data.slice(data.length - 16);
     const storedChecksum = new TextDecoder().decode(checksumBytes);
     console.log('[V4 Decoder] Stored checksum:', storedChecksum);
     
