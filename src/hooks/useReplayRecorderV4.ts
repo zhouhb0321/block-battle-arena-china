@@ -280,10 +280,14 @@ export function useReplayRecorderV4() {
         sizeKB: (binaryData.length / 1024).toFixed(2)
       });
       
-      // Extract checksum from binary (last 16 bytes as text)
+      // Extract checksum from binary (last 16 bytes as text) BEFORE Base64 encoding
       const checksumBytes = binaryData.slice(-16);
       const extractedChecksum = new TextDecoder().decode(checksumBytes);
       console.log('[RecorderV4] Extracted checksum from binary:', extractedChecksum);
+      
+      // Convert binary to Base64 for reliable storage
+      const base64String = btoa(String.fromCharCode(...binaryData));
+      console.log('[RecorderV4] Base64 encoded, length:', base64String.length, 'starts with:', base64String.substring(0, 20));
       
       // Save to database using authenticated user ID
       const { data, error } = await supabase
@@ -292,7 +296,7 @@ export function useReplayRecorderV4() {
           user_id: currentUser.id,  // Use confirmed authenticated user ID
           game_mode: gameMode,
           version: '4.0',
-          compressed_actions: binaryData,
+          compressed_actions: base64String,
           actions_count: eventsRef.current.length,
           place_actions_count: lockCountRef.current,
           final_score: gameStats.score,

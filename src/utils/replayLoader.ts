@@ -153,13 +153,35 @@ export async function loadReplayById(replayId: string): Promise<any> {
   if (version >= 4.0) {
     console.info('replayLoader: Decoding V4.0 replay, id:', replayId);
     
-    const bytes = data.compressed_actions instanceof Uint8Array
-      ? data.compressed_actions
-      : toUint8Array(data.compressed_actions);
+    let bytes: Uint8Array;
+    
+    // Prioritize Base64 string format (new format)
+    if (typeof data.compressed_actions === 'string') {
+      console.info('replayLoader: Processing Base64 string, length:', data.compressed_actions.length);
+      try {
+        const binaryString = atob(data.compressed_actions);
+        bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        console.info('replayLoader: Base64 decoded, binary length:', bytes.length);
+      } catch (e) {
+        console.error('replayLoader: Base64 decode failed, falling back to toUint8Array:', e);
+        bytes = toUint8Array(data.compressed_actions);
+      }
+    } else if (data.compressed_actions instanceof Uint8Array) {
+      bytes = data.compressed_actions;
+      console.info('replayLoader: Using Uint8Array directly');
+    } else {
+      console.info('replayLoader: Using toUint8Array fallback for type:', typeof data.compressed_actions);
+      bytes = toUint8Array(data.compressed_actions);
+    }
     
     console.info('replayLoader: Binary data prepared', {
       length: bytes.length,
       firstBytes: Array.from(bytes.slice(0, 8)),
+      firstBytesHex: Array.from(bytes.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(' '),
+      expectedMagic: 'RPV4 = [82, 80, 86, 52] = [0x52, 0x50, 0x56, 0x34]',
       versionByte: bytes[4]
     });
     
