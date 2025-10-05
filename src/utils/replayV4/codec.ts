@@ -283,7 +283,17 @@ export async function encodeV4Replay(replay: V4ReplayData): Promise<Uint8Array> 
 export async function decodeV4Replay(data: Uint8Array): Promise<V4ReplayData | null> {
   try {
     console.log('[V4 Decoder] Starting decode, data length:', data.length);
-    console.log('[V4 Decoder] First 8 bytes:', Array.from(data.slice(0, 8)));
+    console.log('[V4 Decoder] First 16 bytes (hex):', 
+      Array.from(data.slice(0, 16))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join(' ')
+    );
+    console.log('[V4 Decoder] First 8 bytes (decimal):', Array.from(data.slice(0, 8)));
+    console.log('[V4 Decoder] First 16 bytes (ASCII):', 
+      Array.from(data.slice(0, 16))
+        .map(b => b >= 32 && b <= 126 ? String.fromCharCode(b) : '.')
+        .join('')
+    );
     
     let pos = 0;
     
@@ -298,15 +308,30 @@ export async function decodeV4Replay(data: Uint8Array): Promise<V4ReplayData | n
     }
     
     if (!magicMatch) {
-      console.error('[V4 Decoder] Invalid magic bytes', {
-        expected: Array.from(MAGIC),
-        received: Array.from(magic),
-        expectedString: new TextDecoder().decode(MAGIC),
-        receivedString: new TextDecoder().decode(magic)
+      const expectedBytes = Array.from(MAGIC);
+      const receivedBytes = Array.from(magic);
+      const expectedStr = new TextDecoder().decode(MAGIC);
+      const receivedStr = new TextDecoder().decode(magic);
+      
+      console.error('[V4 Decoder] ❌ MAGIC BYTE MISMATCH - Replay data is corrupted or wrong format', {
+        expected: expectedBytes,
+        received: receivedBytes,
+        expectedString: expectedStr,
+        receivedString: receivedStr,
+        expectedHex: expectedBytes.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+        receivedHex: receivedBytes.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+        diagnosis: receivedBytes.every(b => b === 0) 
+          ? 'Data appears to be all zeros - storage corruption'
+          : receivedStr.includes('{') || receivedStr.includes('[')
+          ? 'Data looks like JSON - likely Uint8Array was serialized as JSON object instead of Base64'
+          : 'Unknown format - may need to re-record replay'
       });
-      throw new Error(`Invalid magic bytes: expected RPV4, got ${new TextDecoder().decode(magic)}`);
+      throw new Error(
+        `Invalid V4 replay format: Expected magic "RPV4" [82,80,86,52], got "${receivedStr}" [${receivedBytes.join(',')}]. ` +
+        `This replay may have been saved in an older format and needs to be re-recorded.`
+      );
     }
-    console.log('[V4 Decoder] Magic bytes verified: RPV4');
+    console.log('[V4 Decoder] ✅ Magic bytes verified: RPV4');
     pos += 4;
     
     // Check version
