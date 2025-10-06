@@ -46,78 +46,70 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
       setScore(firstKF.score);
       setLines(firstKF.lines);
       setLevel(firstKF.level);
-      console.log('[PlayerV4] Initialized from first keyframe');
+      console.log('[PlayerV4] Initialized from first keyframe at', firstKF.timestamp, 'ms');
     } else {
-      // Fallback: empty board
-      setBoard(Array(20).fill(null).map(() => Array(10).fill(0)));
+      // Fallback: empty board with initial sequence
+      const emptyBoard = Array(20).fill(null).map(() => Array(10).fill(0));
+      setBoard(emptyBoard);
       setNextPieces(replay.metadata.initialPieceSequence.slice(0, 5));
-      console.log('[PlayerV4] Initialized with empty board');
+      setScore(0);
+      setLines(0);
+      setLevel(1);
+      setHoldPiece(null);
+      console.warn('[PlayerV4] No keyframe found, initialized with empty board');
     }
   }, [replay]);
 
-  // Find the most recent keyframe before current time
+  // Find the most recent keyframe before or at current time
   const findRelevantKeyframe = useCallback((timestamp: number): V4KeyframeEvent | null => {
     let mostRecent: V4KeyframeEvent | null = null;
     
     for (const event of replay.events) {
-      if (event.type === ReplayOpcode.KF && event.timestamp <= timestamp) {
-        mostRecent = event as V4KeyframeEvent;
-      } else if (event.timestamp > timestamp) {
-        break;
+      if (event.type === ReplayOpcode.KF) {
+        const kfEvent = event as V4KeyframeEvent;
+        if (kfEvent.timestamp <= timestamp) {
+          mostRecent = kfEvent;
+        } else {
+          // Events are sorted by timestamp, so we can break early
+          break;
+        }
       }
     }
     
     return mostRecent;
   }, [replay.events]);
 
-  // Apply events from keyframe to current time
+  // Reconstruct game state at target time using keyframe-based approach
   const reconstructState = useCallback((targetTime: number) => {
-    // Find most recent keyframe
+    // Find the most recent keyframe at or before targetTime
     const kf = findRelevantKeyframe(targetTime);
     
-    if (kf) {
-      // Start from keyframe
-      setBoard(JSON.parse(JSON.stringify(kf.board)));
-      setNextPieces([...kf.nextPieces]);
-      setHoldPiece(kf.holdPiece);
-      setScore(kf.score);
-      setLines(kf.lines);
-      setLevel(kf.level);
-      
-      // Apply LOCK events between keyframe and target
-      let currentBoard = JSON.parse(JSON.stringify(kf.board));
-      let currentScore = kf.score;
-      let currentLines = kf.lines;
-      let currentLevel = kf.level;
-      
-      for (const event of replay.events) {
-        if (event.timestamp > kf.timestamp && event.timestamp <= targetTime) {
-          if (event.type === ReplayOpcode.LOCK) {
-            const lockEvent = event as V4LockEvent;
-            
-            // Apply lock to board (simplified - just mark cells)
-            const pieceTypeMap: Record<string, number> = {
-              'I': 1, 'O': 2, 'T': 3, 'S': 4, 'Z': 5, 'J': 6, 'L': 7
-            };
-            const cellValue = pieceTypeMap[lockEvent.pieceType] || 1;
-            
-            // Mark the lock position (simplified)
-            if (lockEvent.y >= 0 && lockEvent.y < 20 && lockEvent.x >= 0 && lockEvent.x < 10) {
-              currentBoard[lockEvent.y][lockEvent.x] = cellValue;
-            }
-            
-            currentLines += lockEvent.linesCleared;
-            
-            // Simplified score calculation
-            currentScore += lockEvent.linesCleared * 100 * (lockEvent.isTSpin ? 4 : 1);
-          }
-        }
-      }
-      
-      setBoard(currentBoard);
-      setScore(currentScore);
-      setLines(currentLines);
-      setLevel(currentLevel);
+    if (!kf) {
+      console.warn('[PlayerV4] No keyframe found for time:', targetTime);
+      return;
+    }
+    
+    // Directly use keyframe state (keyframes already contain complete game state)
+    setBoard(JSON.parse(JSON.stringify(kf.board)));
+    setNextPieces([...kf.nextPieces]);
+    setHoldPiece(kf.holdPiece);
+    setScore(kf.score);
+    setLines(kf.lines);
+    setLevel(kf.level);
+    
+    // Optional: Find next keyframe to see if we're between keyframes
+    const nextKF = replay.events.find(
+      e => e.type === ReplayOpcode.KF && e.timestamp > kf.timestamp
+    ) as V4KeyframeEvent | undefined;
+    
+    if (nextKF && targetTime >= kf.timestamp && targetTime < nextKF.timestamp) {
+      // We're between two keyframes - the current keyframe state is accurate
+      // No need to simulate individual LOCK events as keyframes capture complete state
+      console.debug('[PlayerV4] Using keyframe state', {
+        kfTime: kf.timestamp,
+        targetTime,
+        nextKFTime: nextKF.timestamp
+      });
     }
   }, [replay.events, findRelevantKeyframe]);
 

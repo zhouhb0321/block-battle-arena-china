@@ -155,8 +155,8 @@ export function useReplayRecorderV4() {
     lastNextRef.current = nextPieces;
     lastHoldRef.current = holdPiece;
     
-    // Record keyframe every N locks
-    if (lockCountRef.current % keyframeIntervalRef.current === 0) {
+    // Record keyframe: at first lock, then every N locks
+    if (lockCountRef.current === 1 || lockCountRef.current % keyframeIntervalRef.current === 0) {
       const kfEvent: V4KeyframeEvent = {
         type: ReplayOpcode.KF,
         timestamp,
