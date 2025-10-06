@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { V4ReplayData, V4Event, V4LockEvent, V4KeyframeEvent } from '@/utils/replayV4/types';
 import { ReplayOpcode, InputAction } from '@/utils/replayV4/types';
-import { encodeV4Replay, validateV4Replay } from '@/utils/replayV4/codec';
+import { encodeV4Replay, validateV4Replay, decodeV4Replay } from '@/utils/replayV4/codec';
 
 interface RecorderSettings {
   das: number;
@@ -284,7 +284,41 @@ export function useReplayRecorderV4() {
       const checksumBytes = binaryData.slice(-16);
       const extractedChecksum = new TextDecoder().decode(checksumBytes);
       console.log('[RecorderV4] Extracted checksum from binary:', extractedChecksum);
-      
+
+      // Round-trip decode to validate integrity BEFORE saving
+      let decodedRoundTrip = null as any;
+      try {
+        decodedRoundTrip = await decodeV4Replay(binaryData);
+      } catch (rtErr) {
+        console.error('[RecorderV4] Round-trip decode failed:', rtErr);
+      }
+
+      if (!decodedRoundTrip) {
+        toast.error('录像自检失败', { description: '无法解码刚编码的数据，已取消保存' });
+        return { saved: false };
+      }
+
+      const decodedEventCount = decodedRoundTrip.events.length;
+      const decodedLockCount = decodedRoundTrip.events.filter((e: any) => e.type === ReplayOpcode.LOCK).length;
+      const decodedChecksum = decodedRoundTrip.checksum;
+
+      if (
+        decodedEventCount !== eventsRef.current.length ||
+        decodedLockCount !== lockCountRef.current ||
+        decodedChecksum !== extractedChecksum
+      ) {
+        console.warn('[RecorderV4] ⚠️ Round-trip mismatch detected', {
+          encodedEvents: eventsRef.current.length,
+          decodedEvents: decodedEventCount,
+          encodedLocks: lockCountRef.current,
+          decodedLocks: decodedLockCount,
+          extractedChecksum,
+          decodedChecksum
+        });
+        toast.error('录像编码自检失败', { description: '数据不一致，保存已取消。请重试或重新开始录制。' });
+        return { saved: false };
+      }
+
       // Convert binary to Base64 for reliable storage
       const base64String = btoa(String.fromCharCode(...binaryData));
       console.log('[RecorderV4] Base64 encoded, length:', base64String.length, 'starts with:', base64String.substring(0, 20));
