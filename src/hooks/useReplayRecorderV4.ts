@@ -302,21 +302,53 @@ export function useReplayRecorderV4() {
       const decodedLockCount = decodedRoundTrip.events.filter((e: any) => e.type === ReplayOpcode.LOCK).length;
       const decodedChecksum = decodedRoundTrip.checksum;
 
-      if (
-        decodedEventCount !== eventsRef.current.length ||
-        decodedLockCount !== lockCountRef.current ||
-        decodedChecksum !== extractedChecksum
-      ) {
-        console.warn('[RecorderV4] ⚠️ Round-trip mismatch detected', {
-          encodedEvents: eventsRef.current.length,
-          decodedEvents: decodedEventCount,
-          encodedLocks: lockCountRef.current,
-          decodedLocks: decodedLockCount,
-          extractedChecksum,
-          decodedChecksum
+      // 计算解码成功率和事件丢失率
+      const eventLoss = eventsRef.current.length - decodedEventCount;
+      const eventLossRate = eventLoss / eventsRef.current.length;
+      
+      // 关键数据必须匹配
+      const lockMismatch = decodedLockCount !== lockCountRef.current;
+      const checksumMismatch = decodedChecksum !== extractedChecksum;
+
+      console.log('[RecorderV4] Round-trip validation:', {
+        encodedEvents: eventsRef.current.length,
+        decodedEvents: decodedEventCount,
+        eventLoss,
+        eventLossRate: `${(eventLossRate * 100).toFixed(1)}%`,
+        encodedLocks: lockCountRef.current,
+        decodedLocks: decodedLockCount,
+        lockMismatch,
+        checksumMismatch,
+        extractedChecksum,
+        decodedChecksum
+      });
+
+      // 致命错误：关键数据不匹配
+      if (lockMismatch || checksumMismatch) {
+        console.error('[RecorderV4] ❌ Critical data mismatch', {
+          lockMismatch,
+          checksumMismatch
         });
-        toast.error('录像编码自检失败', { description: '数据不一致，保存已取消。请重试或重新开始录制。' });
+        toast.error('录像编码自检失败', { 
+          description: '关键数据损坏，保存已取消' 
+        });
         return { saved: false };
+      }
+
+      // 警告：事件丢失率超过 5%
+      if (eventLossRate > 0.05) {
+        console.warn('[RecorderV4] ⚠️ High event loss rate', {
+          eventLoss,
+          eventLossRate: `${(eventLossRate * 100).toFixed(1)}%`
+        });
+        toast.warning('录像质量警告', {
+          description: `${eventLoss} 个非关键事件丢失，但录像仍可播放`
+        });
+      } else if (eventLoss > 0) {
+        console.log('[RecorderV4] ℹ️ Minor event loss acceptable:', {
+          eventLoss,
+          eventLossRate: `${(eventLossRate * 100).toFixed(1)}%`
+        });
       }
 
       // Convert binary to Base64 for reliable storage

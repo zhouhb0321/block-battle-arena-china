@@ -220,14 +220,18 @@ function decodeEvent(data: Uint8Array, offset: number): [V4Event | null, number]
       }
       
       default:
-        console.warn(`Unknown opcode: ${opcode} at offset ${offset - 1}`);
-        console.warn(`First 8 bytes from this position:`, 
-          Array.from(data.slice(offset - 1, Math.min(offset + 7, data.length)))
-            .map(b => `${b}(${String.fromCharCode(b)})`)
-            .join(' ')
+        console.warn(`[V4 Decoder] ⚠️ Unknown opcode: ${opcode} at offset ${offset - 1}`);
+        console.warn(`[V4 Decoder] Context bytes (hex):`, 
+          Array.from(data.slice(Math.max(0, offset - 5), Math.min(data.length, offset + 10)))
+            .map((b, i) => `[${i === 5 ? '→' : ' '}${b.toString(16).padStart(2, '0')}]`)
+            .join('')
         );
-        // 跳过这个损坏的事件，尝试恢复解码
-        const skipBytes = Math.min(64, data.length - pos - 16);
+        console.warn(`[V4 Decoder] Context bytes (decimal):`,
+          Array.from(data.slice(Math.max(0, offset - 5), Math.min(data.length, offset + 10)))
+        );
+        // 尝试跳过这个损坏的事件，继续解码
+        const skipBytes = Math.min(32, data.length - pos - 16);
+        console.warn(`[V4 Decoder] Skipping ${skipBytes} bytes to attempt recovery`);
         return [null, pos + skipBytes];
     }
   } catch (err) {
@@ -248,9 +252,30 @@ export async function encodeV4Replay(replay: V4ReplayData): Promise<Uint8Array> 
   
   // Encode events
   const eventBlocks: Uint8Array[] = [];
+  const eventBreakdown = {
+    SPAWN: 0,
+    INPUT: 0,
+    LOCK: 0,
+    KF: 0,
+    META: 0,
+    END: 0
+  };
+  
   for (const event of replay.events) {
     eventBlocks.push(encodeEvent(event));
+    // Count events
+    switch (event.type) {
+      case Op.SPAWN: eventBreakdown.SPAWN++; break;
+      case Op.INPUT: eventBreakdown.INPUT++; break;
+      case Op.LOCK: eventBreakdown.LOCK++; break;
+      case Op.KF: eventBreakdown.KF++; break;
+      case Op.META: eventBreakdown.META++; break;
+      case Op.END: eventBreakdown.END++; break;
+    }
   }
+  
+  console.log('[V4 Encoder] Event breakdown:', eventBreakdown);
+  
   const totalEventSize = eventBlocks.reduce((sum, b) => sum + b.length, 0);
   const eventsBytes = new Uint8Array(totalEventSize);
   let offset = 0;
@@ -402,7 +427,19 @@ export async function decodeV4Replay(data: Uint8Array): Promise<V4ReplayData | n
     }
     
     const eventEnd = pos;
+    
+    // Count decoded events by type
+    const decodedBreakdown = {
+      SPAWN: events.filter(e => e.type === Op.SPAWN).length,
+      INPUT: events.filter(e => e.type === Op.INPUT).length,
+      LOCK: events.filter(e => e.type === Op.LOCK).length,
+      KF: events.filter(e => e.type === Op.KF).length,
+      META: events.filter(e => e.type === Op.META).length,
+      END: events.filter(e => e.type === Op.END).length
+    };
+    
     console.log(`[V4 Decoder] Events decoded: ${successfulDecodes} successful, ${failedDecodes} failed, ends at: ${eventEnd}`);
+    console.log('[V4 Decoder] Decoded event breakdown:', decodedBreakdown);
     
     // Read checksum (last 16 bytes of hex string)
     const checksumBytes = data.slice(data.length - 16);
