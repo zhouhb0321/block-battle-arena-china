@@ -61,23 +61,41 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
   }, [replay]);
 
   // Find the most recent keyframe before or at current time
+  // If before first keyframe, create virtual initial state
   const findRelevantKeyframe = useCallback((timestamp: number): V4KeyframeEvent | null => {
-    let mostRecent: V4KeyframeEvent | null = null;
+    const keyframes = replay.events.filter(e => e.type === ReplayOpcode.KF) as V4KeyframeEvent[];
     
-    for (const event of replay.events) {
-      if (event.type === ReplayOpcode.KF) {
-        const kfEvent = event as V4KeyframeEvent;
-        if (kfEvent.timestamp <= timestamp) {
-          mostRecent = kfEvent;
-        } else {
-          // Events are sorted by timestamp, so we can break early
-          break;
-        }
+    if (keyframes.length === 0) return null;
+    
+    const firstKF = keyframes[0];
+    
+    // If before first keyframe, create virtual initial state at timestamp 0
+    if (timestamp < firstKF.timestamp) {
+      const emptyBoard = Array(20).fill(null).map(() => Array(10).fill(0));
+      return {
+        type: ReplayOpcode.KF,
+        timestamp: 0,
+        board: emptyBoard,
+        nextPieces: replay.metadata.initialPieceSequence.slice(0, 7),
+        holdPiece: null,
+        score: 0,
+        lines: 0,
+        level: 1
+      } as V4KeyframeEvent;
+    }
+    
+    // Find most recent keyframe <= timestamp
+    let mostRecent = firstKF;
+    for (const kf of keyframes) {
+      if (kf.timestamp <= timestamp) {
+        mostRecent = kf;
+      } else {
+        break;
       }
     }
     
     return mostRecent;
-  }, [replay.events]);
+  }, [replay.events, replay.metadata.initialPieceSequence]);
 
   // Reconstruct game state at target time using keyframe-based approach
   const reconstructState = useCallback((targetTime: number) => {
@@ -97,20 +115,11 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
     setLines(kf.lines);
     setLevel(kf.level);
     
-    // Optional: Find next keyframe to see if we're between keyframes
-    const nextKF = replay.events.find(
-      e => e.type === ReplayOpcode.KF && e.timestamp > kf.timestamp
-    ) as V4KeyframeEvent | undefined;
-    
-    if (nextKF && targetTime >= kf.timestamp && targetTime < nextKF.timestamp) {
-      // We're between two keyframes - the current keyframe state is accurate
-      // No need to simulate individual LOCK events as keyframes capture complete state
-      console.debug('[PlayerV4] Using keyframe state', {
-        kfTime: kf.timestamp,
-        targetTime,
-        nextKFTime: nextKF.timestamp
-      });
-    }
+    console.debug('[PlayerV4] Reconstructed state', {
+      kfTime: kf.timestamp,
+      targetTime,
+      isVirtual: kf.timestamp === 0 && targetTime < (replay.events.find(e => e.type === ReplayOpcode.KF && e.timestamp > 0) as V4KeyframeEvent | undefined)?.timestamp
+    });
   }, [replay.events, findRelevantKeyframe]);
 
   // Playback loop

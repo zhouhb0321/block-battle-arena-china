@@ -10,7 +10,6 @@ import AuthModal from '@/components/AuthModal';
 import NavigationBar from '@/components/NavigationBar';
 import ReplaySystem from '@/components/ReplaySystem';
 import LeaderboardView from '@/components/LeaderboardView';
-import TestReplayCreator from '@/components/TestReplayCreator';
 import FixSummary from '@/components/FixSummary';
 import AdminPanel from '@/components/AdminPanel';
 import AdSpace from '@/components/AdSpace';
@@ -103,7 +102,6 @@ const Index = () => {
         return (
           <div className="max-w-6xl mx-auto space-y-6">
             <ReplaySystem />
-            <TestReplayCreator />
             <FixSummary />
           </div>
         );
