@@ -73,19 +73,32 @@ export function useReplayRecorderV4() {
     });
   }, []);
 
+  const sanitizePieceType = (pieceType: string): string | null => {
+    const validTypes = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+    const cleaned = (pieceType || '').charAt(0).toUpperCase();
+    if (!validTypes.includes(cleaned)) {
+      console.error('[RecorderV4] Invalid pieceType:', pieceType, 'cleaned:', cleaned);
+      return null;
+    }
+    return cleaned;
+  };
+
   const recordSpawn = useCallback((pieceType: string, x: number, y: number) => {
     if (!isRecording) return;
+    
+    const sanitized = sanitizePieceType(pieceType);
+    if (!sanitized) return;
     
     const timestamp = Date.now() - startTimeRef.current;
     eventsRef.current.push({
       type: ReplayOpcode.SPAWN,
       timestamp,
-      pieceType,
+      pieceType: sanitized,
       x,
       y
     });
     
-    console.log(`[RecorderV4] SPAWN: ${pieceType} at (${x}, ${y}) @ ${timestamp}ms`);
+    console.log(`[RecorderV4] SPAWN: ${sanitized} at (${x}, ${y}) @ ${timestamp}ms`);
   }, [isRecording]);
 
   const recordInput = useCallback((action: string, success: boolean) => {
@@ -131,6 +144,12 @@ export function useReplayRecorderV4() {
   ) => {
     if (!isRecording) return;
     
+    const sanitized = sanitizePieceType(pieceType);
+    if (!sanitized) return;
+    
+    const sanitizedNext = nextPieces.map(p => sanitizePieceType(p)).filter(Boolean) as string[];
+    const sanitizedHold = holdPiece ? sanitizePieceType(holdPiece) : null;
+    
     const timestamp = Date.now() - startTimeRef.current;
     lockCountRef.current++;
     
@@ -138,7 +157,7 @@ export function useReplayRecorderV4() {
     const lockEvent: V4LockEvent = {
       type: ReplayOpcode.LOCK,
       timestamp,
-      pieceType,
+      pieceType: sanitized,
       x,
       y,
       rotation,
@@ -148,12 +167,12 @@ export function useReplayRecorderV4() {
     };
     eventsRef.current.push(lockEvent);
     
-    console.log(`[RecorderV4] LOCK #${lockCountRef.current}: ${pieceType} at (${x},${y}) R${rotation}, cleared=${linesCleared}, T-spin=${isTSpin} @ ${timestamp}ms`);
+    console.log(`[RecorderV4] LOCK #${lockCountRef.current}: ${sanitized} at (${x},${y}) R${rotation}, cleared=${linesCleared}, T-spin=${isTSpin} @ ${timestamp}ms`);
     
     // Store current game state
     lastBoardRef.current = currentBoard;
-    lastNextRef.current = nextPieces;
-    lastHoldRef.current = holdPiece;
+    lastNextRef.current = sanitizedNext;
+    lastHoldRef.current = sanitizedHold;
     
     // Record keyframe: at first lock, then every N locks
     if (lockCountRef.current === 1 || lockCountRef.current % keyframeIntervalRef.current === 0) {
@@ -161,8 +180,8 @@ export function useReplayRecorderV4() {
         type: ReplayOpcode.KF,
         timestamp,
         board: JSON.parse(JSON.stringify(currentBoard)),  // Deep copy
-        nextPieces: [...nextPieces],
-        holdPiece,
+        nextPieces: sanitizedNext,
+        holdPiece: sanitizedHold,
         score,
         lines,
         level

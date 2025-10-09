@@ -172,7 +172,7 @@ export const useGameLogic = ({
     
     // Record SPAWN event for V4
     if (isRecording) {
-      recordSpawn(String(newPiece.type), newPiece.x, newPiece.y);
+      recordSpawn(newPiece.type.type, newPiece.x, newPiece.y);
     }
 
     if (!isValidPosition(board, newPiece)) {
@@ -258,7 +258,7 @@ export const useGameLogic = ({
       }).score : 0);
       
       recordLock(
-        String(pieceToLock.type),
+        pieceToLock.type.type,
         pieceToLock.x,
         pieceToLock.y,
         pieceToLock.rotation,
@@ -266,8 +266,8 @@ export const useGameLogic = ({
         tSpinResult !== null,
         tSpinResult?.isMini || false,
         clearedBoard,
-        nextPieces.map(p => String(p.type)),
-        holdPiece?.type ? String(holdPiece.type) : null,
+        nextPieces.map(p => p.type.type),
+        holdPiece?.type?.type ?? null,
         currentScore,
         newTotalLines,
         newLevel

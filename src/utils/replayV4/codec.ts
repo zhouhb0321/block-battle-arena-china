@@ -48,7 +48,9 @@ function decodeVarint(data: Uint8Array, offset: number): [number, number] {
 
 // Simple checksum (CRC32-like)
 async function calculateChecksum(data: Uint8Array): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  // Create a new Uint8Array to ensure proper type
+  const buffer = new Uint8Array(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 }
@@ -64,7 +66,8 @@ function encodeEvent(event: V4Event): Uint8Array {
   switch (event.type) {
     case Op.SPAWN: {
       const e = event as V4SpawnEvent;
-      parts.push(new TextEncoder().encode(e.pieceType));
+      // Single byte for pieceType
+      parts.push(new Uint8Array([e.pieceType.charCodeAt(0) || 63])); // 63='?'
       parts.push(encodeVarint(e.x));
       parts.push(encodeVarint(e.y));
       break;
@@ -79,7 +82,8 @@ function encodeEvent(event: V4Event): Uint8Array {
     
     case Op.LOCK: {
       const e = event as V4LockEvent;
-      parts.push(new TextEncoder().encode(e.pieceType));
+      // Single byte for pieceType
+      parts.push(new Uint8Array([e.pieceType.charCodeAt(0) || 63])); // 63='?'
       parts.push(encodeVarint(e.x));
       parts.push(encodeVarint(e.y));
       parts.push(encodeVarint(e.rotation));
@@ -526,6 +530,16 @@ export function validateV4Replay(replay: V4ReplayData): V4ValidationResult {
   
   if (!replay.metadata.initialPieceSequence || replay.metadata.initialPieceSequence.length < 7) {
     errors.push('Initial piece sequence incomplete');
+  }
+  
+  // Validate pieceType for SPAWN and LOCK events
+  const validPieceTypes = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+  for (const e of replay.events) {
+    if ((e.type === Op.SPAWN || e.type === Op.LOCK) && 'pieceType' in e) {
+      if (!validPieceTypes.includes(e.pieceType)) {
+        errors.push(`Invalid pieceType "${e.pieceType}" at time ${e.timestamp}`);
+      }
+    }
   }
   
   return {
