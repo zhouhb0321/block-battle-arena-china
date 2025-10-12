@@ -10,6 +10,9 @@ import { Play, Pause, RotateCcw, FastForward } from 'lucide-react';
 import type { V4ReplayData, V4Event, V4LockEvent, V4KeyframeEvent } from '@/utils/replayV4/types';
 import { ReplayOpcode } from '@/utils/replayV4/types';
 import GameBoard from './GameBoard';
+import { TETROMINO_TYPES, rotatePiece } from '@/utils/pieceGeneration';
+import { placePiece, clearLines } from '@/utils/tetrisCore';
+import type { GamePiece } from '@/utils/gameTypes';
 
 interface ReplayPlayerV4Props {
   replay: V4ReplayData;
@@ -49,7 +52,7 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
       console.log('[PlayerV4] Initialized from first keyframe at', firstKF.timestamp, 'ms');
     } else {
       // Fallback: empty board with initial sequence
-      const emptyBoard = Array(20).fill(null).map(() => Array(10).fill(0));
+      const emptyBoard = Array(23).fill(null).map(() => Array(10).fill(0));
       setBoard(emptyBoard);
       setNextPieces(replay.metadata.initialPieceSequence.slice(0, 5));
       setScore(0);
@@ -71,7 +74,7 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
     
     // If before first keyframe, create virtual initial state at timestamp 0
     if (timestamp < firstKF.timestamp) {
-      const emptyBoard = Array(20).fill(null).map(() => Array(10).fill(0));
+      const emptyBoard = Array(23).fill(null).map(() => Array(10).fill(0));
       return {
         type: ReplayOpcode.KF,
         timestamp: 0,
@@ -97,7 +100,7 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
     return mostRecent;
   }, [replay.events, replay.metadata.initialPieceSequence]);
 
-  // Reconstruct game state at target time using keyframe-based approach
+// Reconstruct game state at target time using keyframe-based approach
   const reconstructState = useCallback((targetTime: number) => {
     // Find the most recent keyframe at or before targetTime
     const kf = findRelevantKeyframe(targetTime);
@@ -107,13 +110,50 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
       return;
     }
     
-    // Directly use keyframe state (keyframes already contain complete game state)
-    setBoard(JSON.parse(JSON.stringify(kf.board)));
+    // Start from keyframe snapshot
+    let workingBoard: number[][] = JSON.parse(JSON.stringify(kf.board));
+    let workingLines = kf.lines;
+    let workingScore = kf.score;
+    let workingLevel = kf.level;
+
+    // Apply LOCK events between keyframe and target time to reconstruct board changes
+    for (const ev of replay.events) {
+      if (ev.timestamp <= kf.timestamp) continue;
+      if (ev.timestamp > targetTime) break;
+
+      if (ev.type === ReplayOpcode.LOCK) {
+        const le = ev as V4LockEvent;
+        const base = TETROMINO_TYPES[le.pieceType];
+        if (!base) continue;
+
+        // Rotate base tetromino to the event's rotation index
+        const rotCount = ((le.rotation % 4) + 4) % 4;
+        let rotated = base;
+        for (let i = 0; i < rotCount; i++) rotated = rotatePiece(rotated, true);
+
+        const piece: GamePiece = {
+          type: rotated,
+          x: le.x,
+          y: le.y,
+          rotation: rotCount
+        };
+
+        // Place the piece and clear lines
+        workingBoard = placePiece(workingBoard, piece);
+        const cleared = clearLines(workingBoard);
+        workingBoard = cleared.newBoard;
+        // Prefer actual event info, fallback to computed
+        workingLines += typeof le.linesCleared === 'number' ? le.linesCleared : cleared.linesCleared;
+      }
+    }
+
+    // Commit reconstructed state
+    setBoard(workingBoard);
     setNextPieces([...kf.nextPieces]);
     setHoldPiece(kf.holdPiece);
-    setScore(kf.score);
-    setLines(kf.lines);
-    setLevel(kf.level);
+    setScore(workingScore);
+    setLines(workingLines);
+    setLevel(workingLevel);
     
     console.debug('[PlayerV4] Reconstructed state', {
       kfTime: kf.timestamp,
@@ -272,6 +312,13 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
               <span className="text-sm text-muted-foreground min-w-16">
                 {formatTime(totalDuration)}
               </span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div>状态: {isPlaying ? '播放中' : '已暂停'}</div>
+              <div>
+                锁定: {replay.events.filter(e => e.type === ReplayOpcode.LOCK && e.timestamp <= currentTime).length} / {replay.stats.lockCount}
+              </div>
             </div>
 
             <div className="flex items-center justify-between">
