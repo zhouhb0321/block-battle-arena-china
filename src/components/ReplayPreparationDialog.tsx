@@ -155,6 +155,10 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
 
   const handlePlayReplay = () => {
     if (replayData) {
+      console.info('[ReplayPrep] Play clicked for replay', replayId, {
+        isV4: isV4Replay(replayData),
+        hasData: !!replayData
+      });
       setIsPlayerOpen(true);
     }
   };
@@ -326,6 +330,7 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
                 <ReplayPlayerV4
                   replay={v4Data}
                   onClose={handleClosePlayer}
+                  autoPlay={true}
                 />
               ) : null;
             })()

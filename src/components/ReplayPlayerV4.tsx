@@ -1,5 +1,5 @@
 /**
- * Replay Player V4 - Keyframe-based playback
+ * Replay Player V4 - Keyframe-based playback with auto-play and enhanced feedback
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -12,14 +12,16 @@ import { ReplayOpcode } from '@/utils/replayV4/types';
 import GameBoard from './GameBoard';
 import { TETROMINO_TYPES, rotatePiece } from '@/utils/pieceGeneration';
 import { placePiece, clearLines } from '@/utils/tetrisCore';
+import { calculateScore } from '@/utils/scoringSystem';
 import type { GamePiece } from '@/utils/gameTypes';
 
 interface ReplayPlayerV4Props {
   replay: V4ReplayData;
   onClose?: () => void;
+  autoPlay?: boolean;
 }
 
-export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props) {
+export default function ReplayPlayerV4({ replay, onClose, autoPlay = true }: ReplayPlayerV4Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -34,17 +36,36 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
   
   const animationFrameRef = useRef<number>();
   const lastUpdateRef = useRef<number>(0);
-  const processedEventsRef = useRef<Set<number>>(new Set());
+  const lastLogTimeRef = useRef<number>(0);
+
+  // Sorted events for efficient processing
+  const sortedEventsRef = useRef<V4Event[]>([]);
+  const sortedKeyframesRef = useRef<V4KeyframeEvent[]>([]);
+  const sortedLocksRef = useRef<V4LockEvent[]>([]);
 
   const totalDuration = replay.stats.duration;
 
-  // Initialize with first keyframe or empty board
+  // Initialize sorted events and game state
   useEffect(() => {
-    const firstKF = replay.events.find(e => e.type === ReplayOpcode.KF) as V4KeyframeEvent | undefined;
+    // Sort events by timestamp
+    sortedEventsRef.current = [...replay.events].sort((a, b) => a.timestamp - b.timestamp);
+    sortedKeyframesRef.current = sortedEventsRef.current.filter(e => e.type === ReplayOpcode.KF) as V4KeyframeEvent[];
+    sortedLocksRef.current = sortedEventsRef.current.filter(e => e.type === ReplayOpcode.LOCK) as V4LockEvent[];
+
+    const firstKF = sortedKeyframesRef.current[0];
+    const firstLock = sortedLocksRef.current[0];
+    
+    console.info('[PlayerV4] Replay initialized', {
+      totalDuration: replay.stats.duration,
+      keyframes: sortedKeyframesRef.current.length,
+      locks: sortedLocksRef.current.length,
+      firstKFTime: firstKF?.timestamp ?? 'none',
+      firstLockTime: firstLock?.timestamp ?? 'none'
+    });
     
     if (firstKF) {
-      setBoard(firstKF.board);
-      setNextPieces(firstKF.nextPieces);
+      setBoard(JSON.parse(JSON.stringify(firstKF.board)));
+      setNextPieces([...firstKF.nextPieces]);
       setHoldPiece(firstKF.holdPiece);
       setScore(firstKF.score);
       setLines(firstKF.lines);
@@ -59,17 +80,36 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
       setLines(0);
       setLevel(1);
       setHoldPiece(null);
-      console.warn('[PlayerV4] No keyframe found, initialized with empty board');
+      console.warn('[PlayerV4] No keyframes found, using empty initial state');
     }
   }, [replay]);
 
+  // Auto-play on mount if enabled
+  useEffect(() => {
+    if (autoPlay) {
+      console.info('[PlayerV4] Auto-start playback at t=0ms');
+      setIsPlaying(true);
+    }
+  }, [autoPlay]);
+
   // Find the most recent keyframe before or at current time
-  // If before first keyframe, create virtual initial state
   const findRelevantKeyframe = useCallback((timestamp: number): V4KeyframeEvent | null => {
-    const keyframes = replay.events.filter(e => e.type === ReplayOpcode.KF) as V4KeyframeEvent[];
+    const keyframes = sortedKeyframesRef.current;
     
-    if (keyframes.length === 0) return null;
-    
+    if (keyframes.length === 0) {
+      const emptyBoard = Array(23).fill(null).map(() => Array(10).fill(0));
+      return {
+        type: ReplayOpcode.KF,
+        timestamp: 0,
+        board: emptyBoard,
+        nextPieces: replay.metadata.initialPieceSequence.slice(0, 7),
+        holdPiece: null,
+        score: 0,
+        lines: 0,
+        level: 1
+      } as V4KeyframeEvent;
+    }
+
     const firstKF = keyframes[0];
     
     // If before first keyframe, create virtual initial state at timestamp 0
@@ -87,22 +127,21 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
       } as V4KeyframeEvent;
     }
     
-    // Find most recent keyframe <= timestamp
+    // Find latest keyframe <= timestamp
     let mostRecent = firstKF;
     for (const kf of keyframes) {
       if (kf.timestamp <= timestamp) {
         mostRecent = kf;
       } else {
-        break;
+        break; // Sorted, so we can break early
       }
     }
     
     return mostRecent;
-  }, [replay.events, replay.metadata.initialPieceSequence]);
+  }, [replay.metadata.initialPieceSequence]);
 
-// Reconstruct game state at target time using keyframe-based approach
+  // Reconstruct game state at target time using keyframe-based approach
   const reconstructState = useCallback((targetTime: number) => {
-    // Find the most recent keyframe at or before targetTime
     const kf = findRelevantKeyframe(targetTime);
     
     if (!kf) {
@@ -115,36 +154,66 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
     let workingLines = kf.lines;
     let workingScore = kf.score;
     let workingLevel = kf.level;
+    let combo = 0;
+    let b2b = false;
 
-    // Apply LOCK events between keyframe and target time to reconstruct board changes
-    for (const ev of replay.events) {
-      if (ev.timestamp <= kf.timestamp) continue;
-      if (ev.timestamp > targetTime) break;
+    let locksApplied = 0;
 
-      if (ev.type === ReplayOpcode.LOCK) {
-        const le = ev as V4LockEvent;
-        const base = TETROMINO_TYPES[le.pieceType];
-        if (!base) continue;
+    // Apply LOCK events between keyframe and target time
+    const locks = sortedLocksRef.current;
+    for (const le of locks) {
+      if (le.timestamp <= kf.timestamp) continue;
+      if (le.timestamp > targetTime) break;
 
-        // Rotate base tetromino to the event's rotation index
-        const rotCount = ((le.rotation % 4) + 4) % 4;
-        let rotated = base;
-        for (let i = 0; i < rotCount; i++) rotated = rotatePiece(rotated, true);
+      const base = TETROMINO_TYPES[le.pieceType];
+      if (!base) continue;
 
-        const piece: GamePiece = {
-          type: rotated,
-          x: le.x,
-          y: le.y,
-          rotation: rotCount
-        };
+      // Rotate base tetromino to the event's rotation index
+      const rotCount = ((le.rotation % 4) + 4) % 4;
+      let rotated = base;
+      for (let i = 0; i < rotCount; i++) rotated = rotatePiece(rotated, true);
 
-        // Place the piece and clear lines
-        workingBoard = placePiece(workingBoard, piece);
-        const cleared = clearLines(workingBoard);
-        workingBoard = cleared.newBoard;
-        // Prefer actual event info, fallback to computed
-        workingLines += typeof le.linesCleared === 'number' ? le.linesCleared : cleared.linesCleared;
+      const piece: GamePiece = {
+        type: rotated,
+        x: le.x,
+        y: le.y,
+        rotation: rotCount
+      };
+
+      // Place the piece and clear lines
+      workingBoard = placePiece(workingBoard, piece);
+      const cleared = clearLines(workingBoard);
+      workingBoard = cleared.newBoard;
+      const linesCleared = typeof le.linesCleared === 'number' ? le.linesCleared : cleared.linesCleared;
+      workingLines += linesCleared;
+
+      // Calculate score dynamically
+      if (linesCleared > 0) {
+        const tSpin = (le.isTSpin && le.isMini) ? 'mini' : (le.isTSpin ? 'normal' : 'none');
+        const isPerfectClear = workingBoard.every(row => row.every(cell => cell === 0));
+        
+        const scoreResult = calculateScore({
+          linesCleared,
+          tSpin,
+          isB2B: b2b,
+          combo,
+          isPerfectClear
+        });
+
+        workingScore += scoreResult.score;
+
+        // Update B2B and combo state
+        if (scoreResult.isDifficult) {
+          b2b = true;
+        } else {
+          b2b = false;
+        }
+        combo++;
+      } else {
+        combo = 0;
       }
+
+      locksApplied++;
     }
 
     // Commit reconstructed state
@@ -158,18 +227,22 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
     console.debug('[PlayerV4] Reconstructed state', {
       kfTime: kf.timestamp,
       targetTime,
-      isVirtual: kf.timestamp === 0 && targetTime < (replay.events.find(e => e.type === ReplayOpcode.KF && e.timestamp > 0) as V4KeyframeEvent | undefined)?.timestamp
+      locksApplied
     });
-  }, [replay.events, findRelevantKeyframe]);
+  }, [findRelevantKeyframe]);
 
-  // Playback loop
+  // Playback loop with throttled logging
   useEffect(() => {
     if (!isPlaying) {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = undefined;
+        console.info('[PlayerV4] Playback paused at', currentTime.toFixed(0), 'ms');
       }
       return;
     }
+
+    console.info('[PlayerV4] Playback started/resumed at', currentTime.toFixed(0), 'ms, speed', playbackSpeed, 'x');
 
     lastUpdateRef.current = performance.now();
 
@@ -181,8 +254,22 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
         const next = prev + delta * playbackSpeed;
         if (next >= totalDuration) {
           setIsPlaying(false);
+          console.info('[PlayerV4] Playback finished at', totalDuration, 'ms');
           return totalDuration;
         }
+
+        // Throttled logging every ~1000ms
+        if (next - lastLogTimeRef.current > 1000) {
+          const locksAppliedSoFar = sortedLocksRef.current.filter(l => l.timestamp <= next).length;
+          const nextLock = sortedLocksRef.current.find(l => l.timestamp > next);
+          console.debug('[PlayerV4] RAF tick', {
+            t: next.toFixed(0) + 'ms',
+            locksApplied: locksAppliedSoFar,
+            nextLockAt: nextLock ? nextLock.timestamp.toFixed(0) + 'ms' : 'none'
+          });
+          lastLogTimeRef.current = next;
+        }
+
         return next;
       });
 
@@ -194,6 +281,7 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = undefined;
       }
     };
   }, [isPlaying, playbackSpeed, totalDuration]);
@@ -204,19 +292,27 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
   }, [currentTime, reconstructState]);
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    const newState = !isPlaying;
+    console.info('[PlayerV4] User toggled playback', { 
+      from: isPlaying ? 'playing' : 'paused',
+      to: newState ? 'playing' : 'paused',
+      currentTime: currentTime.toFixed(0) + 'ms',
+      speed: playbackSpeed
+    });
+    setIsPlaying(newState);
   };
 
   const handleReset = () => {
+    console.info('[PlayerV4] Reset to t=0');
     setIsPlaying(false);
     setCurrentTime(0);
-    processedEventsRef.current.clear();
   };
 
   const handleSeek = (value: number[]) => {
+    const newTime = value[0];
+    console.info('[PlayerV4] User seeked to', newTime.toFixed(0), 'ms');
     setIsPlaying(false);
-    setCurrentTime(value[0]);
-    processedEventsRef.current.clear();
+    setCurrentTime(newTime);
   };
 
   const formatTime = (ms: number) => {
@@ -225,6 +321,26 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
+
+  // Find next lock event for visual feedback
+  const getNextLockInfo = (): string => {
+    const nextLock = sortedLocksRef.current.find(l => l.timestamp > currentTime);
+    if (!nextLock) return '—';
+    const deltaMs = nextLock.timestamp - currentTime;
+    return (deltaMs / 1000).toFixed(1) + 's';
+  };
+
+  // Spacebar to play/pause
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handlePlayPause();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying]);
 
   return (
     <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -239,7 +355,7 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
         <CardContent className="space-y-6">
           {/* Info banner */}
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm">
-            <div className="font-semibold text-primary mb-1">🎬 V4 格式回放</div>
+            <div className="font-semibold text-primary mb-1">🎬 V4 格式回放 (已自动播放，Space 暂停/播放)</div>
             <div className="grid grid-cols-2 gap-2 text-muted-foreground">
               <div>玩家: {replay.metadata.username}</div>
               <div>模式: {replay.metadata.gameMode}</div>
@@ -298,7 +414,7 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
           {/* Controls */}
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <span className="text-sm font-medium min-w-16">
+              <span className="text-sm font-medium min-w-20">
                 {formatTime(currentTime)}
               </span>
               <Slider
@@ -309,16 +425,17 @@ export default function ReplayPlayerV4({ replay, onClose }: ReplayPlayerV4Props)
                 onValueChange={handleSeek}
                 className="flex-1"
               />
-              <span className="text-sm text-muted-foreground min-w-16">
+              <span className="text-sm text-muted-foreground min-w-20">
                 {formatTime(totalDuration)}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <div>状态: {isPlaying ? '播放中' : '已暂停'}</div>
-              <div>
-                锁定: {replay.events.filter(e => e.type === ReplayOpcode.LOCK && e.timestamp <= currentTime).length} / {replay.stats.lockCount}
-              </div>
+            <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+              <div>状态: <span className="text-foreground font-medium">{isPlaying ? '播放中' : '已暂停'}</span></div>
+              <div>锁定: <span className="text-foreground font-medium">
+                {sortedLocksRef.current.filter(e => e.timestamp <= currentTime).length} / {replay.stats.lockCount}
+              </span></div>
+              <div>下次锁定: <span className="text-foreground font-medium">{getNextLockInfo()}</span></div>
             </div>
 
             <div className="flex items-center justify-between">

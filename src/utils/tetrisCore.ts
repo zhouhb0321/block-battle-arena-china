@@ -28,7 +28,7 @@ export const isValidPosition = (board: number[][], piece: GamePiece): boolean =>
         let boardX = x + col;
         let boardY = y + row;
 
-        // 允许在顶部区域旋转（允许负Y），但仍检查水平边界和下方边界
+        // 允许在顶部区域旋转(允许负Y),但仍检查水平边界和下方边界
         if (boardX < 0 || boardX >= BOARD_WIDTH || boardY >= BOARD_HEIGHT) {
           return false;
         }
@@ -58,8 +58,8 @@ export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
         let boardX = x + col;
         let boardY = y + row;
 
-        // 允许在隐藏区域放置，但检查边界
-        if (boardX >= 0 && boardX < BOARD_WIDTH && boardY < BOARD_HEIGHT) {
+        // 允许在隐藏区域放置,但检查边界(防止负索引写入)
+        if (boardX >= 0 && boardX < BOARD_WIDTH && boardY >= 0 && boardY < BOARD_HEIGHT) {
           newBoard[boardY][boardX] = typeId; // 存储方块类型编号
         }
       }
@@ -91,7 +91,7 @@ export const clearLines = (board: number[][]): { newBoard: number[][]; linesClea
 export const calculateDropPosition = (board: number[][], piece: GamePiece): number => {
   let dropY = piece.y;
   
-  // 逐行向下检查，直到找到无法放置的位置
+  // 逐行向下检查,直到找到无法放置的位置
   while (dropY < BOARD_HEIGHT) {
     const testPiece = { ...piece, y: dropY + 1 };
     if (!isValidPosition(board, testPiece)) {
