@@ -104,7 +104,8 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
 
   const sendMFACode = async (userEmail: string) => {
     const code = generateMFACode();
-    // Store in sessionStorage for better security
+    // Store temporarily in sessionStorage with short expiry
+    // Note: In production, this should be replaced with server-side MFA (email/SMS)
     sessionStorage.setItem('admin_mfa_code', JSON.stringify({
       code,
       email: userEmail,
@@ -267,13 +268,11 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         }
       } catch (parseError) {
         console.error('Failed to parse MFA data:', parseError);
-        localStorage.removeItem('admin_mfa_code');
         sessionStorage.removeItem('admin_mfa_code');
         throw new Error('验证码数据无效，请重新登录');
       }
 
       if (Date.now() > mfaData.expires) {
-        localStorage.removeItem('admin_mfa_code');
         sessionStorage.removeItem('admin_mfa_code');
         throw new Error('验证码已过期，请重新登录');
       }
@@ -283,21 +282,14 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
         throw new Error('验证码错误');
       }
 
-      // 验证成功
-      localStorage.removeItem('admin_mfa_code');
+      // 验证成功 - 不再使用 localStorage 存储会话
       sessionStorage.removeItem('admin_mfa_code');
       setFailedAttempts(0);
       localStorage.removeItem('admin_lockout');
       setStep('verified');
       
-      // 设置管理员会话
-      const adminSession = {
-        email,
-        authenticated: true,
-        timestamp: Date.now(),
-        expires: Date.now() + (4 * 60 * 60 * 1000) // 4小时有效期
-      };
-      localStorage.setItem('admin_session', JSON.stringify(adminSession));
+      // Admin session is now managed entirely by Supabase auth and user_roles table
+      // No need for localStorage admin_session
       
       onAuthenticated();
       

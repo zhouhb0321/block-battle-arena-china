@@ -18,16 +18,14 @@ export const useSessionTimeout = () => {
                            crypto.randomUUID();
       localStorage.setItem('sb-session-token', sessionToken);
 
-      await supabase
-        .from('user_sessions')
-        .upsert({
-          user_id: user.id,
-          session_token: sessionToken,
-          last_activity: new Date().toISOString(),
-          expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString(),
-          ip_address: null,
-          user_agent: navigator.userAgent
-        });
+      // Use the new secure function that hashes tokens
+      await supabase.rpc('upsert_user_session', {
+        _user_id: user.id,
+        _session_token: sessionToken,
+        _last_activity: new Date().toISOString(),
+        _expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString(),
+        _user_agent: navigator.userAgent
+      });
     } catch (error) {
       console.error('Failed to update session activity:', error);
     }

@@ -1328,6 +1328,7 @@ export type Database = {
           ip_address: unknown | null
           last_activity: string
           session_token: string
+          session_token_hash: string | null
           user_agent: string | null
           user_id: string
         }
@@ -1338,6 +1339,7 @@ export type Database = {
           ip_address?: unknown | null
           last_activity?: string
           session_token: string
+          session_token_hash?: string | null
           user_agent?: string | null
           user_id: string
         }
@@ -1348,6 +1350,7 @@ export type Database = {
           ip_address?: unknown | null
           last_activity?: string
           session_token?: string
+          session_token_hash?: string | null
           user_agent?: string | null
           user_id?: string
         }
@@ -1449,6 +1452,10 @@ export type Database = {
           winner_new_rating: number
         }[]
       }
+      can_access_battle_room: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
       cleanup_expired_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1473,6 +1480,10 @@ export type Database = {
         Args: { check_user_id?: string }
         Returns: Json
       }
+      get_user_subscription_tier: {
+        Args: { _user_id?: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1487,6 +1498,16 @@ export type Database = {
       join_room_by_code: {
         Args: { room_code_input: string }
         Returns: Json
+      }
+      upsert_user_session: {
+        Args: {
+          _expires_at: string
+          _last_activity: string
+          _session_token: string
+          _user_agent: string
+          _user_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
