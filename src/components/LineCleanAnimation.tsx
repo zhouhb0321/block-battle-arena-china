@@ -36,7 +36,7 @@ const LineCleanAnimation: React.FC<LineCleanAnimationProps> = ({
   return (
     <div className="absolute inset-0 flex justify-center items-center pointer-events-none z-50">
       <div
-        className={`font-bold text-2xl drop-shadow-lg animate-t-spin ${getTextColor()}`}
+        className={`font-bold text-2xl drop-shadow-lg animate-line-clear-text ${getTextColor()}`}
       >
         {text}
       </div>

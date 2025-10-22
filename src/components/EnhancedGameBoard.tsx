@@ -223,8 +223,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
         }
         
         .clearing-line {
-          animation: flash 0.3s ease-in-out;
-          filter: brightness(1.5) saturate(1.3);
+          animation: clearing-fade-out 0.25s ease-out;
         }
         
         @keyframes ghost-pulse {
@@ -237,9 +236,22 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
           50% { filter: brightness(0.7) saturate(0.8); }
         }
         
-        @keyframes flash {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
+        @keyframes clearing-fade-out {
+          0% { 
+            opacity: 1; 
+            transform: scale(1);
+            filter: brightness(1.2) saturate(1.1);
+          }
+          50% { 
+            opacity: 0.8; 
+            transform: scale(1.05);
+            filter: brightness(1.3) saturate(1.15);
+          }
+          100% { 
+            opacity: 0; 
+            transform: scale(1.05);
+            filter: brightness(1.5) saturate(1.2);
+          }
         }
         
         /* 回字皮肤样式 */

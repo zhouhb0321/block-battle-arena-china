@@ -15,11 +15,12 @@ export const BLOCK_SKINS: BlockSkin[] = [
     name: '木纹风格',
     description: '默认的木纹纹理效果',
     getBlockStyle: (color: string, isGhost = false) => ({
-      backgroundColor: isGhost ? 'transparent' : color,
-      border: isGhost ? `2px dashed ${color}` : `1px solid ${adjustBrightness(color, -20)}`,
-      opacity: isGhost ? 0.3 : 1,
+      backgroundColor: isGhost ? `${color}20` : color,
+      border: isGhost ? `2px solid ${color}80` : `2px solid ${adjustBrightness(color, -40)}`,
+      opacity: isGhost ? 0.6 : 1,
       backgroundImage: isGhost ? 'none' : 'linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.1) 75%)',
-      backgroundSize: '6px 6px'
+      backgroundSize: '6px 6px',
+      borderRadius: '2px'
     }),
     getBlockClass: (color: string, isGhost = false) => 
       isGhost ? 'ghost-block' : 'wood-texture-block'
@@ -29,9 +30,9 @@ export const BLOCK_SKINS: BlockSkin[] = [
     name: '纯平风格',
     description: '简洁的纯平设计，无装饰',
     getBlockStyle: (color: string, isGhost = false) => ({
-      backgroundColor: isGhost ? 'transparent' : color,
-      border: isGhost ? `2px dashed ${color}` : 'none',
-      opacity: isGhost ? 0.4 : 1,
+      backgroundColor: isGhost ? `${color}20` : color,
+      border: isGhost ? `2px solid ${color}80` : `1px solid ${adjustBrightness(color, -60)}`,
+      opacity: isGhost ? 0.6 : 1,
       borderRadius: '0px',
     }),
     getBlockClass: () => 'flat-block'
@@ -41,12 +42,12 @@ export const BLOCK_SKINS: BlockSkin[] = [
     name: '立体风格',
     description: '3D效果的立体方块',
     getBlockStyle: (color: string, isGhost = false) => ({
-      backgroundColor: isGhost ? 'transparent' : color,
-      border: isGhost ? `2px dashed ${color}` : `2px outset ${color}`,
-      opacity: isGhost ? 0.4 : 1,
+      backgroundColor: isGhost ? `${color}20` : color,
+      border: isGhost ? `2px solid ${color}80` : `2px solid ${adjustBrightness(color, -50)}`,
+      opacity: isGhost ? 0.6 : 1,
       borderRadius: '2px',
-      boxShadow: isGhost ? 'none' : `2px 2px 4px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,255,255,0.3)`,
-      background: isGhost ? 'transparent' : `linear-gradient(135deg, ${adjustBrightness(color, 30)} 0%, ${color} 50%, ${adjustBrightness(color, -30)} 100%)`
+      boxShadow: isGhost ? 'none' : `3px 3px 6px rgba(0,0,0,0.4), inset 2px 2px 4px rgba(255,255,255,0.4), inset -2px -2px 4px rgba(0,0,0,0.2)`,
+      background: isGhost ? 'transparent' : `linear-gradient(135deg, ${adjustBrightness(color, 40)} 0%, ${color} 50%, ${adjustBrightness(color, -40)} 100%)`
     }),
     getBlockClass: () => '3d-block'
   },
@@ -55,9 +56,9 @@ export const BLOCK_SKINS: BlockSkin[] = [
     name: '彩色风格',
     description: '多彩渐变的彩虹方案',
     getBlockStyle: (color: string, isGhost = false) => ({
-      backgroundColor: isGhost ? 'transparent' : color,
-      border: isGhost ? `2px dashed ${color}` : `1px solid ${adjustBrightness(color, -40)}`,
-      opacity: isGhost ? 0.4 : 1,
+      backgroundColor: isGhost ? `${color}20` : color,
+      border: isGhost ? `2px solid ${color}80` : `2px solid ${adjustBrightness(color, -40)}`,
+      opacity: isGhost ? 0.6 : 1,
       borderRadius: '3px',
       background: isGhost ? 'transparent' : `radial-gradient(circle, ${adjustBrightness(color, 50)} 0%, ${color} 70%, ${adjustBrightness(color, -20)} 100%)`,
       boxShadow: isGhost ? 'none' : `0 0 6px ${color}60`
@@ -83,10 +84,11 @@ export const BLOCK_SKINS: BlockSkin[] = [
       const classicColor = classicColors[color] || color;
       
       return {
-        backgroundColor: isGhost ? 'transparent' : classicColor,
-        border: isGhost ? `2px dashed ${classicColor}` : `2px solid ${adjustBrightness(classicColor, -50)}`,
-        opacity: isGhost ? 0.3 : 1,
+        backgroundColor: isGhost ? `${classicColor}20` : classicColor,
+        border: isGhost ? `2px solid ${classicColor}80` : `2px solid ${adjustBrightness(classicColor, -50)}`,
+        opacity: isGhost ? 0.6 : 1,
         borderRadius: '1px',
+        boxShadow: isGhost ? 'none' : `inset 1px 1px 2px rgba(255,255,255,0.3)`
       };
     },
     getBlockClass: () => 'classic-block'
@@ -96,12 +98,12 @@ export const BLOCK_SKINS: BlockSkin[] = [
     name: '回字风格',
     description: '中式"回"字设计，实心对称美学',
     getBlockStyle: (color: string, isGhost = false) => ({
-      backgroundColor: isGhost ? 'transparent' : color,
-      border: isGhost ? `2px dashed ${color}` : `2px solid ${adjustBrightness(color, -30)}`,
-      opacity: isGhost ? 0.4 : 1,
+      backgroundColor: isGhost ? `${color}20` : color,
+      border: isGhost ? `2px solid ${color}80` : `3px solid ${adjustBrightness(color, -40)}`,
+      opacity: isGhost ? 0.6 : 1,
       borderRadius: '1px',
       position: 'relative' as const,
-      boxShadow: isGhost ? 'none' : `inset 0 0 0 1px ${adjustBrightness(color, -20)}`,
+      boxShadow: isGhost ? 'none' : `inset 0 0 0 2px ${adjustBrightness(color, -20)}`,
       color: color // 设置颜色给 CSS 伪元素使用
     }),
     getBlockClass: (color: string, isGhost = false) => isGhost ? 'hui-ghost-block' : 'hui-block'

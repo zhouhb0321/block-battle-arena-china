@@ -13,6 +13,29 @@
   .animate-t-spin {
     animation: crisp-t-spin 0.4s ease-out forwards;
   }
+
+  @keyframes line-clear-text {
+    0% { 
+      transform: scale(0.7) translateY(10px); 
+      opacity: 0; 
+    }
+    25% { 
+      transform: scale(1.1); 
+      opacity: 1; 
+    }
+    75% { 
+      transform: scale(1.05); 
+      opacity: 1; 
+    }
+    100% { 
+      transform: scale(0.9) translateY(-8px); 
+      opacity: 0; 
+    }
+  }
+
+  .animate-line-clear-text {
+    animation: line-clear-text 0.4s ease-out forwards;
+  }
 }
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
