@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 interface Achievement {
   id: string;
   text: string;
-  type: 'tetris' | 'tspin' | 'combo' | 'perfect' | 'level';
+  type: 'tetris' | 'tspin' | 'combo' | 'perfect' | 'level' | 'clear';
   timestamp: number;
 }
 
@@ -25,6 +25,8 @@ const getAchievementColor = (type: Achievement['type']) => {
       return 'text-white border-white/80 bg-white/25 shadow-white/40';
     case 'level':
       return 'text-cyan-300 border-cyan-400/80 bg-cyan-400/25 shadow-cyan-400/40';
+    case 'clear':
+      return 'text-blue-300 border-blue-400/80 bg-blue-400/25 shadow-blue-400/40';
     default:
       return 'text-gray-300 border-gray-400/80 bg-gray-400/25 shadow-gray-400/40';
   }

@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 export interface Achievement {
   id: string;
   text: string;
-  type: 'tetris' | 'tspin' | 'combo' | 'perfect' | 'level';
+  type: 'tetris' | 'tspin' | 'combo' | 'perfect' | 'level' | 'clear';
   timestamp: number;
 }
 
@@ -87,6 +87,17 @@ export const useAchievements = () => {
     addAchievement(`${prefix}${core}`,'tspin');
   }, [addAchievement]);
 
+  // 普通消行成就（Single/Double/Triple）
+  const showLineClear = useCallback((lines: number, isB2B = false, b2bCount?: number) => {
+    const clearType = lines === 1 ? 'SINGLE' : 
+                      lines === 2 ? 'DOUBLE' : 
+                      lines === 3 ? 'TRIPLE' : '';
+    if (!clearType) return;
+    
+    const prefix = isB2B && b2bCount && b2bCount > 1 ? `B2B x${b2bCount} ` : '';
+    addAchievement(`${prefix}${clearType}`, 'clear');
+  }, [addAchievement]);
+
   return {
     achievements,
     removeAchievement,
@@ -96,6 +107,7 @@ export const useAchievements = () => {
     showSpin,
     showCombo,
     showPerfectClear,
-    showLevelUp
+    showLevelUp,
+    showLineClear
   };
 };

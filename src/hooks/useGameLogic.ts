@@ -96,7 +96,7 @@ export const useGameLogic = ({
     stopRecording, 
     clearRecording 
   } = useReplayRecorderV4();
-  const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, removeAchievement } = useAchievements();
+  const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, showLineClear, removeAchievement } = useAchievements();
   const { user } = useAuth();
   const isUndoRedoEnabled = gameMode.id === 'endless';
   const gameStateManager = useGameState({ maxHistorySize: undoSteps, enabled: isUndoRedoEnabled });
@@ -207,8 +207,13 @@ export const useGameLogic = ({
     // 4. Scoring and Achievements
     if (linesCleared > 0) {
       const newCombo = comboCount + 1;
-      const isDifficultClear = tSpinResult !== null || linesCleared === 4;
-      const newB2B = isDifficultClear ? isB2B + 1 : 0;
+      // T-Spin 必须消行才算 difficult clear，T-Spin 0 不算但也不打断 B2B
+      const isDifficultClear = (tSpinResult !== null && linesCleared > 0) || linesCleared === 4;
+      const newB2B = isDifficultClear 
+        ? isB2B + 1 
+        : (tSpinResult !== null && linesCleared === 0) 
+          ? isB2B  // T-Spin 0 保持 B2B 不变
+          : 0;     // 其他情况重置 B2B
 
       const scoreResult = calculateScore({
         linesCleared,
@@ -222,17 +227,20 @@ export const useGameLogic = ({
       // Show achievements
       if (isPerfectClear) showPerfectClear();
 
+      // 显示主要成就
       if (tSpinResult) {
-        showTSpin(linesCleared, tSpinResult.isMini, newB2B > 0, newB2B);
+        // T-Spin (包括 T-Spin 0)
+        showTSpin(linesCleared, tSpinResult.isMini, newB2B > 1, newB2B);
       } else if (linesCleared === 4) {
-        showTetris(false, newB2B > 0, newB2B);
-      } else if (linesCleared > 0 && newB2B > 0) {
-        // Show B2B for any line clear when B2B is active
-        showTetris(false, true, newB2B);
+        // Tetris
+        showTetris(false, newB2B > 1, newB2B);
+      } else if (linesCleared >= 1 && linesCleared <= 3) {
+        // 普通消行 (Single/Double/Triple)
+        showLineClear(linesCleared, newB2B > 1, newB2B);
       }
 
-      // Always show combo if > 1, regardless of lines cleared
-      if (newCombo > 1) {
+      // Combo 从 1 开始显示
+      if (newCombo >= 1) {
         showCombo(newCombo);
       }
 
