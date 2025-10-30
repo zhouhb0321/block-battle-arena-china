@@ -3,7 +3,7 @@ import ResourceManagement from './ResourceManagement';
 import LogManagement from './LogManagement';
 import GameRecordManagement from './components/GameRecordManagement';
 import RevenueManagement from './RevenueManagement';
-import AdvertisingManagement from './AdvertisingManagement';
+import AdvertisingManagementPro from './components/admin/AdvertisingManagementPro';
 import DatabaseOptimization from './DatabaseOptimization';
 
 const AdminPanel: React.FC = () => {
@@ -56,7 +56,7 @@ const AdminPanel: React.FC = () => {
         {activeTab === 'logs' && <LogManagement />}
         {activeTab === 'game-records' && <GameRecordManagement />}
         {activeTab === 'revenue' && <RevenueManagement />}
-        {activeTab === 'advertising' && <AdvertisingManagement />}
+        {activeTab === 'advertising' && <AdvertisingManagementPro />}
         {activeTab === 'database' && <DatabaseOptimization />}
       </div>
     </div>

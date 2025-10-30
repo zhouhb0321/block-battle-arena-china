@@ -1,8 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AdContent } from '@/utils/gameTypes';
+import { trackAdImpression, trackAdClick, checkAdFrequency, recordAdView } from '@/utils/adAnalytics';
+import { X } from 'lucide-react';
 
 interface AdSpaceProps {
   position: 'left' | 'right' | 'top' | 'bottom' | 'popup';
@@ -16,6 +18,9 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
   const [adContent, setAdContent] = useState<AdContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [hasTracked, setHasTracked] = useState(false);
+  const adRef = useRef<HTMLDivElement>(null);
 
   // 获取用户地区和语言信息
   const getUserLocale = () => {
@@ -35,24 +40,20 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
     checkAdminStatus();
   }, [user]);
 
-  // 获取广告内容
+  // 获取广告内容（优化版）
   useEffect(() => {
     const fetchAdContent = async () => {
       setLoading(true);
       try {
         const { region, language } = getUserLocale();
         
-        let query = supabase
+        const { data, error } = await supabase
           .from('advertisements')
           .select('*')
           .eq('position', position)
-          .eq('is_active', true);
-
-        // 简化查询逻辑，先获取所有广告，然后在前端过滤
-        // 这样可以避免复杂的 OR 查询语法问题
-
-        const { data, error } = await query
+          .eq('is_active', true)
           .gte('end_date', new Date().toISOString())
+          .order('priority', { ascending: false })
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -61,12 +62,12 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
         }
 
         if (data && data.length > 0) {
-          // 在前端过滤匹配地区和语言的广告
+          // 过滤匹配地区、语言和频次限制的广告
           const filteredAds = data.filter(ad => {
-            // 如果广告没有设置地区或语言限制，或者匹配当前用户的地区/语言
             const regionMatch = !ad.region || ad.region === region;
             const languageMatch = !ad.language || ad.language === language;
-            return regionMatch && languageMatch;
+            const frequencyCheck = checkAdFrequency(ad.id, ad.frequency_cap);
+            return regionMatch && languageMatch && frequencyCheck;
           });
 
           if (filteredAds.length > 0) {
@@ -86,12 +87,6 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
               clicks: ad.clicks,
               impressions: ad.impressions
             });
-
-            // 更新展示次数
-            await supabase
-              .from('advertisements')
-              .update({ impressions: (ad.impressions || 0) + 1 })
-              .eq('id', ad.id);
           }
         }
       } catch (error) {
@@ -104,17 +99,34 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
     fetchAdContent();
   }, [position]);
 
+  // Intersection Observer 精确跟踪曝光
+  useEffect(() => {
+    if (!adContent || !adRef.current || hasTracked) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            trackAdImpression(adContent.id, user?.id);
+            recordAdView(adContent.id);
+            setHasTracked(true);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    observer.observe(adRef.current);
+
+    return () => observer.disconnect();
+  }, [adContent, user, hasTracked]);
+
   const handleAdClick = async () => {
     if (!adContent) return;
 
     try {
-      // 更新点击次数
-      await supabase
-        .from('advertisements')
-        .update({ clicks: (adContent.clicks || 0) + 1 })
-        .eq('id', adContent.id);
+      await trackAdClick(adContent.id, adContent.targetUrl, user?.id);
 
-      // 打开广告链接
       if (adContent.targetUrl) {
         window.open(adContent.targetUrl, '_blank');
       }
@@ -123,8 +135,12 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
     }
   };
 
-  // 如果正在加载，不显示任何内容
-  if (loading) {
+  const handleClose = () => {
+    setIsVisible(false);
+  };
+
+  // 如果正在加载或用户关闭了广告
+  if (loading || !isVisible) {
     return null;
   }
 
@@ -134,44 +150,65 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
     if (isAdmin) {
       return (
         <div 
-          className="bg-yellow-50 border-2 border-dashed border-yellow-300 flex flex-col items-center justify-center p-4"
+          className="bg-muted/50 border-2 border-dashed border-muted-foreground/20 flex flex-col items-center justify-center p-4 rounded-lg"
           style={{ width, height }}
         >
-          <span className="text-yellow-700 text-sm font-medium mb-2">广告位预留</span>
-          <span className="text-yellow-600 text-xs text-center">
+          <span className="text-muted-foreground text-sm font-medium mb-2">广告位预留</span>
+          <span className="text-muted-foreground/70 text-xs text-center">
             位置: {position}<br/>
             尺寸: {width}×{height}
           </span>
         </div>
       );
     }
-    // 普通用户看不到空的广告位
     return null;
   }
 
-  // 所有用户都能看到有内容的广告
+  // 渲染广告（优化版）
   return (
     <div 
-      className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+      ref={adRef}
+      className="relative bg-card border border-border rounded-lg shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:scale-[1.02] animate-in fade-in slide-in-from-bottom-2"
       style={{ width, height }}
-      onClick={handleAdClick}
     >
-      <div className="p-3 h-full flex flex-col">
+      {/* 广告标识 */}
+      <div className="absolute top-2 left-2 z-10">
+        <span className="bg-muted/80 text-muted-foreground text-xs px-2 py-1 rounded">
+          广告
+        </span>
+      </div>
+
+      {/* 弹窗广告关闭按钮 */}
+      {position === 'popup' && (
+        <button
+          onClick={handleClose}
+          className="absolute top-2 right-2 z-10 bg-background/80 hover:bg-background rounded-full p-1 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* 广告内容 */}
+      <div 
+        className="p-3 h-full flex flex-col cursor-pointer"
+        onClick={handleAdClick}
+      >
         {adContent.imageUrl && (
           <img 
             src={adContent.imageUrl} 
             alt={adContent.title}
-            className="w-full h-24 object-cover rounded mb-2"
+            className="w-full h-24 object-cover rounded mb-2 loading-lazy"
+            loading="lazy"
           />
         )}
-        <h4 className="font-semibold text-sm text-gray-800 mb-1 line-clamp-2">
+        <h4 className="font-semibold text-sm text-foreground mb-1 line-clamp-2">
           {adContent.title}
         </h4>
-        <p className="text-xs text-gray-600 flex-1 line-clamp-3">
+        <p className="text-xs text-muted-foreground flex-1 line-clamp-3">
           {adContent.description}
         </p>
         {isAdmin && (
-          <div className="mt-2 text-xs text-gray-400">
+          <div className="mt-2 pt-2 border-t border-border text-xs text-muted-foreground">
             点击: {adContent.clicks || 0} | 展示: {adContent.impressions || 0}
           </div>
         )}

@@ -14,6 +14,121 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_clicks: {
+        Row: {
+          ad_id: string | null
+          clicked_url: string | null
+          device_type: string | null
+          id: string
+          language: string | null
+          region: string | null
+          timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ad_id?: string | null
+          clicked_url?: string | null
+          device_type?: string | null
+          id?: string
+          language?: string | null
+          region?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ad_id?: string | null
+          clicked_url?: string | null
+          device_type?: string | null
+          id?: string
+          language?: string | null
+          region?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_clicks_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "advertisements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_impressions: {
+        Row: {
+          ad_id: string | null
+          device_type: string | null
+          id: string
+          ip_address: unknown
+          language: string | null
+          region: string | null
+          session_id: string | null
+          timestamp: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ad_id?: string | null
+          device_type?: string | null
+          id?: string
+          ip_address?: unknown
+          language?: string | null
+          region?: string | null
+          session_id?: string | null
+          timestamp?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ad_id?: string | null
+          device_type?: string | null
+          id?: string
+          ip_address?: unknown
+          language?: string | null
+          region?: string | null
+          session_id?: string | null
+          timestamp?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_impressions_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "advertisements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_management_logs: {
+        Row: {
+          action: string | null
+          ad_id: string | null
+          admin_id: string | null
+          details: Json | null
+          id: string
+          timestamp: string | null
+        }
+        Insert: {
+          action?: string | null
+          ad_id?: string | null
+          admin_id?: string | null
+          details?: Json | null
+          id?: string
+          timestamp?: string | null
+        }
+        Update: {
+          action?: string | null
+          ad_id?: string | null
+          admin_id?: string | null
+          details?: Json | null
+          id?: string
+          timestamp?: string | null
+        }
+        Relationships: []
+      }
       admin_activity_logs: {
         Row: {
           action_type: string
@@ -52,49 +167,64 @@ export type Database = {
       }
       advertisements: {
         Row: {
+          ab_test_group: string | null
+          budget: number | null
           clicks: number
           content: string
           created_at: string
           end_date: string | null
+          frequency_cap: number | null
           id: string
           image_url: string | null
           impressions: number
           is_active: boolean
           language: string | null
           position: string
+          priority: number | null
           region: string | null
+          spent: number | null
           start_date: string | null
           target_url: string | null
           title: string
         }
         Insert: {
+          ab_test_group?: string | null
+          budget?: number | null
           clicks?: number
           content: string
           created_at?: string
           end_date?: string | null
+          frequency_cap?: number | null
           id?: string
           image_url?: string | null
           impressions?: number
           is_active?: boolean
           language?: string | null
           position: string
+          priority?: number | null
           region?: string | null
+          spent?: number | null
           start_date?: string | null
           target_url?: string | null
           title: string
         }
         Update: {
+          ab_test_group?: string | null
+          budget?: number | null
           clicks?: number
           content?: string
           created_at?: string
           end_date?: string | null
+          frequency_cap?: number | null
           id?: string
           image_url?: string | null
           impressions?: number
           is_active?: boolean
           language?: string | null
           position?: string
+          priority?: number | null
           region?: string | null
+          spent?: number | null
           start_date?: string | null
           target_url?: string | null
           title?: string
@@ -1042,7 +1172,7 @@ export type Database = {
           event_data: Json | null
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           session_id: string | null
           severity: string | null
           source: string | null
@@ -1054,7 +1184,7 @@ export type Database = {
           event_data?: Json | null
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           session_id?: string | null
           severity?: string | null
           source?: string | null
@@ -1066,7 +1196,7 @@ export type Database = {
           event_data?: Json | null
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           session_id?: string | null
           severity?: string | null
           source?: string | null
@@ -1325,7 +1455,7 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           last_activity: string
           session_token: string
           session_token_hash: string | null
@@ -1336,7 +1466,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           last_activity?: string
           session_token: string
           session_token_hash?: string | null
@@ -1347,7 +1477,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           last_activity?: string
           session_token?: string
           session_token_hash?: string | null
@@ -1456,12 +1586,9 @@ export type Database = {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
       }
-      cleanup_expired_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_sessions: { Args: never; Returns: undefined }
       get_subscribers_safe: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           friend_limit: number
@@ -1491,14 +1618,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      join_room_by_code: {
-        Args: { room_code_input: string }
-        Returns: Json
-      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      join_room_by_code: { Args: { room_code_input: string }; Returns: Json }
       upsert_user_session: {
         Args: {
           _expires_at: string
