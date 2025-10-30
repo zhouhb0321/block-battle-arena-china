@@ -128,9 +128,9 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
       </Tabs>
 
       {user && user.isGuest && (
-        <Card className="mt-6 border-orange-200 bg-orange-50">
+        <Card className="mt-6 border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/50">
           <CardContent className="pt-6">
-            <p className="text-orange-800 text-sm">
+            <p className="text-orange-800 dark:text-orange-200 text-sm">
               您当前为游客模式，设置仅保存在本次会话中。登录后可永久保存您的个人设置。
             </p>
           </CardContent>

@@ -26,9 +26,9 @@ const SettingsHints: React.FC<SettingsHintsProps> = ({
 }) => {
   if (hints.length === 0) {
     return (
-      <Card className="border-green-200 bg-green-50/50">
+      <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50">
         <CardContent className="pt-6">
-          <div className="flex items-center gap-2 text-green-700">
+          <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
             <CheckCircle className="w-5 h-5" />
             <span className="text-sm font-medium">您的设置配置良好！</span>
           </div>
@@ -40,10 +40,10 @@ const SettingsHints: React.FC<SettingsHintsProps> = ({
   const recommendedHints = hints.filter(hint => hint.isRecommended);
 
   return (
-    <Card className="border-blue-200 bg-blue-50/50">
+    <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-blue-800">
+          <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
             <Lightbulb className="w-5 h-5" />
             设置优化建议
           </CardTitle>
@@ -51,7 +51,7 @@ const SettingsHints: React.FC<SettingsHintsProps> = ({
             <Button
               onClick={onApplyAll}
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
             >
               应用所有推荐
             </Button>
@@ -62,19 +62,19 @@ const SettingsHints: React.FC<SettingsHintsProps> = ({
         {hints.map((hint, index) => (
           <div
             key={index}
-            className="flex items-start justify-between p-3 bg-white rounded-lg border border-blue-100"
+            className="flex items-start justify-between p-3 bg-card rounded-lg border border-border"
           >
             <div className="flex-1 space-y-1">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-blue-900">{hint.title}</span>
+                <span className="font-medium">{hint.title}</span>
                 {hint.isRecommended && (
-                  <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                  <Badge variant="secondary" className="bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800">
                     推荐
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-blue-700">{hint.description}</p>
-              <div className="flex items-center gap-2 text-xs text-blue-600">
+              <p className="text-sm text-muted-foreground">{hint.description}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>当前值: {String(hint.value)}</span>
                 {hint.recommended !== undefined && (
                   <span>→ 建议值: {String(hint.recommended)}</span>
@@ -86,7 +86,6 @@ const SettingsHints: React.FC<SettingsHintsProps> = ({
                 onClick={() => onApplyRecommendation(hint)}
                 size="sm"
                 variant="outline"
-                className="ml-3 border-blue-300 text-blue-700 hover:bg-blue-100"
               >
                 应用
               </Button>

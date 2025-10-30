@@ -129,9 +129,6 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
             variant="outline" 
             size="sm" 
             disabled={isGameInProgress}
-            className={`bg-gray-800 hover:bg-gray-700 text-white border-gray-600 ${
-              isGameInProgress ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
             title={isGameInProgress ? '游戏进行中不能修改设置' : '游戏设置'}
           >
             <Settings className="w-4 h-4 mr-2" />
@@ -139,7 +136,7 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 text-white border-gray-700">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background text-foreground border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -151,7 +148,6 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
                 variant="outline"
                 size="sm"
                 onClick={handleRefreshSettings}
-                className="bg-blue-600 hover:bg-blue-700 text-white border-blue-500"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 刷新设置
@@ -160,7 +156,6 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
                 variant="outline"
                 size="sm"
                 onClick={handleResetToDefaults}
-                className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 重置默认
@@ -169,11 +164,11 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
                 <Button 
                   onClick={handleSaveSettings} 
                   disabled={saving}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 dark:bg-green-700 hover:bg-green-700 dark:hover:bg-green-800 text-white"
                 >
                   {saving ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
                       保存中...
                     </>
                   ) : (
@@ -187,7 +182,7 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
               {!hasChanges && !saving && (
                 <Button 
                   disabled
-                  className="bg-gray-600 text-gray-400"
+                  variant="outline"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   已保存
@@ -198,20 +193,20 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
         </DialogHeader>
         
         <Tabs defaultValue="visual" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-gray-800">
-            <TabsTrigger value="visual" className="data-[state=active]:bg-blue-600">
+          <TabsList className="grid w-full grid-cols-4 bg-muted">
+            <TabsTrigger value="visual" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Eye className="w-4 h-4 mr-2" />
               视觉
             </TabsTrigger>
-            <TabsTrigger value="audio" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="audio" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Volume2 className="w-4 h-4 mr-2" />
               音效
             </TabsTrigger>
-            <TabsTrigger value="music" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="music" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Music className="w-4 h-4 mr-2" />
               音乐
             </TabsTrigger>
-            <TabsTrigger value="undoredo" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="undoredo" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Settings className="w-4 h-4 mr-2" />
               撤销重做
             </TabsTrigger>
@@ -240,28 +235,27 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
             </TabsContent>
             
             <TabsContent value="undoredo" className="space-y-4">
-              <div className="p-4 bg-gray-800 rounded-lg">
+              <div className="p-4 bg-card border border-border rounded-lg">
                 <h3 className="text-lg font-semibold mb-4">撤销重做设置</h3>
-                <p className="text-sm text-gray-400">撤销重做功能仅在单人模式下可用，可在用户设置中配置。</p>
+                <p className="text-sm text-muted-foreground">撤销重做功能仅在单人模式下可用，可在用户设置中配置。</p>
               </div>
             </TabsContent>
           </div>
         </Tabs>
         
         {hasChanges && (
-          <div className="mt-4 p-3 bg-yellow-900/50 border border-yellow-500/50 rounded-lg">
-            <p className="text-yellow-200 text-sm flex items-center gap-2">
+          <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800 rounded-lg">
+            <p className="text-orange-700 dark:text-orange-300 text-sm flex items-center gap-2">
               <Settings className="w-4 h-4" />
               您有未保存的更改，请点击"保存设置"来保存您的配置。
             </p>
           </div>
         )}
         
-        <div className="flex justify-end gap-2 pt-4 border-t border-gray-700">
+        <div className="flex justify-end gap-2 pt-4 border-t border-border">
           <Button 
             variant="outline" 
             onClick={() => setIsOpen(false)}
-            className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
           >
             {hasChanges ? '取消' : '关闭'}
           </Button>

@@ -150,23 +150,22 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
   }, [recordingKey]);
 
   return (
-    <Card className="bg-gray-800 border-gray-700">
+    <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-lg text-white">按键设置</CardTitle>
-        <CardDescription className="text-gray-400">
+        <CardTitle className="text-lg">按键设置</CardTitle>
+        <CardDescription>
           点击按钮自定义按键绑定。设置会立即保存并生效。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* 预设配置选择器 */}
-        <div className="bg-gray-700 p-4 rounded-lg">
-          <h4 className="font-semibold mb-3 text-white">键位预设</h4>
+        <div className="bg-muted/50 p-4 rounded-lg border border-border">
+          <h4 className="font-semibold mb-3">键位预设</h4>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => applyPreset('GUIDELINE')}
-              className="bg-gray-600 hover:bg-gray-500 text-white border-gray-500 hover:border-gray-400"
             >
               GUIDELINE (方向键)
             </Button>
@@ -174,34 +173,31 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
               variant="outline"
               size="sm"
               onClick={() => applyPreset('WASD')}
-              className="bg-gray-600 hover:bg-gray-500 text-white border-gray-500 hover:border-gray-400"
             >
               WASD 配置
             </Button>
-            <Badge variant="outline" className="bg-blue-600 text-white border-blue-400 px-3 py-1">
+            <Badge variant="outline" className="bg-primary/20 text-primary border-primary/50 px-3 py-1">
               当前：自定义
             </Badge>
           </div>
-          <p className="text-gray-400 text-sm mt-2">
+          <p className="text-muted-foreground text-sm mt-2">
             选择预设配置可快速设置常用键位组合
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(controlLabels).map(([key, label]) => (
-            <div key={key} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+            <div key={key} className="flex items-center justify-between p-3 bg-card border border-border rounded-lg hover:bg-accent transition-colors">
               <div className="flex items-center gap-3">
                 <span className="text-xl w-8 text-center">{controlIcons[key as keyof typeof controlIcons]}</span>
-                <Label className="text-white font-medium">{label}</Label>
+                <Label className="font-medium">{label}</Label>
               </div>
               <Button
                 variant={recordingKey === key ? "destructive" : "outline"}
                 size="sm"
                 onClick={() => onKeyRecord(key)}
                 className={`min-w-20 font-mono ${
-                  recordingKey === key 
-                    ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse' 
-                    : 'bg-gray-600 hover:bg-gray-500 text-white border-gray-500 hover:border-gray-400'
+                  recordingKey === key ? 'animate-pulse' : ''
                 }`}
               >
                 {recordingKey === key ? '按下按键...' : 
@@ -212,33 +208,33 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
         </div>
 
         {recordingKey && (
-          <div className="bg-blue-900/50 border border-blue-500/50 p-4 rounded-lg animate-pulse">
+          <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 p-4 rounded-lg animate-pulse">
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="bg-blue-600 text-white border-blue-400 animate-bounce">
+              <Badge variant="outline" className="bg-destructive/20 text-destructive border-destructive/50 animate-bounce">
                 正在录制
               </Badge>
-              <span className="text-blue-200">
+              <span className="text-blue-700 dark:text-blue-300">
                 正在为 <strong>{controlLabels[recordingKey as keyof typeof controlLabels]}</strong> 录制按键...
               </span>
             </div>
-            <p className="text-blue-300 text-sm">
+            <p className="text-blue-600 dark:text-blue-400 text-sm">
               请按下您想要设置的按键，或等待5秒自动取消。如与其他按键冲突将自动交换。
             </p>
           </div>
         )}
 
-        <div className="bg-gray-700 p-4 rounded-lg">
-          <h4 className="font-semibold mb-2 text-white">按键说明</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-300">
-            <div>• <strong>左移/右移</strong>：控制方块左右移动</div>
-            <div>• <strong>软降</strong>：加速方块下降</div>
-            <div>• <strong>硬降</strong>：瞬间降落到底部</div>
-            <div>• <strong>顺时针旋转</strong>：方块顺时针旋转90°</div>
-            <div>• <strong>逆时针旋转</strong>：方块逆时针旋转90°</div>
-            <div>• <strong>180°旋转</strong>：方块旋转180°</div>
-            <div>• <strong>暂存</strong>：保存当前方块供以后使用</div>
-            <div>• <strong>暂停</strong>：暂停/继续游戏</div>
-            <div>• <strong>返回菜单</strong>：返回到上一个界面</div>
+        <div className="bg-muted/50 border border-border p-4 rounded-lg">
+          <h4 className="font-semibold mb-2">按键说明</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+            <div>• <strong className="text-foreground">左移/右移</strong>：控制方块左右移动</div>
+            <div>• <strong className="text-foreground">软降</strong>：加速方块下降</div>
+            <div>• <strong className="text-foreground">硬降</strong>：瞬间降落到底部</div>
+            <div>• <strong className="text-foreground">顺时针旋转</strong>：方块顺时针旋转90°</div>
+            <div>• <strong className="text-foreground">逆时针旋转</strong>：方块逆时针旋转90°</div>
+            <div>• <strong className="text-foreground">180°旋转</strong>：方块旋转180°</div>
+            <div>• <strong className="text-foreground">暂存</strong>：保存当前方块供以后使用</div>
+            <div>• <strong className="text-foreground">暂停</strong>：暂停/继续游戏</div>
+            <div>• <strong className="text-foreground">返回菜单</strong>：返回到上一个界面</div>
           </div>
         </div>
       </CardContent>
