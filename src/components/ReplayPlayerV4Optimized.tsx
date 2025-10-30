@@ -258,30 +258,30 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
         <div className="flex-1 grid grid-cols-[1fr_auto_1fr] gap-6 p-6 overflow-hidden">
           {/* Left Stats */}
           <div className="flex flex-col gap-4">
-            <Card className="p-4 bg-muted/50">
-              <div className="text-sm text-muted-foreground">Score</div>
-              <div className="text-4xl font-bold text-foreground">{currentState.score.toLocaleString()}</div>
+            <Card className="p-6 bg-muted/50">
+              <div className="text-sm text-muted-foreground mb-1">Score</div>
+              <div className="text-6xl font-bold text-foreground tracking-tight">{currentState.score.toLocaleString()}</div>
             </Card>
             
-            <Card className="p-4 bg-muted/50">
-              <div className="text-sm text-muted-foreground">Lines</div>
-              <div className="text-3xl font-bold text-foreground">{currentState.lines}</div>
+            <Card className="p-6 bg-muted/50">
+              <div className="text-sm text-muted-foreground mb-1">Lines</div>
+              <div className="text-5xl font-bold text-foreground">{currentState.lines}</div>
             </Card>
 
             <Card className="p-4 bg-muted/50">
-              <div className="text-sm text-muted-foreground">Level</div>
-              <div className="text-3xl font-bold text-foreground">{currentState.level}</div>
+              <div className="text-sm text-muted-foreground mb-1">Level</div>
+              <div className="text-4xl font-bold text-foreground">{currentState.level}</div>
             </Card>
 
             <Card className="p-4 bg-muted/50">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs text-muted-foreground">PPS</div>
-                  <div className="text-xl font-bold text-primary">{currentPPS.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-primary">{currentPPS.toFixed(2)}</div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">APM</div>
-                  <div className="text-xl font-bold text-primary">{Math.round(currentAPM)}</div>
+                  <div className="text-2xl font-bold text-primary">{Math.round(currentAPM)}</div>
                 </div>
               </div>
             </Card>
@@ -301,10 +301,10 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
               
               {/* Achievement Overlay */}
               {recentAchievement && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg text-2xl font-bold animate-pulse shadow-lg">
-                    {recentAchievement.type === 'tetris' && <Zap className="inline w-6 h-6 mr-2" />}
-                    {recentAchievement.type === 'tspin' && <Award className="inline w-6 h-6 mr-2" />}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                  <div className="bg-primary/95 text-primary-foreground px-8 py-4 rounded-xl text-3xl font-bold animate-fade-in shadow-2xl backdrop-blur-sm border-2 border-primary-foreground/20">
+                    {recentAchievement.type === 'tetris' && <Zap className="inline w-8 h-8 mr-2" />}
+                    {recentAchievement.type === 'tspin' && <Award className="inline w-8 h-8 mr-2" />}
                     {recentAchievement.text}
                   </div>
                 </div>
@@ -332,16 +332,8 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
               </div>
             )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDetails(!showDetails)}
-            >
-              {showDetails ? 'Hide' : 'Show'} Details
-            </Button>
-
             {showDetails && (
-              <Card className="p-4 bg-muted/50 text-xs">
+              <Card className="p-4 bg-muted/50 text-xs space-y-2">
                 <div className="space-y-1 text-muted-foreground">
                   <div>Seed: {replay.metadata.seed}</div>
                   <div>Duration: {formatTime(replay.stats.duration)}</div>
@@ -353,6 +345,15 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
                 </div>
               </Card>
             )}
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowDetails(!showDetails)}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              {showDetails ? 'Hide' : 'Show'} Technical Info
+            </Button>
           </div>
         </div>
 
