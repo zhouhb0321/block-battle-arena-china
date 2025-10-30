@@ -5,6 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Play, Pause, RotateCcw, X, Zap, Trophy, Award } from 'lucide-react';
 import { V4ReplayData, V4KeyframeEvent, V4LockEvent, ReplayOpcode } from '@/utils/replayV4/types';
+import { getPieceShape } from '@/utils/tetrominoShapes';
 import GameBoard from './GameBoard';
 import NextPiecePreview from './NextPiecePreview';
 import HoldPieceDisplay from './HoldPieceDisplay';
@@ -67,7 +68,7 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
     return result;
   }, [keyframes]);
 
-  // Reconstruct state with caching
+  // Reconstruct state with caching and currentPiece support
   const reconstructState = useCallback((targetTime: number) => {
     // Check cache first
     const cachedState = stateCache.current.get(Math.floor(targetTime / 100) * 100);
@@ -84,18 +85,31 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
         score: 0,
         lines: 0,
         level: 1,
-        combo: 0
+        combo: 0,
+        currentPiece: null
       };
     }
 
+    // ✅ P0 修复：确保棋盘数据使用数字 ID (1-7)
+    const normalizedBoard = kf.board.map(row => row.map(cell => {
+      if (typeof cell === 'string') {
+        const typeMap: Record<string, number> = {
+          'I': 1, 'O': 2, 'T': 3, 'S': 4, 'Z': 5, 'J': 6, 'L': 7
+        };
+        return typeMap[cell] || 0;
+      }
+      return cell;
+    }));
+
     let state = {
-      board: kf.board.map(row => [...row]),
+      board: normalizedBoard,
       nextPieces: [...kf.nextPieces],
       holdPiece: kf.holdPiece,
       score: kf.score,
       lines: kf.lines,
       level: kf.level,
-      combo: 0
+      combo: 0,
+      currentPiece: null as any
     };
 
     // Apply locks after keyframe
@@ -123,12 +137,42 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
       }
     }
 
+    // ✅ P1 新增：重建 currentPiece（正在移动的方块）
+    // 找到最后一个 SPAWN 事件
+    const spawnEvents = sortedEvents.filter(
+      e => e.type === ReplayOpcode.SPAWN && e.timestamp <= targetTime
+    );
+    const lastSpawn = spawnEvents[spawnEvents.length - 1];
+
+    if (lastSpawn && lastSpawn.type === ReplayOpcode.SPAWN) {
+      // 检查该方块是否已经锁定
+      const hasLocked = lockEvents.some(
+        lock => lock.timestamp > lastSpawn.timestamp && lock.timestamp <= targetTime
+      );
+
+      if (!hasLocked) {
+        // 方块还在移动中，查找最后一个 INPUT 事件获取位置和旋转
+        const inputEvents = sortedEvents.filter(
+          e => e.type === ReplayOpcode.INPUT && 
+               e.timestamp > lastSpawn.timestamp && 
+               e.timestamp <= targetTime
+        );
+        const lastInput = inputEvents[inputEvents.length - 1] as any; // Type assertion
+
+        state.currentPiece = {
+          type: lastSpawn.pieceType,
+          position: lastInput?.position || { x: lastSpawn.x, y: lastSpawn.y },
+          rotation: lastInput?.rotation || 0
+        };
+      }
+    }
+
     // Cache the state
     const cacheKey = Math.floor(targetTime / 100) * 100;
     stateCache.current.set(cacheKey, { time: targetTime, state });
 
     return state;
-  }, [findRelevantKeyframe, lockEvents, replay.metadata.initialPieceSequence]);
+  }, [findRelevantKeyframe, lockEvents, sortedEvents, replay.metadata.initialPieceSequence]);
 
   // Current game state
   const currentState = useMemo(() => reconstructState(currentTime), [currentTime, reconstructState]);
@@ -369,7 +413,20 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
           {/* Center - Game Board */}
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              <GameBoard board={currentState.board} currentPiece={null} />
+              <GameBoard 
+                board={currentState.board} 
+                currentPiece={currentState.currentPiece ? {
+                  type: {
+                    type: currentState.currentPiece.type,
+                    shape: getPieceShape(currentState.currentPiece.type, currentState.currentPiece.rotation),
+                    color: '', // Not used in replay
+                    name: currentState.currentPiece.type
+                  },
+                  x: currentState.currentPiece.position.x,
+                  y: currentState.currentPiece.position.y,
+                  rotation: currentState.currentPiece.rotation
+                } : null}
+              />
               
               {/* Achievement Overlay */}
               {recentAchievement && (

@@ -101,7 +101,12 @@ export function useReplayRecorderV4() {
     console.log(`[RecorderV4] SPAWN: ${sanitized} at (${x}, ${y}) @ ${timestamp}ms`);
   }, [isRecording]);
 
-  const recordInput = useCallback((action: string, success: boolean) => {
+  const recordInput = useCallback((
+    action: string, 
+    success: boolean,
+    position?: { x: number; y: number },
+    rotation?: number
+  ) => {
     if (!isRecording) return;
     
     const actionMap: Record<string, InputAction> = {
@@ -123,7 +128,9 @@ export function useReplayRecorderV4() {
       type: ReplayOpcode.INPUT,
       timestamp,
       action: inputAction,
-      success
+      success,
+      position, // ✅ P1 新增：记录位置
+      rotation  // ✅ P1 新增：记录旋转
     });
   }, [isRecording]);
 

@@ -77,6 +77,22 @@ function encodeEvent(event: V4Event): Uint8Array {
       const e = event as V4InputEvent;
       parts.push(new Uint8Array([e.action]));
       parts.push(new Uint8Array([e.success ? 1 : 0]));
+      
+      // ✅ P1 新增：编码位置和旋转（如果存在）
+      if (e.position !== undefined) {
+        parts.push(new Uint8Array([1])); // has position flag
+        parts.push(encodeVarint(e.position.x));
+        parts.push(encodeVarint(e.position.y));
+      } else {
+        parts.push(new Uint8Array([0])); // no position
+      }
+      
+      if (e.rotation !== undefined) {
+        parts.push(new Uint8Array([1])); // has rotation flag
+        parts.push(encodeVarint(e.rotation));
+      } else {
+        parts.push(new Uint8Array([0])); // no rotation
+      }
       break;
     }
     
@@ -95,8 +111,23 @@ function encodeEvent(event: V4Event): Uint8Array {
     
     case Op.KF: {
       const e = event as V4KeyframeEvent;
+      
+      // ✅ P0 修复：确保棋盘数据使用数字 ID (1-7) 而不是字符串
+      const PIECE_TYPE_TO_ID: Record<string, number> = {
+        'I': 1, 'O': 2, 'T': 3, 'S': 4, 'Z': 5, 'J': 6, 'L': 7
+      };
+      
+      const normalizedBoard = e.board.map(row => 
+        row.map(cell => {
+          if (typeof cell === 'string') {
+            return PIECE_TYPE_TO_ID[cell] || 0;
+          }
+          return cell;
+        })
+      );
+      
       const json = JSON.stringify({
-        board: e.board,
+        board: normalizedBoard,
         next: e.nextPieces,
         hold: e.holdPiece,
         score: e.score,
@@ -160,7 +191,27 @@ function decodeEvent(data: Uint8Array, offset: number): [V4Event | null, number]
       case Op.INPUT: {
         const action = data[pos++];
         const success = data[pos++] === 1;
-        return [{ type: Op.INPUT, timestamp, action, success }, pos];
+        
+        // ✅ P1 新增：解码位置和旋转
+        let position: { x: number; y: number } | undefined = undefined;
+        let rotation: number | undefined = undefined;
+        
+        const hasPosition = data[pos++] === 1;
+        if (hasPosition) {
+          const [x, pos2] = decodeVarint(data, pos);
+          const [y, pos3] = decodeVarint(data, pos2);
+          position = { x, y };
+          pos = pos3;
+        }
+        
+        const hasRotation = data[pos++] === 1;
+        if (hasRotation) {
+          const [rot, pos2] = decodeVarint(data, pos);
+          rotation = rot;
+          pos = pos2;
+        }
+        
+        return [{ type: Op.INPUT, timestamp, action, success, position, rotation }, pos];
       }
       
       case Op.LOCK: {

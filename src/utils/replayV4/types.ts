@@ -39,6 +39,9 @@ export interface V4InputEvent {
   timestamp: number;
   action: InputAction;
   success: boolean;  // Whether the input actually did something
+  // ✅ P1 新增：位置和旋转信息（用于流畅动画）
+  position?: { x: number; y: number };
+  rotation?: number;
 }
 
 export interface V4LockEvent {

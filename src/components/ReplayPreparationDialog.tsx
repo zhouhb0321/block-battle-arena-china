@@ -160,6 +160,7 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
         hasData: !!replayData
       });
       setIsPlayerOpen(true);
+      onClose(); // ✅ P0 修复：关闭准备对话框，避免 z-index 遮蔽
     }
   };
 
