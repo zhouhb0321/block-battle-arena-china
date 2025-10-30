@@ -8,7 +8,8 @@ import { Clock, Trophy, Target, Play, Download, AlertCircle, CheckCircle } from 
 import { useToast } from '@/hooks/use-toast';
 import { loadReplayById } from '@/utils/replayLoader';
 import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
-import ReplayPlayerV4 from './ReplayPlayerV4';
+import { ReplayPlayerV4Optimized } from './ReplayPlayerV4Optimized';
+import { JstrisReplayImporter } from './JstrisReplayImporter';
 import type { CompressedReplay } from '@/utils/replayTypes';
 import type { V4ReplayData } from '@/utils/replayV4/types';
 
@@ -252,6 +253,20 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
               </CardContent>
             </Card>
 
+            {/* Jstris 导入器 */}
+            {loadingState === 'idle' && (
+              <JstrisReplayImporter 
+                onImportSuccess={(v4Data) => {
+                  setReplayData(v4Data);
+                  setLoadingState('success');
+                  toast({
+                    title: '✅ Jstris 回放导入成功',
+                    description: '可以开始播放了'
+                  });
+                }}
+              />
+            )}
+
             {/* 加载状态区域 */}
             <Card>
               <CardHeader>
@@ -328,11 +343,11 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
             (() => {
               const v4Data = getV4Data(replayData);
               return v4Data ? (
-                <ReplayPlayerV4
-                  replay={v4Data}
-                  onClose={handleClosePlayer}
-                  autoPlay={true}
-                />
+      <ReplayPlayerV4Optimized
+        replay={v4Data}
+        onClose={handleClosePlayer}
+        autoPlay={true}
+      />
               ) : null;
             })()
           ) : (
