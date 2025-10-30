@@ -1,10 +1,15 @@
 import { V4ReplayData, V4KeyframeEvent, V4LockEvent, ReplayOpcode } from './replayV4/types';
+import * as LZString from 'lz-string';
 
 /**
  * Jstris Replay Data Structure (Framework)
  * This will be updated once we have actual Jstris data samples
  */
 export interface JstrisReplayData {
+  // Encoded data format (when pasting raw data)
+  encodedData?: string;
+  
+  // API response format
   replay?: {
     gameid?: number;
     name?: string;
@@ -41,6 +46,18 @@ export interface JstrisReplayData {
  */
 export function convertJstrisToV4(jstrisData: any, replayId: string): V4ReplayData {
   console.log('[Jstris Converter] Raw data received:', jstrisData);
+  
+  // Check if this is encoded data that needs decoding
+  if (jstrisData.encodedData) {
+    console.log('[Jstris Converter] Detected encoded data format');
+    const decoded = decodeJstrisData(jstrisData.encodedData);
+    if (decoded) {
+      console.log('[Jstris Converter] Successfully decoded data:', decoded);
+      jstrisData = decoded;
+    } else {
+      console.warn('[Jstris Converter] Failed to decode data, using placeholder');
+    }
+  }
   
   // Try to extract replay data from various possible structures
   const replayInfo = jstrisData.replay || jstrisData.game || jstrisData;
@@ -172,32 +189,104 @@ function mapJstrisPieceType(jstrisPiece: string): string {
 }
 
 /**
- * Decode Jstris compressed data (if applicable)
+ * Decode Jstris compressed data
  * 
- * Some Jstris replays may have compressed/encoded data.
- * This function will handle decoding once we understand the format.
+ * Jstris uses a custom compression format (likely LZ-string or similar)
+ * The data starts with patterns like "N4Ig" which suggests base64 encoding
  */
 export function decodeJstrisData(compressedData: string): any {
-  // TODO: Implement decoding logic based on actual Jstris format
-  // Possibilities:
-  // - Base64 encoded JSON
-  // - Gzip compressed data
-  // - Custom binary format
-  
-  console.warn('[Jstris Converter] Compressed data decoding not yet implemented');
+  console.log('[Jstris Converter] Attempting to decode data...');
+  console.log('[Jstris Converter] Data length:', compressedData.length);
+  console.log('[Jstris Converter] Data preview:', compressedData.substring(0, 50));
   
   try {
-    // Try parsing as JSON first
-    return JSON.parse(compressedData);
-  } catch {
-    // Try base64 decode
+    // Strategy 1: LZ-string decompression (most likely for Jstris)
+    // The "N4Ig" prefix is typical of LZ-string base64 URL-safe encoding
+    try {
+      const decompressed = LZString.decompressFromBase64(compressedData);
+      if (decompressed) {
+        console.log('[Jstris Converter] LZ-string base64 decompressed');
+        try {
+          const parsed = JSON.parse(decompressed);
+          console.log('[Jstris Converter] Successfully decoded LZ-string data:', parsed);
+          return parsed;
+        } catch {
+          console.log('[Jstris Converter] LZ-string decoded but not JSON');
+        }
+      }
+    } catch (e) {
+      console.log('[Jstris Converter] LZ-string base64 failed, trying other methods');
+    }
+    
+    // Strategy 2: LZ-string URI encoding
+    try {
+      const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+      if (decompressed) {
+        console.log('[Jstris Converter] LZ-string URI decompressed');
+        try {
+          const parsed = JSON.parse(decompressed);
+          console.log('[Jstris Converter] Successfully decoded LZ-string URI data:', parsed);
+          return parsed;
+        } catch {
+          console.log('[Jstris Converter] LZ-string URI decoded but not JSON');
+        }
+      }
+    } catch (e) {
+      console.log('[Jstris Converter] LZ-string URI failed');
+    }
+    
+    // Strategy 3: Try direct JSON parse (unlikely but worth checking)
+    try {
+      const parsed = JSON.parse(compressedData);
+      console.log('[Jstris Converter] Successfully parsed as JSON');
+      return parsed;
+    } catch {
+      // Not JSON, continue
+    }
+    
+    // Strategy 4: Try base64 decode
     try {
       const decoded = atob(compressedData);
-      return JSON.parse(decoded);
-    } catch {
-      console.error('[Jstris Converter] Failed to decode compressed data');
-      return null;
+      console.log('[Jstris Converter] Base64 decoded, length:', decoded.length);
+      
+      // Try parsing decoded data as JSON
+      try {
+        const parsed = JSON.parse(decoded);
+        console.log('[Jstris Converter] Successfully decoded base64 JSON');
+        return parsed;
+      } catch {
+        // Not JSON after base64 decode
+        console.log('[Jstris Converter] Base64 decoded but not JSON');
+      }
+    } catch (e) {
+      console.log('[Jstris Converter] Not valid base64');
     }
+    
+    // Strategy 5: URL-safe base64 decode (replace - with + and _ with /)
+    try {
+      const urlSafeDecoded = compressedData.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = atob(urlSafeDecoded);
+      console.log('[Jstris Converter] URL-safe base64 decoded');
+      
+      try {
+        const parsed = JSON.parse(decoded);
+        console.log('[Jstris Converter] Successfully decoded URL-safe base64 JSON');
+        return parsed;
+      } catch {
+        console.log('[Jstris Converter] URL-safe base64 decoded but not JSON');
+      }
+    } catch (e) {
+      console.log('[Jstris Converter] Not valid URL-safe base64');
+    }
+    
+    // If all strategies failed
+    console.error('[Jstris Converter] Unable to decode - all strategies failed');
+    console.error('[Jstris Converter] Data prefix:', compressedData.substring(0, 20));
+    return null;
+    
+  } catch (error) {
+    console.error('[Jstris Converter] Decoding error:', error);
+    return null;
   }
 }
 

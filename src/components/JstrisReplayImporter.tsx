@@ -18,6 +18,12 @@ export const JstrisReplayImporter: React.FC<JstrisReplayImporterProps> = ({ onIm
   const [loadingStep, setLoadingStep] = useState('');
   const { toast } = useToast();
 
+  const isEncodedData = (input: string): boolean => {
+    // Check if input looks like base64/encoded replay data (starts with N4Ig or similar patterns)
+    const trimmed = input.trim();
+    return trimmed.length > 100 && /^[A-Za-z0-9+/=_-]+$/.test(trimmed);
+  };
+
   const extractReplayId = (url: string): string | null => {
     // Support formats:
     // https://jstris.jezevec10.com/replay/820350
@@ -30,18 +36,44 @@ export const JstrisReplayImporter: React.FC<JstrisReplayImporterProps> = ({ onIm
   };
 
   const fetchJstrisReplay = async () => {
-    const replayId = extractReplayId(jstrisUrl);
-    if (!replayId) {
-      toast({
-        variant: 'destructive',
-        title: '无效的 Jstris 回放链接',
-        description: '请输入完整的 Jstris 回放 URL 或回放 ID（例如：820350）'
-      });
-      return;
-    }
-
     setIsLoading(true);
+    
     try {
+      // Check if input is encoded replay data
+      if (isEncodedData(jstrisUrl)) {
+        setLoadingStep('步骤 1/2: 解析编码数据...');
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        setLoadingStep('步骤 2/2: 转换数据格式...');
+        
+        // Try to convert the encoded data directly
+        const v4Replay = convertJstrisToV4({ encodedData: jstrisUrl }, 'encoded-data');
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        onImportSuccess(v4Replay);
+        
+        toast({
+          title: '✅ 导入成功',
+          description: '已导入 Jstris 编码数据'
+        });
+        
+        setJstrisUrl('');
+        return;
+      }
+      
+      // Otherwise, treat as URL or replay ID
+      const replayId = extractReplayId(jstrisUrl);
+      if (!replayId) {
+        toast({
+          variant: 'destructive',
+          title: '无效的 Jstris 输入',
+          description: '请输入 Jstris 回放 URL、回放 ID 或粘贴编码数据'
+        });
+        return;
+      }
+
       setLoadingStep('步骤 1/3: 连接 Jstris 服务器...');
       
       // Call Edge Function to fetch Jstris data
@@ -119,12 +151,12 @@ export const JstrisReplayImporter: React.FC<JstrisReplayImporterProps> = ({ onIm
       <CardContent className="space-y-4">
         <div className="flex gap-2">
           <Input
-            placeholder="粘贴 Jstris 回放链接或 ID（例如：820350）"
+            placeholder="粘贴 Jstris URL、回放 ID 或编码数据..."
             value={jstrisUrl}
             onChange={(e) => setJstrisUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !isLoading && jstrisUrl && fetchJstrisReplay()}
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 font-mono text-sm"
           />
           <Button 
             onClick={fetchJstrisReplay} 
@@ -151,14 +183,13 @@ export const JstrisReplayImporter: React.FC<JstrisReplayImporterProps> = ({ onIm
           </div>
         )}
         
-        <div className="text-sm text-muted-foreground space-y-1">
-          <p>支持 Jstris 网站的回放链接，例如：</p>
-          <p className="font-mono text-xs bg-muted px-2 py-1 rounded">
-            https://jstris.jezevec10.com/replay/820350
-          </p>
-          <p className="text-xs text-muted-foreground/70 mt-2">
-            也可以直接输入回放 ID（例如：820350）
-          </p>
+        <div className="text-sm text-muted-foreground space-y-2">
+          <p className="font-semibold">支持以下格式：</p>
+          <ul className="list-disc list-inside space-y-1 text-xs">
+            <li>Jstris 回放链接：<code className="bg-muted px-1 rounded">https://jstris.jezevec10.com/replay/820350</code></li>
+            <li>回放 ID：<code className="bg-muted px-1 rounded">820350</code></li>
+            <li>编码数据：直接粘贴 Jstris 导出的编码字符串</li>
+          </ul>
         </div>
       </CardContent>
     </Card>
