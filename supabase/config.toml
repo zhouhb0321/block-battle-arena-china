@@ -1,1 +1,4 @@
 project_id = "wcwnyvoezudyxiayyzek"
+
+[functions.validate-replay]
+verify_jwt = false

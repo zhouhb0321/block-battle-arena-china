@@ -221,17 +221,89 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Spacebar control
+  // Jump to keyframes
+  const jumpToPreviousKeyframe = useCallback(() => {
+    const prevKf = [...keyframes].reverse().find(kf => kf.timestamp < currentTime - 100);
+    if (prevKf) {
+      setCurrentTime(prevKf.timestamp);
+    } else {
+      setCurrentTime(0);
+    }
+  }, [currentTime, keyframes]);
+
+  const jumpToNextKeyframe = useCallback(() => {
+    const nextKf = keyframes.find(kf => kf.timestamp > currentTime + 100);
+    if (nextKf) {
+      setCurrentTime(nextKf.timestamp);
+    } else {
+      setCurrentTime(duration);
+    }
+  }, [currentTime, keyframes, duration]);
+
+  // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        handlePlayPause();
+      // Prevent keyboard shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          handlePlayPause();
+          break;
+
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Shift + ← : Previous keyframe
+            jumpToPreviousKeyframe();
+          } else {
+            // ← : Back 1 frame (16ms ≈ 60fps)
+            setCurrentTime(Math.max(0, currentTime - 16));
+          }
+          break;
+
+        case 'ArrowRight':
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Shift + → : Next keyframe
+            jumpToNextKeyframe();
+          } else {
+            // → : Forward 1 frame (16ms)
+            setCurrentTime(Math.min(duration, currentTime + 16));
+          }
+          break;
+
+        case 'BracketLeft': // [
+          e.preventDefault();
+          // Decrease speed
+          setPlaybackSpeed(prev => Math.max(0.25, prev - 0.25));
+          break;
+
+        case 'BracketRight': // ]
+          e.preventDefault();
+          // Increase speed
+          setPlaybackSpeed(prev => Math.min(4, prev + 0.25));
+          break;
+
+        case 'Home':
+          e.preventDefault();
+          handleReset();
+          break;
+
+        case 'End':
+          e.preventDefault();
+          setCurrentTime(duration);
+          setIsPlaying(false);
+          break;
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying]);
+  }, [isPlaying, currentTime, duration, handlePlayPause, jumpToPreviousKeyframe, jumpToNextKeyframe]);
 
   const speedOptions = [0.25, 0.5, 1, 2, 4];
 
@@ -354,6 +426,33 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
             >
               {showDetails ? 'Hide' : 'Show'} Technical Info
             </Button>
+
+            {/* Keyboard Shortcuts */}
+            <Card className="p-3 bg-muted/30 text-xs">
+              <div className="font-semibold text-foreground mb-2">⌨️ Keyboard Shortcuts</div>
+              <div className="space-y-1 text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>Space</span>
+                  <span className="text-foreground">Play/Pause</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>← / →</span>
+                  <span className="text-foreground">Frame Step</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>⇧ ← / ⇧ →</span>
+                  <span className="text-foreground">Keyframe</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>[ / ]</span>
+                  <span className="text-foreground">Speed</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Home / End</span>
+                  <span className="text-foreground">Jump</span>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
 

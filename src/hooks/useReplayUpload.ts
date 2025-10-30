@@ -29,13 +29,38 @@ export const useReplayUpload = () => {
         throw new Error('回放数据不完整');
       }
 
+      setUploadProgress(10);
+
+      // 服务器端验证回放数据
+      console.log('[Upload] Validating replay data...');
+      const { data: validationResult, error: validationError } = await supabase.functions.invoke('validate-replay', {
+        body: { replayData }
+      });
+
+      if (validationError) {
+        console.error('[Upload] Validation request failed:', validationError);
+        throw new Error('回放验证服务不可用，请稍后重试');
+      }
+
+      if (!validationResult.valid) {
+        console.error('[Upload] Validation failed:', validationResult.errors);
+        const errorMsg = validationResult.errors.join('; ');
+        throw new Error(`回放数据验证失败: ${errorMsg}`);
+      }
+
+      if (validationResult.warnings && validationResult.warnings.length > 0) {
+        console.warn('[Upload] Validation warnings:', validationResult.warnings);
+      }
+
+      setUploadProgress(25);
+
       // 计算回放数据的校验和，防止篡改
       const dataString = JSON.stringify(replayData.actions);
       const checksum = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(dataString));
       const checksumArray = Array.from(new Uint8Array(checksum));
       const checksumHex = checksumArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-      setUploadProgress(25);
+      setUploadProgress(35);
 
       // 准备上传数据 - 正确处理 JSON 类型
       const replayDataForUpload = {
@@ -62,7 +87,7 @@ export const useReplayUpload = () => {
         is_world_record: false   // 将在服务器端计算
       };
 
-      setUploadProgress(50);
+      setUploadProgress(55);
 
       // 上传到数据库
       const { data, error } = await supabase
