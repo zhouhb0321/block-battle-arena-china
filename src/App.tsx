@@ -30,9 +30,9 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <AuthErrorBoundary>
-            <AuthProvider>
-              <SessionManager />
-              <GameRecordingProvider>
+            <GameRecordingProvider>
+              <AuthProvider>
+                <SessionManager />
                 <LanguageProvider>
                   <GameProvider>
                     <Toaster />
@@ -45,8 +45,8 @@ function App() {
                     </BrowserRouter>
                   </GameProvider>
                 </LanguageProvider>
-              </GameRecordingProvider>
-            </AuthProvider>
+              </AuthProvider>
+            </GameRecordingProvider>
           </AuthErrorBoundary>
         </TooltipProvider>
       </ThemeProvider>
