@@ -1,14 +1,16 @@
 import { useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const SESSION_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours
+const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours
 const WARNING_TIME = 5 * 60 * 1000; // 5 minutes before timeout
 const ACTIVITY_CHECK_INTERVAL = 60 * 1000; // Check every minute
 
 export const useSessionTimeout = () => {
   const { user, signOut } = useAuth();
+  const gameRecording = useGameRecording();
 
   const updateActivity = useCallback(async () => {
     if (!user) return;
@@ -50,8 +52,24 @@ export const useSessionTimeout = () => {
         const timeLeft = expiresAt - now;
 
         if (timeLeft <= 0) {
+          // Check if game is active before forcing logout
+          if (gameRecording.isActive || gameRecording.isRecording) {
+            const shouldSave = window.confirm(
+              'Your session has expired and a game is in progress.\n\n' +
+              'Click "OK" to save replay and logout\n' +
+              'Click "Cancel" to logout without saving'
+            );
+            
+            if (shouldSave) {
+              const saved = await gameRecording.saveAndQuit();
+              if (!saved) {
+                toast.error('Failed to save replay');
+              }
+            }
+          }
+          
           toast.error('Session expired. Please log in again.');
-          await signOut();
+          await signOut(true); // Skip game check since we already handled it
         } else if (timeLeft <= WARNING_TIME) {
           toast.warning('Your session will expire in 5 minutes. Activity will extend it.');
         }
@@ -59,7 +77,7 @@ export const useSessionTimeout = () => {
     } catch (error) {
       console.error('Failed to check session expiry:', error);
     }
-  }, [user, signOut]);
+  }, [user, signOut, gameRecording]);
 
   const handleActivity = useCallback(() => {
     updateActivity();
@@ -71,8 +89,8 @@ export const useSessionTimeout = () => {
     // Update activity on mount
     updateActivity();
 
-    // Add activity listeners
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    // Add activity listeners including game keyboard events
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click', 'keydown', 'keyup'];
     events.forEach(event => {
       document.addEventListener(event, handleActivity, true);
     });
