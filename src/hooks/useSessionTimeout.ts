@@ -52,32 +52,28 @@ export const useSessionTimeout = () => {
         const timeLeft = expiresAt - now;
 
         if (timeLeft <= 0) {
-          // Check if game is active before forcing logout
           if (gameRecording.isActive || gameRecording.isRecording) {
-            const shouldSave = window.confirm(
-              'Your session has expired and a game is in progress.\n\n' +
-              'Click "OK" to save replay and logout\n' +
-              'Click "Cancel" to logout without saving'
-            );
-            
-            if (shouldSave) {
-              const saved = await gameRecording.saveAndQuit();
-              if (!saved) {
-                toast.error('Failed to save replay');
-              }
-            }
+            // Do NOT logout during gameplay; auto-extend and retry later
+            await updateActivity();
+            toast.info('Session auto-extended during gameplay. You will not be logged out.');
+            return;
           }
-          
           toast.error('Session expired. Please log in again.');
-          await signOut(true); // Skip game check since we already handled it
+          await signOut(true);
         } else if (timeLeft <= WARNING_TIME) {
-          toast.warning('Your session will expire in 5 minutes. Activity will extend it.');
+          if (gameRecording.isActive || gameRecording.isRecording) {
+            // Silently extend during active gameplay to avoid interruption
+            await updateActivity();
+            toast.warning('Session extended to avoid interruption.');
+          } else {
+            toast.warning('Your session will expire in 5 minutes. Activity will extend it.');
+          }
         }
       }
     } catch (error) {
       console.error('Failed to check session expiry:', error);
     }
-  }, [user, signOut, gameRecording]);
+  }, [user, signOut, gameRecording, updateActivity]);
 
   const handleActivity = useCallback(() => {
     updateActivity();
