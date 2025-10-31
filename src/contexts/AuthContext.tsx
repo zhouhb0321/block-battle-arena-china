@@ -23,7 +23,7 @@ interface AuthContextType {
   register: (email: string, password: string, username?: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signOut: () => Promise<void>;
+  signOut: (skipGameCheck?: boolean) => Promise<void>;
   loginAsGuest: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
 }
@@ -365,9 +365,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return login(email, password);
   };
 
-  const signOut = async () => {
+  const signOut = async (skipGameCheck: boolean = false) => {
     try {
-      debugLog.auth('用户注销');
+      debugLog.auth('用户注销', { skipGameCheck });
+      
+      // 实际执行注销
       await supabase.auth.signOut();
       
       // Force clear all auth related storage

@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { GameProvider } from "@/contexts/GameContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { GameRecordingProvider } from "@/contexts/GameRecordingContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
@@ -31,18 +32,20 @@ function App() {
           <AuthErrorBoundary>
             <AuthProvider>
               <SessionManager />
-              <LanguageProvider>
-                <GameProvider>
-                  <Toaster />
-                  <BrowserRouter>
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/reset-password" element={<ResetPassword />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </BrowserRouter>
-                </GameProvider>
-              </LanguageProvider>
+              <GameRecordingProvider>
+                <LanguageProvider>
+                  <GameProvider>
+                    <Toaster />
+                    <BrowserRouter>
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </BrowserRouter>
+                  </GameProvider>
+                </LanguageProvider>
+              </GameRecordingProvider>
             </AuthProvider>
           </AuthErrorBoundary>
         </TooltipProvider>

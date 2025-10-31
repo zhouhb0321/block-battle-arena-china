@@ -98,6 +98,8 @@ type AuthTranslations = {
   resetPasswordFailed: string;
   confirmPassword: string;
   passwordsDoNotMatch: string;
+  saveReplayBeforeLogout: string;
+  replaySaveFailed: string;
 };
 
 type LanguageTranslations = {
@@ -113,6 +115,8 @@ type LanguageTranslations = {
   userProfile: string;
   leaderboard: string;
   signOut: string;
+  saveReplayBeforeLogout: string;
+  replaySaveFailed: string;
   accessDenied: string;
   adminAccessRequired: string;
   loadingAdminPanel: string;
@@ -240,6 +244,8 @@ export const translations: Translations = {
       resetPasswordFailed: 'Password reset failed!',
       confirmPassword: 'Confirm Password',
       passwordsDoNotMatch: 'Passwords do not match',
+      saveReplayBeforeLogout: 'Game in progress. Save replay before logging out?\n\nClick "OK" to save, "Cancel" to quit without saving.',
+      replaySaveFailed: 'Failed to save replay. Do you still want to log out?',
     },
     premium: 'Premium',
     subscribe: 'Subscribe',
@@ -250,6 +256,8 @@ export const translations: Translations = {
     userProfile: 'User Profile',
     leaderboard: 'Leaderboard',
     signOut: 'Sign Out',
+    saveReplayBeforeLogout: 'Game in progress. Save replay before logging out?\n\nClick "OK" to save, "Cancel" to quit without saving.',
+    replaySaveFailed: 'Failed to save replay. Do you still want to log out?',
     accessDenied: 'Access Denied',
     adminAccessRequired: 'Administrator access required',
     loadingAdminPanel: 'Loading Admin Panel...',
@@ -371,6 +379,8 @@ export const translations: Translations = {
       resetPasswordFailed: '密码重置失败！',
       confirmPassword: '确认密码',
       passwordsDoNotMatch: '密码不匹配',
+      saveReplayBeforeLogout: '游戏进行中，是否保存录像后退出？\n\n选择"确定"保存录像，选择"取消"直接退出（不保存录像）',
+      replaySaveFailed: '录像保存失败，是否仍要退出？',
     },
     premium: '高级版',
     subscribe: '订阅',
@@ -381,6 +391,8 @@ export const translations: Translations = {
     userProfile: '用户资料',
     leaderboard: '排行榜',
     signOut: '登出',
+    saveReplayBeforeLogout: '游戏进行中，是否保存录像后退出？\n\n选择"确定"保存录像，选择"取消"直接退出（不保存录像）',
+    replaySaveFailed: '录像保存失败，是否仍要退出？',
     accessDenied: '访问被拒绝',
     adminAccessRequired: '需要管理员权限',
     loadingAdminPanel: '加载管理面板中...',
@@ -502,6 +514,8 @@ export const translations: Translations = {
       resetPasswordFailed: 'パスワードリセットに失敗しました！',
       confirmPassword: 'パスワードを確認',
       passwordsDoNotMatch: 'パスワードが一致しません',
+      saveReplayBeforeLogout: 'ゲーム進行中です。ログアウト前にリプレイを保存しますか？\n\n「OK」で保存、「キャンセル」で保存せずに終了します。',
+      replaySaveFailed: 'リプレイの保存に失敗しました。それでもログアウトしますか？',
     },
     premium: 'プレミアム',
     subscribe: '申し込む',
@@ -512,6 +526,8 @@ export const translations: Translations = {
     userProfile: 'ユーザープロファイル',
     leaderboard: 'リーダーボード',
     signOut: 'サインアウト',
+    saveReplayBeforeLogout: 'ゲーム進行中です。ログアウト前にリプレイを保存しますか？\n\n「OK」で保存、「キャンセル」で保存せずに終了します。',
+    replaySaveFailed: 'リプレイの保存に失敗しました。それでもログアウトしますか？',
     accessDenied: 'アクセスが拒否されました',
     adminAccessRequired: '管理者アクセスが必要です',
     loadingAdminPanel: '管理パネルをロード中...',

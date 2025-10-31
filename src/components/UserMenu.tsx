@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,6 +24,7 @@ interface UserMenuProps {
 const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
+  const gameRecording = useGameRecording();
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
 
@@ -30,18 +32,40 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
 
   const handleSignOut = async () => {
     try {
-      // 显示加载状态（可选）
-      console.log('开始登出...');
-      await signOut();
+      console.log('开始登出...', { 
+        gameActive: gameRecording.isActive,
+        isRecording: gameRecording.isRecording 
+      });
+      
+      // 检查是否有进行中的游戏
+      if (gameRecording.isActive || gameRecording.isRecording) {
+        const confirmMessage = t('saveReplayBeforeLogout') || '游戏进行中，是否保存录像后退出？\n\n选择"确定"保存录像，选择"取消"直接退出（不保存录像）';
+        const shouldSave = window.confirm(confirmMessage);
+        
+        if (shouldSave) {
+          console.log('用户选择保存录像');
+          const saved = await gameRecording.saveAndQuit();
+          
+          if (!saved) {
+            const forceQuit = window.confirm(
+              t('replaySaveFailed') || '录像保存失败，是否仍要退出？'
+            );
+            if (!forceQuit) {
+              console.log('用户取消退出');
+              return;
+            }
+          }
+        } else {
+          console.log('用户选择不保存录像，直接退出');
+        }
+      }
+      
+      // 执行注销
+      await signOut(true);
       console.log('登出成功');
     } catch (error) {
-      // 登出错误不影响用户界面，因为signOut已经处理了状态清理
       console.warn('登出时发生错误，但本地状态已清理:', error);
       
-      // 即使发生错误，也要确保UI状态正确
-      // signOut函数已经处理了所有必要的状态清理
-      
-      // 可选：在开发环境中显示更详细的错误信息
       if (process.env.NODE_ENV === 'development') {
         console.error('登出详细错误信息:', error);
       }
