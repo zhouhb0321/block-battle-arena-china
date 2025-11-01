@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Play, Pause, RotateCcw, X, Zap, Trophy, Award } from 'lucide-react';
-import { V4ReplayData, V4KeyframeEvent, V4LockEvent, ReplayOpcode } from '@/utils/replayV4/types';
+import { V4ReplayData, V4KeyframeEvent, V4LockEvent, V4InputEvent, ReplayOpcode } from '@/utils/replayV4/types';
 import { getPieceShape } from '@/utils/tetrominoShapes';
+import { getTetrominoColor } from '@/utils/blockColors';
 import GameBoard from './GameBoard';
 import NextPiecePreview from './NextPiecePreview';
 import HoldPieceDisplay from './HoldPieceDisplay';
@@ -67,6 +68,79 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
 
     return result;
   }, [keyframes]);
+
+  // ✅ P0 新增：帧间插值动画系统
+  const getAnimatedPieceState = useCallback((targetTime: number) => {
+    // 1. 找到最后一个 SPAWN 事件
+    const spawnEvents = sortedEvents.filter(
+      e => e.type === ReplayOpcode.SPAWN && e.timestamp <= targetTime
+    );
+    const lastSpawn = spawnEvents[spawnEvents.length - 1];
+    
+    if (!lastSpawn || lastSpawn.type !== ReplayOpcode.SPAWN) return null;
+    
+    // 2. 检查该方块是否已经锁定
+    const hasLocked = lockEvents.some(
+      lock => lock.timestamp > lastSpawn.timestamp && lock.timestamp <= targetTime
+    );
+    
+    if (hasLocked) return null;
+    
+    // 3. 查找该方块相关的所有 INPUT 事件
+    const inputEvents = sortedEvents.filter(
+      e => e.type === ReplayOpcode.INPUT && 
+           e.timestamp > lastSpawn.timestamp && 
+           e.timestamp <= targetTime + 50 // 50ms lookahead
+    ) as V4InputEvent[];
+    
+    if (inputEvents.length === 0) {
+      // 使用 SPAWN 初始位置
+      return {
+        type: lastSpawn.pieceType,
+        position: { x: lastSpawn.x, y: lastSpawn.y },
+        rotation: 0
+      };
+    }
+    
+    // 4. 找到当前时间前后的两个 INPUT 事件（用于插值）
+    const currentInputIdx = inputEvents.findIndex(e => e.timestamp > targetTime);
+    const prevInput = inputEvents[currentInputIdx - 1];
+    const nextInput = inputEvents[currentInputIdx];
+    
+    if (!prevInput) {
+      // 在第一个 INPUT 之前，使用 SPAWN 位置
+      return {
+        type: lastSpawn.pieceType,
+        position: { x: lastSpawn.x, y: lastSpawn.y },
+        rotation: 0
+      };
+    }
+    
+    if (!nextInput || !prevInput.position || !nextInput.position) {
+      // 使用最后一个 INPUT 的位置
+      return {
+        type: lastSpawn.pieceType,
+        position: prevInput.position || { x: lastSpawn.x, y: lastSpawn.y },
+        rotation: prevInput.rotation || 0
+      };
+    }
+    
+    // 5. 线性插值计算当前位置
+    const timeDelta = nextInput.timestamp - prevInput.timestamp;
+    const progress = Math.min(1, (targetTime - prevInput.timestamp) / timeDelta);
+    
+    // 位置插值（只在Y轴方向插值，X轴保持离散以避免视觉模糊）
+    const interpolatedY = prevInput.position.y + (nextInput.position.y - prevInput.position.y) * progress;
+    
+    return {
+      type: lastSpawn.pieceType,
+      position: {
+        x: nextInput.position.x, // X轴不插值，保持清晰
+        y: interpolatedY
+      },
+      rotation: nextInput.rotation || prevInput.rotation || 0
+    };
+  }, [sortedEvents, lockEvents]);
 
   // Reconstruct state with caching and currentPiece support
   const reconstructState = useCallback((targetTime: number) => {
@@ -137,34 +211,10 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
       }
     }
 
-    // ✅ P1 新增：重建 currentPiece（正在移动的方块）
-    // 找到最后一个 SPAWN 事件
-    const spawnEvents = sortedEvents.filter(
-      e => e.type === ReplayOpcode.SPAWN && e.timestamp <= targetTime
-    );
-    const lastSpawn = spawnEvents[spawnEvents.length - 1];
-
-    if (lastSpawn && lastSpawn.type === ReplayOpcode.SPAWN) {
-      // 检查该方块是否已经锁定
-      const hasLocked = lockEvents.some(
-        lock => lock.timestamp > lastSpawn.timestamp && lock.timestamp <= targetTime
-      );
-
-      if (!hasLocked) {
-        // 方块还在移动中，查找最后一个 INPUT 事件获取位置和旋转
-        const inputEvents = sortedEvents.filter(
-          e => e.type === ReplayOpcode.INPUT && 
-               e.timestamp > lastSpawn.timestamp && 
-               e.timestamp <= targetTime
-        );
-        const lastInput = inputEvents[inputEvents.length - 1] as any; // Type assertion
-
-        state.currentPiece = {
-          type: lastSpawn.pieceType,
-          position: lastInput?.position || { x: lastSpawn.x, y: lastSpawn.y },
-          rotation: lastInput?.rotation || 0
-        };
-      }
+    // ✅ P0 修改：使用插值动画系统获取 currentPiece
+    const animatedPiece = getAnimatedPieceState(targetTime);
+    if (animatedPiece) {
+      state.currentPiece = animatedPiece;
     }
 
     // Cache the state
@@ -172,7 +222,7 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
     stateCache.current.set(cacheKey, { time: targetTime, state });
 
     return state;
-  }, [findRelevantKeyframe, lockEvents, sortedEvents, replay.metadata.initialPieceSequence]);
+  }, [findRelevantKeyframe, lockEvents, sortedEvents, replay.metadata.initialPieceSequence, getAnimatedPieceState]);
 
   // Current game state
   const currentState = useMemo(() => reconstructState(currentTime), [currentTime, reconstructState]);
@@ -419,11 +469,11 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
                   type: {
                     type: currentState.currentPiece.type,
                     shape: getPieceShape(currentState.currentPiece.type, currentState.currentPiece.rotation),
-                    color: '', // Not used in replay
+                    color: getTetrominoColor(currentState.currentPiece.type), // ✅ P1 修复：使用正确颜色
                     name: currentState.currentPiece.type
                   },
-                  x: currentState.currentPiece.position.x,
-                  y: currentState.currentPiece.position.y,
+                  x: Math.floor(currentState.currentPiece.position.x),
+                  y: Math.floor(currentState.currentPiece.position.y),
                   rotation: currentState.currentPiece.rotation
                 } : null}
               />
@@ -443,22 +493,35 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
 
           {/* Right Info */}
           <div className="flex flex-col gap-4">
-            <div className="text-sm font-bold mb-2">NEXT</div>
-            <div className="space-y-2">
-              {currentState.nextPieces.slice(0, 5).map((pieceType, i) => (
-                <div key={i} className="p-2 bg-muted/50 rounded text-center font-mono">
-                  {pieceType}
-                </div>
-              ))}
-            </div>
+            {/* ✅ P0 修复：使用游戏组件显示 NEXT */}
+            <NextPiecePreview
+              nextPieces={currentState.nextPieces.slice(0, 5).map((pieceType) => ({
+                type: {
+                  type: pieceType,
+                  shape: getPieceShape(pieceType, 0),
+                  color: getTetrominoColor(pieceType),
+                  name: pieceType
+                }
+              }))}
+              compact={false}
+            />
 
+            {/* ✅ P0 修复：使用游戏组件显示 HOLD */}
             {currentState.holdPiece && (
-              <div>
-                <div className="text-sm font-bold mb-2">HOLD</div>
-                <div className="p-2 bg-muted/50 rounded text-center font-mono">
-                  {currentState.holdPiece}
-                </div>
-              </div>
+              <HoldPieceDisplay
+                holdPiece={{
+                  type: {
+                    type: currentState.holdPiece,
+                    shape: getPieceShape(currentState.holdPiece, 0),
+                    color: getTetrominoColor(currentState.holdPiece),
+                    name: currentState.holdPiece
+                  },
+                  x: 0,
+                  y: 0,
+                  rotation: 0
+                }}
+                canHold={false}
+              />
             )}
 
             {showDetails && (
