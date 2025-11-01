@@ -152,36 +152,77 @@ export async function loadReplayById(replayId: string): Promise<any> {
   // V4.0 format
   if (version >= 4.0) {
     console.info('replayLoader: Decoding V4.0 replay, id:', replayId);
+    console.info('replayLoader: Raw data type:', typeof data.compressed_actions);
+    console.info('replayLoader: Raw data is Array?', Array.isArray(data.compressed_actions));
+    console.info('replayLoader: Raw data is Uint8Array?', data.compressed_actions instanceof Uint8Array);
     
     let bytes: Uint8Array;
     
     // Prioritize Base64 string format (new format)
     if (typeof data.compressed_actions === 'string') {
-      console.info('replayLoader: Processing Base64 string, length:', data.compressed_actions.length);
+      const rawString = data.compressed_actions;
+      console.info('replayLoader: ✅ Processing Base64 string', {
+        length: rawString.length,
+        startsWithDataURL: rawString.startsWith('data:'),
+        firstChars: rawString.substring(0, 20),
+        lastChars: rawString.substring(rawString.length - 20),
+        hasWhitespace: /\s/.test(rawString),
+        hasInvalidBase64Chars: /[^A-Za-z0-9+/=]/.test(rawString)
+      });
+      
       try {
-        const binaryString = atob(data.compressed_actions);
+        // Clean the Base64 string
+        let cleanBase64 = rawString.trim();
+        
+        // Remove data URL prefix if present
+        if (cleanBase64.startsWith('data:')) {
+          const commaIndex = cleanBase64.indexOf(',');
+          if (commaIndex !== -1) {
+            cleanBase64 = cleanBase64.substring(commaIndex + 1);
+            console.info('replayLoader: Removed data URL prefix');
+          }
+        }
+        
+        console.info('replayLoader: Attempting Base64 decode, clean string length:', cleanBase64.length);
+        const binaryString = atob(cleanBase64);
+        console.info('replayLoader: ✅ Base64 decode successful, binary string length:', binaryString.length);
+        
         bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i);
         }
-        console.info('replayLoader: Base64 decoded, binary length:', bytes.length);
+        console.info('replayLoader: ✅ Uint8Array created, length:', bytes.length);
       } catch (e) {
-        console.error('replayLoader: Base64 decode failed, falling back to toUint8Array:', e);
+        console.error('replayLoader: ❌ Base64 decode failed:', e);
+        console.error('replayLoader: Attempting fallback to toUint8Array');
         bytes = toUint8Array(data.compressed_actions);
+        console.info('replayLoader: Fallback produced', bytes.length, 'bytes');
       }
     } else if (data.compressed_actions instanceof Uint8Array) {
       bytes = data.compressed_actions;
-      console.info('replayLoader: Using Uint8Array directly');
+      console.info('replayLoader: ✅ Using Uint8Array directly, length:', bytes.length);
+    } else if (Array.isArray(data.compressed_actions)) {
+      console.error('replayLoader: ❌ ERROR: Data is a plain array, should be Base64 string or Uint8Array!');
+      console.error('replayLoader: This indicates the replay was saved incorrectly (JSON serialization instead of Base64)');
+      console.error('replayLoader: Array length:', data.compressed_actions.length);
+      console.error('replayLoader: First 10 elements:', data.compressed_actions.slice(0, 10));
+      throw new Error('Invalid replay format: compressed_actions is an array instead of Base64 string. This replay needs to be re-recorded.');
     } else {
-      console.info('replayLoader: Using toUint8Array fallback for type:', typeof data.compressed_actions);
+      console.warn('replayLoader: ⚠️ Unknown data type, using toUint8Array fallback');
+      console.info('replayLoader: Data type:', typeof data.compressed_actions);
       bytes = toUint8Array(data.compressed_actions);
+      console.info('replayLoader: Fallback produced', bytes.length, 'bytes');
     }
     
-    console.info('replayLoader: Binary data prepared', {
-      length: bytes.length,
+    console.info('replayLoader: 🔍 Binary data analysis:', {
+      totalLength: bytes.length,
       firstBytes: Array.from(bytes.slice(0, 8)),
-      firstBytesHex: Array.from(bytes.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(' '),
-      expectedMagic: 'RPV4 = [82, 80, 86, 52] = [0x52, 0x50, 0x56, 0x34]',
+      firstBytesHex: Array.from(bytes.slice(0, 8)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+      firstBytesAscii: Array.from(bytes.slice(0, 8)).map(b => b >= 32 && b <= 126 ? String.fromCharCode(b) : '.').join(''),
+      expectedMagic: 'RPV4',
+      expectedMagicBytes: [82, 80, 86, 52],
+      expectedMagicHex: '0x52 0x50 0x56 0x34',
+      magicMatch: bytes[0] === 82 && bytes[1] === 80 && bytes[2] === 86 && bytes[3] === 52,
       versionByte: bytes[4]
     });
     
