@@ -4,6 +4,7 @@ import { useGameState } from './useGameState';
 import { useAchievements } from './useAchievements';
 import { useReplayRecorderV4 } from './useReplayRecorderV4';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { debugLog } from '@/utils/debugLogger';
 import { 
   createEmptyBoard, 
@@ -87,6 +88,7 @@ export const useGameLogic = ({
   const [gravityAccumulatorMs, setGravityAccumulatorMs] = useState(0);
   const [lockDelayRemainingMs, setLockDelayRemainingMs] = useState(0);
 
+  const recorder = useReplayRecorderV4();
   const { 
     isRecording, 
     startRecording, 
@@ -95,9 +97,10 @@ export const useGameLogic = ({
     recordLock, 
     stopRecording, 
     clearRecording 
-  } = useReplayRecorderV4();
+  } = recorder;
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, showLineClear, removeAchievement } = useAchievements();
   const { user } = useAuth();
+  const gameRecording = useGameRecording();
   const isUndoRedoEnabled = gameMode.id === 'endless';
   const gameStateManager = useGameState({ maxHistorySize: undoSteps, enabled: isUndoRedoEnabled });
   const { isWindowFocused, setWasManuallyPaused } = useWindowFocus();
@@ -123,6 +126,56 @@ export const useGameLogic = ({
   const MAX_LOCK_RESETS = 15;
 
   const createGamePiece = useCallback((pieceType: TetrominoType): GamePiece => createNewPiece(pieceType), []);
+
+  // Register recorder and callbacks with GameRecordingContext
+  useEffect(() => {
+    if (!isReplay) {
+      console.log('[useGameLogic] Registering recorder with GameRecordingContext');
+      gameRecording.registerRecorder(recorder);
+      
+      gameRecording.registerStatsGetter(() => ({
+        score,
+        lines,
+        level,
+        duration: gameStartTime.current ? Date.now() - gameStartTime.current : 0,
+        pps,
+        apm
+      }));
+      
+      gameRecording.registerGameModeGetter(() => gameMode.id);
+    }
+  }, [gameRecording, recorder, isReplay, score, lines, level, pps, apm, gameMode.id]);
+
+  // Update game active state based on game status
+  useEffect(() => {
+    if (!isReplay) {
+      const isActive = gameStarted && !gameOver && phase === 'playing';
+      console.log('[useGameLogic] Game active state:', isActive, { gameStarted, gameOver, phase });
+      gameRecording.setGameActive(isActive);
+    }
+  }, [gameStarted, gameOver, phase, gameRecording, isReplay]);
+
+  // Handle game over - stop recording if game ends abnormally (e.g., stack overflow)
+  useEffect(() => {
+    if (!isReplay && gameOver && isRecording && gameStartTime.current) {
+      const elapsed = (Date.now() - gameStartTime.current) / 1000;
+      console.log('[useGameLogic] Game over detected, stopping recording');
+      gameRecording.setGameActive(false);
+      
+      stopRecording({
+        score,
+        lines,
+        level,
+        duration: Date.now() - gameStartTime.current,
+        pps: totalPieces.current / elapsed,
+        apm: (totalActions.current / elapsed) * 60
+      }, gameMode.id, 'gameover').then(result => {
+        if (result.isNewRecord) {
+          setIsNewRecord(true);
+        }
+      });
+    }
+  }, [gameOver, isRecording, isReplay, gameRecording, stopRecording, score, lines, level, gameMode.id]);
 
   const clearLockDelayTimer = useCallback(() => {
     if (lockDelayTimer.current) {
@@ -672,6 +725,7 @@ export const useGameLogic = ({
             setPhase('gameOver');
             setGameOver(true);
             setGameStarted(false);
+            gameRecording.setGameActive(false);
             
             if (isRecording) {
               stopRecording({
@@ -696,6 +750,7 @@ export const useGameLogic = ({
           setPhase('gameOver');
           setGameOver(true);
           setGameStarted(false);
+          gameRecording.setGameActive(false);
           
             if (isRecording) {
               stopRecording({
