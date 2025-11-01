@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Play, Trophy, Clock, Target, Medal, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ReplayPreparationDialog } from './ReplayPreparationDialog';
+import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
+import { ReplayPlayerV4Optimized } from './ReplayPlayerV4Optimized';
 
 interface LeaderboardEntry {
   id: string;
@@ -28,6 +30,10 @@ const LeaderboardView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedEntryForPreparation, setSelectedEntryForPreparation] = useState<LeaderboardEntry | null>(null);
   const [isPreparationDialogOpen, setIsPreparationDialogOpen] = useState(false);
+  
+  // ✅ P0 修复：独立的播放器状态
+  const [playerReplayData, setPlayerReplayData] = useState<any>(null);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   useEffect(() => {
     loadLeaderboards();
@@ -74,6 +80,33 @@ const LeaderboardView: React.FC = () => {
   const handleViewReplay = (entry: LeaderboardEntry) => {
     setSelectedEntryForPreparation(entry);
     setIsPreparationDialogOpen(true);
+  };
+
+  // ✅ P0 修复：处理播放准备完成
+  const handlePlayReady = (replayData: any) => {
+    console.group('[LeaderboardView] Opening player');
+    console.log('Replay data:', {
+      isV4: isV4Replay(replayData),
+      hasEvents: replayData?.events?.length || replayData?.actions?.length,
+      metadata: replayData?.metadata || replayData?.initialPieceSequence
+    });
+    console.groupEnd();
+    
+    setPlayerReplayData(replayData);
+    setIsPlayerOpen(true);
+    setIsPreparationDialogOpen(false);
+  };
+
+  // Helper functions for V4 detection
+  const isV4Replay = (data: any): boolean => {
+    return data && (data.format === 'v4' || (data.version === '4.0' && data.v4Data));
+  };
+
+  const getV4Data = (data: any): any | null => {
+    if (data && data.v4Data) {
+      return data.v4Data;
+    }
+    return null;
   };
 
   const formatTime = (seconds: number) => {
@@ -289,7 +322,32 @@ const LeaderboardView: React.FC = () => {
             isPersonalBest: selectedEntryForPreparation.is_personal_best,
             createdAt: selectedEntryForPreparation.created_at
           }}
+          onPlayReady={handlePlayReady}
         />
+      )}
+
+      {/* ✅ P0 修复：独立的播放器（不受对话框关闭影响） */}
+      {playerReplayData && isPlayerOpen && (
+        <>
+          {isV4Replay(playerReplayData) ? (
+            (() => {
+              const v4Data = getV4Data(playerReplayData);
+              return v4Data ? (
+                <ReplayPlayerV4Optimized
+                  replay={v4Data}
+                  onClose={() => setIsPlayerOpen(false)}
+                  autoPlay={true}
+                />
+              ) : null;
+            })()
+          ) : (
+            <EnhancedReplayPlayer
+              replay={playerReplayData}
+              isOpen={isPlayerOpen}
+              onClose={() => setIsPlayerOpen(false)}
+            />
+          )}
+        </>
       )}
     </div>
   );

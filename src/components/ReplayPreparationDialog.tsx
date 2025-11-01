@@ -7,8 +7,6 @@ import { Progress } from '@/components/ui/progress';
 import { Clock, Trophy, Target, Play, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { loadReplayById } from '@/utils/replayLoader';
-import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
-import { ReplayPlayerV4Optimized } from './ReplayPlayerV4Optimized';
 import { JstrisReplayImporter } from './JstrisReplayImporter';
 import type { CompressedReplay } from '@/utils/replayTypes';
 import type { V4ReplayData } from '@/utils/replayV4/types';
@@ -28,6 +26,7 @@ interface ReplayPreparationDialogProps {
     isPersonalBest: boolean;
     createdAt: string;
   };
+  onPlayReady: (replayData: CompressedReplay | V4ReplayData) => void; // ✅ P0 修复：新增回调
 }
 
 type LoadingState = 'idle' | 'loading' | 'success' | 'error';
@@ -36,12 +35,12 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
   isOpen,
   onClose,
   replayId,
-  replayInfo
+  replayInfo,
+  onPlayReady // ✅ P0 修复：接收回调
 }) => {
   const [loadingState, setLoadingState] = useState<LoadingState>('idle');
   const [loadProgress, setLoadProgress] = useState(0);
   const [replayData, setReplayData] = useState<CompressedReplay | V4ReplayData | null>(null);
-  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const { toast } = useToast();
 
@@ -156,17 +155,19 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
 
   const handlePlayReplay = () => {
     if (replayData) {
-      console.info('[ReplayPrep] Play clicked for replay', replayId, {
-        isV4: isV4Replay(replayData),
-        hasData: !!replayData
+      console.info('[ReplayPrep] Play clicked, passing data to parent');
+      
+      // ✅ P0 修复：传递数据给父组件，由父组件管理播放器
+      toast({
+        title: "正在打开播放器...",
+        description: "请稍候",
+        duration: 1000
       });
-      setIsPlayerOpen(true);
-      onClose(); // ✅ P0 修复：关闭准备对话框，避免 z-index 遮蔽
+      
+      setTimeout(() => {
+        onPlayReady(replayData);
+      }, 100); // 给 toast 时间显示
     }
-  };
-
-  const handleClosePlayer = () => {
-    setIsPlayerOpen(false);
   };
 
   const handleRetry = () => {
@@ -176,189 +177,163 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
   };
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Play className="w-5 h-5" />
-              录像回放准备
-            </DialogTitle>
-            <DialogDescription>
-              查看录像信息并加载回放数据
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Play className="w-5 h-5" />
+            录像回放准备
+          </DialogTitle>
+          <DialogDescription>
+            查看录像信息并加载回放数据
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="space-y-6">
-            {/* 录像信息卡片 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5" />
-                    {replayInfo.username}
-                  </span>
-                  <div className="flex gap-2">
-                    <Badge variant="secondary">
-                      {getGameModeLabel(replayInfo.gameMode)}
+        <div className="space-y-6">
+          {/* 录像信息卡片 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5" />
+                  {replayInfo.username}
+                </span>
+                <div className="flex gap-2">
+                  <Badge variant="secondary">
+                    {getGameModeLabel(replayInfo.gameMode)}
+                  </Badge>
+                  {replayInfo.isPersonalBest && (
+                    <Badge className="bg-yellow-500 text-black">
+                      <Trophy className="w-3 h-3 mr-1" />
+                      PB
                     </Badge>
-                    {replayInfo.isPersonalBest && (
-                      <Badge className="bg-yellow-500 text-black">
-                        <Trophy className="w-3 h-3 mr-1" />
-                        PB
-                      </Badge>
-                    )}
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <Target className="w-4 h-4 text-blue-500" />
-                      <span className="text-sm text-muted-foreground">得分</span>
-                    </div>
-                    <div className="font-bold text-lg">{formatScore(replayInfo.finalScore)}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <span className="text-sm text-muted-foreground">行数</span>
-                    </div>
-                    <div className="font-bold text-lg">{replayInfo.finalLines}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <Clock className="w-4 h-4 text-green-500" />
-                      <span className="text-sm text-muted-foreground">用时</span>
-                    </div>
-                    <div className="font-bold text-lg">{formatTime(replayInfo.durationSeconds)}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <span className="text-sm text-muted-foreground">PPS</span>
-                    </div>
-                    <div className="font-bold text-lg">{replayInfo.pps.toFixed(2)}</div>
-                  </div>
+                  )}
                 </div>
-
-                <div className="mt-4 text-center text-sm text-muted-foreground">
-                  创建时间: {new Date(replayInfo.createdAt).toLocaleDateString('zh-CN', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <Target className="w-4 h-4 text-blue-500" />
+                    <span className="text-sm text-muted-foreground">得分</span>
+                  </div>
+                  <div className="font-bold text-lg">{formatScore(replayInfo.finalScore)}</div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Jstris 导入器 */}
-            {loadingState === 'idle' && (
-              <JstrisReplayImporter 
-                onImportSuccess={(v4Data) => {
-                  setReplayData(v4Data);
-                  setLoadingState('success');
-                  toast({
-                    title: '✅ Jstris 回放导入成功',
-                    description: '可以开始播放了'
-                  });
-                }}
-              />
-            )}
-
-            {/* 加载状态区域 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Download className="w-5 h-5" />
-                  录像数据加载
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loadingState === 'idle' && (
-                  <div className="text-center">
-                    <p className="text-muted-foreground mb-4">
-                      点击"读取录像"按钮从数据库加载完整的回放数据
-                    </p>
-                    <Button onClick={handleLoadReplay} className="w-full">
-                      <Download className="w-4 h-4 mr-2" />
-                      读取录像
-                    </Button>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <span className="text-sm text-muted-foreground">行数</span>
                   </div>
-                )}
-
-                {loadingState === 'loading' && (
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <p className="text-muted-foreground mb-2">正在从数据库加载录像数据...</p>
-                      <Progress value={loadProgress} className="w-full" />
-                      <p className="text-sm text-muted-foreground mt-2">{loadProgress}%</p>
-                    </div>
+                  <div className="font-bold text-lg">{replayInfo.finalLines}</div>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <Clock className="w-4 h-4 text-green-500" />
+                    <span className="text-sm text-muted-foreground">用时</span>
                   </div>
-                )}
-
-                {loadingState === 'success' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-center gap-2 text-green-600">
-                      <CheckCircle className="w-5 h-5" />
-                      <span>录像数据加载成功！</span>
-                    </div>
-                    <Button onClick={handlePlayReplay} className="w-full" size="lg">
-                      <Play className="w-4 h-4 mr-2" />
-                      播放回放
-                    </Button>
+                  <div className="font-bold text-lg">{formatTime(replayInfo.durationSeconds)}</div>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <span className="text-sm text-muted-foreground">PPS</span>
                   </div>
-                )}
+                  <div className="font-bold text-lg">{replayInfo.pps.toFixed(2)}</div>
+                </div>
+              </div>
 
-                {loadingState === 'error' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-center gap-2 text-red-600">
-                      <AlertCircle className="w-5 h-5" />
-                      <span>加载失败</span>
-                    </div>
-                    {errorMessage && (
-                      <p className="text-sm text-red-600 text-center">{errorMessage}</p>
-                    )}
-                    <div className="flex gap-2">
-                      <Button onClick={handleRetry} variant="outline" className="flex-1">
-                        重试
-                      </Button>
-                      <Button onClick={onClose} variant="secondary" className="flex-1">
-                        关闭
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </DialogContent>
-      </Dialog>
+              <div className="mt-4 text-center text-sm text-muted-foreground">
+                创建时间: {new Date(replayInfo.createdAt).toLocaleDateString('zh-CN', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Replay Player - V4 or V3 based on data format */}
-      {replayData && isPlayerOpen && (
-        <>
-          {isV4Replay(replayData) ? (
-            (() => {
-              const v4Data = getV4Data(replayData);
-              return v4Data ? (
-      <ReplayPlayerV4Optimized
-        replay={v4Data}
-        onClose={handleClosePlayer}
-        autoPlay={true}
-      />
-              ) : null;
-            })()
-          ) : (
-            <EnhancedReplayPlayer
-              replay={replayData as CompressedReplay}
-              isOpen={isPlayerOpen}
-              onClose={handleClosePlayer}
+          {/* Jstris 导入器 */}
+          {loadingState === 'idle' && (
+            <JstrisReplayImporter 
+              onImportSuccess={(v4Data) => {
+                setReplayData(v4Data);
+                setLoadingState('success');
+                toast({
+                  title: '✅ Jstris 回放导入成功',
+                  description: '可以开始播放了'
+                });
+              }}
             />
           )}
-        </>
-      )}
-    </>
+
+          {/* 加载状态区域 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="w-5 h-5" />
+                录像数据加载
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingState === 'idle' && (
+                <div className="text-center">
+                  <p className="text-muted-foreground mb-4">
+                    点击"读取录像"按钮从数据库加载完整的回放数据
+                  </p>
+                  <Button onClick={handleLoadReplay} className="w-full">
+                    <Download className="w-4 h-4 mr-2" />
+                    读取录像
+                  </Button>
+                </div>
+              )}
+
+              {loadingState === 'loading' && (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <p className="text-muted-foreground mb-2">正在从数据库加载录像数据...</p>
+                    <Progress value={loadProgress} className="w-full" />
+                    <p className="text-sm text-muted-foreground mt-2">{loadProgress}%</p>
+                  </div>
+                </div>
+              )}
+
+              {loadingState === 'success' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-green-600">
+                    <CheckCircle className="w-5 h-5" />
+                    <span>录像数据加载成功！</span>
+                  </div>
+                  <Button onClick={handlePlayReplay} className="w-full" size="lg">
+                    <Play className="w-4 h-4 mr-2" />
+                    播放回放
+                  </Button>
+                </div>
+              )}
+
+              {loadingState === 'error' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-red-600">
+                    <AlertCircle className="w-5 h-5" />
+                    <span>加载失败</span>
+                  </div>
+                  {errorMessage && (
+                    <p className="text-sm text-red-600 text-center">{errorMessage}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button onClick={handleRetry} variant="outline" className="flex-1">
+                      重试
+                    </Button>
+                    <Button onClick={onClose} variant="secondary" className="flex-1">
+                      关闭
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };

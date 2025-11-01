@@ -352,7 +352,7 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
   const speedOptions = [0.25, 0.5, 1, 2, 4];
 
   return (
-    <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <Card className="w-full max-w-7xl h-[90vh] flex flex-col bg-card border-border">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
