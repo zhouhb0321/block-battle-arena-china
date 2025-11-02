@@ -5,11 +5,12 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Play, Pause, RotateCcw, X, Zap, Trophy, Award } from 'lucide-react';
 import { V4ReplayData, V4KeyframeEvent, V4LockEvent, V4InputEvent, ReplayOpcode } from '@/utils/replayV4/types';
-import { getPieceShape } from '@/utils/tetrominoShapes';
+import { TETROMINO_TYPES } from '@/utils/pieceGeneration';
 import { getTetrominoColor } from '@/utils/blockColors';
-import GameBoard from './GameBoard';
+import EnhancedGameBoard from './EnhancedGameBoard';
 import NextPiecePreview from './NextPiecePreview';
 import HoldPieceDisplay from './HoldPieceDisplay';
+import type { GamePiece } from '@/utils/gameTypes';
 
 interface ReplayPlayerV4OptimizedProps {
   replay: V4ReplayData;
@@ -420,62 +421,58 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
           </Button>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 grid grid-cols-[1fr_auto_1fr] gap-6 p-6 overflow-hidden">
-          {/* Left Stats */}
-          <div className="flex flex-col gap-4">
+        {/* Main Content - 复用主界面三列布局 */}
+        <div className="flex-1 flex gap-6 p-6 items-start justify-center overflow-auto">
+          {/* 左侧 - Hold和统计 */}
+          <div className="flex flex-col gap-4 w-56">
+            {/* Hold */}
+            <Card className="p-4 bg-muted/50">
+              <div className="text-sm text-muted-foreground mb-3 text-center">HOLD</div>
+              <HoldPieceDisplay
+                holdPiece={currentState.holdPiece ? {
+                  type: TETROMINO_TYPES[currentState.holdPiece],
+                  x: 0,
+                  y: 0,
+                  rotation: 0
+                } as GamePiece : null}
+                canHold={false}
+              />
+            </Card>
+
+            {/* 分数 */}
             <Card className="p-6 bg-muted/50">
               <div className="text-sm text-muted-foreground mb-1">Score</div>
-              <div className="text-6xl font-bold text-foreground tracking-tight">{currentState.score.toLocaleString()}</div>
+              <div className="text-4xl font-bold text-foreground tracking-tight">{currentState.score.toLocaleString()}</div>
             </Card>
             
+            {/* 行数 */}
             <Card className="p-6 bg-muted/50">
               <div className="text-sm text-muted-foreground mb-1">Lines</div>
-              <div className="text-5xl font-bold text-foreground">{currentState.lines}</div>
+              <div className="text-3xl font-bold text-foreground">{currentState.lines}</div>
             </Card>
 
+            {/* 等级 */}
             <Card className="p-4 bg-muted/50">
               <div className="text-sm text-muted-foreground mb-1">Level</div>
-              <div className="text-4xl font-bold text-foreground">{currentState.level}</div>
-            </Card>
-
-            <Card className="p-4 bg-muted/50">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-xs text-muted-foreground">PPS</div>
-                  <div className="text-2xl font-bold text-primary">{currentPPS.toFixed(2)}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">APM</div>
-                  <div className="text-2xl font-bold text-primary">{Math.round(currentAPM)}</div>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-4 bg-muted/50">
-              <div className="text-sm text-muted-foreground">Pieces</div>
-              <div className="text-2xl font-bold text-foreground">
-                {piecesPlaced} / {replay.stats.lockCount}
-              </div>
+              <div className="text-2xl font-bold text-foreground">{currentState.level}</div>
             </Card>
           </div>
 
-          {/* Center - Game Board */}
-          <div className="flex flex-col items-center gap-4">
+          {/* 中央 - 游戏板 */}
+          <div className="flex-shrink-0">
             <div className="relative">
-              <GameBoard 
+              <EnhancedGameBoard 
                 board={currentState.board} 
                 currentPiece={currentState.currentPiece ? {
-                  type: {
-                    type: currentState.currentPiece.type,
-                    shape: getPieceShape(currentState.currentPiece.type, currentState.currentPiece.rotation),
-                    color: getTetrominoColor(currentState.currentPiece.type), // ✅ P1 修复：使用正确颜色
-                    name: currentState.currentPiece.type
-                  },
+                  type: TETROMINO_TYPES[currentState.currentPiece.type],
                   x: Math.floor(currentState.currentPiece.position.x),
                   y: Math.floor(currentState.currentPiece.position.y),
                   rotation: currentState.currentPiece.rotation
-                } : null}
+                } as GamePiece : null}
+                ghostPiece={null}
+                cellSize={24}
+                showGrid={true}
+                clearingLines={[]}
               />
               
               {/* Achievement Overlay */}
@@ -491,43 +488,48 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
             </div>
           </div>
 
-          {/* Right Info */}
-          <div className="flex flex-col gap-4">
-            {/* ✅ P0 修复：使用游戏组件显示 NEXT */}
-            <NextPiecePreview
-              nextPieces={currentState.nextPieces.slice(0, 5).map((pieceType) => ({
-                type: {
-                  type: pieceType,
-                  shape: getPieceShape(pieceType, 0),
-                  color: getTetrominoColor(pieceType),
-                  name: pieceType
-                }
-              }))}
-              compact={false}
-            />
-
-            {/* ✅ P0 修复：使用游戏组件显示 HOLD */}
-            {currentState.holdPiece && (
-              <HoldPieceDisplay
-                holdPiece={{
-                  type: {
-                    type: currentState.holdPiece,
-                    shape: getPieceShape(currentState.holdPiece, 0),
-                    color: getTetrominoColor(currentState.holdPiece),
-                    name: currentState.holdPiece
-                  },
+          {/* 右侧 - Next和详情 */}
+          <div className="flex flex-col gap-4 w-56">
+            {/* Next */}
+            <Card className="p-4 bg-muted/50">
+              <div className="text-sm text-muted-foreground mb-3 text-center">NEXT</div>
+              <NextPiecePreview
+                nextPieces={currentState.nextPieces.slice(0, 5).map((pieceType) => ({
+                  type: TETROMINO_TYPES[pieceType],
                   x: 0,
                   y: 0,
                   rotation: 0
-                }}
-                canHold={false}
+                } as GamePiece))}
+                compact={false}
               />
-            )}
+            </Card>
+
+            {/* PPS/APM */}
+            <Card className="p-4 bg-muted/50">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-muted-foreground">PPS</div>
+                  <div className="text-2xl font-bold text-primary">{currentPPS.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">APM</div>
+                  <div className="text-2xl font-bold text-primary">{Math.round(currentAPM)}</div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Pieces */}
+            <Card className="p-4 bg-muted/50">
+              <div className="text-sm text-muted-foreground">Pieces</div>
+              <div className="text-2xl font-bold text-foreground">
+                {piecesPlaced} / {replay.stats.lockCount}
+              </div>
+            </Card>
 
             {showDetails && (
               <Card className="p-4 bg-muted/50 text-xs space-y-2">
                 <div className="space-y-1 text-muted-foreground">
-                  <div>Seed: {replay.metadata.seed}</div>
+                  <div>Seed: {replay.metadata.seed.slice(0, 12)}...</div>
                   <div>Duration: {formatTime(replay.stats.duration)}</div>
                   <div>Events: {sortedEvents.length}</div>
                   <div>Keyframes: {keyframes.length}</div>
@@ -549,7 +551,7 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
 
             {/* Keyboard Shortcuts */}
             <Card className="p-3 bg-muted/30 text-xs">
-              <div className="font-semibold text-foreground mb-2">⌨️ Keyboard Shortcuts</div>
+              <div className="font-semibold text-foreground mb-2">⌨️ Shortcuts</div>
               <div className="space-y-1 text-muted-foreground">
                 <div className="flex justify-between">
                   <span>Space</span>
@@ -557,7 +559,7 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
                 </div>
                 <div className="flex justify-between">
                   <span>← / →</span>
-                  <span className="text-foreground">Frame Step</span>
+                  <span className="text-foreground">Frame</span>
                 </div>
                 <div className="flex justify-between">
                   <span>⇧ ← / ⇧ →</span>
@@ -566,10 +568,6 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
                 <div className="flex justify-between">
                   <span>[ / ]</span>
                   <span className="text-foreground">Speed</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Home / End</span>
-                  <span className="text-foreground">Jump</span>
                 </div>
               </div>
             </Card>

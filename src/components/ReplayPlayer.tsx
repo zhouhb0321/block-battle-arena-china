@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, RotateCcw } from 'lucide-react';
-import GameBoard from './GameBoard';
+import EnhancedGameBoard from './EnhancedGameBoard';
 import { createEmptyBoard, TETROMINO_TYPES } from '@/utils/tetrisLogic';
 import { clearLines, placePiece } from '@/utils/tetrisCore';
 import type { GameReplay, ReplayAction, GamePiece, TetrominoType } from '@/utils/gameTypes';
@@ -230,11 +230,13 @@ const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ replay, isOpen, onClose }) 
         <div className="flex gap-6">
           {/* 游戏板区域 */}
           <div className="flex-1">
-            <GameBoard
+            <EnhancedGameBoard
               board={board}
               currentPiece={null}
-              enableGhost={false}
+              ghostPiece={null}
               cellSize={25}
+              showGrid={true}
+              clearingLines={[]}
             />
           </div>
 

@@ -9,7 +9,9 @@ import { Slider } from '@/components/ui/slider';
 import { Play, Pause, RotateCcw, FastForward } from 'lucide-react';
 import type { V4ReplayData, V4Event, V4LockEvent, V4KeyframeEvent } from '@/utils/replayV4/types';
 import { ReplayOpcode } from '@/utils/replayV4/types';
-import GameBoard from './GameBoard';
+import EnhancedGameBoard from './EnhancedGameBoard';
+import NextPiecePreview from './NextPiecePreview';
+import HoldPieceDisplay from './HoldPieceDisplay';
 import { TETROMINO_TYPES, rotatePiece } from '@/utils/pieceGeneration';
 import { placePiece, clearLines } from '@/utils/tetrisCore';
 import { calculateScore } from '@/utils/scoringSystem';
@@ -366,18 +368,27 @@ export default function ReplayPlayerV4({ replay, onClose, autoPlay = true }: Rep
             </div>
           </div>
 
-          {/* Game display */}
-          <div className="flex gap-6 justify-center items-start">
-            <div>
-              <GameBoard 
-                board={board}
-                currentPiece={null}
-                ghostPiece={null}
-                enableGhost={false}
-              />
-            </div>
-            
-            <div className="space-y-4">
+          {/* Game display - 复用主界面三列布局 */}
+          <div className="flex gap-6 justify-center items-start max-w-6xl mx-auto">
+            {/* 左侧 - Hold */}
+            <div className="flex flex-col gap-4 w-48">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm text-center">HOLD</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <HoldPieceDisplay 
+                    holdPiece={holdPiece ? {
+                      type: TETROMINO_TYPES[holdPiece],
+                      x: 0,
+                      y: 0,
+                      rotation: 0
+                    } : null}
+                    canHold={true}
+                  />
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardContent className="pt-6 space-y-2">
                   <div className="text-2xl font-bold">{score.toLocaleString()}</div>
@@ -386,28 +397,38 @@ export default function ReplayPlayerV4({ replay, onClose, autoPlay = true }: Rep
                   <div className="text-sm text-muted-foreground">等级 {level}</div>
                 </CardContent>
               </Card>
+            </div>
 
+            {/* 中央 - 游戏板 */}
+            <div className="flex-shrink-0">
+              <EnhancedGameBoard 
+                board={board}
+                currentPiece={null}
+                ghostPiece={null}
+                cellSize={24}
+                showGrid={true}
+                clearingLines={[]}
+              />
+            </div>
+            
+            {/* 右侧 - Next */}
+            <div className="flex flex-col gap-4 w-48">
               <Card>
-                <CardContent className="pt-6">
-                  <div className="text-sm font-medium mb-2">Next</div>
-                  <div className="space-y-1">
-                    {nextPieces.slice(0, 3).map((piece, i) => (
-                      <div key={i} className="text-xs text-muted-foreground">
-                        {piece}
-                      </div>
-                    ))}
-                  </div>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm text-center">NEXT</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <NextPiecePreview 
+                    nextPieces={nextPieces.map(type => ({
+                      type: TETROMINO_TYPES[type],
+                      x: 0,
+                      y: 0,
+                      rotation: 0
+                    }))}
+                    compact={false}
+                  />
                 </CardContent>
               </Card>
-
-              {holdPiece && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-sm font-medium mb-2">Hold</div>
-                    <div className="text-xs text-muted-foreground">{holdPiece}</div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </div>
 

@@ -428,10 +428,10 @@ export const useGameLogic = ({
         }
       }
       
-      // Record input for V4
+      // Record input for V4 with position
       if (isRecording && (dx !== 0 || (dy > 0 && dx === 0))) {
         const action = dx < 0 ? 'moveLeft' : dx > 0 ? 'moveRight' : 'softDrop';
-        recordInput(action, true);
+        recordInput(action, true, { x: newPiece.x, y: newPiece.y }, newPiece.rotation);
       }
     } else if (dy > 0) {
       // Only start lock delay if piece fails to move down
@@ -443,9 +443,10 @@ export const useGameLogic = ({
   const hardDrop = useCallback(() => {
     if (!currentPiece || gameOver || isPaused) return;
     
-    // Record hard drop input for V4
+    // Record hard drop input for V4 with final position
     if (isRecording) {
-      recordInput('hardDrop', true);
+      const dropY = calculateDropPosition(board, currentPiece);
+      recordInput('hardDrop', true, { x: currentPiece.x, y: dropY }, currentPiece.rotation);
     }
     
     const dropY = calculateDropPosition(board, currentPiece);
@@ -479,9 +480,14 @@ export const useGameLogic = ({
         resetLockDelay();
       }
       
-      // Record rotation input for V4
+      // Record rotation input for V4 with position
       if (isRecording) {
-        recordInput(clockwise ? 'rotateClockwise' : 'rotateCounterclockwise', true);
+        recordInput(
+          clockwise ? 'rotateClockwise' : 'rotateCounterclockwise', 
+          true,
+          { x: srsResult.newPiece.x, y: srsResult.newPiece.y },
+          srsResult.newPiece.rotation
+        );
       }
     }
   };
@@ -505,9 +511,9 @@ export const useGameLogic = ({
         resetLockDelay();
       }
       
-      // Record rotation input for V4
+      // Record rotation input for V4 with position
       if (isRecording) {
-        recordInput('rotate180', true);
+        recordInput('rotate180', true, { x: srsResult.newPiece.x, y: srsResult.newPiece.y }, srsResult.newPiece.rotation);
       }
     }
   }, [currentPiece, board, gameOver, isPaused, resetLockDelay, isRecording, recordInput]);
@@ -523,9 +529,9 @@ export const useGameLogic = ({
     lastMoveRef.current = 'hold';
     lastWasKickedRef.current = false;
     
-    // Record hold input for V4
-    if (isRecording) {
-      recordInput('hold', true);
+    // Record hold input for V4 with position
+    if (isRecording && currentPiece) {
+      recordInput('hold', true, { x: currentPiece.x, y: currentPiece.y }, currentPiece.rotation);
     }
   }, [canHold, gameOver, isPaused, currentPiece, holdPiece, createGamePiece, isRecording, recordInput]);
 

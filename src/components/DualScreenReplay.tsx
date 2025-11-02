@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import GameBoard from '@/components/GameBoard';
+import EnhancedGameBoard from '@/components/EnhancedGameBoard';
 import PiecePreview from '@/components/PiecePreview';
 import HoldPieceDisplay from '@/components/HoldPieceDisplay';
 import { Trophy, Target, Clock, Zap } from 'lucide-react';
@@ -94,12 +94,13 @@ export const DualScreenReplay: React.FC<DualScreenReplayProps> = ({
         {/* 游戏画面 */}
         <Card className="col-span-1">
           <CardContent className="p-2">
-            <GameBoard
+            <EnhancedGameBoard
               board={data.board}
               currentPiece={data.currentPiece}
               ghostPiece={null}
-              clearingLines={[]}
               cellSize={16}
+              showGrid={true}
+              clearingLines={[]}
             />
           </CardContent>
         </Card>

@@ -173,3 +173,16 @@ export const rotatePiece = (tetromino: TetrominoType, clockwise: boolean = true)
   }
   return { ...tetromino, shape: newShape };
 };
+
+// 根据类型和旋转索引获取方块形状
+export const getPieceShape = (pieceType: string, rotation: number): number[][] => {
+  const base = TETROMINO_TYPES[pieceType];
+  if (!base) return [[1]];
+  
+  const rotCount = ((rotation % 4) + 4) % 4;
+  let rotated = base;
+  for (let i = 0; i < rotCount; i++) {
+    rotated = rotatePiece(rotated, true);
+  }
+  return rotated.shape;
+};
