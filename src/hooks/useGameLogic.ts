@@ -701,9 +701,19 @@ export const useGameLogic = ({
     if (replayClockControlled || (isReplay && !enableReplayGravity) || !gameStarted || gameOver || isPaused || phase !== 'playing') return;
 
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
-    const timer = setTimeout(() => movePiece(0, 1), dropInterval);
+    const timer = setTimeout(() => {
+      // Check if can move down before recording
+      if (currentPiece && isValidPosition(board, { ...currentPiece, y: currentPiece.y + 1 })) {
+        // Record gravity drop before moving
+        if (isRecording && recordInput) {
+          const newY = currentPiece.y + 1;
+          recordInput('softDrop', true, { x: currentPiece.x, y: newY }, currentPiece.rotation);
+        }
+      }
+      movePiece(0, 1);
+    }, dropInterval);
     return () => clearTimeout(timer);
-  }, [replayClockControlled, isReplay, enableReplayGravity, gameStarted, gameOver, isPaused, level, movePiece, phase]);
+  }, [replayClockControlled, isReplay, enableReplayGravity, gameStarted, gameOver, isPaused, level, movePiece, phase, currentPiece, board, isValidPosition, isRecording, recordInput]);
 
   // RAF-based precise timing with immediate 2min mode termination - disabled in replay clock controlled mode
   useEffect(() => {

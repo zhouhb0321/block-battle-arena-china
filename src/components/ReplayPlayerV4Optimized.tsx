@@ -87,18 +87,25 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
     
     if (hasLocked) return null;
     
-    // 3. 查找该方块相关的所有 INPUT 事件
+    // 3. 查找该方块相关的所有 INPUT 事件（增加 lookahead 到 200ms）
     const inputEvents = sortedEvents.filter(
       e => e.type === ReplayOpcode.INPUT && 
            e.timestamp > lastSpawn.timestamp && 
-           e.timestamp <= targetTime + 50 // 50ms lookahead
+           e.timestamp <= targetTime + 200 // 200ms lookahead for smoother interpolation
     ) as V4InputEvent[];
     
     if (inputEvents.length === 0) {
-      // 使用 SPAWN 初始位置
+      // 使用 SPAWN 初始位置 + 重力外推
+      const elapsedTime = targetTime - lastSpawn.timestamp;
+      const sdf = replay.metadata.settings.sdf || 20;
+      const gravityDrop = Math.floor(elapsedTime / sdf);
+      
       return {
         type: lastSpawn.pieceType,
-        position: { x: lastSpawn.x, y: lastSpawn.y },
+        position: { 
+          x: lastSpawn.x, 
+          y: Math.min(lastSpawn.y + gravityDrop, 19) 
+        },
         rotation: 0
       };
     }
@@ -109,45 +116,73 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
     const nextInput = inputEvents[currentInputIdx];
     
     if (!prevInput) {
-      // 在第一个 INPUT 之前，使用 SPAWN 位置
+      // 在第一个 INPUT 之前，使用 SPAWN 位置 + 重力外推
+      const elapsedTime = targetTime - lastSpawn.timestamp;
+      const sdf = replay.metadata.settings.sdf || 20;
+      const gravityDrop = Math.floor(elapsedTime / sdf);
+      
       return {
         type: lastSpawn.pieceType,
-        position: { x: lastSpawn.x, y: lastSpawn.y },
+        position: { 
+          x: lastSpawn.x, 
+          y: Math.min(lastSpawn.y + gravityDrop, 19) 
+        },
         rotation: 0
       };
     }
     
     if (!nextInput || !prevInput.position || !nextInput.position) {
-      // 使用最后一个 INPUT 的位置
+      // 使用最后一个已知位置 + 重力外推
+      const lastKnownPos = prevInput?.position || { x: lastSpawn.x, y: lastSpawn.y };
+      const lastKnownRot = prevInput?.rotation || 0;
+      const lastKnownTime = prevInput?.timestamp || lastSpawn.timestamp;
+      
+      const elapsedTime = targetTime - lastKnownTime;
+      const sdf = replay.metadata.settings.sdf || 20;
+      const gravityDrop = Math.floor(elapsedTime / sdf);
+      
       return {
         type: lastSpawn.pieceType,
-        position: prevInput.position || { x: lastSpawn.x, y: lastSpawn.y },
-        rotation: prevInput.rotation || 0
+        position: {
+          x: lastKnownPos.x,
+          y: Math.min(lastKnownPos.y + gravityDrop, 19)
+        },
+        rotation: lastKnownRot
       };
     }
     
-    // 5. 线性插值计算当前位置
+    // 5. 智能插值：X轴根据变化量决定，Y轴始终线性插值
     const timeDelta = nextInput.timestamp - prevInput.timestamp;
     const progress = Math.min(1, (targetTime - prevInput.timestamp) / timeDelta);
     
-    // 位置插值（只在Y轴方向插值，X轴保持离散以避免视觉模糊）
-    const interpolatedY = prevInput.position.y + (nextInput.position.y - prevInput.position.y) * progress;
+    const prevX = prevInput.position.x;
+    const nextX = nextInput.position.x;
+    const prevY = prevInput.position.y;
+    const nextY = nextInput.position.y;
+    
+    // X轴：如果变化超过1格，使用阶跃（瞬时移动），否则插值
+    const xChanged = Math.abs(nextX - prevX) > 1;
+    const interpolatedX = xChanged ? nextX : prevX + (nextX - prevX) * progress;
+    
+    // Y轴：始终线性插值
+    const interpolatedY = prevY + (nextY - prevY) * progress;
     
     return {
       type: lastSpawn.pieceType,
       position: {
-        x: nextInput.position.x, // X轴不插值，保持清晰
+        x: interpolatedX,
         y: interpolatedY
       },
       rotation: nextInput.rotation || prevInput.rotation || 0
     };
-  }, [sortedEvents, lockEvents]);
+  }, [sortedEvents, lockEvents, replay.metadata.settings.sdf]);
 
-  // Reconstruct state with caching and currentPiece support
+  // Reconstruct state with caching and currentPiece support (16ms granularity for 60fps)
   const reconstructState = useCallback((targetTime: number) => {
-    // Check cache first
-    const cachedState = stateCache.current.get(Math.floor(targetTime / 100) * 100);
-    if (cachedState && Math.abs(cachedState.time - targetTime) < 100) {
+    // Check cache first with 16ms granularity (60fps)
+    const cacheKey = Math.floor(targetTime / 16) * 16;
+    const cachedState = stateCache.current.get(cacheKey);
+    if (cachedState && Math.abs(cachedState.time - targetTime) < 16) {
       return cachedState.state;
     }
 
@@ -218,8 +253,7 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
       state.currentPiece = animatedPiece;
     }
 
-    // Cache the state
-    const cacheKey = Math.floor(targetTime / 100) * 100;
+    // Cache the state (using same 16ms granularity as check above)
     stateCache.current.set(cacheKey, { time: targetTime, state });
 
     return state;
@@ -536,6 +570,16 @@ export const ReplayPlayerV4Optimized: React.FC<ReplayPlayerV4OptimizedProps> = (
                   <div>DAS: {replay.metadata.settings.das}ms</div>
                   <div>ARR: {replay.metadata.settings.arr}ms</div>
                   <div>SDF: {replay.metadata.settings.sdf}ms</div>
+                  
+                  {/* Interpolation Debug Info */}
+                  {currentState.currentPiece && (
+                    <div className="border-t border-muted mt-2 pt-2">
+                      <div className="font-semibold text-foreground mb-1">Interpolation</div>
+                      <div>Piece: {currentState.currentPiece.type}</div>
+                      <div>Pos: ({currentState.currentPiece.position.x.toFixed(2)}, {currentState.currentPiece.position.y.toFixed(2)})</div>
+                      <div>Rot: {currentState.currentPiece.rotation}</div>
+                    </div>
+                  )}
                 </div>
               </Card>
             )}

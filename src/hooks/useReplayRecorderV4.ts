@@ -283,7 +283,25 @@ export function useReplayRecorderV4() {
     // Validate
     const validation = validateV4Replay(replayData);
     
+    // Position data coverage statistics
+    const inputsWithPosition = replayData.events.filter(
+      e => e.type === ReplayOpcode.INPUT && e.position
+    ).length;
+    const totalInputs = replayData.events.filter(
+      e => e.type === ReplayOpcode.INPUT
+    ).length;
+    const positionCoverage = totalInputs > 0 ? (inputsWithPosition / totalInputs * 100) : 0;
+    
     console.log('[RecorderV4] Validation result:', validation);
+    console.log('[RecorderV4] Position data coverage:', {
+      inputsWithPosition,
+      totalInputs,
+      coverage: `${positionCoverage.toFixed(1)}%`
+    });
+    
+    if (positionCoverage < 90) {
+      console.warn('[RecorderV4] ⚠️ Low position coverage, animations may be choppy');
+    }
     
     if (!validation.valid) {
       console.error('[RecorderV4] ❌ Validation failed:', validation.errors);
