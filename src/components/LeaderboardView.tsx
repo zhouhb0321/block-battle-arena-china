@@ -7,7 +7,7 @@ import { Play, Trophy, Clock, Target, Medal, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ReplayPreparationDialog } from './ReplayPreparationDialog';
 import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
-import { ReplayPlayerV4Optimized } from './ReplayPlayerV4Optimized';
+import { ReplayPlayerV4Unified } from './ReplayPlayerV4Unified';
 
 interface LeaderboardEntry {
   id: string;
@@ -326,14 +326,14 @@ const LeaderboardView: React.FC = () => {
         />
       )}
 
-      {/* ✅ P0 修复：独立的播放器（不受对话框关闭影响） */}
+      {/* 统一的播放器（不受对话框关闭影响） */}
       {playerReplayData && isPlayerOpen && (
         <>
           {isV4Replay(playerReplayData) ? (
             (() => {
               const v4Data = getV4Data(playerReplayData);
               return v4Data ? (
-                <ReplayPlayerV4Optimized
+                <ReplayPlayerV4Unified
                   replay={v4Data}
                   onClose={() => setIsPlayerOpen(false)}
                   autoPlay={true}

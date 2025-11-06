@@ -157,9 +157,12 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
     if (replayData) {
       console.info('[ReplayPrep] Play clicked, passing data to parent');
       
-      // ✅ P0 修复：传递数据给父组件，由父组件管理播放器
+      // 检测是否为 V4 格式
+      const v4Data = getV4Data(replayData);
+      const playerType = v4Data ? 'V4统一播放器' : '传统播放器';
+      
       toast({
-        title: "正在打开播放器...",
+        title: `正在打开${playerType}...`,
         description: "请稍候",
         duration: 1000
       });
