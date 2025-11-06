@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ReplayPreparationDialog } from './ReplayPreparationDialog';
 import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
 import { ReplayPlayerV4Unified } from './ReplayPlayerV4Unified';
+import { DualReplayComparison } from './DualReplayComparison';
 import type { GameReplay } from '@/utils/gameTypes';
 
 const ReplaySystem: React.FC = () => {
@@ -24,6 +25,11 @@ const ReplaySystem: React.FC = () => {
   // ✅ P0 修复：独立的播放器状态
   const [playerReplayData, setPlayerReplayData] = useState<any>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  
+  // 对比模式状态
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [selectedForComparison, setSelectedForComparison] = useState<GameReplay[]>([]);
+  const [comparisonData, setComparisonData] = useState<{ replay1: any; replay2: any } | null>(null);
 
   useEffect(() => {
     loadReplays();
@@ -165,8 +171,47 @@ const ReplaySystem: React.FC = () => {
   }, [user]);
 
   const handleViewReplay = (replay: GameReplay) => {
-    setSelectedReplayForPreparation(replay);
-    setIsPreparationDialogOpen(true);
+    if (comparisonMode) {
+      // 对比模式下选择回放
+      if (selectedForComparison.find(r => r.id === replay.id)) {
+        setSelectedForComparison(selectedForComparison.filter(r => r.id !== replay.id));
+      } else if (selectedForComparison.length < 2) {
+        setSelectedForComparison([...selectedForComparison, replay]);
+      }
+    } else {
+      // 正常播放模式
+      setSelectedReplayForPreparation(replay);
+      setIsPreparationDialogOpen(true);
+    }
+  };
+  
+  const handleToggleComparisonMode = () => {
+    setComparisonMode(!comparisonMode);
+    setSelectedForComparison([]);
+  };
+  
+  const handleStartComparison = async () => {
+    if (selectedForComparison.length !== 2) return;
+    
+    // 加载两个回放的完整数据
+    const { loadReplayById } = await import('@/utils/replayLoader');
+    
+    try {
+      const data1 = await loadReplayById(selectedForComparison[0].id);
+      const data2 = await loadReplayById(selectedForComparison[1].id);
+      
+      // 确保都是 V4 格式
+      if (isV4Replay(data1) && isV4Replay(data2)) {
+        setComparisonData({
+          replay1: getV4Data(data1),
+          replay2: getV4Data(data2)
+        });
+      } else {
+        console.error('Both replays must be V4 format for comparison');
+      }
+    } catch (error) {
+      console.error('Error loading replays for comparison:', error);
+    }
   };
 
   const formatDuration = (duration: number) => {
@@ -249,16 +294,39 @@ const ReplaySystem: React.FC = () => {
               checked={showOldReplays}
               onCheckedChange={(checked) => {
                 setShowOldReplays(checked);
-                loadReplays(); // 重新加载以应用过滤
+                loadReplays();
               }}
             />
             <span className="text-sm">显示旧回放</span>
           </div>
+          <Button 
+            variant={comparisonMode ? "default" : "outline"} 
+            onClick={handleToggleComparisonMode}
+            size="sm"
+          >
+            {comparisonMode ? '退出对比' : '对比模式'}
+          </Button>
+          {comparisonMode && selectedForComparison.length === 2 && (
+            <Button onClick={handleStartComparison} size="sm">
+              开始对比
+            </Button>
+          )}
           <Button onClick={loadReplays} variant="outline" size="sm">
             刷新
           </Button>
         </div>
       </div>
+      
+      {comparisonMode && (
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+          <CardContent className="p-4">
+            <p className="text-sm">
+              对比模式已启用。请选择两个回放进行对比分析。
+              已选择: {selectedForComparison.length}/2
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {replays.length === 0 ? (
         <Card>
@@ -345,8 +413,15 @@ const ReplaySystem: React.FC = () => {
                       className="ml-4"
                       size="sm"
                       disabled={!replay.isPlayable}
+                      variant={comparisonMode && selectedForComparison.find(r => r.id === replay.id) ? "default" : "outline"}
                     >
-                      {replay.isPlayable ? (
+                      {comparisonMode ? (
+                        selectedForComparison.find(r => r.id === replay.id) ? (
+                          <>✓ 已选择</>
+                        ) : (
+                          <>选择对比</>
+                        )
+                      ) : replay.isPlayable ? (
                         <>
                           <Play className="w-4 h-4 mr-1" />
                           观看回放
@@ -411,6 +486,19 @@ const ReplaySystem: React.FC = () => {
             />
           )}
         </>
+      )}
+      
+      {/* 对比播放器 */}
+      {comparisonData && (
+        <DualReplayComparison
+          replay1={comparisonData.replay1}
+          replay2={comparisonData.replay2}
+          onClose={() => {
+            setComparisonData(null);
+            setSelectedForComparison([]);
+            setComparisonMode(false);
+          }}
+        />
       )}
     </div>
   );
