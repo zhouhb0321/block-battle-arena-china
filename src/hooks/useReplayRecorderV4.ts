@@ -299,6 +299,25 @@ export function useReplayRecorderV4() {
       coverage: `${positionCoverage.toFixed(1)}%`
     });
     
+    // ✅ P1：详细事件统计
+    const eventStats = {
+      SPAWN: replayData.events.filter(e => e.type === ReplayOpcode.SPAWN).length,
+      INPUT: totalInputs,
+      INPUT_with_position: inputsWithPosition,
+      LOCK: replayData.events.filter(e => e.type === ReplayOpcode.LOCK).length,
+      KF: replayData.events.filter(e => e.type === ReplayOpcode.KF).length,
+      END: replayData.events.filter(e => e.type === ReplayOpcode.END).length,
+      totalEvents: replayData.events.length
+    };
+    
+    console.log('[RecorderV4] ✅ Event breakdown:', eventStats);
+    console.log('[RecorderV4] Expected: SPAWN ≈ LOCK (each piece spawns once and locks once)');
+    console.log('[RecorderV4] Actual: SPAWN =', eventStats.SPAWN, ', LOCK =', eventStats.LOCK);
+    
+    if (Math.abs(eventStats.SPAWN - eventStats.LOCK) > 1) {
+      console.warn('[RecorderV4] ⚠️ SPAWN/LOCK count mismatch - possible recording issue!');
+    }
+    
     if (positionCoverage < 90) {
       console.warn('[RecorderV4] ⚠️ Low position coverage, animations may be choppy');
     }

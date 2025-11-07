@@ -13,7 +13,9 @@ interface GameStats {
 interface GameRecordingContextType {
   isActive: boolean;
   isRecording: boolean;
+  isReplaying: boolean; // ✅ 新增
   setGameActive: (active: boolean) => void;
+  setReplaying: (replaying: boolean) => void; // ✅ 新增
   saveAndQuit: () => Promise<boolean>;
   registerRecorder: (recorder: ReturnType<typeof useReplayRecorderV4>) => void;
   registerStatsGetter: (getter: () => GameStats) => void;
@@ -32,6 +34,7 @@ export const useGameRecording = () => {
 
 export const GameRecordingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isActive, setIsActive] = useState(false);
+  const [isReplaying, setIsReplaying] = useState(false); // ✅ 新增
   const recorderRef = useRef<ReturnType<typeof useReplayRecorderV4> | null>(null);
   const statsGetterRef = useRef<(() => GameStats) | null>(null);
   const gameModeGetterRef = useRef<(() => string) | null>(null);
@@ -97,7 +100,9 @@ export const GameRecordingProvider: React.FC<{ children: React.ReactNode }> = ({
   const value: GameRecordingContextType = {
     isActive,
     isRecording: recorderRef.current?.isRecording || false,
+    isReplaying, // ✅ 新增
     setGameActive,
+    setReplaying: setIsReplaying, // ✅ 新增
     saveAndQuit,
     registerRecorder,
     registerStatsGetter,

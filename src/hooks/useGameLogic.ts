@@ -407,8 +407,8 @@ export const useGameLogic = ({
     return false;
   }, [lockDelayResetCount, lockPiece, clearLockDelayTimer, startLockDelay, replayClockControlled]);
 
-  const movePiece = useCallback((dx: number, dy: number) => {
-    if (!currentPiece || gameOver || isPaused) return;
+  const movePiece = useCallback((dx: number, dy: number): boolean => {
+    if (!currentPiece || gameOver || isPaused) return false;
 
     const newPiece = { ...currentPiece, x: currentPiece.x + dx, y: currentPiece.y + dy };
 
@@ -428,15 +428,19 @@ export const useGameLogic = ({
         }
       }
       
-      // Record input for V4 with position
+      // Record input for V4 with position (only for user actions, not gravity)
       if (isRecording && (dx !== 0 || (dy > 0 && dx === 0))) {
         const action = dx < 0 ? 'moveLeft' : dx > 0 ? 'moveRight' : 'softDrop';
         recordInput(action, true, { x: newPiece.x, y: newPiece.y }, newPiece.rotation);
       }
+      
+      return true; // ✅ 移动成功
     } else if (dy > 0) {
       // Only start lock delay if piece fails to move down
       startLockDelay();
     }
+    
+    return false; // ✅ 移动失败
   }, [currentPiece, board, gameOver, isPaused, startLockDelay, resetLockDelay, isRecording, recordInput]);
 
 
@@ -702,15 +706,13 @@ export const useGameLogic = ({
 
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
     const timer = setTimeout(() => {
-      // Check if can move down before recording
-      if (currentPiece && isValidPosition(board, { ...currentPiece, y: currentPiece.y + 1 })) {
-        // Record gravity drop before moving
-        if (isRecording && recordInput) {
-          const newY = currentPiece.y + 1;
-          recordInput('softDrop', true, { x: currentPiece.x, y: newY }, currentPiece.rotation);
-        }
+      // ✅ 先执行移动，再根据结果录制
+      const moved = movePiece(0, 1);
+      
+      // ✅ 只在移动成功后录制（使用移动后的实际位置）
+      if (moved && isRecording && recordInput && currentPiece) {
+        recordInput('softDrop', true, { x: currentPiece.x, y: currentPiece.y }, currentPiece.rotation);
       }
-      movePiece(0, 1);
     }, dropInterval);
     return () => clearTimeout(timer);
   }, [replayClockControlled, isReplay, enableReplayGravity, gameStarted, gameOver, isPaused, level, movePiece, phase, currentPiece, board, isValidPosition, isRecording, recordInput]);

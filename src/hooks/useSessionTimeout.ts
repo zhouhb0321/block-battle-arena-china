@@ -52,17 +52,17 @@ export const useSessionTimeout = () => {
         const timeLeft = expiresAt - now;
 
         if (timeLeft <= 0) {
-          if (gameRecording.isActive || gameRecording.isRecording) {
-            // Do NOT logout during gameplay; auto-extend and retry later
+          if (gameRecording.isActive || gameRecording.isRecording || gameRecording.isReplaying) {
+            // ✅ Do NOT logout during gameplay or replay; auto-extend and retry later
             await updateActivity();
-            toast.info('Session auto-extended during gameplay. You will not be logged out.');
+            toast.info('Session auto-extended during gameplay/replay. You will not be logged out.');
             return;
           }
           toast.error('Session expired. Please log in again.');
           await signOut(true);
         } else if (timeLeft <= WARNING_TIME) {
-          if (gameRecording.isActive || gameRecording.isRecording) {
-            // Silently extend during active gameplay to avoid interruption
+          if (gameRecording.isActive || gameRecording.isRecording || gameRecording.isReplaying) {
+            // ✅ Silently extend during active gameplay or replay to avoid interruption
             await updateActivity();
             toast.warning('Session extended to avoid interruption.');
           } else {

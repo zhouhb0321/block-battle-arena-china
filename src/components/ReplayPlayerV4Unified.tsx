@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { V4ReplayData, ReplayOpcode } from '@/utils/replayV4/types';
 import { extractInputEvents, extractReplayMetadata } from '@/utils/replayV4/converter';
 import { useGameLogic } from '@/hooks/useGameLogic';
+import { useGameRecording } from '@/contexts/GameRecordingContext'; // ✅ 新增
 import EnhancedGameBoard from './EnhancedGameBoard';
 import HoldPieceDisplay from './HoldPieceDisplay';
 import NextPiecePreview from './NextPiecePreview';
@@ -23,6 +24,9 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   onClose,
   autoPlay = false
 }) => {
+  // ✅ 获取 GameRecordingContext
+  const gameRecording = useGameRecording();
+  
   // 提取回放数据
   const inputEvents = useMemo(() => extractInputEvents(replay), [replay]);
   const metadata = useMemo(() => extractReplayMetadata(replay), [replay]);
@@ -36,6 +40,17 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   // 执行索引追踪
   const executedIndexRef = useRef(0);
   const lastFrameTimeRef = useRef<number | null>(null);
+  
+  // ✅ 标记回放状态，防止 session logout
+  useEffect(() => {
+    gameRecording.setReplaying(true);
+    console.log('[ReplayV4Unified] Replay started, session timeout disabled');
+    
+    return () => {
+      gameRecording.setReplaying(false);
+      console.log('[ReplayV4Unified] Replay ended, session timeout re-enabled');
+    };
+  }, [gameRecording]);
   
   // 构建 GameMode 对象
   const gameMode = useMemo<GameMode>(() => ({
@@ -325,6 +340,30 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
               <div>DAS: {metadata.settings.das}ms</div>
               <div>ARR: {metadata.settings.arr}ms</div>
               <div>SDF: {metadata.settings.sdf}ms</div>
+            </div>
+            
+            {/* ✅ P2：执行状态 */}
+            <div className="border-t border-muted pt-2 mt-2">
+              <div className="font-semibold text-foreground mb-1">执行进度</div>
+              <div className="space-y-1">
+                <div>已执行: {executedIndexRef.current} / {inputEvents.length}</div>
+                <div>进度: {inputEvents.length > 0 ? ((executedIndexRef.current / inputEvents.length) * 100).toFixed(1) : 0}%</div>
+                <div>当前时间: {formatTime(currentTime)}</div>
+              </div>
+            </div>
+            
+            {/* ✅ P2：游戏状态 */}
+            <div className="border-t border-muted pt-2 mt-2">
+              <div className="font-semibold text-foreground mb-1">实时状态</div>
+              <div className="space-y-1">
+                <div>得分: {gameLogic.score}</div>
+                <div>行数: {gameLogic.lines}</div>
+                <div>等级: {gameLogic.level}</div>
+                <div>当前方块: {gameLogic.currentPiece?.type?.type || 'None'}</div>
+                {gameLogic.currentPiece && (
+                  <div>位置: ({gameLogic.currentPiece.x}, {gameLogic.currentPiece.y}) R{gameLogic.currentPiece.rotation}</div>
+                )}
+              </div>
             </div>
           </Card>
         )}
