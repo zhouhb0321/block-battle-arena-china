@@ -706,13 +706,9 @@ export const useGameLogic = ({
 
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
     const timer = setTimeout(() => {
-      // ✅ 先执行移动，再根据结果录制
-      const moved = movePiece(0, 1);
-      
-      // ✅ 只在移动成功后录制（使用移动后的实际位置）
-      if (moved && isRecording && recordInput && currentPiece) {
-        recordInput('softDrop', true, { x: currentPiece.x, y: currentPiece.y }, currentPiece.rotation);
-      }
+      // ✅ 重力下落由游戏引擎自动处理，不记录为INPUT事件
+      // 只有用户主动按键的softDrop才应该被记录（在键盘处理器中）
+      movePiece(0, 1);
     }, dropInterval);
     return () => clearTimeout(timer);
   }, [replayClockControlled, isReplay, enableReplayGravity, gameStarted, gameOver, isPaused, level, movePiece, phase, currentPiece, board, isValidPosition, isRecording, recordInput]);

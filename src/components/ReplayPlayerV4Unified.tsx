@@ -65,7 +65,7 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     gameMode,
     isReplay: true,
     replaySeed: metadata.seed,
-    enableReplayGravity: false, // 由 INPUT 事件驱动，不需要自动重力
+    enableReplayGravity: true, // ✅ 启用重力系统，让回放完整模拟游戏逻辑
     replayClockControlled: false, // 通过执行 INPUT 事件控制，不需要虚拟时钟
   });
   
