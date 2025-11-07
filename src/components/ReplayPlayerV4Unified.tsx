@@ -41,6 +41,47 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   const executedIndexRef = useRef(0);
   const lastFrameTimeRef = useRef<number | null>(null);
   
+  // ✅ 回放独立音乐系统
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // ✅ 初始化音乐播放
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio('/music/WotLK_main_title.mp3');
+      audioRef.current.loop = true;
+      audioRef.current.volume = 0.3;
+    }
+    
+    // 开始播放
+    const playPromise = audioRef.current.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('[Replay] 音乐自动播放失败（浏览器策略限制）:', err);
+      });
+    }
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      }
+    };
+  }, []);
+  
+  // ✅ 同步音乐播放状态与回放状态
+  useEffect(() => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.play().catch(err => {
+        console.warn('[Replay] 音乐播放失败:', err);
+      });
+    } else {
+      audioRef.current.pause();
+    }
+  }, [isPlaying]);
+  
   // ✅ 标记回放状态，防止 session logout
   useEffect(() => {
     gameRecording.setReplaying(true);
