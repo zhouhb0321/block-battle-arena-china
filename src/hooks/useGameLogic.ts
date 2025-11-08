@@ -5,6 +5,7 @@ import { useAchievements } from './useAchievements';
 import { useReplayRecorderV4 } from './useReplayRecorderV4';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGameRecording } from '@/contexts/GameRecordingContext';
+import { useReplayDiagnosticsContext } from '@/contexts/ReplayDiagnosticsContext';
 import { debugLog } from '@/utils/debugLogger';
 import { 
   createEmptyBoard, 
@@ -101,6 +102,7 @@ export const useGameLogic = ({
   const { achievements, showTetris, showTSpin, showCombo, showPerfectClear, showLevelUp, showLineClear, removeAchievement } = useAchievements();
   const { user } = useAuth();
   const gameRecording = useGameRecording();
+  const diagnostics = useReplayDiagnosticsContext();
   const isUndoRedoEnabled = gameMode.id === 'endless';
   const gameStateManager = useGameState({ maxHistorySize: undoSteps, enabled: isUndoRedoEnabled });
   const { isWindowFocused, setWasManuallyPaused } = useWindowFocus();
@@ -326,6 +328,35 @@ export const useGameLogic = ({
         linesCleared,
         tSpinResult !== null,
         tSpinResult?.isMini || false,
+        clearedBoard,
+        nextPieces.map(p => p.type.type),
+        holdPiece?.type?.type ?? null,
+        currentScore,
+        newTotalLines,
+        newLevel
+      );
+    }
+    
+    // Record diagnostic snapshot if diagnostics enabled
+    if (diagnostics.enabled) {
+      const timestamp = gameStartTime.current ? Date.now() - gameStartTime.current : 0;
+      const isDifficultClear = tSpinResult !== null || linesCleared === 4;
+      const currentScore = score + (linesCleared > 0 ? calculateScore({
+        linesCleared,
+        tSpin: tSpinResult ? (tSpinResult.isMini ? 'mini' : 'normal') : 'none',
+        isB2B: (isDifficultClear ? isB2B + 1 : 0) > 1,
+        combo: linesCleared > 0 ? comboCount + 1 : comboCount,
+        isPerfectClear,
+      }).score : 0);
+      
+      diagnostics.recordSnapshot(
+        timestamp,
+        {
+          type: pieceToLock.type.type,
+          x: pieceToLock.x,
+          y: pieceToLock.y,
+          rotation: pieceToLock.rotation
+        },
         clearedBoard,
         nextPieces.map(p => p.type.type),
         holdPiece?.type?.type ?? null,
