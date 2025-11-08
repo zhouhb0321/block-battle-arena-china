@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGame } from '@/contexts/GameContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useReplayDiagnosticsContext } from '@/contexts/ReplayDiagnosticsContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ReplayDiagnosticsPanel } from '@/components/ReplayDiagnosticsPanel';
 import type { GameSettings } from '@/utils/gameTypes';
 
 interface GameSettingsProps {
@@ -18,6 +20,7 @@ interface GameSettingsProps {
 const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
   const { gameSettings, updateGameSettings } = useGame();
   const { t } = useLanguage();
+  const diagnostics = useReplayDiagnosticsContext();
   const [tempSettings, setTempSettings] = useState<GameSettings>(gameSettings);
   const [recordingKey, setRecordingKey] = useState<string | null>(null);
 
@@ -54,8 +57,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
   const handleReset = () => {
     const defaultSettings: GameSettings = {
       das: 167,
-      arr: 33,
-      sdf: 20,
+      arr: 50,
+      sdf: 30,
       controls: {
         moveLeft: 'ArrowLeft',
         moveRight: 'ArrowRight',
@@ -119,9 +122,10 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
           </DialogHeader>
           
           <Tabs defaultValue="controls" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="controls">控制设置</TabsTrigger>
               <TabsTrigger value="timing">时间设置</TabsTrigger>
+              <TabsTrigger value="diagnostics">诊断工具</TabsTrigger>
             </TabsList>
             
             <TabsContent value="controls" className="space-y-4">
@@ -208,6 +212,16 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+            
+            <TabsContent value="diagnostics" className="space-y-4">
+              <ReplayDiagnosticsPanel
+                enabled={diagnostics.enabled}
+                onToggle={diagnostics.setEnabled}
+                differences={diagnostics.differences}
+                recordedSnapshotCount={diagnostics.recordedSnapshots.length}
+                replayedSnapshotCount={diagnostics.replayedSnapshots.length}
+              />
             </TabsContent>
           </Tabs>
           

@@ -633,6 +633,9 @@ export const useGameLogic = ({
           user.email?.split('@')[0] || user.username || 'Player',
           gameMode.id
         );
+        
+        // Start diagnostics recording if enabled
+        diagnostics.startRecording();
       } else {
         console.warn('[V4] User not authenticated, replay recording skipped');
       }
@@ -785,6 +788,7 @@ export const useGameLogic = ({
                   setIsNewRecord(true);
                 }
               });
+              diagnostics.stopRecording();
             }
             return; // Stop the animation frame
           }
@@ -810,6 +814,7 @@ export const useGameLogic = ({
                 setIsNewRecord(true);
               }
             });
+            diagnostics.stopRecording();
           }
           return;
         }

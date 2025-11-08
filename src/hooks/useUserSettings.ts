@@ -36,7 +36,7 @@ const DEFAULT_GUEST_SETTINGS: UserSettings = {
   masterVolume: 50,
   musicVolume: 30,
   backgroundMusic: '',
-  arr: 10,
+  arr: 50,
   das: 133,
   sdf: 30,
   controls: {

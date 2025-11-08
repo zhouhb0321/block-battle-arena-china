@@ -4,8 +4,8 @@ import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours
-const WARNING_TIME = 5 * 60 * 1000; // 5 minutes before timeout
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+const WARNING_TIME = 10 * 60 * 1000; // 10 minutes before timeout
 const ACTIVITY_CHECK_INTERVAL = 60 * 1000; // Check every minute
 
 export const useSessionTimeout = () => {
@@ -55,18 +55,19 @@ export const useSessionTimeout = () => {
           if (gameRecording.isActive || gameRecording.isRecording || gameRecording.isReplaying) {
             // ✅ Do NOT logout during gameplay or replay; auto-extend and retry later
             await updateActivity();
-            toast.info('Session auto-extended during gameplay/replay. You will not be logged out.');
+            console.log('[SessionTimeout] Session auto-extended during gameplay/replay');
             return;
           }
-          toast.error('Session expired. Please log in again.');
+          toast.error('会话已过期，请重新登录');
           await signOut(true);
         } else if (timeLeft <= WARNING_TIME) {
           if (gameRecording.isActive || gameRecording.isRecording || gameRecording.isReplaying) {
             // ✅ Silently extend during active gameplay or replay to avoid interruption
             await updateActivity();
-            toast.warning('Session extended to avoid interruption.');
+            console.log('[SessionTimeout] Session silently extended during active gameplay');
           } else {
-            toast.warning('Your session will expire in 5 minutes. Activity will extend it.');
+            const minutesLeft = Math.ceil(timeLeft / 60000);
+            toast.warning(`会话将在 ${minutesLeft} 分钟后过期，任何操作都会自动延长会话时间`);
           }
         }
       }
