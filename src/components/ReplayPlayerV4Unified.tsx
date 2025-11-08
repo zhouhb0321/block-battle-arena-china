@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { V4ReplayData, ReplayOpcode } from '@/utils/replayV4/types';
-import { extractInputEvents, extractReplayMetadata } from '@/utils/replayV4/converter';
+import { V4ReplayData, ReplayOpcode, V4LockEvent, V4KeyframeEvent } from '@/utils/replayV4/types';
+import { extractInputEvents, extractReplayMetadata, extractLockEvents, extractKeyframeEvents } from '@/utils/replayV4/converter';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useGameRecording } from '@/contexts/GameRecordingContext'; // ✅ 新增
+import { useReplayDiagnosticsContext } from '@/contexts/ReplayDiagnosticsContext';
 import EnhancedGameBoard from './EnhancedGameBoard';
 import HoldPieceDisplay from './HoldPieceDisplay';
 import NextPiecePreview from './NextPiecePreview';
@@ -26,9 +27,12 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
 }) => {
   // ✅ 获取 GameRecordingContext
   const gameRecording = useGameRecording();
+  const diagnostics = useReplayDiagnosticsContext();
   
   // 提取回放数据
   const inputEvents = useMemo(() => extractInputEvents(replay), [replay]);
+  const lockEvents = useMemo(() => extractLockEvents(replay), [replay]);
+  const keyframes = useMemo(() => extractKeyframeEvents(replay), [replay]);
   const metadata = useMemo(() => extractReplayMetadata(replay), [replay]);
   
   // 回放时钟状态
@@ -40,6 +44,8 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   // 执行索引追踪
   const executedIndexRef = useRef(0);
   const lastFrameTimeRef = useRef<number | null>(null);
+  const lastKFTimeRef = useRef<number>(0);
+  const currentLockIndexRef = useRef<number>(0);
   
   // ✅ 回放独立音乐系统
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -118,8 +124,44 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     }
   }, [gameLogic, metadata.seed]);
   
-  // 主回放循环：执行到 currentTime 的所有事件
+  // ✅ P0: 主回放循环 - INPUT驱动 + KEYFRAME校正
   const processEventsToTime = useCallback((targetTime: number) => {
+    // 1. 检查是否需要 KEYFRAME 校正
+    const nextKF = keyframes.find(kf => 
+      kf.timestamp > lastKFTimeRef.current && 
+      kf.timestamp <= targetTime
+    );
+    
+    if (nextKF) {
+      console.log(`[Replay] 🔄 KEYFRAME 校正 @ ${nextKF.timestamp}ms`, {
+        board: nextKF.board.flat().filter(c => c !== 0).length + ' cells',
+        score: nextKF.score,
+        lines: nextKF.lines,
+        level: nextKF.level,
+        next: nextKF.nextPieces.slice(0, 3),
+        hold: nextKF.holdPiece
+      });
+      
+      // 强制同步状态到 KEYFRAME
+      gameLogic.forceSetGameState({
+        board: nextKF.board,
+        score: nextKF.score,
+        lines: nextKF.lines,
+        level: nextKF.level,
+        nextPieces: nextKF.nextPieces,
+        holdPiece: nextKF.holdPiece
+      });
+      
+      lastKFTimeRef.current = nextKF.timestamp;
+      
+      // 跳过已处理的输入事件到 KEYFRAME 之后
+      while (executedIndexRef.current < inputEvents.length && 
+             inputEvents[executedIndexRef.current].timestamp <= nextKF.timestamp) {
+        executedIndexRef.current++;
+      }
+    }
+    
+    // 2. 执行 INPUT 事件（从上次停止的地方继续）
     while (executedIndexRef.current < inputEvents.length) {
       const event = inputEvents[executedIndexRef.current];
       
@@ -159,7 +201,31 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
       
       executedIndexRef.current++;
     }
-  }, [inputEvents, gameLogic]);
+    
+    // 3. ✅ 验证 LOCK 事件（诊断模式）
+    if (diagnostics.enabled && gameLogic.currentPiece) {
+      // 查找当前时间附近的 LOCK 事件
+      const recentLock = lockEvents.find(lock => 
+        lock.timestamp >= targetTime - 50 && 
+        lock.timestamp <= targetTime + 50
+      );
+      
+      if (recentLock && gameLogic.currentPiece) {
+        const currentPos = gameLogic.currentPiece;
+        if (
+          recentLock.x !== currentPos.x ||
+          recentLock.y !== currentPos.y ||
+          recentLock.rotation !== currentPos.rotation
+        ) {
+          console.warn('[Replay] ⚠️ LOCK 位置不匹配！', {
+            timestamp: recentLock.timestamp,
+            expected: { x: recentLock.x, y: recentLock.y, rotation: recentLock.rotation },
+            actual: { x: currentPos.x, y: currentPos.y, rotation: currentPos.rotation }
+          });
+        }
+      }
+    }
+  }, [inputEvents, keyframes, lockEvents, gameLogic, diagnostics.enabled]);
   
   // requestAnimationFrame 驱动的播放循环
   useEffect(() => {
@@ -211,6 +277,8 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     setIsPlaying(false);
     executedIndexRef.current = 0;
     lastFrameTimeRef.current = null;
+    lastKFTimeRef.current = 0;
+    currentLockIndexRef.current = 0;
     gameLogic.startGame(); // 重新初始化游戏
   }, [gameLogic]);
   
@@ -218,6 +286,8 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     if (newTime < currentTime) {
       // 向后跳转：重置并重新播放到目标时间
       executedIndexRef.current = 0;
+      lastKFTimeRef.current = 0;
+      currentLockIndexRef.current = 0;
       gameLogic.startGame();
       setCurrentTime(newTime);
       processEventsToTime(newTime);
@@ -375,9 +445,10 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
               <div>Seed: {metadata.seed.slice(0, 16)}...</div>
               <div>总时长: {formatTime(replay.stats.duration)}</div>
               <div>输入事件: {inputEvents.length}</div>
-              <div>已执行: {executedIndexRef.current}</div>
-              <div>锁定次数: {replay.stats.lockCount}</div>
-              <div>关键帧: {replay.stats.keyframeCount}</div>
+              <div>锁定事件: {lockEvents.length}</div>
+              <div>关键帧: {keyframes.length}</div>
+              <div>已执行输入: {executedIndexRef.current}</div>
+              <div>最后校正: {lastKFTimeRef.current > 0 ? formatTime(lastKFTimeRef.current) : '未校正'}</div>
               <div>DAS: {metadata.settings.das}ms</div>
               <div>ARR: {metadata.settings.arr}ms</div>
               <div>SDF: {metadata.settings.sdf}ms</div>

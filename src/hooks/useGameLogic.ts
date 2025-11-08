@@ -834,6 +834,43 @@ export const useGameLogic = ({
 
   const ghostPiece = currentPiece ? { ...currentPiece, y: calculateDropPosition(board, currentPiece) } : null;
 
+  // ✅ P0: Force set game state for KEYFRAME correction
+  const forceSetGameState = useCallback((state: {
+    board?: Board;
+    score?: number;
+    lines?: number;
+    level?: number;
+    nextPieces?: string[];
+    holdPiece?: string | null;
+  }) => {
+    if (state.board !== undefined) {
+      setBoard(state.board);
+      boardRef.current = state.board;
+    }
+    if (state.score !== undefined) setScore(state.score);
+    if (state.lines !== undefined) setLines(state.lines);
+    if (state.level !== undefined) setLevel(state.level);
+    if (state.nextPieces !== undefined) {
+      const { TETROMINO_TYPES } = require('./pieceGeneration');
+      const newNextPieces = state.nextPieces
+        .map(pieceTypeStr => TETROMINO_TYPES[pieceTypeStr])
+        .filter(Boolean)
+        .map(pieceType => createGamePiece(pieceType));
+      setNextPieces(newNextPieces);
+    }
+    if (state.holdPiece !== undefined) {
+      if (state.holdPiece === null) {
+        setHoldPiece(null);
+      } else {
+        const { TETROMINO_TYPES } = require('./pieceGeneration');
+        const pieceType = TETROMINO_TYPES[state.holdPiece];
+        if (pieceType) {
+          setHoldPiece(createGamePiece(pieceType));
+        }
+      }
+    }
+  }, [createGamePiece]);
+
   return {
     board,
     currentPiece,
@@ -874,5 +911,6 @@ export const useGameLogic = ({
     getGameStats: () => ({ score, lines, level, time, pps, apm, gameMode: gameMode.id }),
     tickReplay,
     forcePlace,
+    forceSetGameState, // ✅ Export for KEYFRAME correction
   };
 };

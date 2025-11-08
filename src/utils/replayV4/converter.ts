@@ -46,6 +46,22 @@ export function extractInputEvents(replay: V4ReplayData): Array<{
 }
 
 /**
+ * 从 V4 回放中提取 LOCK 事件
+ */
+export function extractLockEvents(replay: V4ReplayData) {
+  return replay.events
+    .filter((e): e is import('./types').V4LockEvent => e.type === ReplayOpcode.LOCK);
+}
+
+/**
+ * 从 V4 回放中提取 KEYFRAME 事件
+ */
+export function extractKeyframeEvents(replay: V4ReplayData) {
+  return replay.events
+    .filter((e): e is import('./types').V4KeyframeEvent => e.type === ReplayOpcode.KF);
+}
+
+/**
  * 从 V4 回放中提取元数据
  */
 export function extractReplayMetadata(replay: V4ReplayData) {
