@@ -32,11 +32,11 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <AuthErrorBoundary>
-            <MusicProvider>
-              <ReplayDiagnosticsProvider>
-                <GameRecordingProvider>
-                  <AuthProvider>
-                    <SessionManager />
+            <AuthProvider>
+              <SessionManager />
+              <MusicProvider>
+                <ReplayDiagnosticsProvider>
+                  <GameRecordingProvider>
                     <LanguageProvider>
                       <GameProvider>
                         <Toaster />
@@ -49,10 +49,10 @@ function App() {
                         </BrowserRouter>
                       </GameProvider>
                     </LanguageProvider>
-                  </AuthProvider>
-                </GameRecordingProvider>
-              </ReplayDiagnosticsProvider>
-            </MusicProvider>
+                  </GameRecordingProvider>
+                </ReplayDiagnosticsProvider>
+              </MusicProvider>
+            </AuthProvider>
           </AuthErrorBoundary>
         </TooltipProvider>
       </ThemeProvider>
