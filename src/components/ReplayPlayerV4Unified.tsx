@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { X, Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Settings, Volume2, VolumeX, Zap, Target, Flame } from 'lucide-react';
+import { useMusicContext } from '@/contexts/MusicContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { V4ReplayData, ReplayOpcode, V4LockEvent, V4KeyframeEvent } from '@/utils/replayV4/types';
 import { extractInputEvents, extractReplayMetadata, extractLockEvents, extractKeyframeEvents } from '@/utils/replayV4/converter';
+import { extractKeyMoments, calculateReplayStats } from '@/utils/replayV4/eventExtractor';
+import { ReplayConsistencyDashboard } from './ReplayConsistencyDashboard';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { useGameRecording } from '@/contexts/GameRecordingContext'; // ✅ 新增
+import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { useReplayDiagnosticsContext } from '@/contexts/ReplayDiagnosticsContext';
 import EnhancedGameBoard from './EnhancedGameBoard';
 import HoldPieceDisplay from './HoldPieceDisplay';
@@ -34,12 +38,15 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   const lockEvents = useMemo(() => extractLockEvents(replay), [replay]);
   const keyframes = useMemo(() => extractKeyframeEvents(replay), [replay]);
   const metadata = useMemo(() => extractReplayMetadata(replay), [replay]);
+  const keyMoments = useMemo(() => extractKeyMoments(replay), [replay]);
+  const replayStats = useMemo(() => calculateReplayStats(replay), [replay]);
   
   // 回放时钟状态
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showDetails, setShowDetails] = useState(false);
+  const [currentMomentIndex, setCurrentMomentIndex] = useState(-1);
   
   // 执行索引追踪
   const executedIndexRef = useRef(0);
@@ -47,46 +54,20 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   const lastKFTimeRef = useRef<number>(0);
   const currentLockIndexRef = useRef<number>(0);
   
-  // ✅ 回放独立音乐系统
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // ✅ 使用统一音乐管理
+  const { requestPlayback, releasePlayback } = useMusicContext();
   
-  // ✅ 初始化音乐播放
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio('/music/WotLK_main_title.mp3');
-      audioRef.current.loop = true;
-      audioRef.current.volume = 0.3;
-    }
-    
-    // 开始播放
-    const playPromise = audioRef.current.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(err => {
-        console.warn('[Replay] 音乐自动播放失败（浏览器策略限制）:', err);
-      });
-    }
+    requestPlayback('replay', {
+      id: 'replay-music',
+      url: '/music/WotLK_main_title.mp3',
+      title: 'Replay Music'
+    });
     
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current = null;
-      }
+      releasePlayback('replay');
     };
-  }, []);
-  
-  // ✅ 同步音乐播放状态与回放状态
-  useEffect(() => {
-    if (!audioRef.current) return;
-    
-    if (isPlaying) {
-      audioRef.current.play().catch(err => {
-        console.warn('[Replay] 音乐播放失败:', err);
-      });
-    } else {
-      audioRef.current.pause();
-    }
-  }, [isPlaying]);
+  }, [requestPlayback, releasePlayback]);
   
   // ✅ 标记回放状态，防止 session logout
   useEffect(() => {
@@ -303,6 +284,36 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     setPlaybackSpeed(speed);
   }, []);
   
+  // ✅ 快速跳转到关键时刻
+  const jumpToNextMoment = useCallback(() => {
+    const nextMoment = keyMoments.find(m => m.timestamp > currentTime);
+    if (nextMoment) {
+      handleSeek(nextMoment.timestamp);
+      setCurrentMomentIndex(keyMoments.indexOf(nextMoment));
+    }
+  }, [keyMoments, currentTime, handleSeek]);
+  
+  const jumpToPreviousMoment = useCallback(() => {
+    const previousMoments = keyMoments.filter(m => m.timestamp < currentTime);
+    if (previousMoments.length > 0) {
+      const prevMoment = previousMoments[previousMoments.length - 1];
+      handleSeek(prevMoment.timestamp);
+      setCurrentMomentIndex(keyMoments.indexOf(prevMoment));
+    }
+  }, [keyMoments, currentTime, handleSeek]);
+  
+  // ✅ 键盘快捷键
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'n') jumpToNextMoment();
+      if (e.key === 'p') jumpToPreviousMoment();
+      if (e.key === ' ') { e.preventDefault(); handlePlayPause(); }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [jumpToNextMoment, jumpToPreviousMoment, handlePlayPause]);
+  
   // 格式化时间
   const formatTime = (ms: number) => {
     const seconds = Math.floor(ms / 1000);
@@ -382,13 +393,34 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
             <Card className="w-full max-w-2xl p-4 space-y-4">
               {/* 进度条 */}
               <div className="space-y-2">
-                <Slider
-                  value={[currentTime]}
-                  max={totalDuration}
-                  step={16}
-                  onValueChange={(value) => handleSeek(value[0])}
-                  className="w-full"
-                />
+                <div className="relative">
+                  <Slider
+                    value={[currentTime]}
+                    max={totalDuration}
+                    step={16}
+                    onValueChange={(value) => handleSeek(value[0])}
+                    className="w-full"
+                  />
+                  {/* ✅ 关键时刻标记 */}
+                  <div className="absolute top-0 left-0 right-0 h-2 pointer-events-none">
+                    {keyMoments.map((moment, idx) => {
+                      const position = (moment.timestamp / totalDuration) * 100;
+                      const Icon = moment.type === 'tetris' ? Zap : 
+                                   moment.type === 'tspin' ? Target : 
+                                   moment.type === 'combo' ? Flame : null;
+                      return (
+                        <div
+                          key={idx}
+                          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+                          style={{ left: `${position}%` }}
+                          title={moment.label}
+                        >
+                          {Icon && <Icon className="w-3 h-3 text-primary" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>{formatTime(currentTime)}</span>
                   <span>{formatTime(totalDuration)}</span>
@@ -400,13 +432,13 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
                 <Button variant="outline" size="icon" onClick={handleReset}>
                   <RotateCcw className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="icon" onClick={() => handleSeek(Math.max(0, currentTime - 1000))}>
+                <Button variant="outline" size="icon" onClick={jumpToPreviousMoment} title="上一个关键时刻 (P)">
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
                 <Button size="lg" onClick={handlePlayPause}>
                   {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                 </Button>
-                <Button variant="outline" size="icon" onClick={() => handleSeek(Math.min(totalDuration, currentTime + 1000))}>
+                <Button variant="outline" size="icon" onClick={jumpToNextMoment} title="下一个关键时刻 (N)">
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -428,55 +460,92 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
             </Card>
           </div>
           
-          {/* 右侧：Next */}
-          <div className="lg:w-32 flex-shrink-0">
-            <NextPiecePreview 
-              nextPieces={gameLogic.nextPieces}
-              compact={false}
-            />
+          {/* 右侧：Next / 诊断 */}
+          <div className="lg:w-64 flex-shrink-0">
+            <Tabs defaultValue="next" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="next">Next</TabsTrigger>
+                <TabsTrigger value="diagnostics">诊断</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="next" className="mt-2">
+                <NextPiecePreview 
+                  nextPieces={gameLogic.nextPieces}
+                  compact={false}
+                />
+              </TabsContent>
+              
+              <TabsContent value="diagnostics" className="mt-2">
+                <ReplayConsistencyDashboard
+                  enabled={diagnostics.enabled}
+                  isRecording={diagnostics.isRecording}
+                  recordedCount={diagnostics.recordedSnapshots.length}
+                  replayedCount={diagnostics.replayedSnapshots.length}
+                  differences={diagnostics.differences}
+                  currentTime={currentTime}
+                  totalDuration={totalDuration}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
         
         {/* 技术细节（可选显示） */}
         {showDetails && (
           <Card className="m-4 p-4 bg-muted/50 text-xs space-y-2">
-            <div className="font-semibold">技术信息</div>
-            <div className="space-y-1 text-muted-foreground">
-              <div>Seed: {metadata.seed.slice(0, 16)}...</div>
-              <div>总时长: {formatTime(replay.stats.duration)}</div>
-              <div>输入事件: {inputEvents.length}</div>
-              <div>锁定事件: {lockEvents.length}</div>
-              <div>关键帧: {keyframes.length}</div>
-              <div>已执行输入: {executedIndexRef.current}</div>
-              <div>最后校正: {lastKFTimeRef.current > 0 ? formatTime(lastKFTimeRef.current) : '未校正'}</div>
-              <div>DAS: {metadata.settings.das}ms</div>
-              <div>ARR: {metadata.settings.arr}ms</div>
-              <div>SDF: {metadata.settings.sdf}ms</div>
-            </div>
-            
-            {/* ✅ P2：执行状态 */}
-            <div className="border-t border-muted pt-2 mt-2">
-              <div className="font-semibold text-foreground mb-1">执行进度</div>
-              <div className="space-y-1">
-                <div>已执行: {executedIndexRef.current} / {inputEvents.length}</div>
-                <div>进度: {inputEvents.length > 0 ? ((executedIndexRef.current / inputEvents.length) * 100).toFixed(1) : 0}%</div>
-                <div>当前时间: {formatTime(currentTime)}</div>
-              </div>
-            </div>
-            
-            {/* ✅ P2：游戏状态 */}
-            <div className="border-t border-muted pt-2 mt-2">
-              <div className="font-semibold text-foreground mb-1">实时状态</div>
-              <div className="space-y-1">
-                <div>得分: {gameLogic.score}</div>
-                <div>行数: {gameLogic.lines}</div>
-                <div>等级: {gameLogic.level}</div>
-                <div>当前方块: {gameLogic.currentPiece?.type?.type || 'None'}</div>
-                {gameLogic.currentPiece && (
-                  <div>位置: ({gameLogic.currentPiece.x}, {gameLogic.currentPiece.y}) R{gameLogic.currentPiece.rotation}</div>
-                )}
-              </div>
-            </div>
+            <Tabs defaultValue="technical" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="technical">技术信息</TabsTrigger>
+                <TabsTrigger value="stats">统计数据</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="technical" className="space-y-2">
+                <div className="font-semibold">技术信息</div>
+                <div className="space-y-1 text-muted-foreground">
+                  <div>Seed: {metadata.seed.slice(0, 16)}...</div>
+                  <div>总时长: {formatTime(replay.stats.duration)}</div>
+                  <div>输入事件: {inputEvents.length}</div>
+                  <div>锁定事件: {lockEvents.length}</div>
+                  <div>关键帧: {keyframes.length}</div>
+                  <div>关键时刻: {keyMoments.length}</div>
+                  <div>已执行输入: {executedIndexRef.current}</div>
+                  <div>最后校正: {lastKFTimeRef.current > 0 ? formatTime(lastKFTimeRef.current) : '未校正'}</div>
+                  <div>DAS: {metadata.settings.das}ms</div>
+                  <div>ARR: {metadata.settings.arr}ms</div>
+                  <div>SDF: {metadata.settings.sdf}ms</div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="stats" className="space-y-2">
+                <div className="font-semibold">游戏统计</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 bg-background rounded">
+                    <div className="text-muted-foreground">总Locks</div>
+                    <div className="text-lg font-bold">{replayStats.totalLocks}</div>
+                  </div>
+                  <div className="p-2 bg-background rounded">
+                    <div className="text-muted-foreground">PPS</div>
+                    <div className="text-lg font-bold">{replayStats.pps}</div>
+                  </div>
+                  <div className="p-2 bg-background rounded">
+                    <div className="text-muted-foreground">Tetris</div>
+                    <div className="text-lg font-bold">{replayStats.tetrisCount}</div>
+                  </div>
+                  <div className="p-2 bg-background rounded">
+                    <div className="text-muted-foreground">T-Spin</div>
+                    <div className="text-lg font-bold">{replayStats.tspinCount}</div>
+                  </div>
+                  <div className="p-2 bg-background rounded">
+                    <div className="text-muted-foreground">最大Combo</div>
+                    <div className="text-lg font-bold">{replayStats.maxCombo}</div>
+                  </div>
+                  <div className="p-2 bg-background rounded">
+                    <div className="text-muted-foreground">总行数</div>
+                    <div className="text-lg font-bold">{replayStats.totalLines}</div>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </Card>
         )}
       </div>

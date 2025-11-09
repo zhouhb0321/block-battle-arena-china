@@ -217,20 +217,21 @@ const EnhancedMusicPlayer: React.FC<EnhancedMusicPlayerProps> = ({
   };
 
   // 鼠标滚轮音量控制（更好的体验）
+  const { saveSettings } = useUserSettings();
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const delta = e.deltaY > 0 ? -3 : 3; // 更精细的控制
+    const delta = e.deltaY > 0 ? -3 : 3;
     const currentVolume = settings.musicVolume || 30;
     const newVolume = Math.max(0, Math.min(100, currentVolume + delta));
     
-    // 直接调用设置更新函数而不是handleVolumeChange
+    // ✅ 保存到 useUserSettings
+    saveSettings({ musicVolume: newVolume });
+    
     if (audioRef.current) {
       audioRef.current.volume = muted ? 0 : newVolume / 100;
     }
-    // 通过用户设置保存音量变化
-    // TODO: 需要通过useUserSettings保存音量设置
-  }, [settings.musicVolume, muted]);
+  }, [settings.musicVolume, muted, saveSettings]);
 
   // 静音切换
   const toggleMute = useCallback(() => {

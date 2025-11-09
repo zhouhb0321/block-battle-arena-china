@@ -10,8 +10,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertCircle, CheckCircle, Info, Bug } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, Bug, Upload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { generateIssueReport, uploadIssueReport } from '@/utils/replayIssueReporter';
 import type { DiagnosticDifference } from '@/utils/replayV4/diagnostics';
+import type { V4ReplayData } from '@/utils/replayV4/types';
 
 interface ReplayDiagnosticsPanelProps {
   enabled: boolean;
@@ -19,6 +22,8 @@ interface ReplayDiagnosticsPanelProps {
   differences?: DiagnosticDifference[];
   recordedSnapshotCount?: number;
   replayedSnapshotCount?: number;
+  replay?: V4ReplayData;
+  userId?: string;
 }
 
 export function ReplayDiagnosticsPanel({
@@ -26,9 +31,13 @@ export function ReplayDiagnosticsPanel({
   onToggle,
   differences = [],
   recordedSnapshotCount = 0,
-  replayedSnapshotCount = 0
+  replayedSnapshotCount = 0,
+  replay,
+  userId
 }: ReplayDiagnosticsPanelProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
   
   const critical = differences.filter(d => d.severity === 'critical');
   const warnings = differences.filter(d => d.severity === 'warning');
@@ -36,6 +45,29 @@ export function ReplayDiagnosticsPanel({
   
   const hasComparison = recordedSnapshotCount > 0 && replayedSnapshotCount > 0;
   const isConsistent = hasComparison && differences.length === 0;
+  
+  const handleReportIssue = async () => {
+    if (!replay) {
+      toast({ title: '错误', description: '无回放数据可报告', variant: 'destructive' });
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      const report = generateIssueReport(replay, differences, userId);
+      const success = await uploadIssueReport(report);
+      
+      if (success) {
+        toast({ title: '报告已提交', description: '感谢您的反馈，我们会尽快处理' });
+      } else {
+        toast({ title: '提交失败', description: '请稍后重试', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: '提交失败', description: '发生未知错误', variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  };
   
   return (
     <Card className="p-4 space-y-4 bg-card border-border">
@@ -126,14 +158,26 @@ export function ReplayDiagnosticsPanel({
           
           {/* Toggle Details */}
           {differences.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDetails(!showDetails)}
-              className="w-full"
-            >
-              {showDetails ? 'Hide' : 'Show'} Details
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDetails(!showDetails)}
+                className="flex-1"
+              >
+                {showDetails ? '隐藏' : '显示'} 详情
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleReportIssue}
+                disabled={uploading}
+                className="flex-1"
+              >
+                <Upload className="w-4 h-4 mr-1" />
+                {uploading ? '提交中...' : '报告问题'}
+              </Button>
+            </div>
           )}
           
           {/* Difference Details */}

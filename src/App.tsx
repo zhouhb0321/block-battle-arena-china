@@ -9,6 +9,7 @@ import { GameProvider } from "@/contexts/GameContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { GameRecordingProvider } from "@/contexts/GameRecordingContext";
 import { ReplayDiagnosticsProvider } from "@/contexts/ReplayDiagnosticsContext";
+import { MusicProvider } from "@/contexts/MusicContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
@@ -31,25 +32,27 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <AuthErrorBoundary>
-            <ReplayDiagnosticsProvider>
-              <GameRecordingProvider>
-                <AuthProvider>
-                  <SessionManager />
-                  <LanguageProvider>
-                    <GameProvider>
-                      <Toaster />
-                      <BrowserRouter>
-                        <Routes>
-                          <Route path="/" element={<Index />} />
-                          <Route path="/reset-password" element={<ResetPassword />} />
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </BrowserRouter>
-                    </GameProvider>
-                  </LanguageProvider>
-                </AuthProvider>
-              </GameRecordingProvider>
-            </ReplayDiagnosticsProvider>
+            <MusicProvider>
+              <ReplayDiagnosticsProvider>
+                <GameRecordingProvider>
+                  <AuthProvider>
+                    <SessionManager />
+                    <LanguageProvider>
+                      <GameProvider>
+                        <Toaster />
+                        <BrowserRouter>
+                          <Routes>
+                            <Route path="/" element={<Index />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </BrowserRouter>
+                      </GameProvider>
+                    </LanguageProvider>
+                  </AuthProvider>
+                </GameRecordingProvider>
+              </ReplayDiagnosticsProvider>
+            </MusicProvider>
           </AuthErrorBoundary>
         </TooltipProvider>
       </ThemeProvider>

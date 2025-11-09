@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useAutoPlayMusic } from '@/hooks/useAutoPlayMusic';
+import { useMusicContext } from '@/contexts/MusicContext';
 
 interface GameMusicManagerProps {
   isGameActive: boolean;
@@ -14,24 +14,27 @@ export const GameMusicManager: React.FC<GameMusicManagerProps> = ({
   ignoreWhenReplayOpen = false,
   isReplayOpen = false
 }) => {
-  const { playMusic, pauseMusic, stopMusic } = useAutoPlayMusic(isGameActive);
+  const { requestPlayback, releasePlayback } = useMusicContext();
 
   useEffect(() => {
     // 回放打开时豁免音乐控制
     if (ignoreWhenReplayOpen && isReplayOpen) {
+      releasePlayback('game');
       return;
     }
 
     if (isGameActive && !isGamePaused) {
-      playMusic();
-    } else if (isGamePaused) {
-      pauseMusic();
+      requestPlayback('game', {
+        id: 'game-music',
+        url: '/music/WotLK_main_title.mp3',
+        title: 'Game Music'
+      });
     } else {
-      stopMusic();
+      releasePlayback('game');
     }
-  }, [isGameActive, isGamePaused, playMusic, pauseMusic, stopMusic, ignoreWhenReplayOpen, isReplayOpen]);
+  }, [isGameActive, isGamePaused, ignoreWhenReplayOpen, isReplayOpen, requestPlayback, releasePlayback]);
 
-  return null; // This component doesn't render anything
+  return null;
 };
 
 export default GameMusicManager;

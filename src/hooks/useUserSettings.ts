@@ -36,9 +36,9 @@ const DEFAULT_GUEST_SETTINGS: UserSettings = {
   masterVolume: 50,
   musicVolume: 30,
   backgroundMusic: '',
-  arr: 50,
+  arr: 20, // ✅ 调整为现代标准 20ms
   das: 133,
-  sdf: 30,
+  sdf: 20, // ✅ 调整为现代标准 20ms
   controls: {
     moveLeft: 'ArrowLeft',
     moveRight: 'ArrowRight',

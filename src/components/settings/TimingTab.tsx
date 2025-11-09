@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import type { GameSettings } from '@/utils/gameTypes';
 
 interface TimingTabProps {
@@ -10,13 +10,46 @@ interface TimingTabProps {
   onSettingChange: (key: string, value: any) => void;
 }
 
+// ✅ 预设配置
+const TIMING_PRESETS = {
+  beginner: { das: 150, arr: 50, sdf: 10, name: '初学者' },
+  standard: { das: 133, arr: 20, sdf: 20, name: '标准' },
+  advanced: { das: 100, arr: 10, sdf: 30, name: '进阶' },
+  pro: { das: 50, arr: 0, sdf: 40, name: '专业' }
+};
+
 const TimingTab: React.FC<TimingTabProps> = ({ settings, onSettingChange }) => {
+  const applyPreset = (preset: keyof typeof TIMING_PRESETS) => {
+    const config = TIMING_PRESETS[preset];
+    onSettingChange('das', config.das);
+    onSettingChange('arr', config.arr);
+    onSettingChange('sdf', config.sdf);
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">操控设置</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* ✅ 预设选择 */}
+        <div className="space-y-2">
+          <Label>快速预设</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {(Object.keys(TIMING_PRESETS) as Array<keyof typeof TIMING_PRESETS>).map(key => (
+              <Button
+                key={key}
+                variant="outline"
+                size="sm"
+                onClick={() => applyPreset(key)}
+                className="justify-start"
+              >
+                {TIMING_PRESETS[key].name}
+              </Button>
+            ))}
+          </div>
+        </div>
+
         <div className="space-y-2">
           <Label>DAS - 延迟自动移位 ({settings.das}ms)</Label>
           <Slider
