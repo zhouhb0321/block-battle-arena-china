@@ -24,6 +24,13 @@ interface GameStats {
   apm: number;
 }
 
+// KEYFRAME generation strategy configuration
+const KEYFRAME_CONFIG = {
+  lockInterval: 10,      // Generate KEYFRAME every 10 locks
+  timeInterval: 30000,   // Generate KEYFRAME every 30 seconds (ms)
+  strategy: 'hybrid' as 'lock' | 'time' | 'hybrid'  // Use hybrid mode
+};
+
 export function useReplayRecorderV4() {
   const [isRecording, setIsRecording] = useState(false);
   
@@ -31,6 +38,7 @@ export function useReplayRecorderV4() {
   const startTimeRef = useRef<number>(0);
   const lockCountRef = useRef<number>(0);
   const keyframeIntervalRef = useRef<number>(10);  // KF every 10 locks
+  const lastKeyframeTimeRef = useRef<number>(0);   // Track last KEYFRAME timestamp
   
   const metadataRef = useRef<V4ReplayData['metadata'] | null>(null);
   const lastBoardRef = useRef<number[][]>([]);
@@ -50,6 +58,7 @@ export function useReplayRecorderV4() {
     eventsRef.current = [];
     startTimeRef.current = Date.now();
     lockCountRef.current = 0;
+    lastKeyframeTimeRef.current = 0;  // Reset KEYFRAME time tracking
     
     metadataRef.current = {
       userId,
@@ -69,7 +78,8 @@ export function useReplayRecorderV4() {
     
     console.log('[RecorderV4] Recording started', {
       metadata: metadataRef.current,
-      initialSequence: initialPieceSequence.slice(0, 14)
+      initialSequence: initialPieceSequence.slice(0, 14),
+      keyframeStrategy: KEYFRAME_CONFIG
     });
   }, []);
 
@@ -181,8 +191,32 @@ export function useReplayRecorderV4() {
     lastNextRef.current = sanitizedNext;
     lastHoldRef.current = sanitizedHold;
     
-    // Record keyframe: at first lock, then every N locks
-    if (lockCountRef.current === 1 || lockCountRef.current % keyframeIntervalRef.current === 0) {
+    // Hybrid KEYFRAME generation logic
+    const timeSinceLastKF = timestamp - lastKeyframeTimeRef.current;
+    const lockCondition = 
+      lockCountRef.current === 1 || 
+      lockCountRef.current % KEYFRAME_CONFIG.lockInterval === 0;
+    const timeCondition = timeSinceLastKF >= KEYFRAME_CONFIG.timeInterval;
+    
+    let shouldGenerateKF = false;
+    let kfReason = '';
+    
+    switch (KEYFRAME_CONFIG.strategy) {
+      case 'lock':
+        shouldGenerateKF = lockCondition;
+        kfReason = 'lock-count';
+        break;
+      case 'time':
+        shouldGenerateKF = timeCondition;
+        kfReason = 'time-interval';
+        break;
+      case 'hybrid':
+        shouldGenerateKF = lockCondition || timeCondition;
+        kfReason = lockCondition ? 'lock-count' : 'time-interval';
+        break;
+    }
+    
+    if (shouldGenerateKF) {
       const kfEvent: V4KeyframeEvent = {
         type: ReplayOpcode.KF,
         timestamp,
@@ -194,8 +228,16 @@ export function useReplayRecorderV4() {
         level
       };
       eventsRef.current.push(kfEvent);
+      lastKeyframeTimeRef.current = timestamp;
       
-      console.log(`[RecorderV4] KEYFRAME at lock #${lockCountRef.current}: score=${score}, lines=${lines}, level=${level}`);
+      console.log(`[RecorderV4] KEYFRAME generated:`, {
+        reason: kfReason,
+        lockCount: lockCountRef.current,
+        timeSinceLastKF: (timeSinceLastKF / 1000).toFixed(1) + 's',
+        score,
+        lines,
+        level
+      });
     }
   }, [isRecording]);
 
@@ -241,8 +283,10 @@ export function useReplayRecorderV4() {
       reason: endReason
     });
     
-    // Add final keyframe if we have game state
-    if (lastBoardRef.current.length > 0 && lockCountRef.current > 0) {
+    // Add final keyframe if we have game state and significant time has passed
+    const timeSinceLastKF = timestamp - lastKeyframeTimeRef.current;
+    if (lastBoardRef.current.length > 0 && 
+        (lockCountRef.current > 0 || timeSinceLastKF > 5000)) {  // If more than 5s since last KF
       const finalKF: V4KeyframeEvent = {
         type: ReplayOpcode.KF,
         timestamp,
@@ -254,7 +298,9 @@ export function useReplayRecorderV4() {
         level: gameStats.level
       };
       eventsRef.current.push(finalKF);
-      console.log('[RecorderV4] Added final keyframe');
+      console.log('[RecorderV4] Added final keyframe', {
+        timeSinceLastKF: (timeSinceLastKF / 1000).toFixed(1) + 's'
+      });
     }
     
     // Build replay data
@@ -478,6 +524,7 @@ export function useReplayRecorderV4() {
   const clearRecording = useCallback(() => {
     eventsRef.current = [];
     lockCountRef.current = 0;
+    lastKeyframeTimeRef.current = 0;
     metadataRef.current = null;
     lastBoardRef.current = [];
     lastNextRef.current = [];
