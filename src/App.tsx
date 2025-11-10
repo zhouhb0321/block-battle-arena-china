@@ -33,10 +33,10 @@ function App() {
         <TooltipProvider>
           <AuthErrorBoundary>
             <AuthProvider>
-              <SessionManager />
               <MusicProvider>
                 <ReplayDiagnosticsProvider>
                   <GameRecordingProvider>
+                    <SessionManager />
                     <LanguageProvider>
                       <GameProvider>
                         <Toaster />
