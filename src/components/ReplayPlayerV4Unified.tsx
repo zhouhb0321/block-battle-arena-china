@@ -41,6 +41,13 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   const keyMoments = useMemo(() => extractKeyMoments(replay), [replay]);
   const replayStats = useMemo(() => calculateReplayStats(replay), [replay]);
   
+  // ✅ Extract and prepare pre-generated pieces from recorded sequence
+  const preGeneratedPieces = useMemo(() => {
+    const pieceSequence = metadata.initialPieceSequence || [];
+    console.log('[ReplayV4Unified] Pre-generated pieces:', pieceSequence.length, 'pieces');
+    return pieceSequence;
+  }, [metadata]);
+  
   // 回放时钟状态
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
@@ -93,6 +100,7 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     gameMode,
     isReplay: true,
     replaySeed: metadata.seed,
+    preGeneratedPieceTypes: preGeneratedPieces, // ✅ Pass recorded piece sequence
     enableReplayGravity: true, // ✅ 启用重力系统，让回放完整模拟游戏逻辑
     replayClockControlled: false, // 通过执行 INPUT 事件控制，不需要虚拟时钟
   });
