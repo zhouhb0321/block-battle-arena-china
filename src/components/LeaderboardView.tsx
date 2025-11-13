@@ -47,7 +47,6 @@ const LeaderboardView: React.FC = () => {
         .from('compressed_replays')
         .select('id, username, game_mode, final_score, final_lines, duration_seconds, pps, apm, is_personal_best, created_at, actions_count, version')
         .eq('game_mode', 'sprint40')
-        .eq('is_featured', true)
         .gte('version', '3.0')
         .order('duration_seconds', { ascending: true })
         .limit(500);
@@ -61,7 +60,6 @@ const LeaderboardView: React.FC = () => {
         .from('compressed_replays')
         .select('id, username, game_mode, final_score, final_lines, duration_seconds, pps, apm, is_personal_best, created_at, actions_count, version')
         .in('game_mode', ['timeAttack2', 'ultra2min'])
-        .eq('is_featured', true)
         .gte('version', '3.0')
         .order('final_score', { ascending: false })
         .limit(500);

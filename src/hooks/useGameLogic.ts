@@ -36,6 +36,7 @@ interface UseGameLogicProps {
   undoSteps?: number;
   isReplay?: boolean;
   replaySeed?: string;
+  preGeneratedPieceTypes?: string[]; // ✅ Array of piece types (e.g., ['I', 'O', 'T', 'L', ...])
   enableReplayGravity?: boolean;
   replayClockControlled?: boolean;
   onAttack?: (attackData: any) => void;
@@ -49,6 +50,7 @@ export const useGameLogic = ({
   undoSteps = 50,
   isReplay = false,
   replaySeed,
+  preGeneratedPieceTypes,
   enableReplayGravity = false,
   replayClockControlled = false,
   onAttack,
@@ -188,6 +190,47 @@ export const useGameLogic = ({
   }, []);
   
   const spawnNewPiece = useCallback(() => {
+    // ✅ Priority 1: Use pre-generated pieces from replay if available
+    if (preGeneratedPieceTypes && preGeneratedPieceTypes.length > totalPieces.current) {
+      const pieceType = preGeneratedPieceTypes[totalPieces.current];
+      const newPiece = createNewPiece(pieceType as TetrominoType);
+      
+      setCurrentPiece(newPiece);
+      
+      // Fill next pieces preview from pre-generated sequence
+      const nextStart = totalPieces.current + 1;
+      const nextEnd = Math.min(nextStart + 6, preGeneratedPieceTypes.length);
+      const nextFromSequence = preGeneratedPieceTypes
+        .slice(nextStart, nextEnd)
+        .map(type => createNewPiece(type as TetrominoType));
+      setNextPieces(nextFromSequence);
+      
+      setCanHold(true);
+      setLockDelayResetCount(0);
+      totalPieces.current++;
+      
+      console.log(`[useGameLogic] SPAWN from pre-generated: ${pieceType} (piece #${totalPieces.current}/${preGeneratedPieceTypes.length})`);
+      
+      // Record SPAWN event for V4
+      if (isRecording) {
+        recordSpawn(newPiece.type.type, newPiece.x, newPiece.y);
+      }
+      
+      if (!isValidPosition(board, newPiece)) {
+        if (gameMode.id === 'endless') {
+          setBoard(createEmptyBoard());
+          setCurrentPiece(newPiece);
+          setComboCount(0);
+          setIsB2B(0);
+        } else {
+          setGameOver(true);
+        }
+      }
+      
+      return;
+    }
+    
+    // ✅ Priority 2: Use nextPieces array (standard gameplay)
     // Defensive check: ensure nextPieces has at least one piece
     if (!nextPieces || nextPieces.length === 0) {
       console.error('[useGameLogic] spawnNewPiece: nextPieces is empty, generating initial pieces');

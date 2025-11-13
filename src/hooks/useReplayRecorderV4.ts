@@ -44,6 +44,7 @@ export function useReplayRecorderV4() {
   const lastBoardRef = useRef<number[][]>([]);
   const lastNextRef = useRef<string[]>([]);
   const lastHoldRef = useRef<string | null>(null);
+  const fullPieceSequenceRef = useRef<string[]>([]); // ✅ Track all spawned pieces
 
   const startRecording = useCallback((
     seed: string,
@@ -60,12 +61,15 @@ export function useReplayRecorderV4() {
     lockCountRef.current = 0;
     lastKeyframeTimeRef.current = 0;  // Reset KEYFRAME time tracking
     
+    // ✅ Initialize with extended piece sequence (at least 100 pieces)
+    fullPieceSequenceRef.current = initialPieceSequence.slice(0, 100);
+    
     metadataRef.current = {
       userId,
       username,
       gameMode,
       seed,
-      initialPieceSequence: initialPieceSequence.slice(0, 14),  // First 2 bags
+      initialPieceSequence: initialPieceSequence.slice(0, 100),  // ✅ Store at least 100 pieces
       recordedAt: new Date().toISOString(),
       settings: {
         das: settings.das,
@@ -99,6 +103,9 @@ export function useReplayRecorderV4() {
     const sanitized = sanitizePieceType(pieceType);
     if (!sanitized) return;
     
+    // ✅ Track all spawned pieces for complete sequence
+    fullPieceSequenceRef.current.push(sanitized);
+    
     const timestamp = Date.now() - startTimeRef.current;
     eventsRef.current.push({
       type: ReplayOpcode.SPAWN,
@@ -108,7 +115,7 @@ export function useReplayRecorderV4() {
       y
     });
     
-    console.log(`[RecorderV4] SPAWN: ${sanitized} at (${x}, ${y}) @ ${timestamp}ms`);
+    console.log(`[RecorderV4] SPAWN: ${sanitized} at (${x}, ${y}) @ ${timestamp}ms, total pieces: ${fullPieceSequenceRef.current.length}`);
   }, [isRecording]);
 
   const recordInput = useCallback((
@@ -311,7 +318,10 @@ export function useReplayRecorderV4() {
     
     const replayData: V4ReplayData = {
       version: '4.0',
-      metadata: metadataRef.current,
+      metadata: {
+        ...metadataRef.current,
+        initialPieceSequence: fullPieceSequenceRef.current // ✅ Save complete piece sequence
+      },
       events: eventsRef.current,
       stats: {
         finalScore: gameStats.score,
