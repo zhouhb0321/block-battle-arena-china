@@ -209,7 +209,13 @@ export const useGameLogic = ({
       setLockDelayResetCount(0);
       totalPieces.current++;
       
-      console.log(`[useGameLogic] SPAWN from pre-generated: ${pieceType} (piece #${totalPieces.current}/${preGeneratedPieceTypes.length})`);
+      console.log(`[useGameLogic] 🎯 SPAWN from pre-generated: ${pieceType} (piece #${totalPieces.current}/${preGeneratedPieceTypes.length})`);
+      
+      // Log sequence verification every 10 pieces
+      if (totalPieces.current % 10 === 0) {
+        const sequence = preGeneratedPieceTypes.slice(totalPieces.current - 10, totalPieces.current).join('');
+        console.log(`[useGameLogic] 📊 Pieces ${totalPieces.current - 10}-${totalPieces.current}: ${sequence}`);
+      }
       
       // Record SPAWN event for V4
       if (isRecording) {

@@ -115,7 +115,13 @@ export function useReplayRecorderV4() {
       y
     });
     
-    console.log(`[RecorderV4] SPAWN: ${sanitized} at (${x}, ${y}) @ ${timestamp}ms, total pieces: ${fullPieceSequenceRef.current.length}`);
+    console.log(`[RecorderV4] 📝 SPAWN: ${sanitized} at (${x}, ${y}) @ ${timestamp}ms, total pieces: ${fullPieceSequenceRef.current.length}`);
+    
+    // Log sequence every 10 pieces for verification
+    if (fullPieceSequenceRef.current.length % 10 === 0) {
+      const recentSequence = fullPieceSequenceRef.current.slice(-10).join('');
+      console.log(`[RecorderV4] 📊 Last 10 pieces recorded: ${recentSequence}`);
+    }
   }, [isRecording]);
 
   const recordInput = useCallback((
