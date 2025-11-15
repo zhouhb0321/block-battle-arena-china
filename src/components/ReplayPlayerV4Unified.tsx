@@ -10,6 +10,7 @@ import { V4ReplayData, ReplayOpcode, V4LockEvent, V4KeyframeEvent } from '@/util
 import { extractInputEvents, extractReplayMetadata, extractLockEvents, extractKeyframeEvents } from '@/utils/replayV4/converter';
 import { extractKeyMoments, calculateReplayStats } from '@/utils/replayV4/eventExtractor';
 import { ReplayConsistencyDashboard } from './ReplayConsistencyDashboard';
+import { ReplaySequenceValidator } from './ReplaySequenceValidator';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { useReplayDiagnosticsContext } from '@/contexts/ReplayDiagnosticsContext';
@@ -44,9 +45,13 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   // ✅ Extract and prepare pre-generated pieces from recorded sequence
   const preGeneratedPieces = useMemo(() => {
     const pieceSequence = metadata.initialPieceSequence || [];
-    console.log('[ReplayV4Unified] Pre-generated pieces:', pieceSequence.length, 'pieces');
+    console.log('[ReplayV4Unified] 🎮 Pre-generated pieces loaded:', pieceSequence.length, 'pieces');
+    console.log('[ReplayV4Unified] 📋 First 20 pieces:', pieceSequence.slice(0, 20).join(''));
     return pieceSequence;
   }, [metadata]);
+  
+  // Track actually spawned pieces during replay for validation
+  const [spawnedPieces, setSpawnedPieces] = useState<string[]>([]);
   
   // 回放时钟状态
   const [currentTime, setCurrentTime] = useState(0);
@@ -112,6 +117,21 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
       gameLogic.startGame();
     }
   }, [gameLogic, metadata.seed]);
+  
+  // Track spawned pieces for validation
+  useEffect(() => {
+    if (gameLogic.currentPiece?.type?.type) {
+      setSpawnedPieces(prev => {
+        const pieceType = gameLogic.currentPiece.type.type;
+        // Only add if it's a new piece (not duplicate)
+        if (prev.length === 0 || prev[prev.length - 1] !== pieceType) {
+          console.log(`[ReplayV4Unified] 🔍 Tracked spawn: ${pieceType} (total: ${prev.length + 1})`);
+          return [...prev, pieceType];
+        }
+        return prev;
+      });
+    }
+  }, [gameLogic.currentPiece]);
   
   // ✅ P0: 主回放循环 - INPUT驱动 + KEYFRAME校正
   const processEventsToTime = useCallback((targetTime: number) => {
@@ -484,6 +504,15 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
               </TabsContent>
               
               <TabsContent value="diagnostics" className="mt-2">
+                {/* Piece Sequence Validation */}
+                <div className="mb-4">
+                  <ReplaySequenceValidator
+                    recordedSequence={preGeneratedPieces}
+                    playedSequence={spawnedPieces}
+                  />
+                </div>
+                
+                {/* Consistency Dashboard */}
                 <ReplayConsistencyDashboard
                   enabled={diagnostics.enabled}
                   isRecording={diagnostics.isRecording}
