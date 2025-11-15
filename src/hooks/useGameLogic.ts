@@ -193,7 +193,7 @@ export const useGameLogic = ({
     // ✅ Priority 1: Use pre-generated pieces from replay if available
     if (preGeneratedPieceTypes && preGeneratedPieceTypes.length > totalPieces.current) {
       const pieceType = preGeneratedPieceTypes[totalPieces.current];
-      const newPiece = createNewPiece(pieceType as TetrominoType);
+      const newPiece = createNewPiece(pieceType as unknown as TetrominoType);
       
       setCurrentPiece(newPiece);
       
@@ -202,7 +202,7 @@ export const useGameLogic = ({
       const nextEnd = Math.min(nextStart + 6, preGeneratedPieceTypes.length);
       const nextFromSequence = preGeneratedPieceTypes
         .slice(nextStart, nextEnd)
-        .map(type => createNewPiece(type as TetrominoType));
+        .map(type => createNewPiece(type as unknown as TetrominoType));
       setNextPieces(nextFromSequence);
       
       setCanHold(true);

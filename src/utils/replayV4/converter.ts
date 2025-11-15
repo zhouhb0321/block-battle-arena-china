@@ -70,6 +70,7 @@ export function extractReplayMetadata(replay: V4ReplayData) {
     gameMode: replay.metadata.gameMode,
     settings: replay.metadata.settings,
     username: replay.metadata.username,
-    recordedAt: replay.metadata.recordedAt
+    recordedAt: replay.metadata.recordedAt,
+    initialPieceSequence: replay.metadata.initialPieceSequence
   };
 }
