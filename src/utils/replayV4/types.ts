@@ -98,7 +98,7 @@ export interface V4ReplayData {
     username: string;
     gameMode: string;
     seed: string;
-    initialPieceSequence: string[];  // First 14 pieces (2 bags)
+    initialPieceSequence?: string[];  // Full piece sequence (optional for backward compatibility)
     recordedAt: string;  // ISO timestamp
     settings: {
       das: number;
