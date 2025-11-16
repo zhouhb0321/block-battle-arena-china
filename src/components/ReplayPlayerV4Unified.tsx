@@ -44,7 +44,11 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   
   // ✅ Extract and prepare pre-generated pieces from recorded sequence
   const preGeneratedPieces = useMemo(() => {
-    const pieceSequence = metadata.initialPieceSequence || [];
+    const pieceSequence = metadata?.initialPieceSequence || [];
+    if (!Array.isArray(pieceSequence) || pieceSequence.length === 0) {
+      console.warn('[ReplayV4Unified] ⚠️ No piece sequence found in metadata');
+      return [];
+    }
     console.log('[ReplayV4Unified] 🎮 Pre-generated pieces loaded:', pieceSequence.length, 'pieces');
     console.log('[ReplayV4Unified] 📋 First 20 pieces:', pieceSequence.slice(0, 20).join(''));
     return pieceSequence;
@@ -135,31 +139,39 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   
   // ✅ P0: 主回放循环 - INPUT驱动 + KEYFRAME校正
   const processEventsToTime = useCallback((targetTime: number) => {
+    // 安全检查
+    if (!Array.isArray(inputEvents) || !Array.isArray(keyframes)) {
+      console.warn('[Replay] ⚠️ Missing events arrays');
+      return;
+    }
+    
     // 1. 检查是否需要 KEYFRAME 校正
     const nextKF = keyframes.find(kf => 
-      kf.timestamp > lastKFTimeRef.current && 
+      kf && kf.timestamp > lastKFTimeRef.current && 
       kf.timestamp <= targetTime
     );
     
     if (nextKF) {
       console.log(`[Replay] 🔄 KEYFRAME 校正 @ ${nextKF.timestamp}ms`, {
-        board: nextKF.board.flat().filter(c => c !== 0).length + ' cells',
+        board: Array.isArray(nextKF.board) ? nextKF.board.flat().filter(c => c !== 0).length + ' cells' : 'invalid',
         score: nextKF.score,
         lines: nextKF.lines,
         level: nextKF.level,
-        next: nextKF.nextPieces.slice(0, 3),
+        next: Array.isArray(nextKF.nextPieces) ? nextKF.nextPieces.slice(0, 3) : [],
         hold: nextKF.holdPiece
       });
       
-      // 强制同步状态到 KEYFRAME
-      gameLogic.forceSetGameState({
-        board: nextKF.board,
-        score: nextKF.score,
-        lines: nextKF.lines,
-        level: nextKF.level,
-        nextPieces: nextKF.nextPieces,
-        holdPiece: nextKF.holdPiece
-      });
+      // 强制同步状态到 KEYFRAME - 添加安全检查
+      if (gameLogic?.forceSetGameState && Array.isArray(nextKF.board)) {
+        gameLogic.forceSetGameState({
+          board: nextKF.board,
+          score: nextKF.score || 0,
+          lines: nextKF.lines || 0,
+          level: nextKF.level || 1,
+          nextPieces: Array.isArray(nextKF.nextPieces) ? nextKF.nextPieces : [],
+          holdPiece: nextKF.holdPiece || null
+        });
+      }
       
       lastKFTimeRef.current = nextKF.timestamp;
       
@@ -174,37 +186,47 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     while (executedIndexRef.current < inputEvents.length) {
       const event = inputEvents[executedIndexRef.current];
       
+      if (!event || typeof event.timestamp !== 'number') {
+        console.warn('[Replay] ⚠️ Invalid event at index', executedIndexRef.current);
+        executedIndexRef.current++;
+        continue;
+      }
+      
       if (event.timestamp > targetTime) {
         break; // 还未到达此事件的时间
       }
       
-      // 执行事件
-      if (event.success) { // 只执行成功的输入
-        switch (event.action) {
-          case 'moveLeft':
-            gameLogic.movePiece(-1, 0);
-            break;
-          case 'moveRight':
-            gameLogic.movePiece(1, 0);
-            break;
-          case 'softDrop':
-            gameLogic.movePiece(0, 1);
-            break;
-          case 'hardDrop':
-            gameLogic.hardDrop();
-            break;
-          case 'rotateClockwise':
-            gameLogic.rotatePieceClockwise();
-            break;
-          case 'rotateCounterclockwise':
-            gameLogic.rotatePieceCounterclockwise();
-            break;
-          case 'rotate180':
-            gameLogic.rotatePiece180();
-            break;
-          case 'hold':
-            gameLogic.holdCurrentPiece();
-            break;
+      // 执行事件 - 添加安全检查
+      if (event.success && gameLogic?.movePiece) { // 只执行成功的输入且游戏逻辑可用
+        try {
+          switch (event.action) {
+            case 'moveLeft':
+              gameLogic.movePiece(-1, 0);
+              break;
+            case 'moveRight':
+              gameLogic.movePiece(1, 0);
+              break;
+            case 'softDrop':
+              gameLogic.movePiece(0, 1);
+              break;
+            case 'hardDrop':
+              gameLogic.hardDrop();
+              break;
+            case 'rotateClockwise':
+              gameLogic.rotatePieceClockwise();
+              break;
+            case 'rotateCounterclockwise':
+              gameLogic.rotatePieceCounterclockwise();
+              break;
+            case 'rotate180':
+              gameLogic.rotatePiece180();
+              break;
+            case 'hold':
+              gameLogic.holdCurrentPiece();
+              break;
+          }
+        } catch (error) {
+          console.error('[Replay] Error executing action:', event.action, error);
         }
       }
       

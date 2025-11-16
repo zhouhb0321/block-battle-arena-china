@@ -191,8 +191,24 @@ export const useGameLogic = ({
   
   const spawnNewPiece = useCallback(() => {
     // ✅ Priority 1: Use pre-generated pieces from replay if available
-    if (preGeneratedPieceTypes && preGeneratedPieceTypes.length > totalPieces.current) {
+    if (Array.isArray(preGeneratedPieceTypes) && 
+        preGeneratedPieceTypes.length > 0 && 
+        totalPieces.current < preGeneratedPieceTypes.length) {
       const pieceType = preGeneratedPieceTypes[totalPieces.current];
+      
+      // ✅ 验证pieceType是有效的字符
+      if (!pieceType || typeof pieceType !== 'string') {
+        console.error('[useGameLogic] Invalid pieceType at index', totalPieces.current, ':', pieceType);
+        // 回退到随机生成
+        const randomPiece = generateRandomPiece();
+        const newPiece = createGamePiece(randomPiece);
+        setCurrentPiece(newPiece);
+        setCanHold(true);
+        setLockDelayResetCount(0);
+        totalPieces.current++;
+        return;
+      }
+      
       const newPiece = createNewPiece(pieceType as unknown as TetrominoType);
       
       setCurrentPiece(newPiece);
@@ -202,6 +218,7 @@ export const useGameLogic = ({
       const nextEnd = Math.min(nextStart + 6, preGeneratedPieceTypes.length);
       const nextFromSequence = preGeneratedPieceTypes
         .slice(nextStart, nextEnd)
+        .filter(type => type && typeof type === 'string') // ✅ 过滤无效类型
         .map(type => createNewPiece(type as unknown as TetrominoType));
       setNextPieces(nextFromSequence);
       
