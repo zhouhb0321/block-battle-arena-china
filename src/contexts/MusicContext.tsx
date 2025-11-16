@@ -28,6 +28,12 @@ interface MusicContextType {
   setVolume: (volume: number) => void;
   toggleMute: () => void;
   
+  // 播放列表控制
+  playNext: () => void;
+  playPrevious: () => void;
+  playlist: MusicTrack[];
+  currentTrackIndex: number;
+  
   // 优先级控制
   requestPlayback: (source: MusicSource, track?: MusicTrack) => void;
   releasePlayback: (source: MusicSource) => void;
@@ -46,6 +52,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
   const [muted, setMuted] = useState(false);
   const [currentSource, setCurrentSource] = useState<MusicSource | null>(null);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  
+  // 播放列表
+  const playlist: MusicTrack[] = [
+    { id: 'game-music', url: '/music/WotLK_main_title.mp3', title: 'Game Music' }
+  ];
   
   // 优先级定义：manual > replay > game
   const sourcePriority: Record<MusicSource, number> = {
@@ -155,6 +167,32 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [currentSource, pause]);
   
+  const playNext = useCallback(() => {
+    const nextIndex = (currentTrackIndex + 1) % playlist.length;
+    setCurrentTrackIndex(nextIndex);
+    const nextTrack = playlist[nextIndex];
+    
+    if (audioRef.current && nextTrack) {
+      audioRef.current.src = nextTrack.url;
+      audioRef.current.load();
+      setCurrentTrack(nextTrack);
+      play();
+    }
+  }, [currentTrackIndex, playlist, play]);
+  
+  const playPrevious = useCallback(() => {
+    const prevIndex = currentTrackIndex === 0 ? playlist.length - 1 : currentTrackIndex - 1;
+    setCurrentTrackIndex(prevIndex);
+    const prevTrack = playlist[prevIndex];
+    
+    if (audioRef.current && prevTrack) {
+      audioRef.current.src = prevTrack.url;
+      audioRef.current.load();
+      setCurrentTrack(prevTrack);
+      play();
+    }
+  }, [currentTrackIndex, playlist, play]);
+  
   return (
     <MusicContext.Provider
       value={{
@@ -167,6 +205,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         stop,
         setVolume,
         toggleMute,
+        playNext,
+        playPrevious,
+        playlist,
+        currentTrackIndex,
         requestPlayback,
         releasePlayback,
         currentSource
