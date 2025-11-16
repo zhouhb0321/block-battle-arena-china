@@ -10,7 +10,7 @@ import AchievementDisplay from '@/components/AchievementDisplay';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Pause, Play, Undo2, Redo2 } from 'lucide-react';
 import { useTetrisGame } from './TetrisGameProvider';
-import GameMusicManager from '@/components/GameMusicManager';
+import FloatingMusicControl from '@/components/FloatingMusicControl';
 import BackgroundWallpaper from '@/components/BackgroundWallpaper';
 
 // 时间格式化为 mm:ss.SSS
@@ -90,7 +90,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
       tabIndex={0}
       style={{ outline: 'none' }}
     >
-      <GameMusicManager 
+      <FloatingMusicControl 
         isGameActive={gameLogic.gameStarted}
         isGamePaused={gameLogic.isPaused} 
       />
