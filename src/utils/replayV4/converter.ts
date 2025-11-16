@@ -28,8 +28,12 @@ export function extractInputEvents(replay: V4ReplayData): Array<{
   position?: { x: number; y: number };
   rotation?: number;
 }> {
+  if (!replay || !Array.isArray(replay.events)) {
+    console.warn('[Converter] Invalid replay data for input events');
+    return [];
+  }
   return replay.events
-    .filter((e): e is V4InputEvent => e.type === ReplayOpcode.INPUT)
+    .filter((e): e is V4InputEvent => e && e.type === ReplayOpcode.INPUT)
     .map(event => {
       const actionString = convertInputActionToString(event.action);
       if (!actionString) return null;
@@ -49,28 +53,51 @@ export function extractInputEvents(replay: V4ReplayData): Array<{
  * 从 V4 回放中提取 LOCK 事件
  */
 export function extractLockEvents(replay: V4ReplayData) {
+  if (!replay || !Array.isArray(replay.events)) {
+    console.warn('[Converter] Invalid replay data for lock events');
+    return [];
+  }
   return replay.events
-    .filter((e): e is import('./types').V4LockEvent => e.type === ReplayOpcode.LOCK);
+    .filter((e): e is import('./types').V4LockEvent => e && e.type === ReplayOpcode.LOCK);
 }
 
 /**
  * 从 V4 回放中提取 KEYFRAME 事件
  */
 export function extractKeyframeEvents(replay: V4ReplayData) {
+  if (!replay || !Array.isArray(replay.events)) {
+    console.warn('[Converter] Invalid replay data for keyframe events');
+    return [];
+  }
   return replay.events
-    .filter((e): e is import('./types').V4KeyframeEvent => e.type === ReplayOpcode.KF);
+    .filter((e): e is import('./types').V4KeyframeEvent => e && e.type === ReplayOpcode.KF);
 }
 
 /**
  * 从 V4 回放中提取元数据
  */
 export function extractReplayMetadata(replay: V4ReplayData) {
+  // 安全提取元数据，添加默认值
+  const metadata = replay?.metadata as V4ReplayData['metadata'] | undefined;
+  if (!metadata) {
+    console.warn('[Converter] Missing replay metadata, using defaults');
+    return {
+      userId: 'unknown',
+      username: 'Unknown Player',
+      gameMode: 'classic',
+      seed: Math.random().toString(36),
+      initialPieceSequence: [],
+      recordedAt: new Date().toISOString(),
+      settings: { das: 100, arr: 10, sdf: 500 }
+    };
+  }
   return {
-    seed: replay.metadata.seed,
-    gameMode: replay.metadata.gameMode,
-    settings: replay.metadata.settings,
-    username: replay.metadata.username,
-    recordedAt: replay.metadata.recordedAt,
-    initialPieceSequence: replay.metadata.initialPieceSequence
+    userId: metadata.userId || 'unknown',
+    username: metadata.username || 'Unknown Player',
+    gameMode: metadata.gameMode || 'classic',
+    seed: metadata.seed || Math.random().toString(36),
+    initialPieceSequence: Array.isArray(metadata.initialPieceSequence) ? metadata.initialPieceSequence : [],
+    recordedAt: metadata.recordedAt || new Date().toISOString(),
+    settings: metadata.settings || { das: 100, arr: 10, sdf: 500 }
   };
 }
