@@ -69,6 +69,18 @@ export const useGameLogic = ({
   }, [currentPiece]);
   const [nextPieces, setNextPieces] = useState<GamePiece[]>([]);
   const [holdPiece, setHoldPiece] = useState<GamePiece | null>(null);
+
+  // Refs to hold the latest values of state, avoiding stale state in callbacks
+  const nextPiecesRef = useRef(nextPieces);
+  const holdPieceRef = useRef(holdPiece);
+
+  useEffect(() => {
+    nextPiecesRef.current = nextPieces;
+  }, [nextPieces]);
+
+  useEffect(() => {
+    holdPieceRef.current = holdPiece;
+  }, [holdPiece]);
   const [canHold, setCanHold] = useState(true);
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
@@ -395,8 +407,8 @@ export const useGameLogic = ({
         tSpinResult !== null,
         tSpinResult?.isMini || false,
         clearedBoard,
-        nextPieces.map(p => p.type.type),
-        holdPiece?.type?.type ?? null,
+        nextPiecesRef.current.map(p => p.type.type),
+        holdPieceRef.current?.type?.type ?? null,
         currentScore,
         newTotalLines,
         newLevel
