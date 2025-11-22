@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Settings, Volume2, VolumeX, Zap, Target, Flame } from 'lucide-react';
+import { X, Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Settings, Volume2, VolumeX, Zap, Target, Flame, FastForward, Rewind, SkipForward, SkipBack, Info } from 'lucide-react';
 import { useMusicContext } from '@/contexts/MusicContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -334,6 +334,21 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     setPlaybackSpeed(speed);
   }, []);
   
+  // 计算总时长
+  const totalDuration = replay.stats.duration;
+  const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
+  
+  // 快进/快退功能（5秒、10秒）
+  const handleSkipForward = useCallback((seconds: number) => {
+    const newTime = Math.min(currentTime + seconds * 1000, totalDuration);
+    handleSeek(newTime);
+  }, [currentTime, totalDuration, handleSeek]);
+  
+  const handleSkipBackward = useCallback((seconds: number) => {
+    const newTime = Math.max(currentTime - seconds * 1000, 0);
+    handleSeek(newTime);
+  }, [currentTime, handleSeek]);
+  
   // ✅ 快速跳转到关键时刻
   const jumpToNextMoment = useCallback(() => {
     const nextMoment = keyMoments.find(m => m.timestamp > currentTime);
@@ -352,17 +367,55 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     }
   }, [keyMoments, currentTime, handleSeek]);
   
-  // ✅ 键盘快捷键
+  // ✅ 增强的键盘快捷键
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === 'n') jumpToNextMoment();
-      if (e.key === 'p') jumpToPreviousMoment();
-      if (e.key === ' ') { e.preventDefault(); handlePlayPause(); }
+      // 防止在输入框中触发
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      switch (e.key) {
+        case 'n':
+          jumpToNextMoment();
+          break;
+        case 'p':
+          jumpToPreviousMoment();
+          break;
+        case ' ':
+          e.preventDefault();
+          handlePlayPause();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          handleSkipBackward(5);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          handleSkipForward(5);
+          break;
+        case '[':
+          e.preventDefault();
+          setPlaybackSpeed(prev => Math.max(0.25, prev - 0.25));
+          break;
+        case ']':
+          e.preventDefault();
+          setPlaybackSpeed(prev => Math.min(4, prev + 0.25));
+          break;
+        case 'Home':
+          e.preventDefault();
+          handleReset();
+          break;
+        case 'End':
+          e.preventDefault();
+          handleSeek(totalDuration);
+          break;
+      }
     };
     
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [jumpToNextMoment, jumpToPreviousMoment, handlePlayPause]);
+  }, [jumpToNextMoment, jumpToPreviousMoment, handlePlayPause, handleSkipForward, handleSkipBackward, handleReset, handleSeek, totalDuration]);
   
   // 格式化时间
   const formatTime = (ms: number) => {
@@ -372,9 +425,6 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
   };
-  
-  const totalDuration = replay.stats.duration;
-  const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
   
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -443,6 +493,10 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
             <Card className="w-full max-w-2xl p-4 space-y-4">
               {/* 进度条 */}
               <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm text-muted-foreground mb-1">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(totalDuration)}</span>
+                </div>
                 <div className="relative">
                   <Slider
                     value={[currentTime]}
@@ -479,42 +533,83 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
               
               {/* 播放按钮 */}
               <div className="flex items-center justify-center gap-2">
-                <Button variant="outline" size="icon" onClick={handleReset}>
+                <Button variant="outline" size="icon" onClick={handleReset} title="重置 (Home)">
                   <RotateCcw className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="icon" onClick={jumpToPreviousMoment} title="上一个关键时刻 (P)">
-                  <ChevronLeft className="w-4 h-4" />
+                
+                {/* 快退10秒 */}
+                <Button variant="outline" size="icon" onClick={() => handleSkipBackward(10)} title="后退10秒">
+                  <Rewind className="w-4 h-4" />
                 </Button>
-                <Button size="lg" onClick={handlePlayPause}>
+                
+                {/* 上一个关键时刻 */}
+                <Button variant="outline" size="icon" onClick={jumpToPreviousMoment} title="上一个关键时刻 (P)">
+                  <SkipBack className="w-4 h-4" />
+                </Button>
+                
+                {/* 播放/暂停 */}
+                <Button size="lg" onClick={handlePlayPause} title="播放/暂停 (Space)">
                   {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                 </Button>
+                
+                {/* 下一个关键时刻 */}
                 <Button variant="outline" size="icon" onClick={jumpToNextMoment} title="下一个关键时刻 (N)">
-                  <ChevronRight className="w-4 h-4" />
+                  <SkipForward className="w-4 h-4" />
+                </Button>
+                
+                {/* 快进10秒 */}
+                <Button variant="outline" size="icon" onClick={() => handleSkipForward(10)} title="前进10秒">
+                  <FastForward className="w-4 h-4" />
                 </Button>
               </div>
               
-              {/* 速度控制 */}
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-sm text-muted-foreground">速度:</span>
-                {[0.25, 0.5, 1, 2, 4].map(speed => (
-                  <Badge
-                    key={speed}
-                    variant={playbackSpeed === speed ? 'default' : 'outline'}
-                    className="cursor-pointer"
-                    onClick={() => handleSpeedChange(speed)}
-                  >
-                    {speed}x
-                  </Badge>
-                ))}
+              {/* 速度控制 - 增强显示 */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">播放速度:</span>
+                  <span className="text-sm font-medium">{playbackSpeed}x</span>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {[0.25, 0.5, 1, 2, 4].map(speed => (
+                    <Button
+                      key={speed}
+                      variant={playbackSpeed === speed ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleSpeedChange(speed)}
+                      className="w-full"
+                    >
+                      {speed < 1 ? '🐌' : speed > 1 ? '⚡' : ''} {speed}x
+                    </Button>
+                  ))}
+                </div>
+                <div className="text-xs text-muted-foreground text-center">
+                  使用 [ 和 ] 键调整速度
+                </div>
               </div>
+              
+              {/* 快捷键说明 */}
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer hover:text-foreground flex items-center gap-2">
+                  <Info className="w-3 h-3" />
+                  键盘快捷键
+                </summary>
+                <div className="mt-2 space-y-1 pl-5">
+                  <div>• <kbd className="px-1.5 py-0.5 bg-muted rounded">空格</kbd> - 播放/暂停</div>
+                  <div>• <kbd className="px-1.5 py-0.5 bg-muted rounded">←</kbd> / <kbd className="px-1.5 py-0.5 bg-muted rounded">→</kbd> - 后退/前进 5秒</div>
+                  <div>• <kbd className="px-1.5 py-0.5 bg-muted rounded">P</kbd> / <kbd className="px-1.5 py-0.5 bg-muted rounded">N</kbd> - 上一个/下一个关键时刻</div>
+                  <div>• <kbd className="px-1.5 py-0.5 bg-muted rounded">[</kbd> / <kbd className="px-1.5 py-0.5 bg-muted rounded">]</kbd> - 减速/加速</div>
+                  <div>• <kbd className="px-1.5 py-0.5 bg-muted rounded">Home</kbd> / <kbd className="px-1.5 py-0.5 bg-muted rounded">End</kbd> - 跳转到开始/结束</div>
+                </div>
+              </details>
             </Card>
           </div>
           
-          {/* 右侧：Next / 诊断 */}
+          {/* 右侧：Next / 关键时刻 / 诊断 */}
           <div className="lg:w-64 flex-shrink-0">
             <Tabs defaultValue="next" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="next">Next</TabsTrigger>
+                <TabsTrigger value="moments">关键</TabsTrigger>
                 <TabsTrigger value="diagnostics">诊断</TabsTrigger>
               </TabsList>
               
@@ -523,6 +618,38 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
                   nextPieces={gameLogic.nextPieces}
                   compact={false}
                 />
+              </TabsContent>
+              
+              <TabsContent value="moments" className="mt-2 space-y-2">
+                <div className="text-sm font-medium mb-2">关键时刻</div>
+                <div className="space-y-1 max-h-[400px] overflow-y-auto">
+                  {keyMoments.length === 0 ? (
+                    <div className="text-xs text-muted-foreground text-center py-4">
+                      暂无关键时刻
+                    </div>
+                  ) : (
+                    keyMoments.map((moment, idx) => {
+                      const Icon = moment.type === 'tetris' ? Zap : 
+                                   moment.type === 'tspin' ? Target : 
+                                   moment.type === 'combo' ? Flame : null;
+                      const isActive = Math.abs(currentTime - moment.timestamp) < 500;
+                      
+                      return (
+                        <Button
+                          key={idx}
+                          variant={isActive ? 'default' : 'outline'}
+                          size="sm"
+                          className="w-full justify-start gap-2"
+                          onClick={() => handleSeek(moment.timestamp)}
+                        >
+                          {Icon && <Icon className="w-3 h-3" />}
+                          <span className="flex-1 text-left truncate">{moment.label}</span>
+                          <span className="text-xs opacity-70">{formatTime(moment.timestamp)}</span>
+                        </Button>
+                      );
+                    })
+                  )}
+                </div>
               </TabsContent>
               
               <TabsContent value="diagnostics" className="mt-2">
