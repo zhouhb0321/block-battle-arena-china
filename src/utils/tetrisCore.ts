@@ -13,14 +13,20 @@ export const createEmptyBoard = (): number[][] => {
 
 // 检查给定的方块位置是否有效
 export const isValidPosition = (board: number[][], piece: GamePiece): boolean => {
-  // Defensive check: ensure piece is defined
-  if (!piece || !piece.type) {
-    console.error('[tetrisCore] isValidPosition: piece is undefined or invalid', piece);
+  // Defensive check: ensure piece is defined and has valid structure
+  if (!piece || !piece.type || !piece.type.shape) {
+    console.error('[tetrisCore] isValidPosition: piece structure is undefined or invalid', piece);
     return false;
   }
   
   const { type, x, y, rotation } = piece;
   const shape = type.shape;
+  
+  // Additional check: ensure shape is a valid array
+  if (!Array.isArray(shape) || shape.length === 0) {
+    console.error('[tetrisCore] isValidPosition: piece.type.shape is not a valid array', shape);
+    return false;
+  }
 
   for (let row = 0; row < shape.length; row++) {
     for (let col = 0; col < shape[row].length; col++) {

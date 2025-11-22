@@ -113,7 +113,7 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     replaySeed: metadata.seed,
     preGeneratedPieceTypes: preGeneratedPieces, // ✅ Pass recorded piece sequence
     enableReplayGravity: true, // ✅ 启用重力系统，让回放完整模拟游戏逻辑
-    replayClockControlled: false, // 通过执行 INPUT 事件控制，不需要虚拟时钟
+    replayClockControlled: true, // ✅ 启用虚拟时钟控制，确保时间同步
   });
   
   // 初始化游戏
@@ -278,6 +278,11 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
       lastFrameTimeRef.current = timestamp;
       
       const newTime = currentTime + deltaMs;
+      
+      // ✅ 驱动游戏逻辑的虚拟时钟（重力和锁定延迟）
+      if (gameLogic?.updateReplayTime) {
+        gameLogic.updateReplayTime(deltaMs);
+      }
       
       // 检查是否到达结尾
       if (executedIndexRef.current >= inputEvents.length) {
