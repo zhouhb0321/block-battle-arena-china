@@ -18,7 +18,8 @@ import {
   resetSevenBag,
   createNewPiece,
   performSRSRotation,
-  performSRS180Rotation
+  performSRS180Rotation,
+  TETROMINO_TYPES
 } from '@/utils/tetrisLogic';
 import { calculateScore } from '@/utils/scoringSystem';
 import type { 
@@ -718,6 +719,57 @@ export const useGameLogic = ({
 
   }, [createGamePiece, isReplay, gameMode.id, startRecording, replaySeed, clearLockDelayTimer, user]);
 
+  // ✅ Virtual clock update for replay mode - drives gravity and lock delay
+  const updateReplayTime = useCallback((deltaMs: number) => {
+    if (!replayClockControlled || !gameStarted || gameOver || isPaused) return;
+    
+    const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+    
+    // Update gravity accumulator
+    let newGravityAccumulator = gravityAccumulatorMs + deltaMs;
+    
+    // Process gravity drops
+    while (newGravityAccumulator >= dropInterval && currentPieceRef.current) {
+      const piece = currentPieceRef.current;
+      const newPiece = { ...piece, y: piece.y + 1 };
+      
+      if (isValidPosition(boardRef.current, newPiece)) {
+        // Piece can move down
+        setCurrentPiece(newPiece);
+        currentPieceRef.current = newPiece;
+        newGravityAccumulator -= dropInterval;
+        
+        // Track move for T-spin detection
+        lastMoveRef.current = 'drop';
+        lastWasKickedRef.current = false;
+      } else {
+        // Piece hit ground, start lock delay
+        if (lockDelayRemainingMs <= 0) {
+          setLockDelayRemainingMs(LOCK_DELAY_TIME);
+        }
+        newGravityAccumulator = 0;
+        break;
+      }
+    }
+    
+    setGravityAccumulatorMs(newGravityAccumulator);
+    
+    // Update lock delay
+    if (lockDelayRemainingMs > 0) {
+      const newLockDelayRemaining = Math.max(0, lockDelayRemainingMs - deltaMs);
+      setLockDelayRemainingMs(newLockDelayRemaining);
+      
+      // Lock piece when delay expires
+      if (newLockDelayRemaining === 0 && currentPieceRef.current) {
+        const piece = currentPieceRef.current;
+        const testPiece = { ...piece, y: piece.y + 1 };
+        if (!isValidPosition(boardRef.current, testPiece)) {
+          handlePieceLock(piece);
+        }
+      }
+    }
+  }, [replayClockControlled, gameStarted, gameOver, isPaused, level, gravityAccumulatorMs, lockDelayRemainingMs, handlePieceLock]);
+
   // Virtual clock tick for replay mode - synchronous processing with refs
   const tickReplay = useCallback((deltaMs: number) => {
     if (!replayClockControlled || !gameStarted || gameOver || isPaused) return;
@@ -917,7 +969,6 @@ export const useGameLogic = ({
     if (state.lines !== undefined) setLines(state.lines);
     if (state.level !== undefined) setLevel(state.level);
     if (state.nextPieces !== undefined) {
-      const { TETROMINO_TYPES } = require('./pieceGeneration');
       const newNextPieces = state.nextPieces
         .map(pieceTypeStr => TETROMINO_TYPES[pieceTypeStr])
         .filter(Boolean)
@@ -928,7 +979,6 @@ export const useGameLogic = ({
       if (state.holdPiece === null) {
         setHoldPiece(null);
       } else {
-        const { TETROMINO_TYPES } = require('./pieceGeneration');
         const pieceType = TETROMINO_TYPES[state.holdPiece];
         if (pieceType) {
           setHoldPiece(createGamePiece(pieceType));
@@ -978,5 +1028,6 @@ export const useGameLogic = ({
     tickReplay,
     forcePlace,
     forceSetGameState, // ✅ Export for KEYFRAME correction
+    updateReplayTime, // ✅ Export for virtual clock control
   };
 };
