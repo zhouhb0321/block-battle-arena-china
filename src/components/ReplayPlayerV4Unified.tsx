@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Settings, Volume2, VolumeX, Zap, Target, Flame, FastForward, Rewind, SkipForward, SkipBack, Info } from 'lucide-react';
+import { X, Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Settings, Volume2, VolumeX, Zap, Target, Flame, FastForward, Rewind, SkipForward, SkipBack, Info, PictureInPicture } from 'lucide-react';
 import { useMusicContext } from '@/contexts/MusicContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import { useReplayDiagnosticsContext } from '@/contexts/ReplayDiagnosticsContext
 import EnhancedGameBoard from './EnhancedGameBoard';
 import HoldPieceDisplay from './HoldPieceDisplay';
 import NextPiecePreview from './NextPiecePreview';
+import { PictureInPictureReplay } from './PictureInPictureReplay';
 import type { GameMode } from '@/utils/gameTypes';
 
 interface ReplayPlayerV4UnifiedProps {
@@ -63,6 +64,7 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showDetails, setShowDetails] = useState(false);
   const [currentMomentIndex, setCurrentMomentIndex] = useState(-1);
+  const [isPipMode, setIsPipMode] = useState(false);
   
   // 执行索引追踪
   const executedIndexRef = useRef(0);
@@ -426,6 +428,38 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
   };
   
+  // 画中画模式切换
+  const handleTogglePip = useCallback(() => {
+    setIsPipMode(prev => !prev);
+  }, []);
+  
+  const handlePipClose = useCallback(() => {
+    setIsPipMode(false);
+  }, []);
+  
+  const handlePipMaximize = useCallback(() => {
+    setIsPipMode(false);
+  }, []);
+  
+  // 渲染画中画模式
+  if (isPipMode) {
+    return (
+      <PictureInPictureReplay
+        board={gameLogic.board}
+        currentPiece={gameLogic.currentPiece}
+        ghostPiece={gameLogic.ghostPiece}
+        score={gameLogic.score}
+        lines={gameLogic.lines}
+        level={gameLogic.level}
+        isPlaying={isPlaying}
+        playbackSpeed={playbackSpeed}
+        currentTime={currentTime}
+        onClose={handlePipClose}
+        onMaximize={handlePipMaximize}
+      />
+    );
+  }
+  
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
       <div className="w-full max-w-7xl bg-card rounded-lg shadow-2xl border border-border">
@@ -438,6 +472,14 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleTogglePip}
+              title="画中画模式"
+            >
+              <PictureInPicture className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => setShowDetails(!showDetails)}>
               <Settings className="w-4 h-4" />
             </Button>
