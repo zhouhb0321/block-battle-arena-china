@@ -35,7 +35,8 @@ const PiecePreview: React.FC<PiecePreviewProps> = ({
   const actualCellSize = getCellSize();
 
   const renderPiece = () => {
-    if (!piece) {
+    // ✅ 防御性检查：确保 piece 和 piece.shape 存在
+    if (!piece || !piece.shape || !Array.isArray(piece.shape)) {
       return (
         <div 
           className="bg-gray-700/30 border border-gray-600 rounded-sm"

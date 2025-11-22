@@ -32,9 +32,16 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
   const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
 
   const createExtendedBoard = () => {
+    // ✅ 防御性检查：确保 board 存在且是有效数组
+    if (!board || !Array.isArray(board) || board.length === 0) {
+      console.warn('[EnhancedGameBoard] Invalid board data', board);
+      // 返回空棋盘
+      return Array(23).fill(null).map(() => Array(10).fill(0));
+    }
+    
     const extendedBoard = board.map(row => [...row]);
 
-    if (ghostPiece && settings.enableGhost) {
+    if (ghostPiece && settings.enableGhost && ghostPiece.type && ghostPiece.type.shape) {
       const shape = ghostPiece.type.shape;
       for (let row = 0; row < shape.length; row++) {
         for (let col = 0; col < shape[row].length; col++) {
@@ -52,7 +59,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
       }
     }
 
-    if (currentPiece) {
+    if (currentPiece && currentPiece.type && currentPiece.type.shape) {
       const shape = currentPiece.type.shape;
       for (let row = 0; row < shape.length; row++) {
         for (let col = 0; col < shape[row].length; col++) {
