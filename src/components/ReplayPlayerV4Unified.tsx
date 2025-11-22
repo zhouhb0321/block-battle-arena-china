@@ -494,6 +494,16 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
           </div>
         </div>
         
+        {/* ✅ 等待游戏初始化 */}
+        {!gameLogic.gameInitialized ? (
+          <div className="flex items-center justify-center p-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">正在初始化回放...</p>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* 主内容 */}
         <div className="flex flex-col lg:flex-row gap-4 p-4">
           {/* 左侧：Hold */}
@@ -780,6 +790,8 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
               </TabsContent>
             </Tabs>
           </Card>
+        )}
+          </>
         )}
       </div>
     </div>
