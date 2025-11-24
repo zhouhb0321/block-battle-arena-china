@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Settings, Volume2, VolumeX, Zap, Target, Flame, FastForward, Rewind, SkipForward, SkipBack, Info, PictureInPicture } from 'lucide-react';
+import { X, Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Settings, Volume2, VolumeX, Zap, Target, Flame, FastForward, Rewind, SkipForward, SkipBack, Info, PictureInPicture, BarChart3 } from 'lucide-react';
 import { useMusicContext } from '@/contexts/MusicContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { extractInputEvents, extractReplayMetadata, extractLockEvents, extractKe
 import { extractKeyMoments, calculateReplayStats } from '@/utils/replayV4/eventExtractor';
 import { ReplayConsistencyDashboard } from './ReplayConsistencyDashboard';
 import { ReplaySequenceValidator } from './ReplaySequenceValidator';
+import { ReplayAnalytics } from './ReplayAnalytics';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { useReplayDiagnosticsContext } from '@/contexts/ReplayDiagnosticsContext';
@@ -694,9 +695,10 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
           {/* 右侧：Next / 关键时刻 / 诊断 */}
           <div className="lg:w-64 flex-shrink-0">
             <Tabs defaultValue="next" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="next">Next</TabsTrigger>
                 <TabsTrigger value="moments">关键</TabsTrigger>
+                <TabsTrigger value="analytics">分析</TabsTrigger>
                 <TabsTrigger value="diagnostics">诊断</TabsTrigger>
               </TabsList>
               
@@ -737,6 +739,10 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
                     })
                   )}
                 </div>
+              </TabsContent>
+              
+              <TabsContent value="analytics" className="mt-2">
+                <ReplayAnalytics replay={replay} />
               </TabsContent>
               
               <TabsContent value="diagnostics" className="mt-2">

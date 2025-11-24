@@ -411,45 +411,57 @@ export type Database = {
       }
       battle_rooms: {
         Row: {
+          allow_spectators: boolean | null
           created_at: string
           created_by: string
           current_players: number
+          custom_settings: Json | null
           finished_at: string | null
           id: string
           max_players: number
           mode: string
           room_code: string
+          room_password: string | null
           settings: Json | null
+          spectator_count: number | null
           started_at: string | null
           status: string
           team_mode: boolean | null
           team_size: number | null
         }
         Insert: {
+          allow_spectators?: boolean | null
           created_at?: string
           created_by: string
           current_players?: number
+          custom_settings?: Json | null
           finished_at?: string | null
           id?: string
           max_players?: number
           mode: string
           room_code: string
+          room_password?: string | null
           settings?: Json | null
+          spectator_count?: number | null
           started_at?: string | null
           status?: string
           team_mode?: boolean | null
           team_size?: number | null
         }
         Update: {
+          allow_spectators?: boolean | null
           created_at?: string
           created_by?: string
           current_players?: number
+          custom_settings?: Json | null
           finished_at?: string | null
           id?: string
           max_players?: number
           mode?: string
           room_code?: string
+          room_password?: string | null
           settings?: Json | null
+          spectator_count?: number | null
           started_at?: string | null
           status?: string
           team_mode?: boolean | null
@@ -1216,6 +1228,83 @@ export type Database = {
             columns: ["replay_id"]
             isOneToOne: false
             referencedRelation: "compressed_replays"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          message_type: string | null
+          room_id: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          message_type?: string | null
+          room_id: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          message_type?: string | null
+          room_id?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_room"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_spectators: {
+        Row: {
+          id: string
+          joined_at: string | null
+          room_id: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string | null
+          room_id: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string | null
+          room_id?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_spectators_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rooms"
             referencedColumns: ["id"]
           },
         ]
