@@ -12,6 +12,8 @@ import VisualTab from '@/components/settings/VisualTab';
 import MusicTab from '@/components/settings/MusicTab';
 import BlockSkinTab from '@/components/settings/BlockSkinTab';
 import SettingsHints from '@/components/settings/SettingsHints';
+import HandlingPreview from '@/components/settings/HandlingPreview';
+import InputGraph from '@/components/settings/InputGraph';
 import { useKeyRecording } from '@/components/settings/useKeyRecording';
 import { useSettingsBinding } from '@/hooks/useSettingsBinding';
 
@@ -83,10 +85,16 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
         </TabsList>
 
         <TabsContent value="timing" className="space-y-4">
-          <TimingTab 
-            settings={settings}
-            onSettingChange={updateSetting}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <TimingTab 
+              settings={settings}
+              onSettingChange={updateSetting}
+            />
+            <HandlingPreview settings={settings} />
+          </div>
+          
+          {/* Input Graph - Collapsible */}
+          <InputGraph />
         </TabsContent>
 
         <TabsContent value="controls" className="space-y-4">
