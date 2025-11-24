@@ -261,6 +261,48 @@ export type Database = {
         }
         Relationships: []
       }
+      badges: {
+        Row: {
+          badge_id: string
+          category: string
+          created_at: string | null
+          description_en: string
+          description_zh: string
+          icon_url: string | null
+          id: string
+          name_en: string
+          name_zh: string
+          rarity: string
+          unlock_condition: Json
+        }
+        Insert: {
+          badge_id: string
+          category: string
+          created_at?: string | null
+          description_en: string
+          description_zh: string
+          icon_url?: string | null
+          id?: string
+          name_en: string
+          name_zh: string
+          rarity: string
+          unlock_condition: Json
+        }
+        Update: {
+          badge_id?: string
+          category?: string
+          created_at?: string | null
+          description_en?: string
+          description_zh?: string
+          icon_url?: string | null
+          id?: string
+          name_en?: string
+          name_zh?: string
+          rarity?: string
+          unlock_condition?: Json
+        }
+        Relationships: []
+      }
       battle_participants: {
         Row: {
           eliminated_at: string | null
@@ -1282,6 +1324,41 @@ export type Database = {
           username_changes_used?: number | null
         }
         Relationships: []
+      }
+      user_badges: {
+        Row: {
+          badge_id: string
+          id: string
+          is_featured: boolean | null
+          progress: Json | null
+          unlocked_at: string | null
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          id?: string
+          is_featured?: boolean | null
+          progress?: Json | null
+          unlocked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          id?: string
+          is_featured?: boolean | null
+          progress?: Json | null
+          unlocked_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["badge_id"]
+          },
+        ]
       }
       user_best_records: {
         Row: {
