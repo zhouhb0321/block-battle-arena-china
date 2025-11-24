@@ -831,15 +831,19 @@ export type Database = {
           games_played: number
           games_won: number
           id: string
+          last_played_at: string | null
           longest_win_streak: number
           matches_played: number
           peak_rating: number
           promotion_protection_games: number
+          provisional: boolean | null
           rank_tier: string
           rating: number
+          rating_deviation: number | null
           season_id: string
           updated_at: string
           user_id: string
+          volatility: number | null
           win_streak: number
         }
         Insert: {
@@ -850,15 +854,19 @@ export type Database = {
           games_played?: number
           games_won?: number
           id?: string
+          last_played_at?: string | null
           longest_win_streak?: number
           matches_played?: number
           peak_rating?: number
           promotion_protection_games?: number
+          provisional?: boolean | null
           rank_tier?: string
           rating?: number
+          rating_deviation?: number | null
           season_id: string
           updated_at?: string
           user_id: string
+          volatility?: number | null
           win_streak?: number
         }
         Update: {
@@ -869,15 +877,19 @@ export type Database = {
           games_played?: number
           games_won?: number
           id?: string
+          last_played_at?: string | null
           longest_win_streak?: number
           matches_played?: number
           peak_rating?: number
           promotion_protection_games?: number
+          provisional?: boolean | null
           rank_tier?: string
           rating?: number
+          rating_deviation?: number | null
           season_id?: string
           updated_at?: string
           user_id?: string
+          volatility?: number | null
           win_streak?: number
         }
         Relationships: [

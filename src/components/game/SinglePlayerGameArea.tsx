@@ -68,9 +68,8 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     let animationFrameId: number;
 
     const updateTimer = () => {
-      if (gameLogic.gameStarted && !gameLogic.isPaused && !gameLogic.gameOver && gameLogic.gameStartTime.current) {
-        const elapsedMs = Date.now() - gameLogic.gameStartTime.current;
-        setDisplayTimeMs(elapsedMs);
+      if (gameLogic.gameStarted && !gameLogic.isPaused && !gameLogic.gameOver) {
+        setDisplayTimeMs(gameLogic.time * 1000);
       }
       animationFrameId = requestAnimationFrame(updateTimer);
     };
@@ -78,7 +77,7 @@ const SinglePlayerGameArea: React.FC<SinglePlayerGameAreaProps> = ({
     animationFrameId = requestAnimationFrame(updateTimer);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [gameLogic.gameStarted, gameLogic.isPaused, gameLogic.gameOver, gameLogic.gameStartTime]);
+  }, [gameLogic.gameStarted, gameLogic.isPaused, gameLogic.gameOver, gameLogic.time]);
 
   // 10秒倒计时警告检查
   const showTimeWarning = remainingTimeMs !== null && remainingTimeMs <= 10000 && remainingTimeMs > 0;

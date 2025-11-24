@@ -1059,6 +1059,7 @@ export const useGameLogic = ({
     ghostPiece,
     finesseStats,
     lastFinesseError,
+    isB2B,
     startGame,
     pauseGame: () => setIsPaused(true),
     resumeGame: () => setIsPaused(false),
@@ -1067,48 +1068,17 @@ export const useGameLogic = ({
     rotatePieceClockwise,
     rotatePieceCounterclockwise,
     rotatePiece180,
-    hardDrop,
     holdCurrentPiece,
-    removeAchievement,
-    isB2B,
+    spawnNewPiece,
     lockPiece,
-    updateReplayTime,
+    hardDrop,
+    initializeForCountdown: startGame,
+    removeAchievement,
+    isValidPosition,
+    getGameStats: () => ({ score, lines, level, time, pps, apm, gameMode: gameMode.id }),
     tickReplay,
     forcePlace,
     forceSetGameState,
-    canUndo: isUndoRedoEnabled && gameStateManager.canUndo(),
-    canRedo: isUndoRedoEnabled && gameStateManager.canRedo(),
-    undo: () => {
-      if (isUndoRedoEnabled) {
-        const previousState = gameStateManager.undo();
-        if (previousState) {
-          setBoard(previousState.board);
-          setCurrentPiece(previousState.currentPiece);
-          setNextPieces(previousState.nextPieces);
-          setHoldPiece(previousState.holdPiece);
-          setScore(previousState.score);
-          setLines(previousState.lines);
-          setLevel(previousState.level);
-          setComboCount(previousState.comboCount);
-          setIsB2B(previousState.isB2B);
-        }
-      }
-    },
-    redo: () => {
-      if (isUndoRedoEnabled) {
-        const nextState = gameStateManager.redo();
-        if (nextState) {
-          setBoard(nextState.board);
-          setCurrentPiece(nextState.currentPiece);
-          setNextPieces(nextState.nextPieces);
-          setHoldPiece(nextState.holdPiece);
-          setScore(nextState.score);
-          setLines(nextState.lines);
-          setLevel(nextState.level);
-          setComboCount(nextState.comboCount);
-          setIsB2B(nextState.isB2B);
-        }
-      }
-    }
+    updateReplayTime
   };
 };
