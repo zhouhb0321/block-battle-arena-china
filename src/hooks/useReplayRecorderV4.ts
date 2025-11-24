@@ -61,15 +61,46 @@ export function useReplayRecorderV4() {
     lockCountRef.current = 0;
     lastKeyframeTimeRef.current = 0;  // Reset KEYFRAME time tracking
     
-    // ✅ Initialize with extended piece sequence (at least 100 pieces)
-    fullPieceSequenceRef.current = initialPieceSequence.slice(0, 100);
+    // ✅ 过滤并验证方块类型
+    const validTypes = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+    const sanitizedSequence = initialPieceSequence
+      .map(p => {
+        if (typeof p === 'string') {
+          const cleaned = p.trim().charAt(0).toUpperCase();
+          return validTypes.includes(cleaned) ? cleaned : null;
+        } else if (p && typeof p === 'object') {
+          // 如果是对象，尝试提取 type 或 name
+          const type = (p as any).type || (p as any).name;
+          if (typeof type === 'string') {
+            const cleaned = type.charAt(0).toUpperCase();
+            return validTypes.includes(cleaned) ? cleaned : null;
+          }
+        }
+        console.warn('[RecorderV4] ⚠️ Invalid piece type detected:', p);
+        return null;
+      })
+      .filter(Boolean) as string[];
+    
+    // ✅ Initialize with sanitized piece sequence (at least 100 pieces)
+    fullPieceSequenceRef.current = sanitizedSequence.slice(0, 100);
+    
+    if (sanitizedSequence.length < 50) {
+      console.warn('[RecorderV4] ⚠️ Initial sequence too short:', sanitizedSequence.length);
+    }
+    
+    console.log('[RecorderV4] ✅ Piece sequence sanitized:', {
+      originalLength: initialPieceSequence.length,
+      sanitizedLength: sanitizedSequence.length,
+      invalidCount: initialPieceSequence.length - sanitizedSequence.length,
+      first20: sanitizedSequence.slice(0, 20).join('')
+    });
     
     metadataRef.current = {
       userId,
       username,
       gameMode,
       seed,
-      initialPieceSequence: initialPieceSequence.slice(0, 100),  // ✅ Store at least 100 pieces
+      initialPieceSequence: sanitizedSequence.slice(0, 100),  // ✅ Store sanitized sequence
       recordedAt: new Date().toISOString(),
       settings: {
         das: settings.das,

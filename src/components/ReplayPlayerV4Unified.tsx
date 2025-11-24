@@ -50,9 +50,39 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
       console.warn('[ReplayV4Unified] ⚠️ No piece sequence found in metadata');
       return [];
     }
-    console.log('[ReplayV4Unified] 🎮 Pre-generated pieces loaded:', pieceSequence.length, 'pieces');
-    console.log('[ReplayV4Unified] 📋 First 20 pieces:', pieceSequence.slice(0, 20).join(''));
-    return pieceSequence;
+    
+    // ✅ 增强容错：过滤并验证方块类型
+    const validTypes = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+    const sanitized = pieceSequence
+      .map((t: any) => {
+        if (typeof t === 'string') {
+          const cleaned = t.trim().charAt(0).toUpperCase();
+          return validTypes.includes(cleaned) ? cleaned : null;
+        } else if (t && typeof t === 'object') {
+          // 尝试提取对象中的 type 或 name
+          const type = t.type || t.name;
+          if (typeof type === 'string') {
+            const cleaned = type.charAt(0).toUpperCase();
+            return validTypes.includes(cleaned) ? cleaned : null;
+          }
+        }
+        return null;
+      })
+      .filter(Boolean) as string[];
+    
+    console.log('[ReplayV4Unified] ✅ Piece sequence sanitized:', {
+      originalLength: pieceSequence.length,
+      sanitizedLength: sanitized.length,
+      invalidCount: pieceSequence.length - sanitized.length,
+      first20: sanitized.slice(0, 20).join(''),
+      last20: sanitized.slice(-20).join('')
+    });
+    
+    if (sanitized.length < 50) {
+      console.error('[ReplayV4Unified] ⚠️ Insufficient valid pieces:', sanitized.length);
+    }
+    
+    return sanitized;
   }, [metadata]);
   
   // Track actually spawned pieces during replay for validation
