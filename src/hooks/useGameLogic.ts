@@ -683,14 +683,46 @@ export const useGameLogic = ({
       if (user && user.id) {
         console.log('[V4] Starting replay recording for mode:', gameMode.id, 'user:', user.id);
         
-        // Get initial piece sequence (first 2 bags = 14 pieces)
-        const initialSequence = initialPieces.map(p => p.type);
-        const nextSequence = Array.from({ length: 7 }, () => generateRandomPiece());
+        // ✅ 修复：正确提取方块类型字符串
+        const initialSequence = initialPieces.map(p => {
+          // p.type 是 TetrominoType 对象，需要提取 type 或 name 字段
+          if (p.type && typeof p.type === 'object') {
+            return p.type.type || p.type.name || 'I';
+          }
+          return String(p.type || 'I').charAt(0).toUpperCase();
+        });
+        
+        // ✅ 生成额外的方块序列，并正确提取类型字符串
+        const nextSequence = Array.from({ length: 7 }, () => {
+          const piece = generateRandomPiece();
+          if (piece && typeof piece === 'object') {
+            return piece.type || piece.name || 'I';
+          }
+          return String(piece || 'I').charAt(0).toUpperCase();
+        });
+        
         const fullSequence = [...initialSequence, ...nextSequence];
+        
+        // ✅ 扩展到至少 100 个方块，确保长局游戏不会耗尽
+        const extendedSequence = [...fullSequence];
+        while (extendedSequence.length < 100) {
+          const piece = generateRandomPiece();
+          if (piece && typeof piece === 'object') {
+            extendedSequence.push(piece.type || piece.name || 'I');
+          } else {
+            extendedSequence.push(String(piece || 'I').charAt(0).toUpperCase());
+          }
+        }
+        
+        console.log('[V4] ✅ Generated piece sequence:', {
+          length: extendedSequence.length,
+          first20: extendedSequence.slice(0, 20).join(''),
+          last20: extendedSequence.slice(-20).join('')
+        });
         
         startRecording(
           useSeed,
-          fullSequence.slice(0, 14).map(p => String(p)),
+          extendedSequence, // ✅ 直接传递字符串数组，不再使用 String()
           {
             das: 167,
             arr: 33,
