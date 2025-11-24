@@ -10,12 +10,16 @@ interface TimingTabProps {
   onSettingChange: (key: string, value: any) => void;
 }
 
-// ✅ 预设配置
+// ✅ 预设配置（包含TETR.IO等流行设置）
 const TIMING_PRESETS = {
   beginner: { das: 150, arr: 50, sdf: 10, name: '初学者' },
   standard: { das: 133, arr: 20, sdf: 20, name: '标准' },
   advanced: { das: 100, arr: 10, sdf: 30, name: '进阶' },
-  pro: { das: 50, arr: 0, sdf: 40, name: '专业' }
+  pro: { das: 50, arr: 0, sdf: 40, name: '专业' },
+  tetrioDefault: { das: 133, arr: 1, sdf: 21, name: 'TETR.IO' },
+  jstrisFast: { das: 100, arr: 0, sdf: 40, name: 'Jstris' },
+  guideline: { das: 133, arr: 20, sdf: 20, name: 'Guideline' },
+  hyperTap: { das: 0, arr: 0, sdf: 1, name: 'Hypertap' }
 };
 
 const TimingTab: React.FC<TimingTabProps> = ({ settings, onSettingChange }) => {
@@ -35,14 +39,14 @@ const TimingTab: React.FC<TimingTabProps> = ({ settings, onSettingChange }) => {
         {/* ✅ 预设选择 */}
         <div className="space-y-2">
           <Label>快速预设</Label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {(Object.keys(TIMING_PRESETS) as Array<keyof typeof TIMING_PRESETS>).map(key => (
               <Button
                 key={key}
                 variant="outline"
                 size="sm"
                 onClick={() => applyPreset(key)}
-                className="justify-start"
+                className="justify-start text-xs"
               >
                 {TIMING_PRESETS[key].name}
               </Button>

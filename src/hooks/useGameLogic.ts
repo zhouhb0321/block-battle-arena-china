@@ -22,6 +22,8 @@ import {
   TETROMINO_TYPES
 } from '@/utils/tetrisLogic';
 import { calculateScore } from '@/utils/scoringSystem';
+import { calculateFinesse, updateFinesseStats } from '@/utils/finesseSystem';
+import type { FinesseStats } from '@/utils/finesseSystem';
 import type { 
   Board, 
   TetrominoType, 
@@ -87,6 +89,14 @@ export const useGameLogic = ({
   const [isB2B, setIsB2B] = useState(0);
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [phase, setPhase] = useState<'ready' | 'countdown' | 'playing' | 'gameOver'>('ready');
+  
+  // Finesse tracking
+  const [finesseStats, setFinesseStats] = useState<FinesseStats>({ totalPieces: 0, totalErrors: 0, efficiency: 100 });
+  const [lastFinesseError, setLastFinesseError] = useState(0);
+  const pieceStartX = useRef<number>(4);
+  const pieceStartRotation = useRef<number>(0);
+  const movementCount = useRef<number>(0);
+  const rotationCount = useRef<number>(0);
   
   // Replay clock control states
   const [gravityAccumulatorMs, setGravityAccumulatorMs] = useState(0);
@@ -677,6 +687,13 @@ export const useGameLogic = ({
     setCurrentPiece(initialPieces[0]);
     setNextPieces(initialPieces.slice(1));
     
+    // Initialize finesse tracking for first piece
+    pieceStartX.current = initialPieces[0].x;
+    pieceStartRotation.current = initialPieces[0].rotation;
+    movementCount.current = 0;
+    rotationCount.current = 0;
+    setFinesseStats({ totalPieces: 0, totalErrors: 0, efficiency: 100 });
+    
     // Start V4 recording for non-endless modes (and non-replay modes)
     if (!isReplay && gameMode.id !== 'endless') {
       // Only start recording if user is authenticated
@@ -1040,6 +1057,8 @@ export const useGameLogic = ({
     isNewRecord,
     phase,
     ghostPiece,
+    finesseStats,
+    lastFinesseError,
     startGame,
     pauseGame: () => setIsPaused(true),
     resumeGame: () => setIsPaused(false),
@@ -1048,18 +1067,48 @@ export const useGameLogic = ({
     rotatePieceClockwise,
     rotatePieceCounterclockwise,
     rotatePiece180,
-    holdCurrentPiece,
-    spawnNewPiece,
-    lockPiece,
     hardDrop,
-    initializeForCountdown: startGame,
+    holdCurrentPiece,
     removeAchievement,
-    isValidPosition,
-    gameStartTime,
-    getGameStats: () => ({ score, lines, level, time, pps, apm, gameMode: gameMode.id }),
+    isB2B,
+    lockPiece,
+    updateReplayTime,
     tickReplay,
     forcePlace,
-    forceSetGameState, // ✅ Export for KEYFRAME correction
-    updateReplayTime, // ✅ Export for virtual clock control
+    forceSetGameState,
+    canUndo: isUndoRedoEnabled && gameStateManager.canUndo(),
+    canRedo: isUndoRedoEnabled && gameStateManager.canRedo(),
+    undo: () => {
+      if (isUndoRedoEnabled) {
+        const previousState = gameStateManager.undo();
+        if (previousState) {
+          setBoard(previousState.board);
+          setCurrentPiece(previousState.currentPiece);
+          setNextPieces(previousState.nextPieces);
+          setHoldPiece(previousState.holdPiece);
+          setScore(previousState.score);
+          setLines(previousState.lines);
+          setLevel(previousState.level);
+          setComboCount(previousState.comboCount);
+          setIsB2B(previousState.isB2B);
+        }
+      }
+    },
+    redo: () => {
+      if (isUndoRedoEnabled) {
+        const nextState = gameStateManager.redo();
+        if (nextState) {
+          setBoard(nextState.board);
+          setCurrentPiece(nextState.currentPiece);
+          setNextPieces(nextState.nextPieces);
+          setHoldPiece(nextState.holdPiece);
+          setScore(nextState.score);
+          setLines(nextState.lines);
+          setLevel(nextState.level);
+          setComboCount(nextState.comboCount);
+          setIsB2B(nextState.isB2B);
+        }
+      }
+    }
   };
 };

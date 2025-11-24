@@ -161,6 +161,7 @@ export const useKeyboardControls = ({
       const timeSinceLastMove = timestamp - lastMove;
       
       // DAS (Delayed Auto Shift) 和 ARR (Auto Repeat Rate) 逻辑
+      // 使用 performance.now() 提高精度
       if (heldTime > gameSettings.das) {
         const arrInterval = gameSettings.arr === 0 ? 0 : Math.max(gameSettings.arr, 1);
         

@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Share2, Pause, Play, Settings } from 'lucide-react';
 import { getB2BDisplayText } from '@/utils/b2bSystem';
 import { getGravityInfo } from '@/utils/gravitySystem';
+import { FinesseIndicator } from '@/components/FinesseIndicator';
+import type { FinesseStats } from '@/utils/finesseSystem';
 
 interface GameInfoProps {
   username: string;
@@ -21,6 +23,8 @@ interface GameInfoProps {
   rank?: string;
   b2b?: number;
   gameStarted?: boolean;
+  finesseStats?: FinesseStats;
+  lastFinesseError?: number;
 }
 
 const GameInfo: React.FC<GameInfoProps> = ({
@@ -39,7 +43,9 @@ const GameInfo: React.FC<GameInfoProps> = ({
   combo,
   rank,
   b2b = 0,
-  gameStarted = false
+  gameStarted = false,
+  finesseStats,
+  lastFinesseError = 0
 }) => {
   // 获取重力信息
   const gravityInfo = getGravityInfo(lines);
@@ -84,6 +90,13 @@ const GameInfo: React.FC<GameInfoProps> = ({
             <div className="text-orange-400 font-bold">
               {getB2BDisplayText(b2b)}
             </div>
+          )}
+          {finesseStats && (
+            <FinesseIndicator 
+              finesseStats={finesseStats} 
+              lastFinesseError={lastFinesseError}
+              className="mt-1"
+            />
           )}
           {mode === 'multi' && (
             <>
