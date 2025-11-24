@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, Play, Pause, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Play, Pause, RotateCcw, ChevronLeft, ChevronRight, TrendingUp, Activity, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { V4ReplayData } from '@/utils/replayV4/types';
-import { extractInputEvents, extractReplayMetadata } from '@/utils/replayV4/converter';
+import { extractInputEvents, extractReplayMetadata, extractLockEvents } from '@/utils/replayV4/converter';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import EnhancedGameBoard from './EnhancedGameBoard';
 import HoldPieceDisplay from './HoldPieceDisplay';
@@ -26,8 +27,10 @@ export const DualReplayComparison: React.FC<DualReplayComparisonProps> = ({
   // 提取两个回放的数据
   const inputEvents1 = useMemo(() => extractInputEvents(replay1), [replay1]);
   const metadata1 = useMemo(() => extractReplayMetadata(replay1), [replay1]);
+  const lockEvents1 = useMemo(() => extractLockEvents(replay1), [replay1]);
   const inputEvents2 = useMemo(() => extractInputEvents(replay2), [replay2]);
   const metadata2 = useMemo(() => extractReplayMetadata(replay2), [replay2]);
+  const lockEvents2 = useMemo(() => extractLockEvents(replay2), [replay2]);
   
   // 共享播放控制状态
   const [currentTime, setCurrentTime] = useState(0);
@@ -213,6 +216,43 @@ export const DualReplayComparison: React.FC<DualReplayComparisonProps> = ({
   const maxDuration = Math.max(replay1.stats.duration, replay2.stats.duration);
   const progress = maxDuration > 0 ? (currentTime / maxDuration) * 100 : 0;
   
+  // ✅ 计算实时差异分析
+  const comparisonStats = useMemo(() => {
+    const timeWindow = 5000; // 5秒窗口
+    const windowStart = Math.max(0, currentTime - timeWindow);
+    
+    // 计算 PPS
+    const locks1 = lockEvents1.filter(e => e.timestamp >= windowStart && e.timestamp <= currentTime).length;
+    const locks2 = lockEvents2.filter(e => e.timestamp >= windowStart && e.timestamp <= currentTime).length;
+    const pps1 = locks1 / (timeWindow / 1000);
+    const pps2 = locks2 / (timeWindow / 1000);
+    
+    // 计算 APM
+    const actions1 = inputEvents1.filter(e => e.timestamp >= windowStart && e.timestamp <= currentTime && e.success).length;
+    const actions2 = inputEvents2.filter(e => e.timestamp >= windowStart && e.timestamp <= currentTime && e.success).length;
+    const apm1 = (actions1 / (timeWindow / 1000)) * 60;
+    const apm2 = (actions2 / (timeWindow / 1000)) * 60;
+    
+    // 计算领先/落后
+    const scoreDiff = gameLogic1.score - gameLogic2.score;
+    const linesDiff = gameLogic1.lines - gameLogic2.lines;
+    const timeDiff = (gameLogic1.lines > 0 && gameLogic2.lines > 0) 
+      ? (currentTime / gameLogic1.lines) - (currentTime / gameLogic2.lines)
+      : 0;
+    
+    return {
+      pps1: pps1.toFixed(2),
+      pps2: pps2.toFixed(2),
+      ppsDiff: (pps1 - pps2).toFixed(2),
+      apm1: apm1.toFixed(0),
+      apm2: apm2.toFixed(0),
+      apmDiff: (apm1 - apm2).toFixed(0),
+      scoreDiff,
+      linesDiff,
+      timeDiff: timeDiff.toFixed(1)
+    };
+  }, [currentTime, lockEvents1, lockEvents2, inputEvents1, inputEvents2, gameLogic1, gameLogic2]);
+  
   // 单个回放面板组件
   const ReplayPanel = ({ 
     gameLogic, 
@@ -312,6 +352,109 @@ export const DualReplayComparison: React.FC<DualReplayComparisonProps> = ({
             label="回放 2"
           />
         </div>
+        
+        {/* ✅ 差异分析面板 */}
+        <Card className="m-4 p-4 bg-muted/30">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* PPS 对比 */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Activity className="w-4 h-4" />
+                <span>PPS 对比</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-500">{comparisonStats.pps1}</div>
+                  <div className="text-xs text-muted-foreground">玩家1</div>
+                </div>
+                <div className="text-center px-4">
+                  <Badge variant={parseFloat(comparisonStats.ppsDiff) > 0 ? 'default' : 'secondary'}>
+                    {parseFloat(comparisonStats.ppsDiff) > 0 ? '+' : ''}{comparisonStats.ppsDiff}
+                  </Badge>
+                  <div className="text-xs text-muted-foreground mt-1">差值</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-500">{comparisonStats.pps2}</div>
+                  <div className="text-xs text-muted-foreground">玩家2</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* APM 对比 */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Target className="w-4 h-4" />
+                <span>APM 对比</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-500">{comparisonStats.apm1}</div>
+                  <div className="text-xs text-muted-foreground">玩家1</div>
+                </div>
+                <div className="text-center px-4">
+                  <Badge variant={parseFloat(comparisonStats.apmDiff) > 0 ? 'default' : 'secondary'}>
+                    {parseFloat(comparisonStats.apmDiff) > 0 ? '+' : ''}{comparisonStats.apmDiff}
+                  </Badge>
+                  <div className="text-xs text-muted-foreground mt-1">差值</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-500">{comparisonStats.apm2}</div>
+                  <div className="text-xs text-muted-foreground">玩家2</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* 分数/行数差异 */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <TrendingUp className="w-4 h-4" />
+                <span>领先情况</span>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>分数差</span>
+                    <span className={comparisonStats.scoreDiff > 0 ? 'text-green-500' : 'text-red-500'}>
+                      {comparisonStats.scoreDiff > 0 ? '+' : ''}{comparisonStats.scoreDiff}
+                    </span>
+                  </div>
+                  <Progress 
+                    value={50 + (comparisonStats.scoreDiff / 10000) * 50} 
+                    className="h-2"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>行数差</span>
+                    <span className={comparisonStats.linesDiff > 0 ? 'text-green-500' : 'text-red-500'}>
+                      {comparisonStats.linesDiff > 0 ? '+' : ''}{comparisonStats.linesDiff}
+                    </span>
+                  </div>
+                  <Progress 
+                    value={50 + (comparisonStats.linesDiff / 40) * 50} 
+                    className="h-2"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* 分析提示 */}
+          {Math.abs(parseFloat(comparisonStats.ppsDiff)) > 0.5 && (
+            <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-lg text-sm">
+              <div className="font-medium mb-1">性能分析</div>
+              <div className="text-xs text-muted-foreground">
+                {parseFloat(comparisonStats.ppsDiff) > 0 
+                  ? `玩家1 的速度领先 ${comparisonStats.ppsDiff} PPS，表现更快`
+                  : `玩家2 的速度领先 ${Math.abs(parseFloat(comparisonStats.ppsDiff))} PPS，表现更快`
+                }
+                {Math.abs(parseFloat(comparisonStats.apmDiff)) > 20 && 
+                  `；操作频率差异 ${Math.abs(parseFloat(comparisonStats.apmDiff))} APM`
+                }
+              </div>
+            </div>
+          )}
+        </Card>
         
         {/* 播放控制 */}
         <Card className="m-4 p-4 space-y-4">

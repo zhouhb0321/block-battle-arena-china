@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Users, Trophy, Zap, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, Users, Trophy, Zap, AlertCircle, RefreshCw, Settings2, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { debugLog } from '@/utils/debugLogger';
+import { CustomRoomSettings, type CustomRoomConfig } from './CustomRoomSettings';
 
 interface BattleRoom {
   id: string;
@@ -19,6 +20,9 @@ interface BattleRoom {
   status: 'waiting' | 'playing' | 'finished';
   created_by: string;
   created_at: string;
+  room_password?: string;
+  allow_spectators?: boolean;
+  custom_settings?: any;
 }
 
 interface BattleRoomManagerProps {
@@ -32,6 +36,8 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
   const [isCreating, setIsCreating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCustomSettings, setShowCustomSettings] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<'versus' | 'battle_royale' | 'league'>('versus');
 
   useEffect(() => {
     loadRooms();
@@ -83,7 +89,12 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
     }
   };
 
-  const createRoom = async (mode: 'versus' | 'battle_royale' | 'league') => {
+  const openCustomSettings = (mode: 'versus' | 'battle_royale' | 'league') => {
+    setSelectedMode(mode);
+    setShowCustomSettings(true);
+  };
+
+  const createRoom = async (mode: 'versus' | 'battle_royale' | 'league', config?: CustomRoomConfig) => {
     if (!user) {
       toast.error('需要登录才能创建房间');
       return;
@@ -123,7 +134,17 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
           room_code: roomCode,
           mode,
           max_players: mode === 'versus' ? 2 : 8,
-          created_by: user.id
+          created_by: user.id,
+          custom_settings: config ? {
+            gravity_level: config.gravity_level,
+            garbage_multiplier: config.garbage_multiplier,
+            time_limit: config.time_limit,
+            allow_hold: config.allow_hold,
+            starting_level: config.starting_level,
+            preset: config.preset
+          } : undefined,
+          room_password: config?.room_password,
+          allow_spectators: config?.allow_spectators ?? true
         })
         .select()
         .single();
@@ -338,32 +359,70 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button
-              onClick={() => createRoom('versus')}
-              disabled={isCreating}
-              className="h-16 flex flex-col gap-2"
-            >
-              <Trophy className="w-6 h-6" />
-              <span>1v1对战</span>
-            </Button>
-            <Button
-              onClick={() => createRoom('battle_royale')}
-              disabled={isCreating}
-              className="h-16 flex flex-col gap-2"
-              variant="outline"
-            >
-              <Zap className="w-6 h-6" />
-              <span>多人混战</span>
-            </Button>
-            <Button
-              onClick={() => createRoom('league')}
-              disabled={isCreating}
-              className="h-16 flex flex-col gap-2"
-              variant="secondary"
-            >
-              <Users className="w-6 h-6" />
-              <span>方块联盟</span>
-            </Button>
+            <div className="space-y-2">
+              <Button
+                onClick={() => createRoom('versus')}
+                disabled={isCreating}
+                className="w-full h-16 flex flex-col gap-2"
+              >
+                <Trophy className="w-6 h-6" />
+                <span>1v1对战</span>
+              </Button>
+              <Button
+                onClick={() => openCustomSettings('versus')}
+                disabled={isCreating}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                <Settings2 className="w-3 h-3 mr-1" />
+                自定义设置
+              </Button>
+            </div>
+            
+            <div className="space-y-2">
+              <Button
+                onClick={() => createRoom('battle_royale')}
+                disabled={isCreating}
+                className="w-full h-16 flex flex-col gap-2"
+                variant="outline"
+              >
+                <Zap className="w-6 h-6" />
+                <span>多人混战</span>
+              </Button>
+              <Button
+                onClick={() => openCustomSettings('battle_royale')}
+                disabled={isCreating}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                <Settings2 className="w-3 h-3 mr-1" />
+                自定义设置
+              </Button>
+            </div>
+            
+            <div className="space-y-2">
+              <Button
+                onClick={() => createRoom('league')}
+                disabled={isCreating}
+                className="w-full h-16 flex flex-col gap-2"
+                variant="secondary"
+              >
+                <Users className="w-6 h-6" />
+                <span>方块联盟</span>
+              </Button>
+              <Button
+                onClick={() => openCustomSettings('league')}
+                disabled={isCreating}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                <Settings2 className="w-3 h-3 mr-1" />
+                自定义设置
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -417,7 +476,12 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
                   <div className="flex items-center gap-3">
                     {getModeIcon(room.mode)}
                     <div>
-                      <div className="font-medium">{getModeLabel(room.mode)}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{getModeLabel(room.mode)}</span>
+                        {room.room_password && (
+                          <Lock className="w-3 h-3 text-muted-foreground" />
+                        )}
+                      </div>
                       <div className="text-sm text-gray-500">房间号: {room.room_code}</div>
                     </div>
                   </div>
@@ -439,6 +503,14 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
           )}
         </CardContent>
       </Card>
+
+      {/* 自定义设置对话框 */}
+      <CustomRoomSettings
+        open={showCustomSettings}
+        onClose={() => setShowCustomSettings(false)}
+        onConfirm={(config) => createRoom(selectedMode, config)}
+        mode={selectedMode}
+      />
     </div>
   );
 };
