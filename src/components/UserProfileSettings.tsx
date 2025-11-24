@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import UsernameChangeDialog from './UsernameChangeDialog';
-import { User, Mail, Trophy, Calendar, Edit, X } from 'lucide-react';
+import BadgeCollection from './BadgeCollection';
+import { User, Mail, Trophy, Calendar, Edit, X, Star, Award } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface UserProfileSettingsProps {
   onClose: () => void;
@@ -25,10 +27,13 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
   const { user } = useAuth();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [featuredBadges, setFeaturedBadges] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('profile');
 
   useEffect(() => {
     if (user && !user.isGuest) {
       loadUserProfile();
+      loadFeaturedBadges();
     } else {
       setLoading(false);
     }
@@ -66,6 +71,26 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
       console.error('Error loading user profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFeaturedBadges = async () => {
+    if (!user || user.isGuest) return;
+
+    try {
+      const { data } = await supabase
+        .from('user_badges')
+        .select(`
+          *,
+          badges (*)
+        `)
+        .eq('user_id', user.id)
+        .eq('is_featured', true)
+        .limit(5);
+
+      setFeaturedBadges(data || []);
+    } catch (error) {
+      console.error('Error loading featured badges:', error);
     }
   };
 
@@ -171,6 +196,48 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* 精选徽章 */}
+          {featuredBadges.length > 0 && (
+            <div className="border-b pb-6">
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <Award className="w-5 h-5" />
+                精选徽章
+              </h3>
+              <div className="flex gap-3">
+                {featuredBadges.map(userBadge => {
+                  const badge = (userBadge as any).badges;
+                  const rarityColors = {
+                    common: 'bg-gray-400',
+                    rare: 'bg-blue-500',
+                    epic: 'bg-purple-600',
+                    legendary: 'bg-yellow-500'
+                  };
+                  return (
+                    <div key={badge.badge_id} className="relative group">
+                      <div className={`w-16 h-16 rounded-lg flex items-center justify-center ${rarityColors[badge.rarity as keyof typeof rarityColors]}`}>
+                        <Trophy className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
+                        <Star className="w-3 h-3 text-white fill-white" />
+                      </div>
+                      <div className="absolute invisible group-hover:visible bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black text-white text-xs rounded-lg whitespace-nowrap z-10">
+                        {badge.name_zh}
+                        <div className="text-xs text-gray-300">{badge.description_zh}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="profile">个人资料</TabsTrigger>
+              <TabsTrigger value="badges">徽章收集</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="profile" className="space-y-6 mt-6">
           {/* 基本信息 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -278,11 +345,17 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
 
           {/* 注册信息 */}
           <div className="pt-4 border-t">
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <Calendar className="w-4 h-4" />
-              <span>注册时间: {new Date(userProfile.created_at).toLocaleDateString()}</span>
+              <span>注册时间: {new Date(userProfile.created_at).toLocaleDateString('zh-CN')}</span>
             </div>
           </div>
+            </TabsContent>
+
+            <TabsContent value="badges" className="mt-6">
+              <BadgeCollection />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

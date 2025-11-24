@@ -5,14 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, MessageCircle, UserPlus, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useFriendPresence } from '@/hooks/useFriendPresence';
+import FriendLeaderboard from './FriendLeaderboard';
+import FriendActivity from './FriendActivity';
+import { Users, MessageCircle, UserPlus, X, Check, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Friend {
   id: string;
   username: string;
   status: 'online' | 'offline';
-  last_seen?: string;
+  avatar_url?: string;
 }
 
 interface FriendRequest {
@@ -32,11 +36,16 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
   const { user } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
-  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [searchUsername, setSearchUsername] = useState('');
   const [activeTab, setActiveTab] = useState('friends');
+  const [loading, setLoading] = useState(false);
 
-  const MAX_FRIENDS = user?.isGuest ? 0 : 50; // 游客不能添加好友，普通用户50个
+  const MAX_FRIENDS = user?.isGuest ? 0 : 50;
+
+  const { onlineUsers } = useFriendPresence(
+    user?.id, 
+    friends.map(f => f.id)
+  );
 
   useEffect(() => {
     if (user && !user.isGuest) {
@@ -46,13 +55,98 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
   }, [user]);
 
   const loadFriends = async () => {
-    // TODO: Implement when database types are updated
-    setFriends([]);
+    if (!user || user.isGuest) return;
+    
+    setLoading(true);
+    try {
+      const { data: friendships, error } = await supabase
+        .from('friendships')
+        .select(`
+          id,
+          friend_id,
+          user_profiles!friendships_friend_id_fkey (
+            id,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
+
+      if (error) throw error;
+
+      const friendList = (friendships || []).map(f => ({
+        id: f.friend_id,
+        username: (f as any).user_profiles?.username || 'Unknown',
+        avatar_url: (f as any).user_profiles?.avatar_url,
+        status: 'offline' as 'online' | 'offline'
+      }));
+
+      setFriends(friendList);
+    } catch (error) {
+      console.error('Error loading friends:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadFriendRequests = async () => {
-    // TODO: Implement when database types are updated
-    setFriendRequests([]);
+    if (!user || user.isGuest) return;
+
+    try {
+      // 收到的请求
+      const { data: incoming } = await supabase
+        .from('friend_requests')
+        .select(`
+          id,
+          sender_id,
+          message,
+          created_at,
+          user_profiles!friend_requests_sender_id_fkey (
+            username
+          )
+        `)
+        .eq('receiver_id', user.id)
+        .eq('status', 'pending');
+
+      // 发出的请求
+      const { data: outgoing } = await supabase
+        .from('friend_requests')
+        .select(`
+          id,
+          receiver_id,
+          message,
+          created_at,
+          user_profiles!friend_requests_receiver_id_fkey (
+            username
+          )
+        `)
+        .eq('sender_id', user.id)
+        .eq('status', 'pending');
+
+      const requests = [
+        ...(incoming || []).map(r => ({
+          id: r.id,
+          sender_id: r.sender_id,
+          sender_username: (r as any).user_profiles?.username || 'Unknown',
+          message: r.message,
+          created_at: r.created_at,
+          type: 'incoming' as const
+        })),
+        ...(outgoing || []).map(r => ({
+          id: r.id,
+          sender_id: (r as any).receiver_id,
+          sender_username: (r as any).user_profiles?.username || 'Unknown',
+          message: r.message,
+          created_at: r.created_at,
+          type: 'outgoing' as const
+        }))
+      ];
+
+      setFriendRequests(requests);
+    } catch (error) {
+      console.error('Error loading friend requests:', error);
+    }
   };
 
   const sendFriendRequest = async () => {
@@ -63,14 +157,115 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
       return;
     }
 
-    // TODO: Implement when database types are updated
-    toast.success('好友请求已发送');
-    setSearchUsername('');
+    try {
+      // 1. 检查用户名是否存在
+      const { data: targetUser, error: userError } = await supabase
+        .from('user_profiles')
+        .select('id, username')
+        .eq('username', searchUsername.trim())
+        .maybeSingle();
+
+      if (userError || !targetUser) {
+        toast.error('用户不存在');
+        return;
+      }
+
+      if (targetUser.id === user.id) {
+        toast.error('不能添加自己为好友');
+        return;
+      }
+
+      // 2. 检查是否已经是好友
+      const { data: existingFriend } = await supabase
+        .from('friendships')
+        .select('id')
+        .or(`and(user_id.eq.${user.id},friend_id.eq.${targetUser.id}),and(user_id.eq.${targetUser.id},friend_id.eq.${user.id})`)
+        .maybeSingle();
+
+      if (existingFriend) {
+        toast.error('已经是好友');
+        return;
+      }
+
+      // 3. 检查是否已发送过请求
+      const { data: existingRequest } = await supabase
+        .from('friend_requests')
+        .select('id')
+        .eq('sender_id', user.id)
+        .eq('receiver_id', targetUser.id)
+        .eq('status', 'pending')
+        .maybeSingle();
+
+      if (existingRequest) {
+        toast.error('已发送过好友请求');
+        return;
+      }
+
+      // 4. 创建好友请求
+      await supabase
+        .from('friend_requests')
+        .insert({
+          sender_id: user.id,
+          receiver_id: targetUser.id,
+          message: `来自 ${user.username} 的好友请求`
+        });
+
+      toast.success('好友请求已发送');
+      setSearchUsername('');
+      loadFriendRequests();
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      toast.error('发送好友请求失败');
+    }
   };
 
   const handleFriendRequest = async (requestId: string, action: 'accept' | 'reject') => {
-    // TODO: Implement when database types are updated
-    toast.success(action === 'accept' ? '已添加好友' : '已拒绝请求');
+    if (!user || user.isGuest) return;
+
+    try {
+      if (action === 'accept') {
+        // 1. 获取请求信息
+        const { data: request } = await supabase
+          .from('friend_requests')
+          .select('sender_id, receiver_id')
+          .eq('id', requestId)
+          .single();
+
+        if (!request) {
+          toast.error('好友请求不存在');
+          return;
+        }
+
+        // 2. 创建双向好友关系
+        await supabase.from('friendships').insert([
+          { user_id: request.sender_id, friend_id: request.receiver_id, status: 'accepted' },
+          { user_id: request.receiver_id, friend_id: request.sender_id, status: 'accepted' }
+        ]);
+
+        // 3. 更新请求状态
+        await supabase
+          .from('friend_requests')
+          .update({ status: 'accepted' })
+          .eq('id', requestId);
+
+        toast.success('已添加好友');
+      } else {
+        // 拒绝请求
+        await supabase
+          .from('friend_requests')
+          .update({ status: 'rejected' })
+          .eq('id', requestId);
+
+        toast.success('已拒绝请求');
+      }
+
+      // 重新加载数据
+      loadFriends();
+      loadFriendRequests();
+    } catch (error) {
+      console.error('Error handling friend request:', error);
+      toast.error('操作失败');
+    }
   };
 
   if (user?.isGuest) {
@@ -86,18 +281,23 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
             </div>
           </CardHeader>
           <CardContent className="text-center">
-            <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600">游客用户无法使用好友功能</p>
-            <p className="text-sm text-gray-500 mt-2">请注册账户后使用此功能</p>
+            <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">游客用户无法使用好友功能</p>
+            <p className="text-sm text-muted-foreground mt-2">请注册账户后使用此功能</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  const friendsWithOnlineStatus = friends.map(friend => ({
+    ...friend,
+    status: onlineUsers.has(friend.id) ? 'online' as const : 'offline' as const
+  }));
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-4xl h-[600px] flex flex-col">
+      <Card className="w-full max-w-5xl h-[700px] flex flex-col">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center space-x-2">
@@ -112,91 +312,100 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
             </Button>
           </div>
         </CardHeader>
-        
+
         <CardContent className="flex-1 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="friends">
-                好友列表 ({friends.length})
+                好友 ({friends.length})
               </TabsTrigger>
               <TabsTrigger value="requests">
-                好友请求 ({friendRequests.length})
+                请求 ({friendRequests.length})
               </TabsTrigger>
               <TabsTrigger value="add">添加好友</TabsTrigger>
+              <TabsTrigger value="leaderboard">排行榜</TabsTrigger>
+              <TabsTrigger value="activity">动态</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="friends" className="flex-1 mt-4">
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {friends.map(friend => (
-                  <div key={friend.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                        {friend.username.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-medium">{friend.username}</p>
-                        <p className="text-sm text-gray-500">{friend.status}</p>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelectedFriend(friend)}
-                    >
-                      <MessageCircle className="w-4 h-4 mr-1" />
-                      聊天
-                    </Button>
-                  </div>
-                ))}
-                {friends.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+            <TabsContent value="friends" className="flex-1 mt-4 overflow-y-auto">
+              <div className="space-y-2">
+                {loading ? (
+                  <div className="text-center py-8 text-muted-foreground">加载中...</div>
+                ) : friendsWithOnlineStatus.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>还没有好友</p>
                     <p className="text-sm">去添加一些好友吧！</p>
                   </div>
+                ) : (
+                  friendsWithOnlineStatus.map(friend => (
+                    <div key={friend.id} className="flex items-center justify-between p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className="relative">
+                          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-medium">
+                            {friend.username.charAt(0).toUpperCase()}
+                          </div>
+                          <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
+                            friend.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                          }`} />
+                        </div>
+                        <div>
+                          <p className="font-medium">{friend.username}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {friend.status === 'online' ? '在线' : '离线'}
+                          </p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        <MessageCircle className="w-4 h-4 mr-1" />
+                        聊天
+                      </Button>
+                    </div>
+                  ))
                 )}
               </div>
             </TabsContent>
 
-            <TabsContent value="requests" className="flex-1 mt-4">
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {friendRequests.map(request => (
-                  <div key={request.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">
-                          {request.type === 'incoming' ? '收到来自' : '发送给'} {request.sender_username}
-                        </p>
-                        <p className="text-sm text-gray-500">{request.message}</p>
-                        <p className="text-xs text-gray-400">
-                          {new Date(request.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      {request.type === 'incoming' && (
-                        <div className="flex space-x-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleFriendRequest(request.id, 'accept')}
-                          >
-                            接受
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleFriendRequest(request.id, 'reject')}
-                          >
-                            拒绝
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {friendRequests.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <UserPlus className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+            <TabsContent value="requests" className="flex-1 mt-4 overflow-y-auto">
+              <div className="space-y-2">
+                {friendRequests.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <UserPlus className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>没有好友请求</p>
                   </div>
+                ) : (
+                  friendRequests.map(request => (
+                    <div key={request.id} className="p-3 border rounded-lg bg-card">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {request.type === 'incoming' ? '来自' : '发送给'} {request.sender_username}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{request.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(request.created_at).toLocaleDateString('zh-CN')}
+                          </p>
+                        </div>
+                        {request.type === 'incoming' && (
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleFriendRequest(request.id, 'accept')}
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleFriendRequest(request.id, 'reject')}
+                            >
+                              <UserX className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </TabsContent>
@@ -215,12 +424,23 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
                     添加
                   </Button>
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-muted-foreground space-y-1">
                   <p>• 免费用户最多可添加 {MAX_FRIENDS} 个好友</p>
                   <p>• 付费用户可获得更多好友名额</p>
                   <p>• 向陌生人最多可发送2条消息</p>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="leaderboard" className="flex-1 mt-4 overflow-y-auto">
+              <FriendLeaderboard 
+                userId={user?.id || ''} 
+                friendIds={friends.map(f => f.id)} 
+              />
+            </TabsContent>
+
+            <TabsContent value="activity" className="flex-1 mt-4 overflow-y-auto">
+              <FriendActivity friendIds={friends.map(f => f.id)} />
             </TabsContent>
           </Tabs>
         </CardContent>

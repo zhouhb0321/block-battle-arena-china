@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { RotateCcw, Home, Play } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useBadgeUnlocker } from '@/hooks/useBadgeUnlocker';
 
 interface GameOverDialogProps {
   isOpen: boolean;
@@ -48,6 +49,14 @@ const GameOverDialog: React.FC<GameOverDialogProps> = ({
   isNewRecord = false,
 }) => {
   const { t } = useLanguage();
+  const { checkUnlocks } = useBadgeUnlocker();
+
+  // 游戏结束时检查徽章解锁
+  useEffect(() => {
+    if (isOpen) {
+      checkUnlocks();
+    }
+  }, [isOpen, checkUnlocks]);
 
   const formatTime = (seconds: number): string => {
     // For 2-minute challenge modes, show milliseconds precision and clamp to 120 seconds
