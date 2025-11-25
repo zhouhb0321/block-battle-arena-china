@@ -44,6 +44,7 @@ export const TetrisGameProvider: React.FC<TetrisGameProviderProps> = ({
       arr: settings.arr,
       das: settings.das,
       sdf: settings.sdf,
+      dcd: settings.dcd,
       controls: settings.controls,
       backgroundMusic: settings.backgroundMusic || '',
       musicVolume: settings.musicVolume || 30,

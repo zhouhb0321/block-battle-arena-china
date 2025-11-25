@@ -67,6 +67,7 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ trigger }) => {
       das: 167,
       arr: 33,
       sdf: 20,
+      dcd: 0,
       controls: {
         moveLeft: 'ArrowLeft',
         moveRight: 'ArrowRight',

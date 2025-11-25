@@ -55,6 +55,7 @@ type GameTranslations = {
   arr: string;
   das: string;
   sdf: string;
+  dcd: string;
   ghostOpacity: string;
   enableWallpaper: string;
   undoSteps: string;
@@ -203,6 +204,7 @@ export const translations: Translations = {
       arr: 'ARR',
       das: 'DAS',
       sdf: 'SDF',
+      dcd: 'DCD',
       ghostOpacity: 'Ghost Opacity',
       enableWallpaper: 'Enable Wallpaper',
       undoSteps: 'Undo Steps',
@@ -338,6 +340,7 @@ export const translations: Translations = {
       arr: 'ARR',
       das: 'DAS',
       sdf: 'SDF',
+      dcd: 'DCD',
       ghostOpacity: '影子透明度',
       enableWallpaper: '启用壁纸',
       undoSteps: '撤销步数',
@@ -473,6 +476,7 @@ export const translations: Translations = {
       arr: 'ARR',
       das: 'DAS',
       sdf: 'SDF',
+      dcd: 'DCD',
       ghostOpacity: 'ゴーストの不透明度',
       enableWallpaper: '壁紙を有効にする',
       undoSteps: 'アンドゥステップ',
