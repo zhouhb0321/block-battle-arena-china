@@ -9,8 +9,7 @@ import { ReplayImporter } from './ReplayImporter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ReplayPreparationDialog } from './ReplayPreparationDialog';
-import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
-import { ReplayPlayerV4Unified } from './ReplayPlayerV4Unified';
+import { SimpleReplayPlayer } from './replay/SimpleReplayPlayer';
 import { DualReplayComparison } from './DualReplayComparison';
 import type { GameReplay } from '@/utils/gameTypes';
 
@@ -465,27 +464,12 @@ const ReplaySystem: React.FC = () => {
       )}
 
       {/* 统一的播放器（不受对话框关闭影响） */}
-      {playerReplayData && isPlayerOpen && (
-        <>
-          {isV4Replay(playerReplayData) ? (
-            (() => {
-              const v4Data = getV4Data(playerReplayData);
-              return v4Data ? (
-                <ReplayPlayerV4Unified
-                  replay={v4Data}
-                  onClose={() => setIsPlayerOpen(false)}
-                  autoPlay={true}
-                />
-              ) : null;
-            })()
-          ) : (
-            <EnhancedReplayPlayer
-              replay={playerReplayData}
-              isOpen={isPlayerOpen}
-              onClose={() => setIsPlayerOpen(false)}
-            />
-          )}
-        </>
+      {playerReplayData && isPlayerOpen && isV4Replay(playerReplayData) && (
+        <SimpleReplayPlayer
+          replay={getV4Data(playerReplayData)}
+          onClose={() => setIsPlayerOpen(false)}
+          autoPlay={true}
+        />
       )}
       
       {/* 对比播放器 */}
