@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Play, Upload, RefreshCw, Trophy, Clock, Target, AlertCircle } from 'lucide-react';
+import { Play, Upload, RefreshCw, Trophy, Clock, Target, AlertCircle, LayoutGrid, List } from 'lucide-react';
 import { ReplayImporter } from './ReplayImporter';
+import { ReplayBrowser } from './replay/ReplayBrowser';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ReplayPreparationDialog } from './ReplayPreparationDialog';
@@ -20,6 +21,7 @@ const ReplaySystem: React.FC = () => {
   const [selectedReplayForPreparation, setSelectedReplayForPreparation] = useState<GameReplay | null>(null);
   const [isPreparationDialogOpen, setIsPreparationDialogOpen] = useState(false);
   const [showOldReplays, setShowOldReplays] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   
   // ✅ P0 修复：独立的播放器状态
   const [playerReplayData, setPlayerReplayData] = useState<any>(null);
@@ -286,18 +288,25 @@ const ReplaySystem: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">游戏回放</h2>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <ReplayImporter />
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={showOldReplays}
-              onCheckedChange={(checked) => {
-                setShowOldReplays(checked);
-                loadReplays();
-              }}
-            />
-            <span className="text-sm">显示旧回放</span>
-          </div>
+          
+          {/* 视图切换 */}
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+          >
+            <List className="w-4 h-4" />
+          </Button>
+          
           <Button 
             variant={comparisonMode ? "default" : "outline"} 
             onClick={handleToggleComparisonMode}
@@ -311,7 +320,7 @@ const ReplaySystem: React.FC = () => {
             </Button>
           )}
           <Button onClick={loadReplays} variant="outline" size="sm">
-            刷新
+            <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -327,7 +336,21 @@ const ReplaySystem: React.FC = () => {
         </Card>
       )}
 
-      {replays.length === 0 ? (
+      {/* 卡片视图 */}
+      {viewMode === 'grid' && (
+        <ReplayBrowser
+          onPlayReplay={(replayId) => {
+            const replay = replays.find(r => r.id === replayId);
+            if (replay) {
+              setSelectedReplayForPreparation(replay);
+              setIsPreparationDialogOpen(true);
+            }
+          }}
+        />
+      )}
+
+      {/* 列表视图 */}
+      {viewMode === 'list' && replays.length === 0 ? (
         <Card>
           <CardContent className="text-center py-8">
             <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -335,7 +358,7 @@ const ReplaySystem: React.FC = () => {
             <p className="text-gray-600">完成游戏后，您的回放记录将显示在这里</p>
           </CardContent>
         </Card>
-      ) : (
+      ) : viewMode === 'list' ? (
         <div className="grid gap-4">
           {replays.map((replay) => (
             <Card key={replay.id} className="hover:shadow-lg transition-shadow">
@@ -438,7 +461,7 @@ const ReplaySystem: React.FC = () => {
             </Card>
           ))}
         </div>
-      )}
+      ) : null}
 
       {selectedReplayForPreparation && (
         <ReplayPreparationDialog
