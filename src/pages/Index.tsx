@@ -17,7 +17,7 @@ import AdSpace from '@/components/AdSpace';
 import EnhancedMusicPlayer from '@/components/EnhancedMusicPlayer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Users, Trophy, Settings, LogIn, Music } from 'lucide-react';
+import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft } from 'lucide-react';
 import type { ViewType } from '@/types/navigation';
 import { GAME_MODES } from '@/utils/gameTypes';
 
@@ -96,9 +96,57 @@ const Index = () => {
       case 'practice':
         return (
           <PracticeMode 
-            onGameStart={handleGameModeStart}
+            onGameStart={(gameType, options) => {
+              console.log('Practice game start:', gameType, options);
+              // AI对战模式：显示AI战斗提示
+              if (gameType === 'practice' && options?.botDifficulty) {
+                setCurrentView('ai-battle');
+                (window as any).aiBattleOptions = options;
+              } else {
+                // 其他练习模式（T-Spin练习等）
+                handleGameModeStart('practice', options?.gameMode || GAME_MODES[0]);
+              }
+            }}
             onBack={handleBackToMenu}
           />
+        );
+      case 'ai-battle':
+        return (
+          <div className="min-h-screen bg-background">
+            <div className="p-4">
+              <Button variant="ghost" onClick={handleBackToMenu}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                返回菜单
+              </Button>
+            </div>
+            <div className="flex justify-center items-center p-4">
+              <div className="text-center max-w-2xl space-y-6">
+                <h2 className="text-3xl font-bold bg-game-gradient-primary bg-clip-text text-transparent">
+                  AI对战模式
+                </h2>
+                <p className="text-lg text-muted-foreground">
+                  难度: {((window as any).aiBattleOptions?.botDifficulty || 'medium').toUpperCase()}
+                </p>
+                <div className="bg-card/50 backdrop-blur-sm border border-border rounded-xl p-8 space-y-4">
+                  <div className="text-sm text-muted-foreground">
+                    🚀 双窗口AI对战系统正在开发中...
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    将使用 <code className="bg-primary/10 px-2 py-1 rounded">OneVsOneGameArea</code> 组件显示玩家与AI的双窗口布局
+                  </div>
+                  <div className="flex gap-4 justify-center mt-6">
+                    <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4 w-32 h-24 flex items-center justify-center">
+                      <span className="text-blue-400 font-bold">玩家</span>
+                    </div>
+                    <div className="flex items-center text-2xl font-bold text-primary">VS</div>
+                    <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 w-32 h-24 flex items-center justify-center">
+                      <span className="text-red-400 font-bold">AI</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         );
       case 'settings':
         return (
