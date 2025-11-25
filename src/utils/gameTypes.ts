@@ -59,6 +59,7 @@ export interface GameSettings {
   das: number;
   arr: number;
   sdf: number;
+  dcd: number; // DAS Cut Delay (0-200ms) - Direction change delay elimination
   controls: {
     moveLeft: string;
     moveRight: string;

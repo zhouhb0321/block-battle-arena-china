@@ -44,6 +44,8 @@ export const useKeyboardControls = ({
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const keyPressedTime = useRef<{[key: string]: number}>({});
   const lastMoveTime = useRef<{[key: string]: number}>({});
+  const lastDirection = useRef<'left' | 'right' | null>(null);
+  const dcdActiveUntil = useRef<number>(0);
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     // 防止页面滚动等默认行为
@@ -153,6 +155,31 @@ export const useKeyboardControls = ({
     if (gameOver || paused) return;
 
     const { controls } = gameSettings;
+    
+    // Detect current direction
+    const currentDirection = keys.has(controls.moveLeft) ? 'left' : 
+                            keys.has(controls.moveRight) ? 'right' : null;
+
+    // Check for direction change and trigger DCD
+    if (currentDirection && currentDirection !== lastDirection.current && lastDirection.current !== null) {
+      if (gameSettings.dcd > 0) {
+        dcdActiveUntil.current = timestamp + gameSettings.dcd;
+        // Reset DAS timer on direction change
+        if (currentDirection === 'left') {
+          keyPressedTime.current[controls.moveLeft] = timestamp;
+          lastMoveTime.current[controls.moveLeft] = timestamp;
+        } else {
+          keyPressedTime.current[controls.moveRight] = timestamp;
+          lastMoveTime.current[controls.moveRight] = timestamp;
+        }
+      }
+    }
+    lastDirection.current = currentDirection;
+
+    // Skip movement during DCD period
+    if (timestamp < dcdActiveUntil.current) {
+      return;
+    }
     
     keys.forEach(key => {
       const pressTime = keyPressedTime.current[key] || 0;

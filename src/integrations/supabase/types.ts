@@ -1674,6 +1674,7 @@ export type Database = {
           controls: Json
           created_at: string
           das: number
+          dcd: number | null
           enable_achievement_animation: boolean | null
           enable_ghost: boolean
           enable_landing_effect: boolean | null
@@ -1701,6 +1702,7 @@ export type Database = {
           controls?: Json
           created_at?: string
           das?: number
+          dcd?: number | null
           enable_achievement_animation?: boolean | null
           enable_ghost?: boolean
           enable_landing_effect?: boolean | null
@@ -1728,6 +1730,7 @@ export type Database = {
           controls?: Json
           created_at?: string
           das?: number
+          dcd?: number | null
           enable_achievement_animation?: boolean | null
           enable_ghost?: boolean
           enable_landing_effect?: boolean | null

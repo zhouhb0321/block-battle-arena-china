@@ -6,6 +6,7 @@ import GameLauncher from '@/components/GameLauncher';
 import MultiPlayerMenu from '@/components/menus/MultiPlayerMenu';
 import SettingsMenu from '@/components/menus/SettingsMenu';
 import RankedMatchmakingSystem from '@/components/RankedMatchmakingSystem';
+import PracticeMode from '@/components/PracticeMode';
 import AuthModal from '@/components/AuthModal';
 import NavigationBar from '@/components/NavigationBar';
 import ReplaySystem from '@/components/ReplaySystem';
@@ -49,7 +50,7 @@ const Index = () => {
   const handleViewChange = (view: ViewType) => {
     console.log('视图切换请求:', { view, isAuthenticated, isAdmin: user?.isAdmin });
     
-    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked' || view === 'admin' || view === 'multiplayer')) {
+    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked' || view === 'admin' || view === 'multiplayer' || view === 'practice')) {
       setShowAuthModal(true);
       return;
     }
@@ -89,6 +90,13 @@ const Index = () => {
         return (
           <RankedMatchmakingSystem 
             onStartMatch={() => setCurrentView('game')} 
+            onBack={handleBackToMenu}
+          />
+        );
+      case 'practice':
+        return (
+          <PracticeMode 
+            onGameStart={handleGameModeStart}
             onBack={handleBackToMenu}
           />
         );

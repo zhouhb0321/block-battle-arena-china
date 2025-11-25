@@ -145,7 +145,7 @@ const ReplaySystem: React.FC = () => {
               metadata: {
                 version: '1.0',
                 settings: {
-                  das: 167, arr: 33, sdf: 41,
+                  das: 167, arr: 33, sdf: 41, dcd: 0,
                   controls: {
                     moveLeft: 'ArrowLeft', moveRight: 'ArrowRight', softDrop: 'ArrowDown',
                     hardDrop: 'Space', rotateClockwise: 'ArrowUp', rotateCounterclockwise: 'KeyZ',

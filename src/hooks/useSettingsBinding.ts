@@ -26,6 +26,7 @@ export const useSettingsBinding = () => {
     arr: userSettings.arr,
     das: userSettings.das,
     sdf: userSettings.sdf,
+    dcd: userSettings.dcd,
     controls: userSettings.controls,
     ghostOpacity: userSettings.ghostOpacity,
     enableWallpaper: userSettings.enableWallpaper,

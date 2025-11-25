@@ -59,6 +59,7 @@ const GameSettings: React.FC<GameSettingsProps> = ({ isOpen, onClose }) => {
       das: 167,
       arr: 50,
       sdf: 30,
+      dcd: 0,
       controls: {
         moveLeft: 'ArrowLeft',
         moveRight: 'ArrowRight',

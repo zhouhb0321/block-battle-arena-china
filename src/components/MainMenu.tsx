@@ -10,9 +10,10 @@ interface MainMenuProps {
   onLeaderboard: () => void;
   onSettings: () => void;
   onRanked: () => void;
+  onPractice: () => void;
 }
 
-const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSettings, onRanked }) => {
+const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSettings, onRanked, onPractice }) => {
   const { t } = useLanguage();
 
   const menuItems = [
@@ -23,6 +24,14 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSetti
       icon: '🎯',
       color: 'bg-game-green hover:bg-game-green/80',
       action: onGameStart
+    },
+    {
+      id: 'practice',
+      title: 'Practice Mode',
+      description: 'AI training, special drills, and custom scenarios',
+      icon: '🎓',
+      color: 'bg-game-blue hover:bg-game-blue/80',
+      action: onPractice
     },
     {
       id: 'ranked',

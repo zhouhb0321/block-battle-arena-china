@@ -10,18 +10,29 @@ const HandlingPreview: React.FC<HandlingPreviewProps> = ({ settings }) => {
   const [position, setPosition] = useState(3);
   const [dasProgress, setDasProgress] = useState(0);
   const [arrActive, setArrActive] = useState(false);
+  const [dcdActive, setDcdActive] = useState(false);
   const keyPressTime = useRef<number>(0);
+  const lastDirection = useRef<'left' | 'right' | null>(null);
   const animationFrame = useRef<number>();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
         e.preventDefault();
+        const direction = e.code === 'ArrowLeft' ? 'left' : 'right';
+        
+        // Check for direction change and trigger DCD
+        if (lastDirection.current && lastDirection.current !== direction && settings.dcd > 0) {
+          setDcdActive(true);
+          setTimeout(() => setDcdActive(false), settings.dcd);
+        }
+        lastDirection.current = direction;
+        
         if (keyPressTime.current === 0) {
           keyPressTime.current = performance.now();
           // Initial move
           setPosition(prev => {
-            const newPos = e.code === 'ArrowLeft' ? Math.max(0, prev - 1) : Math.min(5, prev + 1);
+            const newPos = direction === 'left' ? Math.max(0, prev - 1) : Math.min(5, prev + 1);
             return newPos;
           });
         }
@@ -31,8 +42,10 @@ const HandlingPreview: React.FC<HandlingPreviewProps> = ({ settings }) => {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
         keyPressTime.current = 0;
+        lastDirection.current = null;
         setDasProgress(0);
         setArrActive(false);
+        setDcdActive(false);
         if (animationFrame.current) {
           cancelAnimationFrame(animationFrame.current);
         }
@@ -109,14 +122,20 @@ const HandlingPreview: React.FC<HandlingPreviewProps> = ({ settings }) => {
           </div>
         </div>
 
-        {/* ARR Indicator */}
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">ARR 激活</span>
-          <div className={`w-3 h-3 rounded-full ${arrActive ? 'bg-green-500 animate-pulse' : 'bg-muted'}`} />
+        {/* ARR & DCD Indicators */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">ARR</span>
+            <div className={`w-3 h-3 rounded-full ${arrActive ? 'bg-green-500 animate-pulse' : 'bg-muted'}`} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">DCD</span>
+            <div className={`w-3 h-3 rounded-full ${dcdActive ? 'bg-orange-500 animate-pulse' : 'bg-muted'}`} />
+          </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 text-xs">
+        <div className="grid grid-cols-4 gap-2 text-xs">
           <div className="text-center p-2 bg-muted rounded">
             <div className="text-muted-foreground">DAS</div>
             <div className="font-bold">{settings.das}ms</div>
@@ -128,6 +147,10 @@ const HandlingPreview: React.FC<HandlingPreviewProps> = ({ settings }) => {
           <div className="text-center p-2 bg-muted rounded">
             <div className="text-muted-foreground">SDF</div>
             <div className="font-bold">{settings.sdf}x</div>
+          </div>
+          <div className="text-center p-2 bg-muted rounded">
+            <div className="text-muted-foreground">DCD</div>
+            <div className="font-bold">{settings.dcd}ms</div>
           </div>
         </div>
       </CardContent>

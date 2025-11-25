@@ -11,6 +11,7 @@ export interface UserSettings {
   arr: number;
   das: number;
   sdf: number;
+  dcd: number;
   controls: {
     moveLeft: string;
     moveRight: string;
@@ -39,6 +40,7 @@ const DEFAULT_GUEST_SETTINGS: UserSettings = {
   arr: 20, // ✅ 调整为现代标准 20ms
   das: 133,
   sdf: 20, // ✅ 调整为现代标准 20ms
+  dcd: 0, // DAS Cut Delay disabled by default
   controls: {
     moveLeft: 'ArrowLeft',
     moveRight: 'ArrowRight',
@@ -120,6 +122,7 @@ export const useUserSettings = () => {
           arr: data.arr,
           das: data.das,
           sdf: data.sdf,
+          dcd: data.dcd ?? DEFAULT_GUEST_SETTINGS.dcd,
           controls: {
             moveLeft: controlsData?.moveLeft || 'ArrowLeft',
             moveRight: controlsData?.moveRight || 'ArrowRight',
@@ -209,6 +212,7 @@ export const useUserSettings = () => {
         arr: newSettings.arr !== undefined ? newSettings.arr : prevSettings.arr,
         das: newSettings.das !== undefined ? newSettings.das : prevSettings.das,
         sdf: newSettings.sdf !== undefined ? newSettings.sdf : prevSettings.sdf,
+        dcd: newSettings.dcd !== undefined ? newSettings.dcd : prevSettings.dcd,
         controls: newSettings.controls !== undefined ? newSettings.controls : prevSettings.controls,
         ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,
@@ -236,6 +240,7 @@ export const useUserSettings = () => {
           arr: mergedSettings.arr,
           das: mergedSettings.das,
           sdf: mergedSettings.sdf,
+          dcd: mergedSettings.dcd,
           controls: mergedSettings.controls,
           ghost_opacity: mergedSettings.ghostOpacity,
           back_to_menu: mergedSettings.controls.backToMenu,
@@ -281,6 +286,7 @@ export const useUserSettings = () => {
         arr: newSettings.arr !== undefined ? newSettings.arr : prevSettings.arr,
         das: newSettings.das !== undefined ? newSettings.das : prevSettings.das,
         sdf: newSettings.sdf !== undefined ? newSettings.sdf : prevSettings.sdf,
+        dcd: newSettings.dcd !== undefined ? newSettings.dcd : prevSettings.dcd,
         controls: newSettings.controls !== undefined ? newSettings.controls : prevSettings.controls,
         ghostOpacity: newSettings.ghostOpacity !== undefined ? newSettings.ghostOpacity : prevSettings.ghostOpacity,
         blockSkin: newSettings.blockSkin !== undefined ? newSettings.blockSkin : prevSettings.blockSkin,

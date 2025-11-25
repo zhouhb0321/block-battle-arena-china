@@ -12,14 +12,14 @@ interface TimingTabProps {
 
 // ✅ 预设配置（包含TETR.IO等流行设置）
 const TIMING_PRESETS = {
-  beginner: { das: 150, arr: 50, sdf: 10, name: '初学者' },
-  standard: { das: 133, arr: 20, sdf: 20, name: '标准' },
-  advanced: { das: 100, arr: 10, sdf: 30, name: '进阶' },
-  pro: { das: 50, arr: 0, sdf: 40, name: '专业' },
-  tetrioDefault: { das: 133, arr: 1, sdf: 21, name: 'TETR.IO' },
-  jstrisFast: { das: 100, arr: 0, sdf: 40, name: 'Jstris' },
-  guideline: { das: 133, arr: 20, sdf: 20, name: 'Guideline' },
-  hyperTap: { das: 0, arr: 0, sdf: 1, name: 'Hypertap' }
+  beginner: { das: 150, arr: 50, sdf: 10, dcd: 0, name: '初学者' },
+  standard: { das: 133, arr: 20, sdf: 20, dcd: 0, name: '标准' },
+  advanced: { das: 100, arr: 10, sdf: 30, dcd: 0, name: '进阶' },
+  pro: { das: 50, arr: 0, sdf: 40, dcd: 0, name: '专业' },
+  tetrioDefault: { das: 133, arr: 1, sdf: 21, dcd: 0, name: 'TETR.IO' },
+  jstrisFast: { das: 100, arr: 0, sdf: 40, dcd: 0, name: 'Jstris' },
+  guideline: { das: 133, arr: 20, sdf: 20, dcd: 0, name: 'Guideline' },
+  hyperTap: { das: 0, arr: 0, sdf: 1, dcd: 0, name: 'Hypertap' }
 };
 
 const TimingTab: React.FC<TimingTabProps> = ({ settings, onSettingChange }) => {
@@ -28,6 +28,7 @@ const TimingTab: React.FC<TimingTabProps> = ({ settings, onSettingChange }) => {
     onSettingChange('das', config.das);
     onSettingChange('arr', config.arr);
     onSettingChange('sdf', config.sdf);
+    onSettingChange('dcd', config.dcd);
   };
 
   return (
@@ -76,6 +77,22 @@ const TimingTab: React.FC<TimingTabProps> = ({ settings, onSettingChange }) => {
             value={[settings.sdf]}
             onValueChange={([value]) => onSettingChange('sdf', value)}
             max={40} min={1} step={1}
+          />
+        </div>
+        
+        {/* DCD Setting */}
+        <div className="space-y-2">
+          <Label>DCD - DAS Cut Delay ({settings.dcd}ms)</Label>
+          <p className="text-xs text-muted-foreground">
+            方向改变时消除DAS延迟 (0ms = 立即响应, 200ms = 最大延迟)
+          </p>
+          <Slider
+            value={[settings.dcd]}
+            onValueChange={([value]) => onSettingChange('dcd', value)}
+            max={200}
+            min={0}
+            step={1}
+            className="w-full"
           />
         </div>
       </CardContent>
