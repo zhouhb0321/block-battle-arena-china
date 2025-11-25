@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Trash2, Share2, Filter, Calendar } from 'lucide-react';
+import { Play, Trash2, Share2, Filter, Calendar, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,12 +19,13 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
   const [filterMode, setFilterMode] = useState<string>('all');
   const [filterTime, setFilterTime] = useState<string>('all');
   const [filterBest, setFilterBest] = useState(false);
+  const [sortBy, setSortBy] = useState<'date' | 'score' | 'time'>('date');
   const [page, setPage] = useState(1);
   const itemsPerPage = 20;
 
   useEffect(() => {
     loadReplays();
-  }, [user, filterMode, filterTime, filterBest]);
+  }, [user, filterMode, filterTime, filterBest, sortBy]);
 
   const loadReplays = async () => {
     if (!user) return;
@@ -71,7 +72,23 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
       const { data, error } = await query;
 
       if (error) throw error;
-      setReplays(data || []);
+      
+      // 排序
+      let sortedData = data || [];
+      switch (sortBy) {
+        case 'score':
+          sortedData = [...sortedData].sort((a, b) => b.final_score - a.final_score);
+          break;
+        case 'time':
+          sortedData = [...sortedData].sort((a, b) => a.duration_seconds - b.duration_seconds);
+          break;
+        case 'date':
+        default:
+          // 已经按日期排序
+          break;
+      }
+      
+      setReplays(sortedData);
     } catch (error) {
       console.error('Failed to load replays:', error);
       toast.error('加载回放失败');
@@ -123,6 +140,30 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
     return date.toLocaleDateString('zh-CN');
   };
 
+  // 生成游戏板缩略图
+  const generateThumbnail = (board: number[][] | null) => {
+    if (!board || !Array.isArray(board)) return null;
+    
+    return (
+      <div className="w-full h-32 bg-background/80 rounded border border-border overflow-hidden">
+        <div className="grid gap-px" style={{ 
+          gridTemplateRows: `repeat(${board.length}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${board[0]?.length || 10}, minmax(0, 1fr))`,
+          height: '100%'
+        }}>
+          {board.slice(0, 20).map((row, y) => 
+            row.slice(0, 10).map((cell, x) => (
+              <div
+                key={`${y}-${x}`}
+                className={cell > 0 ? 'bg-primary/60' : 'bg-muted/20'}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const paginatedReplays = replays.slice((page - 1) * itemsPerPage, page * itemsPerPage);
   const totalPages = Math.ceil(replays.length / itemsPerPage);
 
@@ -171,6 +212,20 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
               仅显示最佳
             </Button>
 
+            <div className="flex items-center gap-2">
+              <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date">最新</SelectItem>
+                  <SelectItem value="score">最高分</SelectItem>
+                  <SelectItem value="time">最快</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="ml-auto text-sm text-muted-foreground">
               共 {replays.length} 个回放
             </div>
@@ -186,68 +241,76 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
           没有找到回放记录
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {paginatedReplays.map((replay) => (
-            <Card key={replay.id} className="group hover:shadow-lg transition-all bg-card/50 backdrop-blur-sm">
-              <CardContent className="p-4 space-y-3">
-                {/* 标题和日期 */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{replay.game_mode}</h3>
+            <Card key={replay.id} className="group hover:shadow-lg transition-all bg-card/50 backdrop-blur-sm overflow-hidden">
+              <CardContent className="p-0 space-y-0">
+                {/* 游戏板缩略图 */}
+                <div className="relative">
+                  {generateThumbnail(replay.initial_board)}
+                  <div className="absolute top-2 right-2">
+                    {replay.is_personal_best && (
+                      <Badge variant="default" className="bg-yellow-500 shadow-lg">最佳</Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* 内容区域 */}
+                <div className="p-4 space-y-3">
+                  {/* 标题和日期 */}
+                  <div>
+                    <h3 className="font-semibold text-base truncate">{replay.game_mode}</h3>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {formatDate(replay.created_at)}
                     </p>
                   </div>
-                  {replay.is_personal_best && (
-                    <Badge variant="default" className="bg-yellow-500">最佳</Badge>
-                  )}
-                </div>
 
-                {/* 统计数据 */}
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">得分:</span>
-                    <span className="ml-2 font-mono font-bold">{replay.final_score.toLocaleString()}</span>
+                  {/* 统计数据 */}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">得分</span>
+                      <span className="font-mono font-bold">{replay.final_score.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">行数</span>
+                      <span className="font-mono font-bold">{replay.final_lines}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">时长</span>
+                      <span className="font-mono">{formatTime(replay.duration_seconds)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">PPS</span>
+                      <span className="font-mono">{replay.pps.toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">行数:</span>
-                    <span className="ml-2 font-mono font-bold">{replay.final_lines}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">时长:</span>
-                    <span className="ml-2 font-mono">{formatTime(replay.duration_seconds)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">PPS:</span>
-                    <span className="ml-2 font-mono">{replay.pps.toFixed(2)}</span>
-                  </div>
-                </div>
 
-                {/* 操作按钮 */}
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => onPlayReplay(replay.id)}
-                  >
-                    <Play className="w-4 h-4 mr-1" />
-                    播放
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleShare(replay)}
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(replay.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {/* 操作按钮 */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => onPlayReplay(replay.id)}
+                    >
+                      <Play className="w-3 h-3 mr-1" />
+                      播放
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleShare(replay)}
+                    >
+                      <Share2 className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(replay.id)}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
