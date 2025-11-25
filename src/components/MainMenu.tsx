@@ -27,8 +27,8 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSetti
     },
     {
       id: 'practice',
-      title: 'Practice Mode',
-      description: 'AI training, special drills, and custom scenarios',
+      title: t('practice.title'),
+      description: t('practice.description'),
       icon: '🎓',
       color: 'bg-game-blue hover:bg-game-blue/80',
       action: onPractice

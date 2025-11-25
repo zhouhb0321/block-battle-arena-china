@@ -75,6 +75,15 @@ type NavTranslations = {
   ranked: string;
   replays: string;
   leaderboard: string;
+  practice: string;
+};
+
+type PracticeTranslations = {
+  title: string;
+  description: string;
+  aiTraining: string;
+  specialDrills: string;
+  customScenarios: string;
 };
 
 type AuthTranslations = {
@@ -107,6 +116,7 @@ type LanguageTranslations = {
   game: GameTranslations;
   nav: NavTranslations;
   auth: AuthTranslations;
+  practice: PracticeTranslations;
   premium: string;
   subscribe: string;
   admin: string;
@@ -223,6 +233,14 @@ export const translations: Translations = {
       ranked: 'Ranked',
       replays: 'Replays',
       leaderboard: 'Leaderboard',
+      practice: 'Practice',
+    },
+    practice: {
+      title: 'Practice Mode',
+      description: 'AI training, special drills, and custom scenarios',
+      aiTraining: 'AI Training',
+      specialDrills: 'Special Drills',
+      customScenarios: 'Custom Scenarios',
     },
     auth: {
       login: 'Login',
@@ -359,6 +377,14 @@ export const translations: Translations = {
       ranked: '排位',
       replays: '回放',
       leaderboard: '排行榜',
+      practice: '练习模式',
+    },
+    practice: {
+      title: '练习模式',
+      description: 'AI陪练、专项训练、自定义关卡',
+      aiTraining: 'AI陪练',
+      specialDrills: '专项训练',
+      customScenarios: '自定义关卡',
     },
     auth: {
       login: '登录',
@@ -495,6 +521,14 @@ export const translations: Translations = {
       ranked: 'ランク',
       replays: 'リプレイ',
       leaderboard: 'リーダーボード',
+      practice: '練習',
+    },
+    practice: {
+      title: '練習モード',
+      description: 'AIトレーニング、専門ドリル、カスタムシナリオ',
+      aiTraining: 'AIトレーニング',
+      specialDrills: '専門ドリル',
+      customScenarios: 'カスタムシナリオ',
     },
     auth: {
       login: 'ログイン',
