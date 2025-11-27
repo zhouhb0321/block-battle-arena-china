@@ -251,15 +251,27 @@ const ReplaySystem: React.FC = () => {
     setIsPreparationDialogOpen(false);
   };
 
-  // Helper functions for V4 detection
+  // Helper functions for V4 detection - 增强数据检测
   const isV4Replay = (data: any): boolean => {
-    return data && (data.format === 'v4' || (data.version === '4.0' && data.v4Data));
+    if (!data) return false;
+    // 检查多种 V4 格式标识
+    if (data.format === 'v4') return true;
+    if (data.version === '4.0') return true;
+    if (data.v4Data) return true;
+    // 检查是否有 V4 必需的字段
+    if (data.events && data.stats && data.metadata) return true;
+    return false;
   };
 
   const getV4Data = (data: any): any | null => {
-    if (data && data.v4Data) {
-      return data.v4Data;
-    }
+    if (!data) return null;
+    // 尝试多种数据格式提取
+    if (data.v4Data) return data.v4Data;
+    if (data.format === 'v4') return data;
+    // 直接的 V4 结构
+    if (data.events && data.stats && data.metadata) return data;
+    // 包装在 replay_data 中
+    if (data.replay_data?.events) return data.replay_data;
     return null;
   };
 

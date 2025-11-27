@@ -199,11 +199,20 @@ export const useKeyboardControls = ({
           onMoveRight();
           lastMoveTime.current[key] = timestamp;
         } else if (key === controls.softDrop) {
-          // 软降速度控制
-          const sdfInterval = Math.max(16, 1000 / gameSettings.sdf);
-          if (timeSinceLastMove >= sdfInterval) {
+          // 软降速度控制 - 优化计算使软降更快
+          // SDF=0 表示瞬间下降，SDF越高下降越快
+          if (gameSettings.sdf === 0 || gameSettings.sdf >= 100) {
+            // 瞬间软降（每帧都执行）
             onSoftDrop();
             lastMoveTime.current[key] = timestamp;
+          } else {
+            // 正常软降速度：sdf 表示每秒下落格数
+            // sdf=40 → 每秒40格 → 25ms/格
+            const sdfInterval = Math.max(1, 1000 / Math.max(gameSettings.sdf, 1));
+            if (timeSinceLastMove >= sdfInterval) {
+              onSoftDrop();
+              lastMoveTime.current[key] = timestamp;
+            }
           }
         }
       }
