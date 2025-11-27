@@ -20,7 +20,7 @@ import TeamGameArea from '@/components/game/TeamGameArea';
 import { AIBattleGame } from '@/components/game/AIBattleGame';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft } from 'lucide-react';
+import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft, GraduationCap } from 'lucide-react';
 import type { ViewType } from '@/types/navigation';
 import { GAME_MODES } from '@/utils/gameTypes';
 
@@ -201,53 +201,70 @@ const Index = () => {
             </div>
 
             {/* Game Modes Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
               <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', GAME_MODES.find(m => m.id === 'sprint40'))}>
-                <CardContent className="p-8 text-center space-y-4">
-                  <div className="w-20 h-20 mx-auto bg-game-blue/10 rounded-2xl flex items-center justify-center group-hover:bg-game-blue/20 transition-colors">
-                    <Play className="w-10 h-10 text-game-blue" />
+                <CardContent className="p-6 text-center space-y-3">
+                  <div className="w-16 h-16 mx-auto bg-game-blue/10 rounded-2xl flex items-center justify-center group-hover:bg-game-blue/20 transition-colors">
+                    <Play className="w-8 h-8 text-game-blue" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.sprint40')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('game.singlePlayerDesc')}</p>
+                    <h3 className="text-lg font-bold text-foreground mb-1">{t('game.sprint40')}</h3>
+                    <p className="text-xs text-muted-foreground">{t('game.singlePlayerDesc')}</p>
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', GAME_MODES.find(m => m.id === 'timeAttack2'))}>
-                <CardContent className="p-8 text-center space-y-4">
-                  <div className="w-20 h-20 mx-auto bg-game-orange/10 rounded-2xl flex items-center justify-center group-hover:bg-game-orange/20 transition-colors">
-                    <Trophy className="w-10 h-10 text-game-orange" />
+                <CardContent className="p-6 text-center space-y-3">
+                  <div className="w-16 h-16 mx-auto bg-game-orange/10 rounded-2xl flex items-center justify-center group-hover:bg-game-orange/20 transition-colors">
+                    <Trophy className="w-8 h-8 text-game-orange" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.ultra2min')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('game.singlePlayerDesc')}</p>
+                    <h3 className="text-lg font-bold text-foreground mb-1">{t('game.ultra2min')}</h3>
+                    <p className="text-xs text-muted-foreground">{t('game.singlePlayerDesc')}</p>
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleGameModeStart('singleplayer', GAME_MODES.find(m => m.id === 'endless'))}>
-                <CardContent className="p-8 text-center space-y-4">
-                  <div className="w-20 h-20 mx-auto bg-game-green/10 rounded-2xl flex items-center justify-center group-hover:bg-game-green/20 transition-colors">
-                    <Settings className="w-10 h-10 text-game-green" />
+                <CardContent className="p-6 text-center space-y-3">
+                  <div className="w-16 h-16 mx-auto bg-game-green/10 rounded-2xl flex items-center justify-center group-hover:bg-game-green/20 transition-colors">
+                    <Settings className="w-8 h-8 text-game-green" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">{t('game.endless')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('game.singlePlayerDesc')}</p>
+                    <h3 className="text-lg font-bold text-foreground mb-1">{t('game.endless')}</h3>
+                    <p className="text-xs text-muted-foreground">{t('game.singlePlayerDesc')}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('practice')}>
+                <CardContent className="p-6 text-center space-y-3">
+                  <div className="w-16 h-16 mx-auto bg-game-cyan/10 rounded-2xl flex items-center justify-center group-hover:bg-game-cyan/20 transition-colors">
+                    <GraduationCap className="w-8 h-8 text-game-cyan" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground mb-1">{t('nav.practice')}</h3>
+                    <p className="text-xs text-muted-foreground">{t('practice.description')}</p>
+                    {!isAuthenticated && (
+                      <div className="text-xs text-amber-600 font-medium bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded mt-1">
+                        {t('common.needLogin')}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('multiplayer')}>
-                <CardContent className="p-8 text-center space-y-4">
-                  <div className="w-20 h-20 mx-auto bg-game-purple/10 rounded-2xl flex items-center justify-center group-hover:bg-game-purple/20 transition-colors">
-                    <Users className="w-10 h-10 text-game-purple" />
+                <CardContent className="p-6 text-center space-y-3">
+                  <div className="w-16 h-16 mx-auto bg-game-purple/10 rounded-2xl flex items-center justify-center group-hover:bg-game-purple/20 transition-colors">
+                    <Users className="w-8 h-8 text-game-purple" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">{t('nav.multiplayer')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('game.multiPlayerDesc')}</p>
+                    <h3 className="text-lg font-bold text-foreground mb-1">{t('nav.multiplayer')}</h3>
+                    <p className="text-xs text-muted-foreground">{t('game.multiPlayerDesc')}</p>
                     {!isAuthenticated && (
-                      <div className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
+                      <div className="text-xs text-amber-600 font-medium bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded mt-1">
                         {t('common.needLogin')}
                       </div>
                     )}

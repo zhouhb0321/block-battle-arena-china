@@ -61,6 +61,12 @@ type GameTranslations = {
   undoSteps: string;
 };
 
+type CommonTranslations = {
+  welcome: string;
+  backToHome: string;
+  needLogin: string;
+};
+
 type NavTranslations = {
   play: string;
   multiplayer: string;
@@ -117,6 +123,7 @@ type LanguageTranslations = {
   nav: NavTranslations;
   auth: AuthTranslations;
   practice: PracticeTranslations;
+  common: CommonTranslations;
   premium: string;
   subscribe: string;
   admin: string;
@@ -241,6 +248,11 @@ export const translations: Translations = {
       aiTraining: 'AI Training',
       specialDrills: 'Special Drills',
       customScenarios: 'Custom Scenarios',
+    },
+    common: {
+      welcome: 'Welcome',
+      backToHome: 'Back to Home',
+      needLogin: 'Login required',
     },
     auth: {
       login: 'Login',
@@ -386,6 +398,11 @@ export const translations: Translations = {
       specialDrills: '专项训练',
       customScenarios: '自定义关卡',
     },
+    common: {
+      welcome: '欢迎',
+      backToHome: '返回首页',
+      needLogin: '需要登录',
+    },
     auth: {
       login: '登录',
       register: '注册',
@@ -529,6 +546,11 @@ export const translations: Translations = {
       aiTraining: 'AIトレーニング',
       specialDrills: '専門ドリル',
       customScenarios: 'カスタムシナリオ',
+    },
+    common: {
+      welcome: 'ようこそ',
+      backToHome: 'ホームに戻る',
+      needLogin: 'ログインが必要です',
     },
     auth: {
       login: 'ログイン',

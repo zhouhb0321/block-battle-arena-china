@@ -3,7 +3,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
-import { Play, Users, Settings, LogIn, Shield, History, Medal } from 'lucide-react';
+import { Play, Users, Settings, LogIn, Shield, History, Medal, GraduationCap } from 'lucide-react';
 import UserMenu from './UserMenu';
 import LanguageSelector from './LanguageSelector';
 import ThemeSwitcher from './ThemeSwitcher';
@@ -54,6 +54,16 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             >
               <Users className="w-4 h-4" />
               {t('nav.multiplayer')}
+            </Button>
+
+            <Button
+              variant={currentView === 'practice' ? 'default' : 'ghost'}
+              onClick={() => onViewChange('practice')}
+              className="flex items-center gap-2"
+              disabled={!isAuthenticated}
+            >
+              <GraduationCap className="w-4 h-4" />
+              {t('nav.practice')}
             </Button>
 
             <Button
