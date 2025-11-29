@@ -227,7 +227,7 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
             attack: 0,
             startTime: null,
             endTime: null,
-            ghostPiece: null,
+            ghostPiece: playerGameLogic.ghostPiece,
             clearingLines: [],
             achievements: []
           }}
@@ -252,7 +252,7 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
             attack: 0,
             startTime: null,
             endTime: null,
-            ghostPiece: null,
+            ghostPiece: aiGameLogic.ghostPiece,
             clearingLines: [],
             achievements: []
           }}

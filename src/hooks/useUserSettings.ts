@@ -39,7 +39,7 @@ const DEFAULT_GUEST_SETTINGS: UserSettings = {
   backgroundMusic: '',
   arr: 20, // ✅ 调整为现代标准 20ms
   das: 133,
-  sdf: 20, // ✅ 调整为现代标准 20ms
+  sdf: 40, // ✅ 提高默认软降速度 (40格/秒 = 25ms/格)
   dcd: 0, // DAS Cut Delay disabled by default
   controls: {
     moveLeft: 'ArrowLeft',

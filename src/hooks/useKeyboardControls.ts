@@ -187,8 +187,25 @@ export const useKeyboardControls = ({
       const heldTime = timestamp - pressTime;
       const timeSinceLastMove = timestamp - lastMove;
       
-      // DAS (Delayed Auto Shift) 和 ARR (Auto Repeat Rate) 逻辑
-      // 使用 performance.now() 提高精度
+      // ✅ 软降独立处理 - 不受 DAS 影响，立即响应
+      if (key === controls.softDrop) {
+        if (gameSettings.sdf === 0 || gameSettings.sdf >= 100) {
+          // 瞬间软降（每帧都执行）
+          onSoftDrop();
+          lastMoveTime.current[key] = timestamp;
+        } else {
+          // 正常软降速度：sdf 表示每秒下落格数
+          // sdf=40 → 每秒40格 → 25ms/格
+          const sdfInterval = Math.max(1, 1000 / Math.max(gameSettings.sdf, 1));
+          if (timeSinceLastMove >= sdfInterval) {
+            onSoftDrop();
+            lastMoveTime.current[key] = timestamp;
+          }
+        }
+        return; // 软降处理完毕，跳过 DAS 逻辑
+      }
+      
+      // DAS (Delayed Auto Shift) 和 ARR (Auto Repeat Rate) 逻辑 - 只用于左右移动
       if (heldTime > gameSettings.das) {
         const arrInterval = gameSettings.arr === 0 ? 0 : Math.max(gameSettings.arr, 1);
         
@@ -198,22 +215,6 @@ export const useKeyboardControls = ({
         } else if (key === controls.moveRight && (arrInterval === 0 || timeSinceLastMove >= arrInterval)) {
           onMoveRight();
           lastMoveTime.current[key] = timestamp;
-        } else if (key === controls.softDrop) {
-          // 软降速度控制 - 优化计算使软降更快
-          // SDF=0 表示瞬间下降，SDF越高下降越快
-          if (gameSettings.sdf === 0 || gameSettings.sdf >= 100) {
-            // 瞬间软降（每帧都执行）
-            onSoftDrop();
-            lastMoveTime.current[key] = timestamp;
-          } else {
-            // 正常软降速度：sdf 表示每秒下落格数
-            // sdf=40 → 每秒40格 → 25ms/格
-            const sdfInterval = Math.max(1, 1000 / Math.max(gameSettings.sdf, 1));
-            if (timeSinceLastMove >= sdfInterval) {
-              onSoftDrop();
-              lastMoveTime.current[key] = timestamp;
-            }
-          }
         }
       }
     });
