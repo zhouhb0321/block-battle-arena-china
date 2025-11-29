@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, Play, Pause, RotateCcw, SkipForward, SkipBack, FastForward, Rewind } from 'lucide-react';
+import { X, Play, Pause, RotateCcw, SkipForward, SkipBack, FastForward, Rewind, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
@@ -25,6 +25,23 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
   onClose,
   autoPlay = false
 }) => {
+  // ✅ 数据验证 - 防止崩溃
+  if (!replay || !replay.events || !replay.stats || !replay.metadata) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="p-8 text-center max-w-md">
+          <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+          <h3 className="text-xl font-bold mb-2">回放数据无效</h3>
+          <p className="text-muted-foreground mb-6">
+            无法加载此回放，数据可能已损坏或格式不兼容
+          </p>
+          <Button onClick={onClose} variant="default">
+            返回
+          </Button>
+        </Card>
+      </div>
+    );
+  }
   const gameRecording = useGameRecording();
   const { requestPlayback, releasePlayback } = useMusicContext();
   
