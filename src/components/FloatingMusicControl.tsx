@@ -1,6 +1,7 @@
 /**
  * 悬浮音乐控制面板
- * 支持自动隐藏、滚轮调节音量、上下曲切换
+ * 支持全局滚轮调节音量、自动隐藏、上下曲切换
+ * 游戏中保护模式：只显示音量和切歌，隐藏暂停按钮
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -32,7 +33,8 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
     toggleMute,
     playNext,
     playPrevious,
-    currentSource
+    currentSource,
+    playlist
   } = useMusicContext();
 
   const [state, setState] = useState<ControlState>('mini');
@@ -75,12 +77,9 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
     }, 1000);
   }, []);
 
-  // 滚轮调节音量
-  const handleWheel = useCallback((e: WheelEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const delta = e.deltaY > 0 ? -5 : 5;
+  // 处理滚轮音量调节
+  const handleVolumeWheel = useCallback((deltaY: number) => {
+    const delta = deltaY > 0 ? -5 : 5;
     const newVolume = Math.max(0, Math.min(100, volume + delta));
     
     setVolume(newVolume);
@@ -88,7 +87,14 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
     resetHideTimer();
   }, [volume, setVolume, showVolumeIndicatorTemp, resetHideTimer]);
 
-  // 监听滚轮事件
+  // 控件内滚轮事件
+  const handleWheel = useCallback((e: WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleVolumeWheel(e.deltaY);
+  }, [handleVolumeWheel]);
+
+  // 监听控件滚轮事件
   useEffect(() => {
     const control = controlRef.current;
     if (!control) return;
@@ -99,6 +105,29 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
       control.removeEventListener('wheel', handleWheel);
     };
   }, [handleWheel]);
+
+  // ✅ 全局滚轮音量控制 - 游戏进行中时在任意位置都可以调节音量
+  useEffect(() => {
+    const handleGlobalWheel = (e: WheelEvent) => {
+      // 只在游戏活动且有音乐时响应全局滚轮
+      if (!isGameActive || !currentSource) return;
+      
+      // 检查是否在某些需要滚轮的元素上（如滚动区域）
+      const target = e.target as HTMLElement;
+      if (target.closest('.scroll-area') || target.closest('[data-no-music-wheel]')) {
+        return;
+      }
+      
+      // 调节音量
+      handleVolumeWheel(e.deltaY);
+    };
+
+    window.addEventListener('wheel', handleGlobalWheel, { passive: true });
+
+    return () => {
+      window.removeEventListener('wheel', handleGlobalWheel);
+    };
+  }, [isGameActive, currentSource, handleVolumeWheel]);
 
   // 游戏状态变化时自动调整显示状态
   useEffect(() => {
@@ -169,6 +198,9 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
     return null;
   }
 
+  // 是否处于游戏保护模式（游戏进行中不能暂停音乐）
+  const isGameProtected = isGameActive && !isGamePaused;
+
   return (
     <div
       ref={controlRef}
@@ -182,8 +214,8 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
       onMouseLeave={handleMouseLeave}
     >
       {/* 音量指示器 */}
-      {showVolumeIndicator && state === 'expanded' && (
-        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black/90 text-white px-4 py-2 rounded-lg text-lg font-bold animate-fade-in whitespace-nowrap">
+      {showVolumeIndicator && (
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black/90 text-white px-4 py-2 rounded-lg text-lg font-bold animate-fade-in whitespace-nowrap z-10">
           {muted ? '🔇 静音' : `🔊 ${Math.round(volume)}%`}
         </div>
       )}
@@ -203,8 +235,89 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
         </button>
       )}
 
-      {/* Expanded 状态 - 完整控制面板 */}
-      {state === 'expanded' && (
+      {/* Expanded 状态 - 游戏保护模式（只显示音量和切歌） */}
+      {state === 'expanded' && isGameProtected && (
+        <div className="w-72 bg-black/90 backdrop-blur-md rounded-2xl border border-primary/20 p-3 shadow-2xl shadow-primary/10">
+          {/* 曲目信息 - 简化 */}
+          <div className="flex items-center gap-2 mb-3">
+            <Music className="w-4 h-4 text-primary flex-shrink-0" />
+            <div className="text-sm text-white truncate flex-1">
+              {currentTrack?.title || '背景音乐'}
+            </div>
+            <div className="text-xs text-green-400">
+              ▶ 播放中
+            </div>
+          </div>
+
+          {/* 切歌按钮 */}
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePrevious}
+              className="text-gray-300 hover:text-white hover:bg-white/10"
+              aria-label="Previous"
+              disabled={playlist.length <= 1}
+            >
+              <SkipBack className="w-4 h-4" />
+            </Button>
+            
+            <span className="text-xs text-gray-400 px-2">
+              切歌
+            </span>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleNext}
+              className="text-gray-300 hover:text-white hover:bg-white/10"
+              aria-label="Next"
+              disabled={playlist.length <= 1}
+            >
+              <SkipForward className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* 音量控制 */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleMuteToggle}
+              className="text-gray-300 hover:text-white hover:bg-white/10 flex-shrink-0 w-8 h-8"
+              aria-label={muted ? 'Unmute' : 'Mute'}
+            >
+              {muted ? (
+                <VolumeX className="w-4 h-4" />
+              ) : (
+                <Volume2 className="w-4 h-4" />
+              )}
+            </Button>
+
+            <div className="flex-1">
+              <Slider
+                value={[muted ? 0 : volume]}
+                onValueChange={handleVolumeChange}
+                max={100}
+                step={1}
+                className="cursor-pointer"
+              />
+            </div>
+
+            <div className="text-xs text-gray-400 w-8 text-right">
+              {muted ? '0%' : `${Math.round(volume)}%`}
+            </div>
+          </div>
+
+          {/* 提示文本 */}
+          <div className="mt-2 text-xs text-gray-500 text-center">
+            🎮 游戏中 • 滚轮调音量 • 暂停后可控制播放
+          </div>
+        </div>
+      )}
+
+      {/* Expanded 状态 - 完整控制面板（非游戏中或暂停时） */}
+      {state === 'expanded' && !isGameProtected && (
         <div className="w-80 bg-black/90 backdrop-blur-md rounded-2xl border border-primary/20 p-4 shadow-2xl shadow-primary/10">
           {/* 曲目信息 */}
           <div className="flex items-center gap-3 mb-4">
@@ -216,7 +329,7 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
                 {currentTrack?.title || '游戏背景音乐'}
               </div>
               <div className="text-xs text-gray-400">
-                {isPlaying ? '正在播放' : '已暂停'}
+                {isPlaying ? '正在播放' : '已暂停'} • {playlist.length} 首歌曲
               </div>
             </div>
           </div>
@@ -229,6 +342,7 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
               onClick={handlePrevious}
               className="text-gray-300 hover:text-white hover:bg-white/10"
               aria-label="Previous"
+              disabled={playlist.length <= 1}
             >
               <SkipBack className="w-5 h-5" />
             </Button>
@@ -253,6 +367,7 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
               onClick={handleNext}
               className="text-gray-300 hover:text-white hover:bg-white/10"
               aria-label="Next"
+              disabled={playlist.length <= 1}
             >
               <SkipForward className="w-5 h-5" />
             </Button>
@@ -281,7 +396,6 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
                 max={100}
                 step={1}
                 className="cursor-pointer"
-                disabled={muted}
               />
             </div>
 
