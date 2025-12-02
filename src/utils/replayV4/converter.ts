@@ -50,6 +50,29 @@ export function extractInputEvents(replay: V4ReplayData): Array<{
 }
 
 /**
+ * 从 V4 回放中提取 SPAWN 事件
+ */
+export function extractSpawnEvents(replay: V4ReplayData): Array<{
+  timestamp: number;
+  pieceType: string;
+  x: number;
+  y: number;
+}> {
+  if (!replay || !Array.isArray(replay.events)) {
+    console.warn('[Converter] Invalid replay data for spawn events');
+    return [];
+  }
+  return replay.events
+    .filter((e): e is import('./types').V4SpawnEvent => e && e.type === ReplayOpcode.SPAWN)
+    .map(event => ({
+      timestamp: event.timestamp,
+      pieceType: event.pieceType,
+      x: event.x,
+      y: event.y
+    }));
+}
+
+/**
  * 从 V4 回放中提取 LOCK 事件
  */
 export function extractLockEvents(replay: V4ReplayData) {
