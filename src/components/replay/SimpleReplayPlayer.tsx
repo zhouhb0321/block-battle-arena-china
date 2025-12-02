@@ -2,29 +2,21 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { X, Play, Pause, RotateCcw, SkipForward, SkipBack, FastForward, Rewind } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { V4ReplayData, V4KeyframeEvent } from '@/utils/replayV4/types';
-import { extractInputEvents, extractReplayMetadata, extractKeyframeEvents, extractSpawnEvents } from '@/utils/replayV4/converter';
+import { V4ReplayData, V4KeyframeEvent, V4LockEvent } from '@/utils/replayV4/types';
+import { extractInputEvents, extractReplayMetadata, extractKeyframeEvents, extractSpawnEvents, extractLockEvents } from '@/utils/replayV4/converter';
 import { extractKeyMoments } from '@/utils/replayV4/eventExtractor';
 import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { useMusicContext } from '@/contexts/MusicContext';
 import ReplayGameBoard from './ReplayGameBoard';
 import BackgroundWallpaper from '@/components/BackgroundWallpaper';
-import { TETROMINO_TYPES } from '@/utils/pieceGeneration';
+import { TETROMINO_TYPES, TETROMINO_TYPE_IDS } from '@/utils/pieceGeneration';
+import { placePiece, clearLines } from '@/utils/tetrisCore';
 import type { GamePiece } from '@/utils/gameTypes';
 
 interface SimpleReplayPlayerProps {
   replay: V4ReplayData;
   onClose: () => void;
   autoPlay?: boolean;
-}
-
-// 定义输入事件类型
-interface ExtractedInputEvent {
-  timestamp: number;
-  action: string;
-  success: boolean;
-  position?: { x: number; y: number };
-  rotation?: number;
 }
 
 // 从类型字符串创建 GamePiece
@@ -36,6 +28,18 @@ const createPieceFromType = (typeStr: string): GamePiece | null => {
     type: tetrominoType,
     x: 3, y: 0, rotation: 0
   };
+};
+
+// 计算消行分数
+const calculateLineScore = (linesCleared: number, level: number, isTSpin: boolean, isMini: boolean): number => {
+  const baseScores = [0, 100, 300, 500, 800];
+  let score = baseScores[linesCleared] || 0;
+  
+  if (isTSpin) {
+    score = isMini ? score * 1.5 : score * 2;
+  }
+  
+  return score * level;
 };
 
 export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
@@ -62,6 +66,7 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
   const inputEvents = useMemo(() => extractInputEvents(replay), [replay]);
   const keyframes = useMemo(() => extractKeyframeEvents(replay), [replay]);
   const spawnEvents = useMemo(() => extractSpawnEvents(replay), [replay]);
+  const lockEvents = useMemo(() => extractLockEvents(replay), [replay]);
   const metadata = useMemo(() => extractReplayMetadata(replay), [replay]);
   const keyMoments = useMemo(() => extractKeyMoments(replay), [replay]);
   
@@ -70,6 +75,7 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showControls, setShowControls] = useState(true);
+  const [replayEnded, setReplayEnded] = useState(false);
   
   // 游戏状态（直接由回放数据驱动）
   const [board, setBoard] = useState<number[][]>(() => 
@@ -88,7 +94,11 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
   const lastAppliedKFRef = useRef<V4KeyframeEvent | null>(null);
   const lastInputIndexRef = useRef(0);
   const lastSpawnIndexRef = useRef(0);
+  const lastLockIndexRef = useRef(0);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const currentSpawnTimeRef = useRef<number>(0);
+  const boardRef = useRef<number[][]>(Array(23).fill(null).map(() => Array(10).fill(0)));
   
   // 音乐管理
   useEffect(() => {
@@ -105,6 +115,15 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
     gameRecording.setReplaying(true);
     return () => gameRecording.setReplaying(false);
   }, [gameRecording]);
+  
+  // 清理自动关闭定时器
+  useEffect(() => {
+    return () => {
+      if (autoCloseTimeoutRef.current) {
+        clearTimeout(autoCloseTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // 控制条自动隐藏
   const resetControlsTimeout = useCallback(() => {
@@ -148,7 +167,6 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
     const shape = piece.type.shape;
     let ghostY = piece.y;
     
-    // 向下查找最低可放置位置
     while (true) {
       let canMove = true;
       for (let row = 0; row < shape.length && canMove; row++) {
@@ -174,17 +192,17 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
   const applyKeyframe = useCallback((kf: V4KeyframeEvent) => {
     if (!kf) return;
     
-    // 设置棋盘
-    if (Array.isArray(kf.board) && kf.board.length > 0) {
-      setBoard(kf.board.map(row => [...row]));
-    }
+    const newBoard = Array.isArray(kf.board) && kf.board.length > 0
+      ? kf.board.map(row => [...row])
+      : Array(23).fill(null).map(() => Array(10).fill(0));
     
-    // 设置统计数据
+    setBoard(newBoard);
+    boardRef.current = newBoard;
     setScore(kf.score || 0);
     setLines(kf.lines || 0);
     setLevel(kf.level || 1);
     
-    // 设置 NEXT 队列（核心修复）
+    // 设置 NEXT 队列
     if (Array.isArray(kf.nextPieces)) {
       const pieces = kf.nextPieces
         .slice(0, 6)
@@ -203,23 +221,47 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
     lastAppliedKFRef.current = kf;
   }, []);
   
-  // 处理 INPUT 事件更新当前方块位置
-  const processInputEvent = useCallback((event: ExtractedInputEvent, boardState: number[][]) => {
-    // 如果事件包含位置信息，直接使用（核心优化）
-    if (event.position && event.success) {
-      const currentType = currentPiece?.type;
-      if (currentType) {
-        const updatedPiece: GamePiece = {
-          type: currentType,
-          x: event.position.x,
-          y: event.position.y,
-          rotation: event.rotation ?? currentPiece?.rotation ?? 0
-        };
-        setCurrentPiece(updatedPiece);
-        setGhostPiece(calculateGhostPiece(updatedPiece, boardState));
-      }
+  // 处理 LOCK 事件 - 核心修复
+  const processLockEvent = useCallback((lock: V4LockEvent) => {
+    // 1. 创建锁定位置的方块
+    const lockedPiece = createPieceFromType(lock.pieceType);
+    if (!lockedPiece) return;
+    
+    lockedPiece.x = lock.x;
+    lockedPiece.y = lock.y;
+    lockedPiece.rotation = lock.rotation;
+    
+    // 2. 将方块放置到棋盘上
+    let newBoard = placePiece(boardRef.current, lockedPiece);
+    
+    // 3. 消除完成的行
+    if (lock.linesCleared > 0) {
+      const result = clearLines(newBoard);
+      newBoard = result.newBoard;
+      setLines(prev => prev + lock.linesCleared);
+      setScore(prev => prev + calculateLineScore(lock.linesCleared, level, lock.isTSpin, lock.isMini));
     }
-  }, [currentPiece, calculateGhostPiece]);
+    
+    // 4. 更新棋盘状态
+    setBoard(newBoard);
+    boardRef.current = newBoard;
+    
+    // 5. 清除当前方块（已锁定）
+    setCurrentPiece(null);
+    setGhostPiece(null);
+    
+    // 6. 更新 NEXT 队列 - 移除第一个方块
+    setNextPieces(prev => prev.slice(1));
+  }, [level]);
+  
+  // 计算重力下落位置 - 实现自然下落动画
+  const calculateGravityY = useCallback((spawnTime: number, spawnY: number, currentTimeMs: number): number => {
+    const sdf = replay.metadata?.settings?.sdf || 40;
+    const elapsedMs = currentTimeMs - spawnTime;
+    // 使用 SDF 计算下落的格子数（SDF 单位是 cells/second）
+    const cellsDropped = Math.floor((elapsedMs / 1000) * (sdf / 20)); // 降低重力速度
+    return Math.min(spawnY + cellsDropped, 19);
+  }, [replay.metadata?.settings?.sdf]);
   
   // 核心：处理事件到指定时间
   const processEventsToTime = useCallback((targetTime: number) => {
@@ -232,7 +274,7 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
         nearestKF.timestamp > lastAppliedKFRef.current.timestamp)) {
       applyKeyframe(nearestKF);
       
-      // 同步事件索引到 KEYFRAME 之后
+      // 同步所有事件索引到 KEYFRAME 之后
       while (lastInputIndexRef.current < inputEvents.length &&
              inputEvents[lastInputIndexRef.current].timestamp <= nearestKF.timestamp) {
         lastInputIndexRef.current++;
@@ -241,9 +283,22 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
              spawnEvents[lastSpawnIndexRef.current].timestamp <= nearestKF.timestamp) {
         lastSpawnIndexRef.current++;
       }
+      while (lastLockIndexRef.current < lockEvents.length &&
+             lockEvents[lastLockIndexRef.current].timestamp <= nearestKF.timestamp) {
+        lastLockIndexRef.current++;
+      }
     }
     
-    // 2. 处理 SPAWN 事件设置当前方块
+    // 2. 处理 LOCK 事件（逐个方块锁定更新棋盘）
+    while (lastLockIndexRef.current < lockEvents.length) {
+      const lock = lockEvents[lastLockIndexRef.current];
+      if (!lock || lock.timestamp > targetTime) break;
+      
+      processLockEvent(lock);
+      lastLockIndexRef.current++;
+    }
+    
+    // 3. 处理 SPAWN 事件设置当前方块
     while (lastSpawnIndexRef.current < spawnEvents.length) {
       const spawn = spawnEvents[lastSpawnIndexRef.current];
       if (!spawn || spawn.timestamp > targetTime) break;
@@ -252,25 +307,59 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
       if (newPiece) {
         newPiece.x = spawn.x;
         newPiece.y = spawn.y;
+        currentSpawnTimeRef.current = spawn.timestamp;
         setCurrentPiece(newPiece);
-        setGhostPiece(calculateGhostPiece(newPiece, board));
+        setGhostPiece(calculateGhostPiece(newPiece, boardRef.current));
       }
       lastSpawnIndexRef.current++;
     }
     
-    // 3. 处理 INPUT 事件更新方块位置
-    const currentBoard = board;
+    // 4. 处理 INPUT 事件更新方块位置（带重力下落）
+    let latestInputPosition: { x: number; y: number; rotation?: number } | null = null;
+    
     while (lastInputIndexRef.current < inputEvents.length) {
       const event = inputEvents[lastInputIndexRef.current];
       if (!event || event.timestamp > targetTime) break;
       
       if (event.success && event.position) {
-        processInputEvent(event, currentBoard);
+        latestInputPosition = {
+          x: event.position.x,
+          y: event.position.y,
+          rotation: event.rotation
+        };
       }
-      
       lastInputIndexRef.current++;
     }
-  }, [keyframes, inputEvents, spawnEvents, board, findNearestKeyframe, applyKeyframe, processInputEvent, calculateGhostPiece]);
+    
+    // 5. 更新当前方块位置
+    if (currentPiece) {
+      let updatedPiece: GamePiece;
+      
+      if (latestInputPosition) {
+        // 使用 INPUT 事件的精确位置
+        updatedPiece = {
+          ...currentPiece,
+          x: latestInputPosition.x,
+          y: latestInputPosition.y,
+          rotation: latestInputPosition.rotation ?? currentPiece.rotation
+        };
+      } else {
+        // 无 INPUT 事件时，应用重力下落
+        const gravityY = calculateGravityY(
+          currentSpawnTimeRef.current, 
+          currentPiece.y, 
+          targetTime
+        );
+        updatedPiece = {
+          ...currentPiece,
+          y: Math.min(gravityY, currentPiece.y + 2) // 限制每帧最大下落距离
+        };
+      }
+      
+      setCurrentPiece(updatedPiece);
+      setGhostPiece(calculateGhostPiece(updatedPiece, boardRef.current));
+    }
+  }, [keyframes, inputEvents, spawnEvents, lockEvents, currentPiece, findNearestKeyframe, applyKeyframe, processLockEvent, calculateGhostPiece, calculateGravityY]);
   
   // 播放循环
   useEffect(() => {
@@ -295,6 +384,12 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
       if (newTime >= replay.stats.duration) {
         setCurrentTime(replay.stats.duration);
         setIsPlaying(false);
+        setReplayEnded(true);
+        
+        // 2秒后自动返回播放库
+        autoCloseTimeoutRef.current = setTimeout(() => {
+          onClose();
+        }, 2000);
         return;
       }
       
@@ -309,24 +404,41 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
     return () => {
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
-  }, [isPlaying, playbackSpeed, currentTime, replay.stats.duration, processEventsToTime]);
+  }, [isPlaying, playbackSpeed, currentTime, replay.stats.duration, processEventsToTime, onClose]);
   
   // 控制函数
   const handlePlayPause = useCallback(() => {
+    // 取消自动关闭
+    if (autoCloseTimeoutRef.current) {
+      clearTimeout(autoCloseTimeoutRef.current);
+      autoCloseTimeoutRef.current = null;
+    }
+    setReplayEnded(false);
     setIsPlaying(prev => !prev);
     resetControlsTimeout();
   }, [resetControlsTimeout]);
   
   const handleReset = useCallback(() => {
+    // 取消自动关闭
+    if (autoCloseTimeoutRef.current) {
+      clearTimeout(autoCloseTimeoutRef.current);
+      autoCloseTimeoutRef.current = null;
+    }
+    setReplayEnded(false);
+    
     setCurrentTime(0);
     setIsPlaying(false);
     lastFrameTimeRef.current = null;
     lastAppliedKFRef.current = null;
     lastInputIndexRef.current = 0;
     lastSpawnIndexRef.current = 0;
+    lastLockIndexRef.current = 0;
+    currentSpawnTimeRef.current = 0;
     
     // 重置游戏状态
-    setBoard(Array(23).fill(null).map(() => Array(10).fill(0)));
+    const emptyBoard = Array(23).fill(null).map(() => Array(10).fill(0));
+    setBoard(emptyBoard);
+    boardRef.current = emptyBoard;
     setCurrentPiece(null);
     setGhostPiece(null);
     setNextPieces([]);
@@ -342,12 +454,24 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
   }, [keyframes, applyKeyframe]);
   
   const handleSeek = useCallback((newTime: number) => {
+    // 取消自动关闭
+    if (autoCloseTimeoutRef.current) {
+      clearTimeout(autoCloseTimeoutRef.current);
+      autoCloseTimeoutRef.current = null;
+    }
+    setReplayEnded(false);
+    
     // 回退时需要重置状态
     if (newTime < currentTime) {
       lastAppliedKFRef.current = null;
       lastInputIndexRef.current = 0;
       lastSpawnIndexRef.current = 0;
-      setBoard(Array(23).fill(null).map(() => Array(10).fill(0)));
+      lastLockIndexRef.current = 0;
+      currentSpawnTimeRef.current = 0;
+      
+      const emptyBoard = Array(23).fill(null).map(() => Array(10).fill(0));
+      setBoard(emptyBoard);
+      boardRef.current = emptyBoard;
       setCurrentPiece(null);
       setGhostPiece(null);
     }
@@ -448,6 +572,14 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
           <div className="text-white font-bold">{metadata.username || 'Player'}</div>
           <div className="text-sm text-gray-400">{metadata.gameMode}</div>
         </div>
+        
+        {/* 回放结束提示 */}
+        {replayEnded && (
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-black/80 backdrop-blur-md rounded-lg px-8 py-6 text-center">
+            <div className="text-white text-xl font-bold mb-2">回放结束</div>
+            <div className="text-gray-400 text-sm">2秒后自动返回...</div>
+          </div>
+        )}
 
         {/* 游戏窗口 - 居中全屏 */}
         <div className="absolute inset-0 flex items-center justify-center pb-24">
