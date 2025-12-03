@@ -13,7 +13,8 @@ import type {
   V4LockEvent,
   V4KeyframeEvent,
   V4MetaEvent,
-  V4EndEvent
+  V4EndEvent,
+  V4FrameEvent
 } from './types';
 import { ReplayOpcode as Op } from './types';
 
@@ -156,6 +157,15 @@ function encodeEvent(event: V4Event): Uint8Array {
       parts.push(reasonBytes);
       break;
     }
+    
+    case Op.FRAME: {
+      const e = event as V4FrameEvent;
+      parts.push(new Uint8Array([e.pieceType.charCodeAt(0) || 63]));
+      parts.push(encodeVarint(e.x));
+      parts.push(encodeVarint(e.y));
+      parts.push(encodeVarint(e.rotation));
+      break;
+    }
   }
   
   // Combine all parts
@@ -274,6 +284,21 @@ function decodeEvent(data: Uint8Array, offset: number): [V4Event | null, number]
         }, pos2 + reasonLen];
       }
       
+      case Op.FRAME: {
+        const pieceType = String.fromCharCode(data[pos++]);
+        const [x, pos2] = decodeVarint(data, pos);
+        const [y, pos3] = decodeVarint(data, pos2);
+        const [rotation, pos4] = decodeVarint(data, pos3);
+        return [{
+          type: Op.FRAME,
+          timestamp,
+          pieceType,
+          x,
+          y,
+          rotation
+        }, pos4];
+      }
+      
       default:
         console.warn(`[V4 Decoder] ⚠️ Unknown opcode: ${opcode} at offset ${offset - 1}`);
         console.warn(`[V4 Decoder] Context bytes (hex):`, 
@@ -313,7 +338,8 @@ export async function encodeV4Replay(replay: V4ReplayData): Promise<Uint8Array> 
     LOCK: 0,
     KF: 0,
     META: 0,
-    END: 0
+    END: 0,
+    FRAME: 0
   };
   
   for (const event of replay.events) {
@@ -326,6 +352,7 @@ export async function encodeV4Replay(replay: V4ReplayData): Promise<Uint8Array> 
       case Op.KF: eventBreakdown.KF++; break;
       case Op.META: eventBreakdown.META++; break;
       case Op.END: eventBreakdown.END++; break;
+      case Op.FRAME: eventBreakdown.FRAME++; break;
     }
   }
   
@@ -490,7 +517,8 @@ export async function decodeV4Replay(data: Uint8Array): Promise<V4ReplayData | n
       LOCK: events.filter(e => e.type === Op.LOCK).length,
       KF: events.filter(e => e.type === Op.KF).length,
       META: events.filter(e => e.type === Op.META).length,
-      END: events.filter(e => e.type === Op.END).length
+      END: events.filter(e => e.type === Op.END).length,
+      FRAME: events.filter(e => e.type === Op.FRAME).length
     };
     
     console.log(`[V4 Decoder] Events decoded: ${successfulDecodes} successful, ${failedDecodes} failed, ends at: ${eventEnd}`);
@@ -585,10 +613,10 @@ export function validateV4Replay(replay: V4ReplayData): V4ValidationResult {
     errors.push('Initial piece sequence incomplete');
   }
   
-  // Validate pieceType for SPAWN and LOCK events
+  // Validate pieceType for SPAWN, LOCK, and FRAME events
   const validPieceTypes = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
   for (const e of replay.events) {
-    if ((e.type === Op.SPAWN || e.type === Op.LOCK) && 'pieceType' in e) {
+    if ((e.type === Op.SPAWN || e.type === Op.LOCK || e.type === Op.FRAME) && 'pieceType' in e) {
       if (!validPieceTypes.includes(e.pieceType)) {
         errors.push(`Invalid pieceType "${e.pieceType}" at time ${e.timestamp}`);
       }
