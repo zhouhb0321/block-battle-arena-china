@@ -10,6 +10,7 @@ export enum ReplayOpcode {
   LOCK = 0x03,     // Piece locked (critical)
   KF = 0x04,       // Keyframe (board snapshot)
   META = 0x05,     // Metadata event
+  FRAME = 0x06,    // Frame-level position sampling (Solution B)
   END = 0xFF       // Game end
 }
 
@@ -80,13 +81,24 @@ export interface V4EndEvent {
   reason: 'complete' | 'gameover' | 'quit';
 }
 
+// 帧级位置采样事件 (Solution B: Frame-level Input Sampling)
+export interface V4FrameEvent {
+  type: ReplayOpcode.FRAME;
+  timestamp: number;
+  x: number;          // 方块 X 位置
+  y: number;          // 方块 Y 位置
+  rotation: number;   // 方块旋转状态
+  pieceType: string;  // 当前方块类型
+}
+
 export type V4Event = 
   | V4SpawnEvent 
   | V4InputEvent 
   | V4LockEvent 
   | V4KeyframeEvent 
   | V4MetaEvent 
-  | V4EndEvent;
+  | V4EndEvent
+  | V4FrameEvent;
 
 // V4 Replay container
 export interface V4ReplayData {
@@ -148,5 +160,6 @@ export interface V4ValidationResult {
     inputCount: number;
     lockCount: number;
     keyframeCount: number;
+    frameCount: number;  // 帧级采样事件数量
   };
 }

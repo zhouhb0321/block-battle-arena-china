@@ -188,6 +188,40 @@ export function useReplayRecorderV4() {
     });
   }, [isRecording]);
 
+  // ✅ 方案B：帧级位置采样 - 每帧记录方块位置
+  const lastFrameTimeRef = useRef<number>(0);
+  const FRAME_INTERVAL = 16; // ~60fps, 每16ms采样一次
+
+  const recordFrame = useCallback((
+    pieceType: string,
+    x: number,
+    y: number,
+    rotation: number
+  ) => {
+    if (!isRecording) return;
+    
+    const timestamp = Date.now() - startTimeRef.current;
+    
+    // 节流：至少间隔 FRAME_INTERVAL 毫秒才记录一帧
+    if (timestamp - lastFrameTimeRef.current < FRAME_INTERVAL) {
+      return;
+    }
+    
+    const sanitized = sanitizePieceType(pieceType);
+    if (!sanitized) return;
+    
+    lastFrameTimeRef.current = timestamp;
+    
+    eventsRef.current.push({
+      type: ReplayOpcode.FRAME,
+      timestamp,
+      x,
+      y,
+      rotation,
+      pieceType: sanitized
+    });
+  }, [isRecording]);
+
   const recordLock = useCallback((
     pieceType: string,
     x: number,
@@ -585,6 +619,7 @@ export function useReplayRecorderV4() {
     startRecording,
     recordSpawn,
     recordInput,
+    recordFrame,  // ✅ 方案B：帧级位置采样
     recordLock,
     stopRecording,
     clearRecording,

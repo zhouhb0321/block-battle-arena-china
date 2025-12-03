@@ -549,7 +549,8 @@ export function validateV4Replay(replay: V4ReplayData): V4ValidationResult {
     spawnCount: 0,
     inputCount: 0,
     lockCount: 0,
-    keyframeCount: 0
+    keyframeCount: 0,
+    frameCount: 0
   };
   
   // Count events
@@ -559,6 +560,7 @@ export function validateV4Replay(replay: V4ReplayData): V4ValidationResult {
       case Op.INPUT: stats.inputCount++; break;
       case Op.LOCK: stats.lockCount++; break;
       case Op.KF: stats.keyframeCount++; break;
+      case Op.FRAME: stats.frameCount++; break;
     }
   }
   
