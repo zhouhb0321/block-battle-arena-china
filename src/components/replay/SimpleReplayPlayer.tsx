@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { X, Play, Pause, RotateCcw, SkipForward, SkipBack, FastForward, Rewind } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { V4ReplayData, V4KeyframeEvent, V4LockEvent } from '@/utils/replayV4/types';
-import { extractInputEvents, extractReplayMetadata, extractKeyframeEvents, extractSpawnEvents, extractLockEvents } from '@/utils/replayV4/converter';
+import { V4ReplayData, V4KeyframeEvent, V4LockEvent, V4FrameEvent } from '@/utils/replayV4/types';
+import { extractInputEvents, extractReplayMetadata, extractKeyframeEvents, extractSpawnEvents, extractLockEvents, extractFrameEvents } from '@/utils/replayV4/converter';
 import { extractKeyMoments } from '@/utils/replayV4/eventExtractor';
 import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { useMusicContext } from '@/contexts/MusicContext';
@@ -67,8 +67,12 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
   const keyframes = useMemo(() => extractKeyframeEvents(replay), [replay]);
   const spawnEvents = useMemo(() => extractSpawnEvents(replay), [replay]);
   const lockEvents = useMemo(() => extractLockEvents(replay), [replay]);
+  const frameEvents = useMemo(() => extractFrameEvents(replay), [replay]);  // ✅ 方案B：帧级采样事件
   const metadata = useMemo(() => extractReplayMetadata(replay), [replay]);
   const keyMoments = useMemo(() => extractKeyMoments(replay), [replay]);
+  
+  // 帧事件是否可用
+  const hasFrameData = useMemo(() => frameEvents.length > 10, [frameEvents]);
   
   // 回放状态
   const [currentTime, setCurrentTime] = useState(0);
@@ -95,6 +99,7 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
   const lastInputIndexRef = useRef(0);
   const lastSpawnIndexRef = useRef(0);
   const lastLockIndexRef = useRef(0);
+  const lastFrameIndexRef = useRef(0);  // ✅ 方案B：帧级采样索引
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentSpawnTimeRef = useRef<number>(0);
@@ -287,6 +292,11 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
              lockEvents[lastLockIndexRef.current].timestamp <= nearestKF.timestamp) {
         lastLockIndexRef.current++;
       }
+      // ✅ 方案B：同步帧索引
+      while (lastFrameIndexRef.current < frameEvents.length &&
+             frameEvents[lastFrameIndexRef.current].timestamp <= nearestKF.timestamp) {
+        lastFrameIndexRef.current++;
+      }
     }
     
     // 2. 处理 LOCK 事件（逐个方块锁定更新棋盘）
@@ -314,7 +324,56 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
       lastSpawnIndexRef.current++;
     }
     
-    // 4. 处理 INPUT 事件更新方块位置（带重力下落）
+    // ✅ 方案B：优先使用帧级采样数据（如果可用）
+    if (hasFrameData && currentPiece) {
+      // 查找最接近当前时间的两个帧进行插值
+      let prevFrame: typeof frameEvents[0] | null = null;
+      let nextFrame: typeof frameEvents[0] | null = null;
+      
+      for (let i = lastFrameIndexRef.current; i < frameEvents.length; i++) {
+        const frame = frameEvents[i];
+        if (frame.timestamp <= targetTime) {
+          prevFrame = frame;
+          lastFrameIndexRef.current = i;
+        } else {
+          nextFrame = frame;
+          break;
+        }
+      }
+      
+      if (prevFrame) {
+        let interpolatedX = prevFrame.x;
+        let interpolatedY = prevFrame.y;
+        let interpolatedRotation = prevFrame.rotation;
+        
+        // 线性插值到下一帧
+        if (nextFrame && nextFrame.timestamp > prevFrame.timestamp) {
+          const t = (targetTime - prevFrame.timestamp) / (nextFrame.timestamp - prevFrame.timestamp);
+          interpolatedX = prevFrame.x + (nextFrame.x - prevFrame.x) * t;
+          interpolatedY = prevFrame.y + (nextFrame.y - prevFrame.y) * t;
+          // 旋转不插值，使用离散值
+          if (t > 0.5) {
+            interpolatedRotation = nextFrame.rotation;
+          }
+        }
+        
+        const updatedPiece: GamePiece = {
+          ...currentPiece,
+          x: Math.round(interpolatedX),  // 位置取整
+          y: interpolatedY,               // Y可以保持小数实现平滑下落
+          rotation: interpolatedRotation
+        };
+        
+        setCurrentPiece(updatedPiece);
+        setGhostPiece(calculateGhostPiece({
+          ...updatedPiece,
+          y: Math.floor(updatedPiece.y)  // Ghost 计算时用整数
+        }, boardRef.current));
+        return; // 使用帧数据时跳过 INPUT 事件处理
+      }
+    }
+    
+    // 4. 无帧数据时回退到 INPUT 事件处理
     let latestInputPosition: { x: number; y: number; rotation?: number } | null = null;
     
     while (lastInputIndexRef.current < inputEvents.length) {
@@ -359,7 +418,7 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
       setCurrentPiece(updatedPiece);
       setGhostPiece(calculateGhostPiece(updatedPiece, boardRef.current));
     }
-  }, [keyframes, inputEvents, spawnEvents, lockEvents, currentPiece, findNearestKeyframe, applyKeyframe, processLockEvent, calculateGhostPiece, calculateGravityY]);
+  }, [keyframes, inputEvents, spawnEvents, lockEvents, frameEvents, hasFrameData, currentPiece, findNearestKeyframe, applyKeyframe, processLockEvent, calculateGhostPiece, calculateGravityY]);
   
   // 播放循环
   useEffect(() => {
@@ -433,6 +492,7 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
     lastInputIndexRef.current = 0;
     lastSpawnIndexRef.current = 0;
     lastLockIndexRef.current = 0;
+    lastFrameIndexRef.current = 0;  // ✅ 方案B：重置帧索引
     currentSpawnTimeRef.current = 0;
     
     // 重置游戏状态
@@ -467,6 +527,7 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
       lastInputIndexRef.current = 0;
       lastSpawnIndexRef.current = 0;
       lastLockIndexRef.current = 0;
+      lastFrameIndexRef.current = 0;  // ✅ 方案B：重置帧索引
       currentSpawnTimeRef.current = 0;
       
       const emptyBoard = Array(23).fill(null).map(() => Array(10).fill(0));

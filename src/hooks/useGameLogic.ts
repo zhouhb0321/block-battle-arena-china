@@ -107,7 +107,8 @@ export const useGameLogic = ({
     isRecording, 
     startRecording, 
     recordSpawn, 
-    recordInput, 
+    recordInput,
+    recordFrame,  // ✅ 方案B：帧级位置采样
     recordLock, 
     stopRecording, 
     clearRecording 
@@ -932,6 +933,12 @@ export const useGameLogic = ({
           setApm((totalActions.current / elapsed) * 60);
         }
 
+        // ✅ 方案B：帧级位置采样 - 每帧记录当前方块位置
+        if (isRecording && currentPieceRef.current) {
+          const piece = currentPieceRef.current;
+          recordFrame(piece.type.type, piece.x, piece.y, piece.rotation);
+        }
+
         // Check for time attack mode end condition with millisecond precision
         if (gameMode.isTimeAttack && gameMode.timeLimit) {
           const timeLimitMs = gameMode.timeLimit * 1000;
@@ -997,7 +1004,7 @@ export const useGameLogic = ({
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isReplay, gameStarted, gameOver, isPaused, gameMode, score, lines, level, totalPieces, totalActions, isRecording, stopRecording]);
+  }, [isReplay, gameStarted, gameOver, isPaused, gameMode, score, lines, level, totalPieces, totalActions, isRecording, recordFrame, stopRecording]);
 
   const ghostPiece = currentPiece ? { ...currentPiece, y: calculateDropPosition(board, currentPiece) } : null;
 

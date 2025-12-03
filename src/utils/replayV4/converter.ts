@@ -97,6 +97,31 @@ export function extractKeyframeEvents(replay: V4ReplayData) {
 }
 
 /**
+ * 从 V4 回放中提取 FRAME 事件（帧级位置采样）
+ */
+export function extractFrameEvents(replay: V4ReplayData): Array<{
+  timestamp: number;
+  x: number;
+  y: number;
+  rotation: number;
+  pieceType: string;
+}> {
+  if (!replay || !Array.isArray(replay.events)) {
+    console.warn('[Converter] Invalid replay data for frame events');
+    return [];
+  }
+  return replay.events
+    .filter((e): e is import('./types').V4FrameEvent => e && e.type === ReplayOpcode.FRAME)
+    .map(event => ({
+      timestamp: event.timestamp,
+      x: event.x,
+      y: event.y,
+      rotation: event.rotation,
+      pieceType: event.pieceType
+    }));
+}
+
+/**
  * 从 V4 回放中提取元数据
  */
 export function extractReplayMetadata(replay: V4ReplayData) {
