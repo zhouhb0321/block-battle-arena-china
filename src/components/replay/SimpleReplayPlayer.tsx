@@ -308,29 +308,23 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
       lastLockIndexRef.current++;
     }
     
-    // 3. 处理 SPAWN 事件设置当前方块
+    // 3. 处理 SPAWN 事件记录 spawn 时间
     while (lastSpawnIndexRef.current < spawnEvents.length) {
       const spawn = spawnEvents[lastSpawnIndexRef.current];
       if (!spawn || spawn.timestamp > targetTime) break;
       
-      const newPiece = createPieceFromType(spawn.pieceType);
-      if (newPiece) {
-        newPiece.x = spawn.x;
-        newPiece.y = spawn.y;
-        currentSpawnTimeRef.current = spawn.timestamp;
-        setCurrentPiece(newPiece);
-        setGhostPiece(calculateGhostPiece(newPiece, boardRef.current));
-      }
+      currentSpawnTimeRef.current = spawn.timestamp;
       lastSpawnIndexRef.current++;
     }
     
-    // ✅ 方案B：优先使用帧级采样数据（如果可用）
-    if (hasFrameData && currentPiece) {
-      // 查找最接近当前时间的两个帧进行插值
+    // ✅ 方案B：优先使用帧级采样数据（关键修复：直接从 FRAME 创建方块）
+    if (hasFrameData) {
+      // 查找当前时间最接近的帧
       let prevFrame: typeof frameEvents[0] | null = null;
       let nextFrame: typeof frameEvents[0] | null = null;
       
-      for (let i = lastFrameIndexRef.current; i < frameEvents.length; i++) {
+      // 向前搜索到当前时间点
+      for (let i = 0; i < frameEvents.length; i++) {
         const frame = frameEvents[i];
         if (frame.timestamp <= targetTime) {
           prevFrame = frame;
@@ -345,6 +339,7 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
         let interpolatedX = prevFrame.x;
         let interpolatedY = prevFrame.y;
         let interpolatedRotation = prevFrame.rotation;
+        let displayPieceType = prevFrame.pieceType;
         
         // 线性插值到下一帧
         if (nextFrame && nextFrame.timestamp > prevFrame.timestamp) {
@@ -354,71 +349,84 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
           // 旋转不插值，使用离散值
           if (t > 0.5) {
             interpolatedRotation = nextFrame.rotation;
+            displayPieceType = nextFrame.pieceType;
           }
         }
         
-        const updatedPiece: GamePiece = {
-          ...currentPiece,
-          x: Math.round(interpolatedX),  // 位置取整
-          y: interpolatedY,               // Y可以保持小数实现平滑下落
-          rotation: interpolatedRotation
-        };
-        
-        setCurrentPiece(updatedPiece);
-        setGhostPiece(calculateGhostPiece({
-          ...updatedPiece,
-          y: Math.floor(updatedPiece.y)  // Ghost 计算时用整数
-        }, boardRef.current));
-        return; // 使用帧数据时跳过 INPUT 事件处理
+        // ✅ 关键修复：直接从 FRAME 事件创建方块（不依赖 SPAWN/currentPiece）
+        const tetrominoType = TETROMINO_TYPES[displayPieceType];
+        if (tetrominoType) {
+          const framePiece: GamePiece = {
+            type: tetrominoType,
+            x: Math.round(interpolatedX),  // 位置取整
+            y: interpolatedY,               // Y可以保持小数实现平滑下落
+            rotation: interpolatedRotation
+          };
+          
+          setCurrentPiece(framePiece);
+          setGhostPiece(calculateGhostPiece({
+            ...framePiece,
+            y: Math.floor(framePiece.y)  // Ghost 计算时用整数
+          }, boardRef.current));
+        }
+        return; // 使用帧数据时跳过后续处理
       }
     }
     
-    // 4. 无帧数据时回退到 INPUT 事件处理
-    let latestInputPosition: { x: number; y: number; rotation?: number } | null = null;
+    // 4. 无帧数据时回退到 INPUT + SPAWN 事件处理
+    // 首先检查是否有待处理的 SPAWN 事件来设置当前方块
+    const lastSpawn = spawnEvents
+      .filter(s => s.timestamp <= targetTime)
+      .slice(-1)[0];
     
-    while (lastInputIndexRef.current < inputEvents.length) {
-      const event = inputEvents[lastInputIndexRef.current];
-      if (!event || event.timestamp > targetTime) break;
+    if (lastSpawn) {
+      // 检查这个 SPAWN 对应的 LOCK 是否已经发生
+      const correspondingLock = lockEvents.find(l => 
+        l.timestamp > lastSpawn.timestamp && 
+        l.pieceType === lastSpawn.pieceType
+      );
       
-      if (event.success && event.position) {
-        latestInputPosition = {
-          x: event.position.x,
-          y: event.position.y,
-          rotation: event.rotation
-        };
-      }
-      lastInputIndexRef.current++;
-    }
-    
-    // 5. 更新当前方块位置
-    if (currentPiece) {
-      let updatedPiece: GamePiece;
+      const isLocked = correspondingLock && correspondingLock.timestamp <= targetTime;
       
-      if (latestInputPosition) {
-        // 使用 INPUT 事件的精确位置
-        updatedPiece = {
-          ...currentPiece,
-          x: latestInputPosition.x,
-          y: latestInputPosition.y,
-          rotation: latestInputPosition.rotation ?? currentPiece.rotation
-        };
+      if (!isLocked) {
+        // 方块还未锁定，显示它
+        const newPiece = createPieceFromType(lastSpawn.pieceType);
+        if (newPiece) {
+          // 查找这个方块的最新位置（从 INPUT 事件）
+          let latestPosition = { x: lastSpawn.x, y: lastSpawn.y, rotation: 0 };
+          
+          for (const input of inputEvents) {
+            if (input.timestamp > lastSpawn.timestamp && 
+                input.timestamp <= targetTime && 
+                input.success && input.position) {
+              latestPosition = {
+                x: input.position.x,
+                y: input.position.y,
+                rotation: input.rotation ?? latestPosition.rotation
+              };
+            }
+          }
+          
+          // 如果没有 INPUT 位置数据，应用重力
+          if (latestPosition.x === lastSpawn.x && latestPosition.y === lastSpawn.y) {
+            const gravityY = calculateGravityY(lastSpawn.timestamp, lastSpawn.y, targetTime);
+            latestPosition.y = gravityY;
+          }
+          
+          newPiece.x = latestPosition.x;
+          newPiece.y = latestPosition.y;
+          newPiece.rotation = latestPosition.rotation;
+          
+          setCurrentPiece(newPiece);
+          setGhostPiece(calculateGhostPiece(newPiece, boardRef.current));
+        }
       } else {
-        // 无 INPUT 事件时，应用重力下落
-        const gravityY = calculateGravityY(
-          currentSpawnTimeRef.current, 
-          currentPiece.y, 
-          targetTime
-        );
-        updatedPiece = {
-          ...currentPiece,
-          y: Math.min(gravityY, currentPiece.y + 2) // 限制每帧最大下落距离
-        };
+        // 方块已锁定，清除显示
+        setCurrentPiece(null);
+        setGhostPiece(null);
       }
-      
-      setCurrentPiece(updatedPiece);
-      setGhostPiece(calculateGhostPiece(updatedPiece, boardRef.current));
     }
-  }, [keyframes, inputEvents, spawnEvents, lockEvents, frameEvents, hasFrameData, currentPiece, findNearestKeyframe, applyKeyframe, processLockEvent, calculateGhostPiece, calculateGravityY]);
+  }, [keyframes, inputEvents, spawnEvents, lockEvents, frameEvents, hasFrameData, findNearestKeyframe, applyKeyframe, processLockEvent, calculateGhostPiece, calculateGravityY]);
   
   // 播放循环
   useEffect(() => {
