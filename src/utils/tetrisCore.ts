@@ -52,11 +52,29 @@ export const isValidPosition = (board: number[][], piece: GamePiece): boolean =>
 
 // 将方块放置在游戏面板上 - 修复为存储方块类型编号
 export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
+  // ✅ 防御性检查
+  if (!board || !Array.isArray(board)) {
+    console.error('[placePiece] Invalid board');
+    return createEmptyBoard();
+  }
+  
+  if (!piece || !piece.type || !piece.type.shape) {
+    console.error('[placePiece] Invalid piece');
+    return board;
+  }
+  
   const { type, x, y } = piece;
   const shape = type.shape;
   const typeId = TETROMINO_TYPE_IDS[type.type]; // 使用方块类型编号而不是颜色
 
-  const newBoard = board.map(row => [...row]);
+  // ✅ 安全复制棋盘
+  const newBoard = board.map((row, idx) => {
+    if (!row || !Array.isArray(row)) {
+      console.warn(`[placePiece] Row ${idx} invalid, creating empty row`);
+      return Array(BOARD_WIDTH).fill(0);
+    }
+    return [...row];
+  });
 
   for (let row = 0; row < shape.length; row++) {
     for (let col = 0; col < shape[row].length; col++) {
