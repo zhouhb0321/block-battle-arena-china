@@ -193,13 +193,34 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
     return { ...piece, y: ghostY };
   }, []);
   
-  // 应用 KEYFRAME 状态
+  // 应用 KEYFRAME 状态 - ✅ 增强棋盘数据验证
   const applyKeyframe = useCallback((kf: V4KeyframeEvent) => {
     if (!kf) return;
     
-    const newBoard = Array.isArray(kf.board) && kf.board.length > 0
-      ? kf.board.map(row => [...row])
-      : Array(23).fill(null).map(() => Array(10).fill(0));
+    // ✅ 安全解析棋盘数据
+    let newBoard: number[][];
+    
+    if (Array.isArray(kf.board) && kf.board.length > 0) {
+      newBoard = kf.board.map((row, idx) => {
+        if (!row || !Array.isArray(row)) {
+          console.warn(`[Replay] KF board row ${idx} invalid, using empty row`);
+          return Array(10).fill(0);
+        }
+        // 确保每行恰好 10 个元素
+        const fixedRow = [...row];
+        while (fixedRow.length < 10) fixedRow.push(0);
+        return fixedRow.slice(0, 10);
+      });
+      
+      // 确保 23 行
+      while (newBoard.length < 23) {
+        newBoard.unshift(Array(10).fill(0));
+      }
+      newBoard = newBoard.slice(0, 23);
+    } else {
+      console.warn('[Replay] KF board is invalid, using empty board');
+      newBoard = Array(23).fill(null).map(() => Array(10).fill(0));
+    }
     
     setBoard(newBoard);
     boardRef.current = newBoard;

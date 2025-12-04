@@ -249,15 +249,31 @@ function decodeEvent(data: Uint8Array, offset: number): [V4Event | null, number]
         const [jsonLen, pos2] = decodeVarint(data, pos);
         const jsonBytes = data.slice(pos2, pos2 + jsonLen);
         const json = JSON.parse(new TextDecoder().decode(jsonBytes));
+        
+        // ✅ 新增：验证并修复棋盘数据
+        let board = json.board;
+        if (!Array.isArray(board)) {
+          console.warn('[V4 Decoder] KF board is not an array, creating empty');
+          board = Array(23).fill(null).map(() => Array(10).fill(0));
+        } else {
+          board = board.map((row: any, idx: number) => {
+            if (!Array.isArray(row)) {
+              console.warn(`[V4 Decoder] KF board row ${idx} invalid`);
+              return Array(10).fill(0);
+            }
+            return row;
+          });
+        }
+        
         return [{
           type: Op.KF,
           timestamp,
-          board: json.board,
-          nextPieces: json.next,
-          holdPiece: json.hold,
-          score: json.score,
-          lines: json.lines,
-          level: json.level
+          board,
+          nextPieces: Array.isArray(json.next) ? json.next : [],
+          holdPiece: json.hold || null,
+          score: json.score || 0,
+          lines: json.lines || 0,
+          level: json.level || 1
         }, pos2 + jsonLen];
       }
       

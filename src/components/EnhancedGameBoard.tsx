@@ -32,14 +32,28 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
   const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
 
   const createExtendedBoard = () => {
-    // ✅ 防御性检查：确保 board 存在且是有效数组
+    // ✅ 增强防御性检查：确保 board 存在且是有效数组
     if (!board || !Array.isArray(board) || board.length === 0) {
       console.warn('[EnhancedGameBoard] Invalid board data', board);
-      // 返回空棋盘
       return Array(23).fill(null).map(() => Array(10).fill(0));
     }
     
-    const extendedBoard = board.map(row => [...row]);
+    // ✅ 新增：验证并修复每一行
+    const extendedBoard = board.map((row, idx) => {
+      if (!row || !Array.isArray(row)) {
+        console.warn(`[EnhancedGameBoard] Row ${idx} is invalid, creating empty row`);
+        return Array(10).fill(0);
+      }
+      // 确保每行有 10 个元素
+      const fixedRow = [...row];
+      while (fixedRow.length < 10) fixedRow.push(0);
+      return fixedRow.slice(0, 10);
+    });
+    
+    // ✅ 确保棋盘有 23 行
+    while (extendedBoard.length < 23) {
+      extendedBoard.unshift(Array(10).fill(0));
+    }
 
     if (ghostPiece && settings.enableGhost && ghostPiece.type && ghostPiece.type.shape) {
       const shape = ghostPiece.type.shape;
