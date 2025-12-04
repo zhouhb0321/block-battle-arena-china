@@ -426,13 +426,14 @@ export function useReplayRecorderV4() {
       coverage: `${positionCoverage.toFixed(1)}%`
     });
     
-    // ✅ P1：详细事件统计
+    // ✅ P1：详细事件统计（包含 FRAME）
     const eventStats = {
       SPAWN: replayData.events.filter(e => e.type === ReplayOpcode.SPAWN).length,
       INPUT: totalInputs,
       INPUT_with_position: inputsWithPosition,
       LOCK: replayData.events.filter(e => e.type === ReplayOpcode.LOCK).length,
       KF: replayData.events.filter(e => e.type === ReplayOpcode.KF).length,
+      FRAME: replayData.events.filter(e => e.type === ReplayOpcode.FRAME).length,  // ✅ 方案B
       END: replayData.events.filter(e => e.type === ReplayOpcode.END).length,
       totalEvents: replayData.events.length
     };
