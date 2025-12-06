@@ -1,6 +1,6 @@
 
 import type { GamePiece } from './gameTypes';
-import { TETROMINO_TYPE_IDS } from './pieceGeneration';
+import { TETROMINO_TYPE_IDS, getPieceShape } from './pieceGeneration';
 
 // Board constants
 export const BOARD_WIDTH = 10;
@@ -11,6 +11,20 @@ export const createEmptyBoard = (): number[][] => {
   return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
 };
 
+// ✅ 获取方块旋转后的形状（核心修复）
+export const getRotatedShape = (piece: GamePiece): number[][] => {
+  if (!piece || !piece.type) {
+    console.error('[tetrisCore] getRotatedShape: Invalid piece');
+    return [[1]];
+  }
+  
+  const rotation = piece.rotation || 0;
+  const pieceType = piece.type.type || piece.type.name;
+  
+  // 使用 pieceGeneration 中的 getPieceShape 获取旋转后的形状
+  return getPieceShape(pieceType, rotation);
+};
+
 // 检查给定的方块位置是否有效
 export const isValidPosition = (board: number[][], piece: GamePiece): boolean => {
   // Defensive check: ensure piece is defined and has valid structure
@@ -19,12 +33,13 @@ export const isValidPosition = (board: number[][], piece: GamePiece): boolean =>
     return false;
   }
   
-  const { type, x, y, rotation } = piece;
-  const shape = type.shape;
+  const { x, y } = piece;
+  // ✅ 使用旋转后的形状
+  const shape = getRotatedShape(piece);
   
   // Additional check: ensure shape is a valid array
   if (!Array.isArray(shape) || shape.length === 0) {
-    console.error('[tetrisCore] isValidPosition: piece.type.shape is not a valid array', shape);
+    console.error('[tetrisCore] isValidPosition: shape is not a valid array', shape);
     return false;
   }
 
@@ -50,7 +65,7 @@ export const isValidPosition = (board: number[][], piece: GamePiece): boolean =>
   return true;
 };
 
-// 将方块放置在游戏面板上 - 修复为存储方块类型编号
+// 将方块放置在游戏面板上 - ✅ 修复为使用旋转后的形状
 export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
   // ✅ 防御性检查
   if (!board || !Array.isArray(board)) {
@@ -58,14 +73,15 @@ export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
     return createEmptyBoard();
   }
   
-  if (!piece || !piece.type || !piece.type.shape) {
+  if (!piece || !piece.type) {
     console.error('[placePiece] Invalid piece');
     return board;
   }
   
   const { type, x, y } = piece;
-  const shape = type.shape;
-  const typeId = TETROMINO_TYPE_IDS[type.type]; // 使用方块类型编号而不是颜色
+  // ✅ 核心修复：使用旋转后的形状而不是默认形状
+  const shape = getRotatedShape(piece);
+  const typeId = TETROMINO_TYPE_IDS[type.type || type.name]; // 使用方块类型编号
 
   // ✅ 安全复制棋盘
   const newBoard = board.map((row, idx) => {
