@@ -15,6 +15,7 @@ interface MusicTrack {
 }
 
 type MusicSource = 'manual' | 'replay' | 'game';
+type RepeatMode = 'none' | 'all' | 'one';
 
 interface MusicContextType {
   // 播放状态
@@ -37,6 +38,12 @@ interface MusicContextType {
   playlist: MusicTrack[];
   currentTrackIndex: number;
   refreshPlaylist: () => Promise<void>;
+  
+  // 🆕 随机和循环控制
+  shuffleMode: boolean;
+  repeatMode: RepeatMode;
+  toggleShuffle: () => void;
+  toggleRepeat: () => void;
   
   // 优先级控制
   requestPlayback: (source: MusicSource, track?: MusicTrack) => void;
@@ -64,6 +71,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [playlist, setPlaylist] = useState<MusicTrack[]>(DEFAULT_PLAYLIST);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 🆕 随机和循环模式
+  const [shuffleMode, setShuffleMode] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('all'); // 默认列表循环
   
   // 优先级定义：manual > replay > game
   const sourcePriority: Record<MusicSource, number> = {
@@ -142,17 +153,54 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadPlaylistFromStorage();
   }, []);
   
+  // 🆕 处理歌曲结束事件
+  const handleTrackEnded = useCallback(() => {
+    if (repeatMode === 'one') {
+      // 单曲循环
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(console.warn);
+      }
+    } else if (repeatMode === 'all') {
+      // 列表循环 - 播放下一首
+      if (shuffleMode && playlist.length > 1) {
+        // 随机选择下一首（避免重复当前曲目）
+        let randomIndex;
+        do {
+          randomIndex = Math.floor(Math.random() * playlist.length);
+        } while (randomIndex === currentTrackIndex && playlist.length > 1);
+        
+        setCurrentTrackIndex(randomIndex);
+        const nextTrack = playlist[randomIndex];
+        if (audioRef.current && nextTrack) {
+          audioRef.current.src = nextTrack.url;
+          audioRef.current.load();
+          setCurrentTrack(nextTrack);
+          audioRef.current.play().catch(console.warn);
+        }
+      } else {
+        // 顺序播放下一首
+        const nextIndex = (currentTrackIndex + 1) % playlist.length;
+        setCurrentTrackIndex(nextIndex);
+        const nextTrack = playlist[nextIndex];
+        if (audioRef.current && nextTrack) {
+          audioRef.current.src = nextTrack.url;
+          audioRef.current.load();
+          setCurrentTrack(nextTrack);
+          audioRef.current.play().catch(console.warn);
+        }
+      }
+    } else {
+      // 不循环 - 停止播放
+      setIsPlaying(false);
+    }
+  }, [repeatMode, shuffleMode, playlist, currentTrackIndex]);
+
   // 初始化音频元素
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
-      audioRef.current.loop = true;
-      
-      // 播放结束时自动播放下一首（如果不是循环模式）
-      audioRef.current.addEventListener('ended', () => {
-        // 由于 loop=true，这个事件通常不会触发
-        // 但保留以备将来支持非循环模式
-      });
+      audioRef.current.loop = false; // 🆕 禁用单曲循环，由我们手动控制
     }
     
     return () => {
@@ -162,6 +210,18 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     };
   }, []);
+  
+  // 🆕 监听歌曲结束事件
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    audio.addEventListener('ended', handleTrackEnded);
+    
+    return () => {
+      audio.removeEventListener('ended', handleTrackEnded);
+    };
+  }, [handleTrackEnded]);
   
   // 同步音量设置
   useEffect(() => {
@@ -260,7 +320,16 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const playNext = useCallback(() => {
     if (playlist.length === 0) return;
     
-    const nextIndex = (currentTrackIndex + 1) % playlist.length;
+    let nextIndex: number;
+    if (shuffleMode && playlist.length > 1) {
+      // 🆕 随机模式
+      do {
+        nextIndex = Math.floor(Math.random() * playlist.length);
+      } while (nextIndex === currentTrackIndex && playlist.length > 1);
+    } else {
+      nextIndex = (currentTrackIndex + 1) % playlist.length;
+    }
+    
     setCurrentTrackIndex(nextIndex);
     const nextTrack = playlist[nextIndex];
     
@@ -273,12 +342,21 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         audioRef.current.play().catch(console.warn);
       }
     }
-  }, [currentTrackIndex, playlist, isPlaying]);
+  }, [currentTrackIndex, playlist, isPlaying, shuffleMode]);
   
   const playPrevious = useCallback(() => {
     if (playlist.length === 0) return;
     
-    const prevIndex = currentTrackIndex === 0 ? playlist.length - 1 : currentTrackIndex - 1;
+    let prevIndex: number;
+    if (shuffleMode && playlist.length > 1) {
+      // 🆕 随机模式
+      do {
+        prevIndex = Math.floor(Math.random() * playlist.length);
+      } while (prevIndex === currentTrackIndex && playlist.length > 1);
+    } else {
+      prevIndex = currentTrackIndex === 0 ? playlist.length - 1 : currentTrackIndex - 1;
+    }
+    
     setCurrentTrackIndex(prevIndex);
     const prevTrack = playlist[prevIndex];
     
@@ -291,11 +369,25 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         audioRef.current.play().catch(console.warn);
       }
     }
-  }, [currentTrackIndex, playlist, isPlaying]);
+  }, [currentTrackIndex, playlist, isPlaying, shuffleMode]);
   
   const refreshPlaylist = useCallback(async () => {
     await loadPlaylistFromStorage();
   }, [loadPlaylistFromStorage]);
+  
+  // 🆕 切换随机模式
+  const toggleShuffle = useCallback(() => {
+    setShuffleMode(prev => !prev);
+  }, []);
+  
+  // 🆕 切换循环模式
+  const toggleRepeat = useCallback(() => {
+    setRepeatMode(prev => {
+      if (prev === 'none') return 'all';
+      if (prev === 'all') return 'one';
+      return 'none';
+    });
+  }, []);
   
   return (
     <MusicContext.Provider
@@ -315,6 +407,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         playlist,
         currentTrackIndex,
         refreshPlaylist,
+        shuffleMode,
+        repeatMode,
+        toggleShuffle,
+        toggleRepeat,
         requestPlayback,
         releasePlayback,
         currentSource

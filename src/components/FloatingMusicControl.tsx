@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music, Shuffle, Repeat, Repeat1 } from 'lucide-react';
 import { useMusicContext } from '@/contexts/MusicContext';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -34,7 +34,11 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
     playNext,
     playPrevious,
     currentSource,
-    playlist
+    playlist,
+    shuffleMode,
+    repeatMode,
+    toggleShuffle,
+    toggleRepeat
   } = useMusicContext();
 
   const [state, setState] = useState<ControlState>('mini');
@@ -192,6 +196,29 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
     setIsHovering(false);
     resetHideTimer();
   };
+  
+  const handleShuffleToggle = () => {
+    toggleShuffle();
+    resetHideTimer();
+  };
+  
+  const handleRepeatToggle = () => {
+    toggleRepeat();
+    resetHideTimer();
+  };
+  
+  // 获取循环模式图标
+  const getRepeatIcon = () => {
+    if (repeatMode === 'one') return <Repeat1 className="w-4 h-4" />;
+    return <Repeat className="w-4 h-4" />;
+  };
+  
+  // 获取循环模式提示
+  const getRepeatLabel = () => {
+    if (repeatMode === 'none') return '不循环';
+    if (repeatMode === 'all') return '列表循环';
+    return '单曲循环';
+  };
 
   // 如果没有音乐播放源，不显示
   if (!currentSource && !currentTrack) {
@@ -335,7 +362,22 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
           </div>
 
           {/* 控制按钮 */}
-          <div className="flex items-center justify-center gap-4 mb-4">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            {/* 🆕 随机按钮 */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleShuffleToggle}
+              className={cn(
+                "text-gray-300 hover:text-white hover:bg-white/10",
+                shuffleMode && "text-primary"
+              )}
+              aria-label={shuffleMode ? 'Disable shuffle' : 'Enable shuffle'}
+              title={shuffleMode ? '随机播放: 开' : '随机播放: 关'}
+            >
+              <Shuffle className="w-4 h-4" />
+            </Button>
+            
             <Button
               variant="ghost"
               size="icon"
@@ -370,6 +412,21 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
               disabled={playlist.length <= 1}
             >
               <SkipForward className="w-5 h-5" />
+            </Button>
+            
+            {/* 🆕 循环按钮 */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleRepeatToggle}
+              className={cn(
+                "text-gray-300 hover:text-white hover:bg-white/10",
+                repeatMode !== 'none' && "text-primary"
+              )}
+              aria-label={getRepeatLabel()}
+              title={getRepeatLabel()}
+            >
+              {getRepeatIcon()}
             </Button>
           </div>
 
@@ -406,7 +463,7 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
 
           {/* 提示文本 */}
           <div className="mt-3 text-xs text-gray-500 text-center">
-            滚轮调节音量 • 5秒后自动隐藏
+            {shuffleMode ? '🔀 随机' : '📋 顺序'} • {getRepeatLabel()} • 滚轮调音量
           </div>
         </div>
       )}

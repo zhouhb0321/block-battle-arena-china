@@ -58,11 +58,15 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
     if (ghostPiece && settings.enableGhost && ghostPiece.type && ghostPiece.type.shape) {
       const shape = ghostPiece.type.shape;
       for (let row = 0; row < shape.length; row++) {
+        if (!shape[row]) continue;
         for (let col = 0; col < shape[row].length; col++) {
           if (shape[row][col] !== 0) {
             const boardX = ghostPiece.x + col;
             const boardY = ghostPiece.y + row;
-            if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
+            // ✅ 增强安全检查：确保 extendedBoard[boardY] 是有效数组
+            if (boardY >= 0 && boardY < extendedBoard.length && 
+                extendedBoard[boardY] && Array.isArray(extendedBoard[boardY]) &&
+                boardX >= 0 && boardX < extendedBoard[boardY].length) {
               if (extendedBoard[boardY][boardX] === 0) {
                 const color = ghostPiece.type.color;
                 extendedBoard[boardY][boardX] = `ghost-${color}` as any;
@@ -76,12 +80,15 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
     if (currentPiece && currentPiece.type && currentPiece.type.shape) {
       const shape = currentPiece.type.shape;
       for (let row = 0; row < shape.length; row++) {
+        if (!shape[row]) continue;
         for (let col = 0; col < shape[row].length; col++) {
           if (shape[row][col] !== 0) {
             const boardX = currentPiece.x + col;
             const boardY = currentPiece.y + row;
-            if (boardY >= 0 && boardY < extendedBoard.length && boardX >= 0 && boardX < extendedBoard[0].length) {
-              // 直接使用piece的颜色，确保一致性
+            // ✅ 增强安全检查：确保 extendedBoard[boardY] 是有效数组
+            if (boardY >= 0 && boardY < extendedBoard.length && 
+                extendedBoard[boardY] && Array.isArray(extendedBoard[boardY]) &&
+                boardX >= 0 && boardX < extendedBoard[boardY].length) {
               extendedBoard[boardY][boardX] = currentPiece.type.color as any;
             }
           }
