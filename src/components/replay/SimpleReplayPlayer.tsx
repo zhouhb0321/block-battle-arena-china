@@ -10,7 +10,7 @@ import { useMusicContext } from '@/contexts/MusicContext';
 import ReplayGameBoard from './ReplayGameBoard';
 import BackgroundWallpaper from '@/components/BackgroundWallpaper';
 import { TETROMINO_TYPES, TETROMINO_TYPE_IDS } from '@/utils/pieceGeneration';
-import { placePiece, clearLines } from '@/utils/tetrisCore';
+import { placePiece, clearLines, getRotatedShape } from '@/utils/tetrisCore';
 import type { GamePiece } from '@/utils/gameTypes';
 
 interface SimpleReplayPlayerProps {
@@ -165,22 +165,29 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
     return nearest;
   }, [keyframes]);
   
-  // 计算幽灵方块位置
+  // 计算幽灵方块位置 - ✅ 使用旋转后的形状
   const calculateGhostPiece = useCallback((piece: GamePiece, boardState: number[][]): GamePiece | null => {
-    if (!piece || !piece.type || !piece.type.shape) return null;
+    if (!piece || !piece.type) return null;
     
-    const shape = piece.type.shape;
-    let ghostY = piece.y;
+    // ✅ 使用导入的 getRotatedShape 获取正确的旋转形状
+    const shape = getRotatedShape(piece);
+    
+    if (!Array.isArray(shape) || shape.length === 0) return null;
+    
+    let ghostY = Math.floor(piece.y);
     
     while (true) {
       let canMove = true;
       for (let row = 0; row < shape.length && canMove; row++) {
+        if (!shape[row]) continue;
         for (let col = 0; col < shape[row].length && canMove; col++) {
           if (shape[row][col] !== 0) {
             const newY = ghostY + 1 + row;
             const newX = piece.x + col;
-            if (newY >= boardState.length || newX < 0 || newX >= 10 || 
-                (boardState[newY] && boardState[newY][newX] !== 0)) {
+            // ✅ 增强边界检查
+            if (newY >= boardState.length || newY < 0 || newX < 0 || newX >= 10) {
+              canMove = false;
+            } else if (boardState[newY] && Array.isArray(boardState[newY]) && boardState[newY][newX] !== 0) {
               canMove = false;
             }
           }
