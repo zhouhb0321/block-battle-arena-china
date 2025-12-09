@@ -4,7 +4,7 @@ import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours
 const WARNING_TIME = 10 * 60 * 1000; // 10 minutes before timeout
 const ACTIVITY_CHECK_INTERVAL = 60 * 1000; // Check every minute
 

@@ -31,6 +31,12 @@ const TimingTab: React.FC<TimingTabProps> = ({ settings, onSettingChange }) => {
     onSettingChange('dcd', config.dcd);
   };
 
+  // ✅ SDF 显示值：999 显示为 ∞
+  const getSdfDisplay = () => {
+    if (settings.sdf >= 999) return '∞ 无穷大';
+    return `${settings.sdf}x`;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -71,12 +77,51 @@ const TimingTab: React.FC<TimingTabProps> = ({ settings, onSettingChange }) => {
             max={100} min={0} step={1}
           />
         </div>
+        
+        {/* ✅ SDF 增强：支持无穷大选项 */}
         <div className="space-y-2">
-          <Label>SDF - 软降速度 ({settings.sdf}倍)</Label>
+          <Label>SDF - 软降速度 ({getSdfDisplay()})</Label>
+          <p className="text-xs text-muted-foreground">
+            无穷大 = 瞬间落到底部但不锁定（区别于硬降）
+          </p>
+          <div className="flex gap-2 mb-2">
+            <Button
+              variant={settings.sdf === 20 ? "default" : "outline"}
+              size="sm"
+              onClick={() => onSettingChange('sdf', 20)}
+              className="text-xs"
+            >
+              20x
+            </Button>
+            <Button
+              variant={settings.sdf === 40 ? "default" : "outline"}
+              size="sm"
+              onClick={() => onSettingChange('sdf', 40)}
+              className="text-xs"
+            >
+              40x
+            </Button>
+            <Button
+              variant={settings.sdf === 60 ? "default" : "outline"}
+              size="sm"
+              onClick={() => onSettingChange('sdf', 60)}
+              className="text-xs"
+            >
+              60x
+            </Button>
+            <Button
+              variant={settings.sdf >= 999 ? "default" : "outline"}
+              size="sm"
+              onClick={() => onSettingChange('sdf', 999)}
+              className="text-xs"
+            >
+              ∞ 无穷大
+            </Button>
+          </div>
           <Slider
-            value={[settings.sdf]}
+            value={[Math.min(settings.sdf, 100)]}
             onValueChange={([value]) => onSettingChange('sdf', value)}
-            max={40} min={1} step={1}
+            max={100} min={1} step={1}
           />
         </div>
         

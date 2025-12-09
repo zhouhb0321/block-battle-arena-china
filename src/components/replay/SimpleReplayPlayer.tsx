@@ -480,11 +480,7 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
         setCurrentTime(replay.stats.duration);
         setIsPlaying(false);
         setReplayEnded(true);
-        
-        // 2秒后自动返回播放库
-        autoCloseTimeoutRef.current = setTimeout(() => {
-          onClose();
-        }, 2000);
+        // ✅ 移除自动关闭，让用户手动选择
         return;
       }
       
@@ -670,11 +666,28 @@ export const SimpleReplayPlayer: React.FC<SimpleReplayPlayerProps> = ({
           <div className="text-sm text-gray-400">{metadata.gameMode}</div>
         </div>
         
-        {/* 回放结束提示 */}
+        {/* 回放结束提示 - ✅ 添加手动按钮 */}
         {replayEnded && (
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-black/80 backdrop-blur-md rounded-lg px-8 py-6 text-center">
-            <div className="text-white text-xl font-bold mb-2">回放结束</div>
-            <div className="text-gray-400 text-sm">2秒后自动返回...</div>
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-xl px-8 py-6 text-center shadow-2xl">
+              <div className="text-foreground text-xl font-bold mb-4">回放结束</div>
+              <div className="flex gap-4 justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={handleReset}
+                  className="gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  重新播放
+                </Button>
+                <Button 
+                  onClick={onClose}
+                  className="gap-2"
+                >
+                  返回列表
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 

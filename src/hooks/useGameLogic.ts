@@ -576,6 +576,31 @@ export const useGameLogic = ({
     handlePieceLock(pieceToLock);
   }, [currentPiece, board, gameOver, isPaused, handlePieceLock, isRecording, recordInput]);
 
+  // ✅ 瞬间软降：落到底部但不锁定（区别于硬降）
+  const instantSoftDrop = useCallback(() => {
+    if (!currentPiece || gameOver || isPaused) return;
+    
+    const dropY = calculateDropPosition(board, currentPiece);
+    if (dropY === currentPiece.y) return; // 已经在底部
+    
+    const dropDistance = dropY - currentPiece.y;
+    const newPiece = { ...currentPiece, y: dropY };
+    
+    setCurrentPiece(newPiece);
+    setScore(prev => prev + dropDistance); // 软降得分
+    
+    // 开始锁定延迟（不立即锁定）
+    startLockDelay();
+    
+    // 记录输入
+    if (isRecording) {
+      recordInput('instantSoftDrop', true, { x: newPiece.x, y: newPiece.y }, newPiece.rotation);
+    }
+    
+    lastMoveRef.current = 'drop';
+    lastWasKickedRef.current = false;
+  }, [currentPiece, board, gameOver, isPaused, startLockDelay, isRecording, recordInput]);
+
   const rotatePiece = (clockwise: boolean) => {
     if (!currentPiece || gameOver || isPaused) return;
     const srsResult = performSRSRotation(board, currentPiece, clockwise);
@@ -1079,6 +1104,7 @@ export const useGameLogic = ({
     spawnNewPiece,
     lockPiece,
     hardDrop,
+    instantSoftDrop,  // ✅ 新增：SDF无穷大时的瞬间落地
     initializeForCountdown: startGame,
     removeAchievement,
     isValidPosition,

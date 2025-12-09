@@ -20,6 +20,7 @@ interface UseKeyboardControlsProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  onInstantSoftDrop?: () => void;  // ✅ 新增：SDF无穷大时的瞬间落地
 }
 
 export const useKeyboardControls = ({
@@ -39,7 +40,8 @@ export const useKeyboardControls = ({
   onUndo,
   onRedo,
   canUndo = false,
-  canRedo = false
+  canRedo = false,
+  onInstantSoftDrop  // ✅ 新增：SDF无穷大时的瞬间落地
 }: UseKeyboardControlsProps) => {
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const keyPressedTime = useRef<{[key: string]: number}>({});
@@ -189,8 +191,12 @@ export const useKeyboardControls = ({
       
       // ✅ 软降独立处理 - 不受 DAS 影响，立即响应
       if (key === controls.softDrop) {
-        if (gameSettings.sdf === 0 || gameSettings.sdf >= 100) {
-          // 瞬间软降（每帧都执行）
+        // ✅ SDF >= 999 表示无穷大：瞬间落到底部但不锁定
+        if (gameSettings.sdf >= 999 && onInstantSoftDrop) {
+          onInstantSoftDrop();
+          lastMoveTime.current[key] = timestamp;
+        } else if (gameSettings.sdf === 0 || gameSettings.sdf >= 100) {
+          // 非常快的软降（每帧都执行）
           onSoftDrop();
           lastMoveTime.current[key] = timestamp;
         } else {
@@ -218,7 +224,7 @@ export const useKeyboardControls = ({
         }
       }
     });
-  }, [gameOver, paused, keys, gameSettings, onMoveLeft, onMoveRight, onSoftDrop]);
+  }, [gameOver, paused, keys, gameSettings, onMoveLeft, onMoveRight, onSoftDrop, onInstantSoftDrop]);
 
   // Enhanced useEffect with stable event handlers to prevent frequent re-binding
   useEffect(() => {
