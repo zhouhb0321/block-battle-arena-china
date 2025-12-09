@@ -3,6 +3,7 @@ import { getCurrentSkin, GARBAGE_COLOR, isGarbageBlock, getColorByTypeId } from 
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { GamePiece } from '@/utils/gameTypes';
+import { getPieceShape } from '@/utils/pieceGeneration';
 
 interface EnhancedGameBoardProps {
   board: number[][];
@@ -55,15 +56,16 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
       extendedBoard.unshift(Array(10).fill(0));
     }
 
-    if (ghostPiece && settings.enableGhost && ghostPiece.type && ghostPiece.type.shape) {
-      const shape = ghostPiece.type.shape;
+    if (ghostPiece && settings.enableGhost && ghostPiece.type) {
+      // ✅ 使用 getPieceShape 获取旋转后的形状
+      const typeName = typeof ghostPiece.type === 'string' ? ghostPiece.type : ghostPiece.type.type;
+      const shape = getPieceShape(typeName, ghostPiece.rotation || 0);
       for (let row = 0; row < shape.length; row++) {
         if (!shape[row]) continue;
         for (let col = 0; col < shape[row].length; col++) {
           if (shape[row][col] !== 0) {
             const boardX = ghostPiece.x + col;
             const boardY = ghostPiece.y + row;
-            // ✅ 增强安全检查：确保 extendedBoard[boardY] 是有效数组
             if (boardY >= 0 && boardY < extendedBoard.length && 
                 extendedBoard[boardY] && Array.isArray(extendedBoard[boardY]) &&
                 boardX >= 0 && boardX < extendedBoard[boardY].length) {
@@ -77,15 +79,16 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
       }
     }
 
-    if (currentPiece && currentPiece.type && currentPiece.type.shape) {
-      const shape = currentPiece.type.shape;
+    if (currentPiece && currentPiece.type) {
+      // ✅ 使用 getPieceShape 获取旋转后的形状
+      const typeName = typeof currentPiece.type === 'string' ? currentPiece.type : currentPiece.type.type;
+      const shape = getPieceShape(typeName, currentPiece.rotation || 0);
       for (let row = 0; row < shape.length; row++) {
         if (!shape[row]) continue;
         for (let col = 0; col < shape[row].length; col++) {
           if (shape[row][col] !== 0) {
             const boardX = currentPiece.x + col;
             const boardY = currentPiece.y + row;
-            // ✅ 增强安全检查：确保 extendedBoard[boardY] 是有效数组
             if (boardY >= 0 && boardY < extendedBoard.length && 
                 extendedBoard[boardY] && Array.isArray(extendedBoard[boardY]) &&
                 boardX >= 0 && boardX < extendedBoard[boardY].length) {
