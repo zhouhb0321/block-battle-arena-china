@@ -121,7 +121,13 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
       onRedo();
     } : undefined,
     canUndo,
-    canRedo
+    canRedo,
+    // ✅ 新增：SDF无穷大时的瞬间落地
+    onInstantSoftDrop: () => {
+      if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece && gameLogic.instantSoftDrop) {
+        gameLogic.instantSoftDrop();
+      }
+    }
   });
 
   // 添加键盘控制循环 - 只有在游戏结束时才停止

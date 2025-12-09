@@ -155,11 +155,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   // 🆕 处理歌曲结束事件
   const handleTrackEnded = useCallback(() => {
+    console.log('[MusicContext] Track ended, repeatMode:', repeatMode, 'shuffleMode:', shuffleMode);
+    
     if (repeatMode === 'one') {
       // 单曲循环
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(console.warn);
+        audioRef.current.play().catch(err => {
+          console.warn('[MusicContext] Replay failed:', err);
+        });
       }
     } else if (repeatMode === 'all') {
       // 列表循环 - 播放下一首
@@ -173,10 +177,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCurrentTrackIndex(randomIndex);
         const nextTrack = playlist[randomIndex];
         if (audioRef.current && nextTrack) {
+          console.log('[MusicContext] Playing random track:', nextTrack.title);
           audioRef.current.src = nextTrack.url;
           audioRef.current.load();
           setCurrentTrack(nextTrack);
-          audioRef.current.play().catch(console.warn);
+          audioRef.current.play().catch(err => {
+            console.warn('[MusicContext] Random play failed:', err);
+            // ✅ 播放失败时尝试下一首
+            playNextOnError();
+          });
         }
       } else {
         // 顺序播放下一首
@@ -184,10 +193,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCurrentTrackIndex(nextIndex);
         const nextTrack = playlist[nextIndex];
         if (audioRef.current && nextTrack) {
+          console.log('[MusicContext] Playing next track:', nextTrack.title);
           audioRef.current.src = nextTrack.url;
           audioRef.current.load();
           setCurrentTrack(nextTrack);
-          audioRef.current.play().catch(console.warn);
+          audioRef.current.play().catch(err => {
+            console.warn('[MusicContext] Next play failed:', err);
+            // ✅ 播放失败时尝试下一首
+            playNextOnError();
+          });
         }
       }
     } else {
@@ -195,6 +209,23 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsPlaying(false);
     }
   }, [repeatMode, shuffleMode, playlist, currentTrackIndex]);
+  
+  // ✅ 播放失败时尝试下一首
+  const playNextOnError = useCallback(() => {
+    if (playlist.length <= 1) return;
+    
+    const nextIndex = (currentTrackIndex + 1) % playlist.length;
+    setCurrentTrackIndex(nextIndex);
+    const nextTrack = playlist[nextIndex];
+    
+    if (audioRef.current && nextTrack) {
+      console.log('[MusicContext] Retrying with next track after error:', nextTrack.title);
+      audioRef.current.src = nextTrack.url;
+      audioRef.current.load();
+      setCurrentTrack(nextTrack);
+      audioRef.current.play().catch(console.warn);
+    }
+  }, [playlist, currentTrackIndex]);
 
   // 初始化音频元素
   useEffect(() => {
