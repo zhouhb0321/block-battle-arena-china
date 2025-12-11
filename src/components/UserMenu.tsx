@@ -13,9 +13,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, LogOut, Shield, Trophy, CreditCard } from 'lucide-react';
+import { User, Settings, LogOut, Shield, Trophy, CreditCard, Users, Award } from 'lucide-react';
 import UserProfileSettings from './UserProfileSettings';
 import SubscriptionPlans from './SubscriptionPlans';
+import FriendSystem from './FriendSystem';
+import BadgeCollection from './BadgeCollection';
 
 interface UserMenuProps {
   onNavigate: (page: string) => void;
@@ -27,6 +29,8 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
   const gameRecording = useGameRecording();
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
+  const [showFriendSystem, setShowFriendSystem] = useState(false);
+  const [showBadgeCollection, setShowBadgeCollection] = useState(false);
 
   if (!user) return null;
 
@@ -119,6 +123,20 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
             </DropdownMenuItem>
           )}
           
+          {!user.isGuest && (
+            <DropdownMenuItem onClick={() => setShowFriendSystem(true)}>
+              <Users className="w-4 h-4 mr-2" />
+              {t('friends') || '好友'}
+            </DropdownMenuItem>
+          )}
+          
+          {!user.isGuest && (
+            <DropdownMenuItem onClick={() => setShowBadgeCollection(true)}>
+              <Award className="w-4 h-4 mr-2" />
+              {t('badges') || '徽章'}
+            </DropdownMenuItem>
+          )}
+          
           <DropdownMenuItem onClick={() => onNavigate('leaderboard')}>
             <Trophy className="w-4 h-4 mr-2" />
             {t('leaderboard')}
@@ -152,6 +170,25 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
         <SubscriptionPlans 
           onClose={() => setShowSubscriptionPlans(false)} 
         />
+      )}
+
+      {showFriendSystem && (
+        <FriendSystem onClose={() => setShowFriendSystem(false)} />
+      )}
+
+      {showBadgeCollection && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg p-4">
+            <BadgeCollection />
+            <Button 
+              className="mt-4 w-full" 
+              variant="outline" 
+              onClick={() => setShowBadgeCollection(false)}
+            >
+              {t('close') || '关闭'}
+            </Button>
+          </div>
+        </div>
       )}
     </>
   );
