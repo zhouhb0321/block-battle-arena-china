@@ -18,6 +18,8 @@ import EnhancedMusicPlayer from '@/components/EnhancedMusicPlayer';
 import OneVsOneGameArea from '@/components/game/OneVsOneGameArea';
 import TeamGameArea from '@/components/game/TeamGameArea';
 import { AIBattleGame } from '@/components/game/AIBattleGame';
+import { BattleRoomLobby } from '@/components/battle/BattleRoomLobby';
+import { BattleGameView } from '@/components/battle/BattleGameView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft, GraduationCap } from 'lucide-react';
@@ -29,6 +31,7 @@ const Index = () => {
   const { t } = useLanguage();
   const [currentView, setCurrentView] = useState<ViewType>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [battleRoomId, setBattleRoomId] = useState<string | null>(null);
 
   // 调试管理员状态
   useEffect(() => {
@@ -85,10 +88,38 @@ const Index = () => {
       case 'multiplayer':
         return (
           <MultiPlayerMenu 
-            onSelectMode={(mode) => setCurrentView('game')} 
+            onSelectMode={(mode, config) => {
+              if (mode === 'battle-lobby' && config?.roomId) {
+                setBattleRoomId(config.roomId);
+                setCurrentView('battle-lobby' as ViewType);
+              } else {
+                setCurrentView('game');
+              }
+            }} 
             onBack={handleBackToMenu}
           />
         );
+      case 'battle-lobby':
+        return battleRoomId ? (
+          <BattleRoomLobby 
+            roomId={battleRoomId}
+            onGameStart={() => setCurrentView('battle-game' as ViewType)}
+            onLeave={() => {
+              setBattleRoomId(null);
+              handleBackToMenu();
+            }}
+          />
+        ) : null;
+      case 'battle-game':
+        return battleRoomId ? (
+          <BattleGameView 
+            roomId={battleRoomId}
+            onBack={() => {
+              setBattleRoomId(null);
+              handleBackToMenu();
+            }}
+          />
+        ) : null;
       case 'ranked':
         return (
           <RankedMatchmakingSystem 
