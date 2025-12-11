@@ -18,8 +18,8 @@ import EnhancedMusicPlayer from '@/components/EnhancedMusicPlayer';
 import OneVsOneGameArea from '@/components/game/OneVsOneGameArea';
 import TeamGameArea from '@/components/game/TeamGameArea';
 import { AIBattleGame } from '@/components/game/AIBattleGame';
-import { BattleRoomLobby } from '@/components/battle/BattleRoomLobby';
-import { BattleGameView } from '@/components/battle/BattleGameView';
+import BattleRoomLobby from '@/components/battle/BattleRoomLobby';
+import BattleGameView from '@/components/battle/BattleGameView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft, GraduationCap } from 'lucide-react';
@@ -91,7 +91,7 @@ const Index = () => {
             onSelectMode={(mode, config) => {
               if (mode === 'battle-lobby' && config?.roomId) {
                 setBattleRoomId(config.roomId);
-                setCurrentView('battle-lobby' as ViewType);
+                setCurrentView('battle-lobby');
               } else {
                 setCurrentView('game');
               }
@@ -103,7 +103,7 @@ const Index = () => {
         return battleRoomId ? (
           <BattleRoomLobby 
             roomId={battleRoomId}
-            onGameStart={() => setCurrentView('battle-game' as ViewType)}
+            onStartGame={() => setCurrentView('battle-game')}
             onLeave={() => {
               setBattleRoomId(null);
               handleBackToMenu();
@@ -114,7 +114,7 @@ const Index = () => {
         return battleRoomId ? (
           <BattleGameView 
             roomId={battleRoomId}
-            onBack={() => {
+            onExit={() => {
               setBattleRoomId(null);
               handleBackToMenu();
             }}
