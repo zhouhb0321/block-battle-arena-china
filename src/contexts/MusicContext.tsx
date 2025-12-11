@@ -231,7 +231,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
-      audioRef.current.loop = false; // 🆕 禁用单曲循环，由我们手动控制
+      audioRef.current.loop = false; // 禁用单曲循环，由我们手动控制
+      audioRef.current.preload = 'auto'; // ✅ 预加载音频
     }
     
     return () => {
@@ -242,17 +243,45 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, []);
   
-  // 🆕 监听歌曲结束事件
+  // ✅ 监听歌曲结束和错误事件
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     
-    audio.addEventListener('ended', handleTrackEnded);
+    const onEnded = () => {
+      console.log('[MusicContext] Audio ended event fired');
+      handleTrackEnded();
+    };
+    
+    const onError = (e: Event) => {
+      console.warn('[MusicContext] Audio error event:', e);
+      // ✅ 播放错误时自动跳到下一首
+      playNextOnError();
+    };
+    
+    const onPlay = () => {
+      setIsPlaying(true);
+    };
+    
+    const onPause = () => {
+      // 只在非切换歌曲时设置为 false
+      if (audio.currentTime > 0 && !audio.ended) {
+        setIsPlaying(false);
+      }
+    };
+    
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
     
     return () => {
-      audio.removeEventListener('ended', handleTrackEnded);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
     };
-  }, [handleTrackEnded]);
+  }, [handleTrackEnded, playNextOnError]);
   
   // 同步音量设置
   useEffect(() => {
@@ -264,12 +293,25 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   const play = useCallback(() => {
     if (audioRef.current && currentTrack) {
-      audioRef.current.play().catch(err => {
-        console.warn('[MusicContext] Play failed:', err);
-      });
-      setIsPlaying(true);
+      // ✅ 确保音频源已设置
+      if (!audioRef.current.src || audioRef.current.src !== currentTrack.url) {
+        audioRef.current.src = currentTrack.url;
+        audioRef.current.load();
+      }
+      
+      audioRef.current.play()
+        .then(() => {
+          console.log('[MusicContext] Play started:', currentTrack.title);
+          setIsPlaying(true);
+        })
+        .catch(err => {
+          console.warn('[MusicContext] Play failed:', err);
+          setIsPlaying(false);
+          // ✅ 播放失败时尝试下一首
+          playNextOnError();
+        });
     }
-  }, [currentTrack]);
+  }, [currentTrack, playNextOnError]);
   
   const pause = useCallback(() => {
     if (audioRef.current) {

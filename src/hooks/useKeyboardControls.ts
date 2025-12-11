@@ -191,18 +191,24 @@ export const useKeyboardControls = ({
       
       // ✅ 软降独立处理 - 不受 DAS 影响，立即响应
       if (key === controls.softDrop) {
-        // ✅ SDF >= 999 表示无穷大：瞬间落到底部但不锁定
+        // ✅ SDF >= 999 表示无穷大：瞬间落到底部但不锁定（每次按键只触发一次）
         if (gameSettings.sdf >= 999 && onInstantSoftDrop) {
-          onInstantSoftDrop();
-          lastMoveTime.current[key] = timestamp;
-        } else if (gameSettings.sdf === 0 || gameSettings.sdf >= 100) {
-          // 非常快的软降（每帧都执行）
-          onSoftDrop();
-          lastMoveTime.current[key] = timestamp;
-        } else {
-          // 正常软降速度：sdf 表示每秒下落格数
+          // 只在首次按下时触发瞬间落地，后续帧不再触发
+          if (timeSinceLastMove >= 50) { // 50ms 防抖
+            onInstantSoftDrop();
+            lastMoveTime.current[key] = timestamp;
+          }
+        } else if (gameSettings.sdf >= 60) {
+          // ✅ 超快软降 (60+)：几乎每帧都下落
+          const fastInterval = Math.max(8, 1000 / gameSettings.sdf); // 最快8ms
+          if (timeSinceLastMove >= fastInterval) {
+            onSoftDrop();
+            lastMoveTime.current[key] = timestamp;
+          }
+        } else if (gameSettings.sdf > 0) {
+          // ✅ 正常软降速度：sdf 表示每秒下落格数
           // sdf=40 → 每秒40格 → 25ms/格
-          const sdfInterval = Math.max(1, 1000 / Math.max(gameSettings.sdf, 1));
+          const sdfInterval = Math.max(10, 1000 / gameSettings.sdf);
           if (timeSinceLastMove >= sdfInterval) {
             onSoftDrop();
             lastMoveTime.current[key] = timestamp;
