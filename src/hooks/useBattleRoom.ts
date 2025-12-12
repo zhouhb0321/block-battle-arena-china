@@ -122,10 +122,10 @@ export const useBattleRoom = () => {
   }, [user]);
 
   // 加入房间
-  const joinRoom = useCallback(async (roomIdOrCode: string, password?: string) => {
+  const joinRoom = useCallback(async (roomIdOrCode: string, password?: string): Promise<BattleRoom | null> => {
     if (!user) {
       setError('需要登录才能加入房间');
-      return false;
+      return null;
     }
 
     setLoading(true);
@@ -179,7 +179,7 @@ export const useBattleRoom = () => {
 
       if (existing) {
         setCurrentRoom(room);
-        return true;
+        return room;
       }
 
       // 加入房间
@@ -201,14 +201,15 @@ export const useBattleRoom = () => {
         .update({ current_players: room.current_players + 1 })
         .eq('id', room.id);
 
-      setCurrentRoom({ ...room, current_players: room.current_players + 1 });
+      const updatedRoom = { ...room, current_players: room.current_players + 1 };
+      setCurrentRoom(updatedRoom);
       toast.success('成功加入房间');
       
-      return true;
+      return updatedRoom;
     } catch (err: any) {
       setError(err.message || '加入房间失败');
       toast.error(err.message || '加入房间失败');
-      return false;
+      return null;
     } finally {
       setLoading(false);
     }
