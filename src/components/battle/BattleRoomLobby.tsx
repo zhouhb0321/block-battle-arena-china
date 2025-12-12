@@ -20,6 +20,7 @@ interface Participant {
   position: number;
   status: string;
   team?: string;
+  score: number; // 0=未准备, 1=准备就绪
 }
 
 interface RoomMessage {
@@ -109,11 +110,12 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 检查是否所有玩家都已准备
+  // 检查是否所有玩家都已准备 (使用 score 字段: 1=准备, 0=未准备)
   useEffect(() => {
     if (!room || participants.length < 2) return;
     
-    const allReady = participants.every(p => p.status === 'ready');
+    // 使用 score 字段判断准备状态
+    const allReady = participants.every(p => (p as any).score === 1);
     const isHost = room.created_by === user?.id;
     
     if (allReady && isHost && participants.length >= 2) {
@@ -163,10 +165,10 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
 
     if (!error && data) {
       setParticipants(data);
-      // 更新自己的准备状态
+      // 更新自己的准备状态 (使用 score 字段: 1=准备)
       const me = data.find(p => p.user_id === user?.id);
       if (me) {
-        setIsReady(me.status === 'ready');
+        setIsReady(me.score === 1);
       }
     }
   };
@@ -187,11 +189,12 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
   const toggleReady = async () => {
     if (!user) return;
     
-    const newStatus = isReady ? 'waiting' : 'ready';
+    // 使用 score 字段标记准备状态: 1=准备, 0=未准备
+    const newScore = isReady ? 0 : 1;
     
     const { error } = await supabase
       .from('battle_participants')
-      .update({ status: newStatus })
+      .update({ score: newScore })
       .eq('room_id', roomId)
       .eq('user_id', user.id);
 
@@ -207,7 +210,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
       room_id: roomId,
       user_id: user.id,
       username: user.username || 'Player',
-      message: newStatus === 'ready' ? '已准备' : '取消准备',
+      message: newScore === 1 ? '已准备' : '取消准备',
       message_type: 'system'
     });
   };
@@ -274,7 +277,8 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
   }
 
   const isHost = room.created_by === user?.id;
-  const allReady = participants.length >= 2 && participants.every(p => p.status === 'ready');
+  // 使用 score 字段判断准备状态
+  const allReady = participants.length >= 2 && participants.every(p => p.score === 1);
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-4">
@@ -338,7 +342,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
                     key={index}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       participant 
-                        ? participant.status === 'ready'
+                        ? participant.score === 1
                           ? 'border-green-500 bg-green-500/10'
                           : 'border-border bg-card'
                         : 'border-dashed border-muted bg-muted/20'
@@ -362,7 +366,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
                           </div>
                         </div>
                         <div>
-                          {participant.status === 'ready' ? (
+                          {participant.score === 1 ? (
                             <Badge className="bg-green-500">
                               <Check className="h-3 w-3 mr-1" />
                               已准备
