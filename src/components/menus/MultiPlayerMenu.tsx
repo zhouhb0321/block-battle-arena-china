@@ -5,12 +5,13 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sword, Users, Zap, Target, Coffee, User, Gamepad2, Bot, Trophy, Crown, AlertCircle } from 'lucide-react';
+import { Sword, Users, Zap, Target, Coffee, User, Gamepad2, Bot, Trophy, Crown, AlertCircle, Plus, LogIn } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { debugLog } from '@/utils/debugLogger';
 import { toast } from 'sonner';
 import TeamBattleMenu from './TeamBattleMenu';
+import { useBattleRoom } from '@/hooks/useBattleRoom';
 
 interface MultiPlayerMenuProps {
   onSelectMode: (mode: string, config?: any) => void;
@@ -20,17 +21,25 @@ interface MultiPlayerMenuProps {
 const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack }) => {
   const { user, loginAsGuest } = useAuth();
   const { t } = useLanguage();
+  const { createRoom, joinRoom, loading: battleLoading, error: battleError } = useBattleRoom();
   const [activeRooms, setActiveRooms] = useState(0);
   const [onlinePlayers, setOnlinePlayers] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [roomCode, setRoomCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [subView, setSubView] = useState<'menu' | 'team-battle'>('menu');
 
   useEffect(() => {
     loadRoomStats();
   }, []);
+
+  useEffect(() => {
+    if (battleError) {
+      setError(battleError);
+    }
+  }, [battleError]);
 
   const loadRoomStats = async () => {
     try {
@@ -54,6 +63,29 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     }
   };
 
+  const handleCreateRoom = async (mode: 'versus' | 'battle_royale' | 'league') => {
+    if (!user) {
+      setError('需要登录才能创建房间');
+      return;
+    }
+
+    setIsCreating(true);
+    setError(null);
+
+    try {
+      const room = await createRoom(mode);
+      if (room) {
+        toast.success(`房间创建成功！房间号: ${room.room_code}`);
+        onSelectMode('battle-lobby', { roomId: room.id });
+      }
+    } catch (error) {
+      debugLog.error('Create room failed', error);
+      setError('创建房间失败，请重试');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleModeSelect = async (mode: string) => {
     if (!user) {
       setError('需要登录才能进行多人游戏');
@@ -62,6 +94,12 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
 
     if (user.isGuest && (mode === 'ranked' || mode === 'tournament')) {
       toast.error('访客用户无法参与排位赛和锦标赛');
+      return;
+    }
+
+    // For 1v1 and custom-room, create a room directly
+    if (mode === 'one-vs-one' || mode === 'custom-room') {
+      await handleCreateRoom('versus');
       return;
     }
 
@@ -104,30 +142,22 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
 
     if (!user) {
       await handleGuestLogin();
-      // Wait a moment for auth to complete
       setTimeout(() => handleJoinByCode(), 1000);
       return;
     }
 
     setIsJoining(true);
-    setError('');
+    setError(null);
 
     try {
-      const { data, error } = await supabase.rpc('join_room_by_code', {
-        room_code_input: roomCode.trim()
-      });
-
-      if (error) throw error;
-
-      if (!data.success) {
-        setError(data.error || '加入房间失败');
-        return;
+      const room = await joinRoom(roomCode.trim());
+      if (room) {
+        toast.success('成功加入房间');
+        onSelectMode('battle-lobby', { roomId: room.id });
       }
-
-      onSelectMode('battle', { roomId: data.room_id });
     } catch (error) {
       debugLog.error('加入房间失败:', error);
-      setError('加入房间失败，请重试');
+      setError('加入房间失败，请检查房间号');
     } finally {
       setIsJoining(false);
     }
