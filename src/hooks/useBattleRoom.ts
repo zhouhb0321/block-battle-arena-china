@@ -89,7 +89,7 @@ export const useBattleRoom = () => {
 
       if (roomError) throw roomError;
 
-      // 加入房间
+      // 加入房间 (使用数据库允许的状态值: active, eliminated, disconnected)
       const { error: joinError } = await supabase
         .from('battle_participants')
         .insert({
@@ -97,7 +97,7 @@ export const useBattleRoom = () => {
           user_id: user.id,
           username: user.username || 'Player',
           position: 1,
-          status: 'waiting'
+          status: 'active'
         });
 
       if (joinError) throw joinError;
@@ -182,7 +182,7 @@ export const useBattleRoom = () => {
         return room;
       }
 
-      // 加入房间
+      // 加入房间 (使用数据库允许的状态值: active, eliminated, disconnected)
       const { error: joinError } = await supabase
         .from('battle_participants')
         .insert({
@@ -190,7 +190,7 @@ export const useBattleRoom = () => {
           user_id: user.id,
           username: user.username || 'Player',
           position: room.current_players + 1,
-          status: 'waiting'
+          status: 'active'
         });
 
       if (joinError) throw joinError;
@@ -250,14 +250,14 @@ export const useBattleRoom = () => {
     }
   }, [user, currentRoom]);
 
-  // 更新准备状态
+  // 更新准备状态 - 使用score字段标记准备状态 (score=1表示准备就绪)
   const setReady = useCallback(async (ready: boolean) => {
     if (!user || !currentRoom) return;
 
     try {
       await supabase
         .from('battle_participants')
-        .update({ status: ready ? 'ready' : 'waiting' })
+        .update({ score: ready ? 1 : 0 })
         .eq('room_id', currentRoom.id)
         .eq('user_id', user.id);
     } catch (err) {
@@ -283,11 +283,12 @@ export const useBattleRoom = () => {
         .eq('room_id', currentRoom.id);
 
       if (!participants || participants.length < 2) {
-        toast.error('需要至少2名玩家');
+        toast.error('需要至少2名玩家才能开始游戏');
         return false;
       }
 
-      const allReady = participants.every(p => p.status === 'ready');
+      // 使用score字段判断准备状态 (score=1表示准备就绪)
+      const allReady = participants.every(p => p.score === 1);
       if (!allReady) {
         toast.error('所有玩家需要准备就绪');
         return false;

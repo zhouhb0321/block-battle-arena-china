@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, LogOut, Shield, Trophy, CreditCard, Users, Award } from 'lucide-react';
+import { User, Settings, LogOut, Shield, Trophy, CreditCard, Users, Award, X } from 'lucide-react';
 import UserProfileSettings from './UserProfileSettings';
 import SubscriptionPlans from './SubscriptionPlans';
 import FriendSystem from './FriendSystem';
@@ -177,8 +177,22 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
       )}
 
       {showBadgeCollection && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowBadgeCollection(false)}
+        >
+          <div 
+            className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg p-4 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button 
+              className="absolute top-2 right-2 z-10" 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setShowBadgeCollection(false)}
+            >
+              <X className="w-4 h-4" />
+            </Button>
             <BadgeCollection />
             <Button 
               className="mt-4 w-full" 
