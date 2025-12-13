@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/integrations/supabase/client';
 import GameLauncher from '@/components/GameLauncher';
 import MultiPlayerMenu from '@/components/menus/MultiPlayerMenu';
 import SettingsMenu from '@/components/menus/SettingsMenu';
@@ -23,6 +24,7 @@ import BattleGameView from '@/components/battle/BattleGameView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft, GraduationCap } from 'lucide-react';
+import { toast } from 'sonner';
 import type { ViewType } from '@/types/navigation';
 import { GAME_MODES } from '@/utils/gameTypes';
 
@@ -32,6 +34,59 @@ const Index = () => {
   const [currentView, setCurrentView] = useState<ViewType>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [battleRoomId, setBattleRoomId] = useState<string | null>(null);
+  const [pendingRoomCode, setPendingRoomCode] = useState<string | null>(null);
+
+  // 检查 URL 参数中的房间号
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = urlParams.get('room');
+    
+    if (roomCode) {
+      console.log('[Index] 检测到房间号参数:', roomCode);
+      // 清除 URL 参数（避免刷新时重复处理）
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      if (isAuthenticated) {
+        // 已登录，尝试加入房间
+        handleJoinRoomByCode(roomCode);
+      } else {
+        // 未登录，保存房间号并显示登录框
+        setPendingRoomCode(roomCode);
+        setShowAuthModal(true);
+      }
+    }
+  }, []);
+
+  // 登录后处理待加入的房间
+  useEffect(() => {
+    if (isAuthenticated && pendingRoomCode) {
+      handleJoinRoomByCode(pendingRoomCode);
+      setPendingRoomCode(null);
+    }
+  }, [isAuthenticated, pendingRoomCode]);
+
+  // 通过房间号加入房间
+  const handleJoinRoomByCode = async (roomCode: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('battle_rooms')
+        .select('id')
+        .eq('room_code', roomCode)
+        .eq('status', 'waiting')
+        .single();
+      
+      if (error || !data) {
+        toast.error('房间不存在或已关闭');
+        return;
+      }
+      
+      setBattleRoomId(data.id);
+      setCurrentView('battle-lobby');
+    } catch (err) {
+      console.error('[Index] 加入房间失败:', err);
+      toast.error('加入房间失败');
+    }
+  };
 
   // 调试管理员状态
   useEffect(() => {

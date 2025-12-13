@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import ShareDialog from '@/components/ShareDialog';
 import { 
   Users, Crown, Check, X, Copy, MessageSquare, 
-  Play, ArrowLeft, Eye, Settings, Send
+  Play, ArrowLeft, Eye, Settings, Send, Share2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -65,6 +66,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
   const [isReady, setIsReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 加载房间信息
@@ -306,8 +308,11 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
               <Badge variant="outline" className="text-lg px-3">
                 #{room.room_code}
               </Badge>
-              <Button size="icon" variant="ghost" onClick={copyRoomCode}>
+              <Button size="icon" variant="ghost" onClick={copyRoomCode} title="复制房间号">
                 <Copy className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => setShowShareDialog(true)} title="分享房间" className="text-primary">
+                <Share2 className="h-4 w-4" />
               </Button>
             </div>
             <div className="flex items-center gap-2">
@@ -493,6 +498,14 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
           </div>
         </CardContent>
       </Card>
+      
+      {/* 分享对话框 */}
+      <ShareDialog
+        isOpen={showShareDialog}
+        onClose={() => setShowShareDialog(false)}
+        roomCode={room.room_code}
+        roomMode={room.mode === 'versus' ? '1v1对战' : room.mode === 'battle_royale' ? '多人混战' : '联盟赛'}
+      />
     </div>
   );
 };
