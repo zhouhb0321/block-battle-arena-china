@@ -1,128 +1,199 @@
-
-import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+/**
+ * 房间分享对话框
+ * 支持复制完整链接、Web Share API
+ */
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+  DialogDescription 
+} from '@/components/ui/dialog';
+import { Copy, Share2, Check, Link, MessageCircle, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
-import { Share2, Copy, MessageCircle, QrCode } from 'lucide-react';
 
 interface ShareDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  roomCode?: string;  // 房间号（用于生成分享链接）
+  roomId?: string;    // 向后兼容
   gameScore?: number;
-  roomId?: string;
+  roomMode?: string;
 }
 
-const ShareDialog: React.FC<ShareDialogProps> = ({ isOpen, onClose, gameScore, roomId }) => {
+const ShareDialog: React.FC<ShareDialogProps> = ({
+  isOpen,
+  onClose,
+  roomCode,
+  roomId,
+  gameScore,
+  roomMode = '对战'
+}) => {
+  const [copied, setCopied] = useState(false);
+  
+  const code = roomCode || roomId;
+  
+  // 生成完整分享链接
   const baseUrl = window.location.origin;
-  const shareUrl = roomId ? `${baseUrl}/room/${roomId}` : window.location.href;
+  const shareUrl = code ? `${baseUrl}/?room=${code}` : window.location.href;
+  
+  // 分享文案
+  const shareTitle = `加入我的方块对战房间`;
   const shareText = gameScore 
     ? `我在方块竞技场获得了 ${gameScore} 分！一起来挑战吧！`
-    : `一起来方块竞技场对战俄罗斯方块吧！`;
+    : code 
+      ? `快来和我一起玩方块${roomMode}！房间号: ${code}\n点击链接直接加入: ${shareUrl}`
+      : `一起来方块竞技场对战俄罗斯方块吧！`;
+  
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      toast.success('链接已复制到剪贴板');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error('复制失败，请手动复制');
+    }
+  };
+  
+  const handleCopyCode = async () => {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success('房间号已复制');
+    } catch (err) {
+      toast.error('复制失败');
+    }
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('已复制到剪贴板');
   };
+  
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl
+        });
+        toast.success('分享成功');
+      } catch (err) {
+        // 用户取消分享不显示错误
+        if ((err as Error).name !== 'AbortError') {
+          toast.error('分享失败');
+        }
+      }
+    } else {
+      // 不支持 Web Share API，复制链接
+      handleCopyLink();
+    }
+  };
 
   const shareToWeChat = () => {
-    // 微信分享 (实际需要接入微信SDK)
     const weChatUrl = `weixin://dl/business/?t=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
     window.open(weChatUrl, '_blank');
   };
 
   const shareToQQ = () => {
-    // QQ分享
     const qqUrl = `mqqwpa://im/chat?chat_type=wpa&uin=&version=1&src_type=web&web_src=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareText)}`;
     window.open(qqUrl, '_blank');
   };
 
   const shareToWeibo = () => {
-    // 微博分享
     const weiboUrl = `https://service.weibo.com/share/share.php?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareText)}`;
     window.open(weiboUrl, '_blank');
   };
-
-  const shareToDingTalk = () => {
-    // 钉钉分享
-    const dingUrl = `dingtalk://dingtalkclient/page/link?url=${encodeURIComponent(shareUrl)}&pc_slide=true`;
-    window.open(dingUrl, '_blank');
-  };
-
-  const shareToFeishu = () => {
-    // 飞书分享
-    copyToClipboard(`${shareText} ${shareUrl}`);
-    toast.info('请在飞书中粘贴分享');
-  };
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Share2 className="w-5 h-5" />
-            分享游戏
+            <Share2 className="h-5 w-5 text-primary" />
+            分享{code ? '房间' : '游戏'}
           </DialogTitle>
+          {code && (
+            <DialogDescription>
+              邀请好友加入你的{roomMode}房间
+            </DialogDescription>
+          )}
         </DialogHeader>
         
-        <div className="space-y-4">
-          <div>
-            <Label>分享链接</Label>
-            <div className="flex gap-2 mt-1">
-              <Input value={shareUrl} readOnly />
-              <Button variant="outline" size="sm" onClick={() => copyToClipboard(shareUrl)}>
-                <Copy className="w-4 h-4" />
+        <div className="space-y-4 py-4">
+          {/* 房间号显示 */}
+          {code && (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 text-center py-4 bg-muted rounded-lg">
+                <div className="text-xs text-muted-foreground mb-1">房间号</div>
+                <div className="text-3xl font-mono font-bold tracking-widest text-primary">
+                  {code}
+                </div>
+              </div>
+              <Button size="icon" variant="outline" onClick={handleCopyCode}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          
+          {/* 分享链接 */}
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">分享链接</Label>
+            <div className="flex gap-2">
+              <Input
+                value={shareUrl}
+                readOnly
+                className="font-mono text-sm"
+              />
+              <Button 
+                variant={copied ? "default" : "outline"} 
+                size="icon"
+                onClick={handleCopyLink}
+                className={copied ? "bg-green-500 hover:bg-green-500" : ""}
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Link className="h-4 w-4" />}
               </Button>
             </div>
           </div>
-
-          <div>
-            <Label>分享文本</Label>
-            <div className="flex gap-2 mt-1">
-              <Input value={shareText} readOnly />
-              <Button variant="outline" size="sm" onClick={() => copyToClipboard(shareText)}>
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
+          
+          {/* 分享按钮 */}
+          <div className="flex gap-2">
+            <Button 
+              className="flex-1" 
+              onClick={handleShare}
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              {navigator.share ? '分享给好友' : '复制分享链接'}
+            </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={shareToWeChat} className="flex items-center gap-2">
+          {/* 社交分享按钮 */}
+          <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" size="sm" onClick={shareToWeChat} className="flex items-center gap-1">
               <MessageCircle className="w-4 h-4" />
               微信
             </Button>
-            <Button variant="outline" onClick={shareToQQ} className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={shareToQQ} className="flex items-center gap-1">
               <MessageCircle className="w-4 h-4" />
               QQ
             </Button>
-            <Button variant="outline" onClick={shareToWeibo} className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={shareToWeibo} className="flex items-center gap-1">
               <Share2 className="w-4 h-4" />
               微博
             </Button>
-            <Button variant="outline" onClick={shareToDingTalk} className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4" />
-              钉钉
-            </Button>
-            <Button variant="outline" onClick={shareToFeishu} className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4" />
-              飞书
-            </Button>
-            <Button variant="outline" onClick={() => copyToClipboard(`${shareText} ${shareUrl}`)} className="flex items-center gap-2">
-              <QrCode className="w-4 h-4" />
-              复制全部
-            </Button>
           </div>
-
-          {roomId && (
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
-                房间ID: <span className="font-mono font-bold">{roomId}</span>
-              </p>
-              <p className="text-xs text-blue-600 mt-1">
-                好友可以直接输入房间ID加入游戏
-              </p>
-            </div>
+          
+          {/* 提示 */}
+          {code && (
+            <p className="text-xs text-muted-foreground text-center">
+              好友点击链接即可直接加入房间，无需手动输入房间号
+            </p>
           )}
         </div>
       </DialogContent>
