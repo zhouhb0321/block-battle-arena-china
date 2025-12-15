@@ -184,6 +184,67 @@ class SoundEffectsManager {
   playPerfectClear() {
     this.play('perfect_clear');
   }
+  
+  // T-Spin 音效
+  playTSpin(lines: number, isMini: boolean = false) {
+    if (lines === 0) {
+      this.play(isMini ? 'tspin_mini' : 'tspin');
+    } else if (lines === 1) {
+      this.play('tspin_single');
+    } else if (lines === 2) {
+      this.play('tspin_double');
+    } else {
+      this.play('tspin_triple');
+    }
+  }
+  
+  // Tetris 音效
+  playTetris() {
+    this.play('tetris');
+  }
+  
+  // 操作音效
+  playLock() {
+    this.play('lock');
+  }
+  
+  playMove() {
+    this.play('move');
+  }
+  
+  playRotate() {
+    this.play('rotate');
+  }
+  
+  playHold() {
+    this.play('hold');
+  }
+  
+  playHardDrop() {
+    this.play('hard_drop');
+  }
+  
+  // 游戏状态音效
+  playGameStart() {
+    this.play('game_start');
+  }
+  
+  playGameOver() {
+    this.play('game_over');
+  }
+  
+  playCountdown() {
+    this.play('countdown');
+  }
+  
+  // 垃圾行音效
+  playGarbageWarning() {
+    this.play('garbage_warning');
+  }
+  
+  playGarbageReceive() {
+    this.play('garbage_receive');
+  }
 }
 
 // 单例导出

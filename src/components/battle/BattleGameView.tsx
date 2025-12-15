@@ -6,26 +6,12 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Trophy, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import EnhancedGameBoard from '@/components/EnhancedGameBoard';
+import TetrioBattleLayout from '@/components/game/TetrioBattleLayout';
+import type { GameState } from '@/utils/gameTypes';
 
 interface BattleGameViewProps {
   roomId: string;
   onExit: () => void;
-}
-
-interface PlayerState {
-  id: string;
-  username: string;
-  score: number;
-  lines: number;
-  level: number;
-  apm: number;
-  pps: number;
-  alive: boolean;
-  board?: number[][];
-  currentPiece?: any;
-  nextPieces?: any[];
-  holdPiece?: any;
 }
 
 interface MatchResult {
@@ -40,13 +26,64 @@ const BattleGameView: React.FC<BattleGameViewProps> = ({ roomId, onExit }) => {
   
   const [gameStarted, setGameStarted] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(3);
-  const [playerState, setPlayerState] = useState<PlayerState | null>(null);
-  const [opponentState, setOpponentState] = useState<PlayerState | null>(null);
   const [matchScores, setMatchScores] = useState<Record<string, number>>({});
   const [currentMatch, setCurrentMatch] = useState(1);
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const [pendingGarbage, setPendingGarbage] = useState(0);
+  
+  // 玩家状态 - 使用完整的 GameState
+  const [playerState, setPlayerState] = useState<GameState>({
+    board: Array(23).fill(null).map(() => Array(10).fill(0)),
+    currentPiece: null,
+    ghostPiece: null,
+    nextPieces: [],
+    holdPiece: null,
+    canHold: true,
+    isHolding: false,
+    score: 0,
+    lines: 0,
+    level: 1,
+    pps: 0,
+    apm: 0,
+    pieces: 0,
+    attack: 0,
+    combo: 0,
+    b2b: 0,
+    paused: false,
+    gameOver: false,
+    startTime: Date.now(),
+    endTime: null,
+    clearingLines: [],
+    achievements: []
+  });
+  
+  const [opponentState, setOpponentState] = useState<GameState>({
+    board: Array(23).fill(null).map(() => Array(10).fill(0)),
+    currentPiece: null,
+    ghostPiece: null,
+    nextPieces: [],
+    holdPiece: null,
+    canHold: true,
+    isHolding: false,
+    score: 0,
+    lines: 0,
+    level: 1,
+    pps: 0,
+    apm: 0,
+    pieces: 0,
+    attack: 0,
+    combo: 0,
+    b2b: 0,
+    paused: false,
+    gameOver: false,
+    startTime: Date.now(),
+    endTime: null,
+    clearingLines: [],
+    achievements: []
+  });
+  
+  const [opponentUsername, setOpponentUsername] = useState('Opponent');
 
   // 连接 WebSocket
   useEffect(() => {
@@ -77,20 +114,22 @@ const BattleGameView: React.FC<BattleGameViewProps> = ({ roomId, onExit }) => {
         
       case 'opponent_state_update':
         if (msg.userId !== user?.id && msg.data) {
+          setOpponentUsername(msg.data?.username || 'Opponent');
           setOpponentState(prev => ({
             ...prev,
-            id: msg.userId || '',
-            username: msg.data?.username || 'Opponent',
             score: msg.data?.score || 0,
             lines: msg.data?.lines || 0,
             level: msg.data?.level || 1,
             apm: msg.data?.apm || 0,
             pps: msg.data?.pps || 0,
-            alive: msg.data?.alive !== false,
-            board: msg.data?.board,
-            currentPiece: msg.data?.currentPiece,
-            nextPieces: msg.data?.nextPieces,
-            holdPiece: msg.data?.holdPiece
+            board: msg.data?.board || prev.board,
+            currentPiece: msg.data?.currentPiece || null,
+            nextPieces: msg.data?.nextPieces || [],
+            holdPiece: msg.data?.holdPiece || null,
+            pieces: msg.data?.pieces || 0,
+            attack: msg.data?.attack || 0,
+            combo: msg.data?.combo || 0,
+            b2b: msg.data?.b2b || 0
           }));
         }
         break;
@@ -144,20 +183,22 @@ const BattleGameView: React.FC<BattleGameViewProps> = ({ roomId, onExit }) => {
   const handleGameStateUpdate = useCallback((state: any) => {
     if (!isConnected) return;
     
-    setPlayerState({
-      id: user?.id || '',
-      username: user?.username || 'Player',
+    setPlayerState(prev => ({
+      ...prev,
       score: state.score || 0,
       lines: state.lines || 0,
       level: state.level || 1,
       apm: state.apm || 0,
       pps: state.pps || 0,
-      alive: true,
-      board: state.board,
-      currentPiece: state.currentPiece,
-      nextPieces: state.nextPieces,
-      holdPiece: state.holdPiece
-    });
+      board: state.board || prev.board,
+      currentPiece: state.currentPiece || null,
+      nextPieces: state.nextPieces || [],
+      holdPiece: state.holdPiece || null,
+      pieces: state.pieces || 0,
+      attack: state.attack || 0,
+      combo: state.combo || 0,
+      b2b: state.b2b || 0
+    }));
     
     sendMessage({
       type: 'game_state_update',
@@ -168,8 +209,11 @@ const BattleGameView: React.FC<BattleGameViewProps> = ({ roomId, onExit }) => {
         level: state.level,
         apm: state.apm,
         pps: state.pps,
-        alive: true,
-        board: state.board
+        board: state.board,
+        pieces: state.pieces,
+        attack: state.attack,
+        combo: state.combo,
+        b2b: state.b2b
       }
     });
   }, [isConnected, sendMessage, user]);
@@ -193,9 +237,6 @@ const BattleGameView: React.FC<BattleGameViewProps> = ({ roomId, onExit }) => {
     startCountdown();
   };
 
-  // 创建空棋盘
-  const createEmptyBoard = () => Array(23).fill(null).map(() => Array(10).fill(0));
-
   // 渲染倒计时
   if (countdown !== null) {
     return (
@@ -216,7 +257,7 @@ const BattleGameView: React.FC<BattleGameViewProps> = ({ roomId, onExit }) => {
             </div>
             <span className="text-3xl font-bold text-muted-foreground">VS</span>
             <div className="text-center">
-              <p className="text-lg font-medium">{opponentState?.username || '对手'}</p>
+              <p className="text-lg font-medium">{opponentUsername}</p>
               <Badge variant="outline" className="text-2xl px-4 py-1">
                 {Object.entries(matchScores).find(([id]) => id !== user?.id)?.[1] || 0}
               </Badge>
@@ -282,31 +323,16 @@ const BattleGameView: React.FC<BattleGameViewProps> = ({ roomId, onExit }) => {
     );
   }
 
-  // 渲染游戏界面 - 双人对战布局
+  // 渲染游戏界面 - 使用 TETR.IO 风格双人对战布局
   return (
     <div className="h-screen bg-background flex flex-col">
       {/* 顶部状态栏 */}
-      <div className="p-2 bg-background/80 backdrop-blur border-b">
+      <div className="p-2 bg-background/80 backdrop-blur border-b border-border">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <Button size="sm" variant="ghost" onClick={onExit}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             退出
           </Button>
-          
-          <div className="flex items-center gap-4">
-            <Badge variant="outline">
-              第 {currentMatch} / 5 局
-            </Badge>
-            <div className="flex gap-2">
-              <Badge className="bg-blue-500">
-                {user?.username}: {matchScores[user?.id || ''] || 0}
-              </Badge>
-              <span className="text-muted-foreground font-bold">VS</span>
-              <Badge className="bg-red-500">
-                {opponentState?.username || '对手'}: {Object.entries(matchScores).find(([id]) => id !== user?.id)?.[1] || 0}
-              </Badge>
-            </div>
-          </div>
           
           {pendingGarbage > 0 && (
             <Badge variant="destructive" className="animate-pulse">
@@ -316,49 +342,29 @@ const BattleGameView: React.FC<BattleGameViewProps> = ({ roomId, onExit }) => {
         </div>
       </div>
 
-      {/* 游戏区域 - 左右双棋盘布局 */}
-      <div className="flex-1 flex justify-center items-center gap-8 p-4">
-        {/* 玩家1 (我方) */}
-        <div className="flex flex-col items-center">
-          <div className="text-blue-400 font-bold text-lg mb-2">{user?.username || 'Player'}</div>
-          <div className="bg-card rounded-lg p-2 border-2 border-blue-500/50">
-            <EnhancedGameBoard
-              board={playerState?.board || createEmptyBoard()}
-              currentPiece={playerState?.currentPiece || null}
-              ghostPiece={null}
-              cellSize={22}
-            />
-          </div>
-          <div className="mt-2 text-center text-sm">
-            <div>分数: {playerState?.score || 0}</div>
-            <div>行数: {playerState?.lines || 0}</div>
-          </div>
-        </div>
-
-        {/* VS 分隔 */}
-        <div className="text-4xl font-bold text-yellow-500">VS</div>
-
-        {/* 玩家2 (对手) */}
-        <div className="flex flex-col items-center">
-          <div className="text-red-400 font-bold text-lg mb-2">{opponentState?.username || 'Opponent'}</div>
-          <div className="bg-card rounded-lg p-2 border-2 border-red-500/50">
-            <EnhancedGameBoard
-              board={opponentState?.board || createEmptyBoard()}
-              currentPiece={opponentState?.currentPiece || null}
-              ghostPiece={null}
-              cellSize={22}
-            />
-          </div>
-          <div className="mt-2 text-center text-sm">
-            <div>分数: {opponentState?.score || 0}</div>
-            <div>行数: {opponentState?.lines || 0}</div>
-          </div>
-        </div>
+      {/* 游戏区域 - TETR.IO 风格双人布局 */}
+      <div className="flex-1 flex justify-center items-center overflow-hidden">
+        <TetrioBattleLayout
+          player1={{
+            state: playerState,
+            username: user?.username || 'Player',
+            matchWins: matchScores[user?.id || ''] || 0
+          }}
+          player2={{
+            state: opponentState,
+            username: opponentUsername,
+            matchWins: Object.entries(matchScores).find(([id]) => id !== user?.id)?.[1] || 0
+          }}
+          matchNumber={currentMatch}
+          totalMatches={5}
+          cellSize={20}
+          enableGhost={true}
+        />
       </div>
 
       {/* 提示信息 */}
-      <div className="p-4 text-center text-muted-foreground text-sm">
-        游戏进行中 - 消除行数会向对手发送攻击
+      <div className="p-2 text-center text-muted-foreground text-sm border-t border-border">
+        消除行数会向对手发送攻击
       </div>
     </div>
   );

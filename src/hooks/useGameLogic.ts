@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { useReplayDiagnosticsContext } from '@/contexts/ReplayDiagnosticsContext';
 import { debugLog } from '@/utils/debugLogger';
+import { soundEffects } from '@/utils/soundEffects';
 import { 
   createEmptyBoard, 
   isValidPosition,
@@ -356,6 +357,30 @@ export const useGameLogic = ({
         isPerfectClear,
       });
       setScore(prev => prev + scoreResult.score);
+
+      // 🔊 播放消行音效
+      if (!isReplay) {
+        if (tSpinResult) {
+          // T-Spin 音效
+          soundEffects.playTSpin(linesCleared);
+        } else if (linesCleared === 4) {
+          // Tetris 音效
+          soundEffects.playTetris();
+        } else {
+          // 普通消行音效
+          soundEffects.playLineClear(linesCleared as 1 | 2 | 3);
+        }
+        
+        // Combo 音效
+        if (newCombo >= 2) {
+          soundEffects.playCombo(newCombo);
+        }
+        
+        // 完美消除音效
+        if (isPerfectClear) {
+          soundEffects.playPerfectClear();
+        }
+      }
 
       // Show achievements
       if (isPerfectClear) showPerfectClear();
