@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -7,40 +7,115 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import RankingSystem, { getRankByPoints } from '@/components/RankingSystem';
-import { RankedDuelLayout } from '@/components/RankedDuelLayout';
-import { Trophy, Users, Clock, Target, AlertTriangle, ArrowLeft } from 'lucide-react';
+import MultiplayerBattleLayout, { PlayerState } from '@/components/game/MultiplayerBattleLayout';
+import GameMusicManager from '@/components/GameMusicManager';
+import { useGameLogic } from '@/hooks/useGameLogic';
+import { useKeyboardControls } from '@/hooks/useKeyboardControls';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { useBattleWebSocket } from '@/hooks/useBattleWebSocket';
+import { calculateAttack, generateGarbageLines } from '@/utils/garbageSystem';
+import { Trophy, Users, Clock, Target, AlertTriangle, ArrowLeft, Crown } from 'lucide-react';
+import type { GameMode } from '@/utils/gameTypes';
 
 interface RankedMatchmakingSystemProps {
   onStartMatch: () => void;
   onBack: () => void;
 }
 
-// Mock match data for testing
-const mockMatch = {
-  id: 'match-123',
-  player1_username: 'Player1',
-  player2_username: 'Player2',
-  player1_rating: 1250,
-  player2_rating: 1180,
-  best_of: 5,
-  player1_wins: 2,
-  player2_wins: 1,
-  current_game: 4,
-  status: 'playing'
-};
+interface MatchState {
+  id: string;
+  opponentId: string;
+  opponentUsername: string;
+  opponentRating: number;
+  bestOf: number;
+  playerWins: number;
+  opponentWins: number;
+  currentGame: number;
+  status: 'playing' | 'finished';
+}
 
 const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onStartMatch, onBack }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { settings } = useUserSettings();
   const [isSearching, setIsSearching] = useState(false);
   const [searchTime, setSearchTime] = useState(0);
   const [playerRating] = useState(1250);
   const [matchFound, setMatchFound] = useState(false);
+  const [matchState, setMatchState] = useState<MatchState | null>(null);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [incomingGarbage, setIncomingGarbage] = useState(0);
+  const [outgoingGarbage, setOutgoingGarbage] = useState(0);
+  const [matchWinner, setMatchWinner] = useState<'player' | 'opponent' | null>(null);
   const [queueStats] = useState({
     playersInQueue: 31,
     playersInGame: 452
   });
 
+  // WebSocket connection
+  const { sendMessage, isConnected, lastMessage, connect } = useBattleWebSocket();
+
+  // Opponent's game state (received via WebSocket)
+  const [opponentState, setOpponentState] = useState({
+    board: Array(20).fill(null).map(() => Array(10).fill(0)),
+    score: 0,
+    lines: 0,
+    level: 1,
+    apm: 0,
+    pps: 0,
+    combo: 0,
+    b2b: 0,
+    alive: true,
+    garbageQueued: 0
+  });
+
+  // Game logic for ranked match
+  const gameLogic = useGameLogic({
+    gameMode: {
+      id: 'ranked',
+      name: 'Ranked Match',
+      displayName: 'Ranked Match',
+      description: 'Competitive 1v1',
+      isTimeAttack: false
+    } as GameMode,
+    onAttack: (attackData) => {
+      const attackLines = calculateAttack(
+        attackData.linesCleared,
+        attackData.isTSpin,
+        attackData.isB2B,
+        attackData.combo
+      );
+
+      if (attackLines > 0) {
+        setOutgoingGarbage(attackLines);
+        sendMessage({
+          type: 'attack',
+          data: { lines: attackLines }
+        });
+        setTimeout(() => setOutgoingGarbage(0), 500);
+      }
+    }
+  });
+
+  // Keyboard controls - only active during game
+  useKeyboardControls({
+    gameSettings: settings,
+    gameOver: gameLogic.gameOver,
+    paused: gameLogic.isPaused || !gameStarted,
+    onMoveLeft: () => gameLogic.movePiece(-1, 0),
+    onMoveRight: () => gameLogic.movePiece(1, 0),
+    onSoftDrop: () => gameLogic.movePiece(0, 1),
+    onHardDrop: gameLogic.hardDrop,
+    onRotateClockwise: gameLogic.rotatePieceClockwise,
+    onRotateCounterclockwise: gameLogic.rotatePieceCounterclockwise,
+    onRotate180: gameLogic.rotatePiece180,
+    onHold: gameLogic.holdCurrentPiece,
+    onPause: () => {},
+    onInstantSoftDrop: gameLogic.instantSoftDrop
+  });
+
+  // Search timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isSearching) {
@@ -51,25 +126,135 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
     return () => clearInterval(interval);
   }, [isSearching]);
 
+  // Handle WebSocket messages
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    const message = JSON.parse(lastMessage.data);
+    
+    switch (message.type) {
+      case 'match_found':
+        setMatchFound(true);
+        setMatchState({
+          id: message.matchId,
+          opponentId: message.opponentId,
+          opponentUsername: message.opponentUsername,
+          opponentRating: message.opponentRating,
+          bestOf: 5,
+          playerWins: 0,
+          opponentWins: 0,
+          currentGame: 1,
+          status: 'playing'
+        });
+        setCountdown(3);
+        break;
+
+      case 'game_start':
+        setGameStarted(true);
+        gameLogic.startGame();
+        break;
+
+      case 'opponent_state':
+        setOpponentState(message.data);
+        break;
+
+      case 'receive_attack':
+        setIncomingGarbage(prev => prev + message.data.lines);
+        setTimeout(() => setIncomingGarbage(0), 500);
+        break;
+
+      case 'game_result':
+        if (message.data.winner === user?.id) {
+          setMatchState(prev => prev ? { ...prev, playerWins: prev.playerWins + 1 } : null);
+        } else {
+          setMatchState(prev => prev ? { ...prev, opponentWins: prev.opponentWins + 1 } : null);
+        }
+        break;
+
+      case 'match_result':
+        setMatchWinner(message.data.winner === user?.id ? 'player' : 'opponent');
+        setGameStarted(false);
+        break;
+    }
+  }, [lastMessage, user?.id, gameLogic]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+        if (countdown === 1) {
+          setGameStarted(true);
+          gameLogic.startGame();
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown, gameLogic]);
+
+  // Send game state updates
+  useEffect(() => {
+    if (!gameStarted || !isConnected) return;
+
+    sendMessage({
+      type: 'game_state',
+      data: {
+        board: gameLogic.board,
+        score: gameLogic.score,
+        lines: gameLogic.lines,
+        level: gameLogic.level,
+        apm: gameLogic.apm,
+        pps: gameLogic.pps,
+        combo: gameLogic.comboCount,
+        b2b: gameLogic.isB2B,
+        alive: !gameLogic.gameOver
+      }
+    });
+  }, [gameLogic.score, gameLogic.lines, gameStarted, isConnected, sendMessage]);
+
+  // Handle game over
+  useEffect(() => {
+    if (gameLogic.gameOver && gameStarted) {
+      sendMessage({
+        type: 'game_over',
+        data: {
+          finalScore: gameLogic.score,
+          finalLines: gameLogic.lines
+        }
+      });
+    }
+  }, [gameLogic.gameOver, gameStarted, sendMessage]);
+
   const calculateEstimatedWaitTime = () => {
-    // Calculate estimated wait based on queue size
     const baseWaitTime = Math.max(15, queueStats.playersInQueue * 2);
-    return Math.min(baseWaitTime, 120); // Max 2 minutes
+    return Math.min(baseWaitTime, 120);
   };
 
   const handleStartSearch = () => {
     setIsSearching(true);
     setSearchTime(0);
     
-    // Simulate finding a match
-    const estimatedTime = calculateEstimatedWaitTime();
-    const actualWaitTime = (estimatedTime + Math.random() * 10) * 1000;
+    // Connect to matchmaking WebSocket
+    connect('ranked-queue');
     
+    // Simulate finding a match for demo
+    const estimatedTime = calculateEstimatedWaitTime();
     setTimeout(() => {
       setIsSearching(false);
-      setSearchTime(0);
       setMatchFound(true);
-    }, actualWaitTime);
+      setMatchState({
+        id: 'demo-match',
+        opponentId: 'opponent-123',
+        opponentUsername: 'Opponent',
+        opponentRating: 1200,
+        bestOf: 5,
+        playerWins: 0,
+        opponentWins: 0,
+        currentGame: 1,
+        status: 'playing'
+      });
+      setCountdown(3);
+    }, 5000);
   };
 
   const handleCancelSearch = () => {
@@ -77,64 +262,109 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
     setSearchTime(0);
   };
 
-  // Show ranked duel layout when match is found
-  if (matchFound) {
+  // Show match in progress
+  if (matchFound && matchState) {
+    const mainPlayerState: PlayerState = {
+      id: user?.id || '',
+      username: user?.user_metadata?.username || 'Player',
+      rank: getRankByPoints(playerRating).tier,
+      board: gameLogic.board,
+      currentPiece: gameLogic.currentPiece,
+      ghostPiece: gameLogic.ghostPiece,
+      holdPiece: gameLogic.holdPiece,
+      nextPieces: gameLogic.nextPieces,
+      canHold: gameLogic.canHold,
+      score: gameLogic.score,
+      lines: gameLogic.lines,
+      level: gameLogic.level,
+      pps: gameLogic.pps,
+      apm: gameLogic.apm,
+      combo: gameLogic.comboCount,
+      b2b: gameLogic.isB2B,
+      totalAttack: 0,
+      alive: !gameLogic.gameOver,
+      garbageQueued: incomingGarbage
+    };
+
+    const opponentPlayerState: PlayerState = {
+      id: matchState.opponentId,
+      username: matchState.opponentUsername,
+      rank: getRankByPoints(matchState.opponentRating).tier,
+      board: opponentState.board,
+      currentPiece: null,
+      ghostPiece: null,
+      holdPiece: null,
+      nextPieces: [],
+      canHold: true,
+      score: opponentState.score,
+      lines: opponentState.lines,
+      level: opponentState.level,
+      pps: opponentState.pps,
+      apm: opponentState.apm,
+      combo: opponentState.combo,
+      b2b: opponentState.b2b,
+      totalAttack: 0,
+      alive: opponentState.alive,
+      garbageQueued: opponentState.garbageQueued
+    };
+
+    // Show countdown
+    if (countdown > 0) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-background to-primary/5 flex items-center justify-center">
+          <Card className="p-12 text-center">
+            <div className="text-6xl font-bold text-primary animate-pulse">{countdown}</div>
+            <p className="text-muted-foreground mt-4">vs {matchState.opponentUsername}</p>
+          </Card>
+        </div>
+      );
+    }
+
+    // Show match result
+    if (matchWinner) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-background to-primary/5 flex items-center justify-center">
+          <Card className="p-8 text-center space-y-4">
+            <Crown className={`w-16 h-16 mx-auto ${matchWinner === 'player' ? 'text-yellow-500' : 'text-muted-foreground'}`} />
+            <h2 className="text-3xl font-bold">
+              {matchWinner === 'player' ? '胜利！' : '失败'}
+            </h2>
+            <p className="text-muted-foreground">
+              {matchState.playerWins} - {matchState.opponentWins}
+            </p>
+            <Button onClick={onBack}>返回</Button>
+          </Card>
+        </div>
+      );
+    }
+
     return (
-      <RankedDuelLayout
-        player1={{
-          username: mockMatch.player1_username,
-          rating: mockMatch.player1_rating,
-          rank: 'B+',
-          gameState: {
-            board: Array(20).fill(null).map(() => Array(10).fill(0)),
-            currentPiece: null,
-            nextPieces: [],
-            holdPiece: null,
-            canHold: true
-          },
-          gameSettings: {},
-          statistics: {
-            score: 15420,
-            lines: 32,
-            level: 4,
-            pps: 2.35,
-            apm: 145,
-            elapsedTime: 1234567
-          }
-        }}
-        player2={{
-          username: mockMatch.player2_username,
-          rating: mockMatch.player2_rating,
-          rank: 'A-',
-          gameState: {
-            board: Array(20).fill(null).map(() => Array(10).fill(0)),
-            currentPiece: null,
-            nextPieces: [],
-            holdPiece: null,
-            canHold: true
-          },
-          gameSettings: {},
-          statistics: {
-            score: 18750,
-            lines: 38,
-            level: 4,
-            pps: 2.68,
-            apm: 158,
-            elapsedTime: 1234567
-          }
-        }}
-        matchInfo={{
-          bestOf: mockMatch.best_of,
-          player1Wins: mockMatch.player1_wins,
-          player2Wins: mockMatch.player2_wins,
-          currentGame: mockMatch.current_game
-        }}
-        isGameActive={true}
-        isGamePaused={false}
-      />
+      <div className="min-h-screen bg-gradient-to-br from-background to-primary/5">
+        <GameMusicManager isGameActive={gameStarted} isGamePaused={gameLogic.isPaused} />
+        
+        <MultiplayerBattleLayout
+          mainPlayer={mainPlayerState}
+          otherPlayers={[opponentPlayerState]}
+          matchInfo={{
+            mode: 'versus',
+            bestOf: matchState.bestOf,
+            currentGame: matchState.currentGame
+          }}
+          incomingGarbage={incomingGarbage}
+          outgoingGarbage={outgoingGarbage}
+          onBack={() => {
+            setMatchFound(false);
+            setMatchState(null);
+            setGameStarted(false);
+          }}
+          isGameActive={gameStarted}
+          isPaused={gameLogic.isPaused}
+        />
+      </div>
     );
   }
 
+  // Matchmaking lobby UI
   const currentRank = getRankByPoints(playerRating);
   const estimatedWaitTime = calculateEstimatedWaitTime();
 
@@ -188,7 +418,6 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
 
           {/* Matchmaking */}
           <div className="lg:col-span-2">
-            {/* Penalty Warning */}
             <Alert className="mb-6 bg-red-900/20 border-red-500 text-red-200">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription className="font-semibold text-lg">
@@ -206,7 +435,6 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
               <CardContent>
                 {!isSearching ? (
                   <div className="text-center py-8">
-                    {/* Queue Statistics */}
                     <div className="grid grid-cols-2 gap-4 mb-8">
                       <div className="text-center">
                         <div className="text-3xl font-bold text-red-400">{queueStats.playersInQueue}</div>
@@ -218,13 +446,11 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
                       </div>
                     </div>
 
-                    {/* Estimated Wait Time */}
                     <div className="mb-6">
                       <div className="text-lg text-gray-300 mb-2">{t('ranked.estimated_time')}</div>
                       <div className="text-2xl font-bold text-white">{estimatedWaitTime}s</div>
                     </div>
 
-                    {/* Rank Info */}
                     <div className="flex items-center justify-center gap-2 mb-8">
                       <Badge className="bg-red-600 hover:bg-red-700 text-white text-lg px-4 py-2">
                         {currentRank.tier}
@@ -254,7 +480,6 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
                     </div>
                     <h3 className="text-2xl font-bold mb-4 text-white">{t('ranked.finding_match')}</h3>
                     
-                    {/* Search Timer */}
                     <div className="mb-6">
                       <div className="text-4xl font-mono font-bold text-red-400 mb-2">
                         {Math.floor(searchTime / 60)}:{(searchTime % 60).toString().padStart(2, '0')}
