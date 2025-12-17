@@ -147,7 +147,15 @@ const Index = () => {
               if (mode === 'battle-lobby' && config?.roomId) {
                 setBattleRoomId(config.roomId);
                 setCurrentView('battle-lobby');
+              } else if (mode === 'ranked') {
+                setCurrentView('ranked');
+              } else if (mode === 'ai-battle') {
+                setCurrentView('ai-battle');
+              } else if (mode === 'team-battle' && config?.roomId) {
+                setBattleRoomId(config.roomId);
+                setCurrentView('team-battle');
               } else {
+                // Default to game view for other modes
                 setCurrentView('game');
               }
             }} 
@@ -161,7 +169,7 @@ const Index = () => {
             onStartGame={() => setCurrentView('battle-game')}
             onLeave={() => {
               setBattleRoomId(null);
-              handleBackToMenu();
+              setCurrentView('multiplayer'); // 返回多人模式菜单
             }}
           />
         ) : null;
@@ -171,15 +179,33 @@ const Index = () => {
             roomId={battleRoomId}
             onExit={() => {
               setBattleRoomId(null);
-              handleBackToMenu();
+              setCurrentView('multiplayer'); // 返回多人模式菜单
             }}
           />
         ) : null;
+      case 'team-battle':
+        return (
+          <TeamGameArea 
+            roomId={battleRoomId || 'team-room'}
+            onExit={() => {
+              setBattleRoomId(null);
+              setCurrentView('multiplayer'); // 返回多人模式菜单
+            }}
+          />
+        );
       case 'ranked':
         return (
           <RankedMatchmakingSystem 
-            onStartMatch={() => setCurrentView('game')} 
-            onBack={handleBackToMenu}
+            onStartMatch={() => {}} 
+            onBack={() => setCurrentView('multiplayer')}
+          />
+        );
+      case 'ranked-game':
+        // Ranked game uses the same component with internal game state
+        return (
+          <RankedMatchmakingSystem 
+            onStartMatch={() => {}} 
+            onBack={() => setCurrentView('multiplayer')}
           />
         );
       case 'practice':
