@@ -7,7 +7,8 @@ import { useUserSettings } from '@/hooks/useUserSettings';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
-import { Crown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Crown, ArrowLeft } from 'lucide-react';
 import MultiplayerBattleLayout, { PlayerState } from './MultiplayerBattleLayout';
 import GameMusicManager from '@/components/GameMusicManager';
 import { calculateAttack, generateGarbageLines, addGarbageToBoard } from '@/utils/garbageSystem';
@@ -18,6 +19,7 @@ interface TeamGameAreaProps {
   roomData?: any;
   onGameEnd?: () => void;
   onBackToMenu?: () => void;
+  onExit?: () => void; // Alias for onBackToMenu
 }
 
 interface TeamMember {
@@ -45,8 +47,11 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   roomId,
   roomData,
   onGameEnd,
-  onBackToMenu
+  onBackToMenu,
+  onExit
 }) => {
+  // onExit is an alias for onBackToMenu for consistency
+  const handleExit = onExit || onBackToMenu;
   const { user } = useAuth();
   const { t } = useLanguage();
   const { settings } = useUserSettings();
@@ -58,6 +63,9 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   const [attackTarget, setAttackTarget] = useState<string>('random');
   const [achievements, setAchievements] = useState<any[]>([]);
   const [lastLinesCleared, setLastLinesCleared] = useState(0);
+  const [waitingForPlayers, setWaitingForPlayers] = useState(true);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [allPlayersReady, setAllPlayersReady] = useState(false);
 
   // Determine user's team
   const userTeam = participants.find(p => p.id === user?.id)?.team || 'A';
@@ -281,9 +289,71 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
     setAchievements(prev => prev.filter(a => a.id !== id));
   };
 
+  // Check if we have enough players (at least 2 from different teams or 2 total)
+  useEffect(() => {
+    const hasEnoughPlayers = participants.length >= 2;
+    const hasBothTeams = participants.some(p => p.team === 'A') && participants.some(p => p.team === 'B');
+    
+    if (hasEnoughPlayers || hasBothTeams) {
+      setWaitingForPlayers(false);
+    } else {
+      setWaitingForPlayers(true);
+    }
+  }, [participants]);
+
+  // Start countdown when all players are ready
+  useEffect(() => {
+    if (!waitingForPlayers && allPlayersReady && !gameStarted && countdown === null) {
+      setCountdown(3);
+    }
+  }, [waitingForPlayers, allPlayersReady, gameStarted, countdown]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (countdown !== null && countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0) {
+      setGameStarted(true);
+      setCountdown(null);
+    }
+  }, [countdown]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/90 to-primary/5">
       <GameMusicManager isGameActive={gameStarted} isGamePaused={gameLogic.isPaused} />
+      
+      {/* Waiting for Players Screen */}
+      {waitingForPlayers && (
+        <div className="fixed inset-0 bg-background/95 flex items-center justify-center z-50">
+          <Card className="p-8 text-center space-y-6 max-w-md">
+            <div className="w-16 h-16 mx-auto border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <div>
+              <h2 className="text-2xl font-bold mb-2">等待对手加入...</h2>
+              <p className="text-muted-foreground">需要至少2名玩家才能开始游戏</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                当前玩家: {participants.length}
+              </p>
+            </div>
+            <Button variant="outline" onClick={handleExit}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              返回多人模式
+            </Button>
+          </Card>
+        </div>
+      )}
+
+      {/* Countdown Overlay */}
+      {countdown !== null && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="text-8xl font-bold text-primary animate-pulse">
+              {countdown}
+            </div>
+            <p className="text-2xl text-white mt-4">游戏即将开始</p>
+          </div>
+        </div>
+      )}
       
       <MultiplayerBattleLayout
         mainPlayer={mainPlayerState}
@@ -297,7 +367,7 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
         onTargetChange={setAttackTarget}
         incomingGarbage={incomingGarbage}
         outgoingGarbage={outgoingGarbage}
-        onBack={onBackToMenu}
+        onBack={handleExit}
         isGameActive={gameStarted}
         isPaused={gameLogic.isPaused}
         achievements={achievements}
@@ -315,6 +385,9 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
             <p className="text-muted-foreground">
               {matchWinner === userTeam ? '恭喜你的团队获得胜利！' : '你的团队失败了，下次加油！'}
             </p>
+            <Button onClick={handleExit}>
+              返回多人模式
+            </Button>
           </Card>
         </div>
       )}

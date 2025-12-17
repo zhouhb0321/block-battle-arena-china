@@ -76,7 +76,12 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
       const room = await createRoom(mode);
       if (room) {
         toast.success(`房间创建成功！房间号: ${room.room_code}`);
-        onSelectMode('battle-lobby', { roomId: room.id });
+        // Route to appropriate view based on mode
+        if (mode === 'league') {
+          onSelectMode('team-battle', { roomId: room.id });
+        } else {
+          onSelectMode('battle-lobby', { roomId: room.id });
+        }
       }
     } catch (error) {
       debugLog.error('Create room failed', error);
@@ -100,6 +105,24 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     // For 1v1 and custom-room, create a room directly
     if (mode === 'one-vs-one' || mode === 'custom-room') {
       await handleCreateRoom('versus');
+      return;
+    }
+
+    // Team battle - create league room
+    if (mode === 'team-battle') {
+      await handleCreateRoom('league');
+      return;
+    }
+
+    // Ranked mode - go to matchmaking system
+    if (mode === 'ranked') {
+      onSelectMode('ranked');
+      return;
+    }
+
+    // Bot room - go to practice AI battle
+    if (mode === 'bot-room') {
+      onSelectMode('ai-battle');
       return;
     }
 
