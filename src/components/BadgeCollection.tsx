@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Lock } from 'lucide-react';
+import { Trophy, Lock, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -70,7 +71,11 @@ const BadgeItem: React.FC<BadgeItemProps> = ({ badge, unlocked, unlocked_at }) =
   );
 };
 
-const BadgeCollection: React.FC = () => {
+interface BadgeCollectionProps {
+  onClose?: () => void;
+}
+
+const BadgeCollection: React.FC<BadgeCollectionProps> = ({ onClose }) => {
   const { user } = useAuth();
   const [badges, setBadges] = useState<any[]>([]);
   const [unlockedBadges, setUnlockedBadges] = useState<Map<string, string>>(new Map());
@@ -146,9 +151,16 @@ const BadgeCollection: React.FC = () => {
             <Trophy className="w-5 h-5 text-primary" />
             徽章收集
           </CardTitle>
-          <Badge variant="outline" className="text-sm">
-            {unlockedCount}/{totalCount} ({percentage.toFixed(0)}%)
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-sm">
+              {unlockedCount}/{totalCount} ({percentage.toFixed(0)}%)
+            </Badge>
+            {onClose && (
+              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>

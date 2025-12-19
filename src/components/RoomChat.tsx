@@ -49,7 +49,18 @@ export const RoomChat: React.FC<RoomChatProps> = ({ roomId, className = '' }) =>
         },
         (payload) => {
           const newMsg = payload.new as Message;
-          setMessages(prev => [...prev, newMsg]);
+          // ✅ 避免重复添加（乐观更新已添加的消息）
+          setMessages(prev => {
+            // 检查是否已存在（通过 ID 或临时 ID 匹配）
+            const exists = prev.some(msg => 
+              msg.id === newMsg.id || 
+              (msg.user_id === newMsg.user_id && 
+               msg.message === newMsg.message && 
+               msg.id.startsWith('temp-'))
+            );
+            if (exists) return prev;
+            return [...prev, newMsg];
+          });
           
           // 自动滚动到底部
           setTimeout(() => {
@@ -90,24 +101,55 @@ export const RoomChat: React.FC<RoomChatProps> = ({ roomId, className = '' }) =>
     
     if (!newMessage.trim() || !user) return;
 
+    const messageText = newMessage.trim();
+    const tempId = `temp-${Date.now()}`;
+    
+    // ✅ 乐观更新：立即添加到本地消息列表
+    const optimisticMessage: Message = {
+      id: tempId,
+      user_id: user.id,
+      username: user.username || 'Player',
+      message: messageText,
+      message_type: 'chat',
+      created_at: new Date().toISOString()
+    };
+    
+    setMessages(prev => [...prev, optimisticMessage]);
+    setNewMessage('');
+    
+    // 滚动到底部
+    setTimeout(() => {
+      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
+
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('room_messages')
         .insert({
           room_id: roomId,
           user_id: user.id,
           username: user.username || 'Player',
-          message: newMessage.trim(),
+          message: messageText,
           message_type: 'chat'
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
       
-      setNewMessage('');
+      // ✅ 用真实数据替换乐观消息（避免重复）
+      if (data) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempId ? { ...data, message_type: data.message_type as Message['message_type'] } : msg
+        ));
+      }
     } catch (error) {
       console.error('Failed to send message:', error);
       toast.error('发送消息失败');
+      // ✅ 发送失败时移除乐观消息
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+      setNewMessage(messageText); // 恢复输入内容
     } finally {
       setIsLoading(false);
     }

@@ -283,10 +283,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [handleTrackEnded, playNextOnError]);
   
-  // 同步音量设置
+  // 同步音量设置 - ✅ 默认音量降低到 15
   useEffect(() => {
     if (audioRef.current) {
-      const effectiveVolume = muted ? 0 : (settings.musicVolume || 30) / 100;
+      const effectiveVolume = muted ? 0 : (settings.musicVolume ?? 15) / 100;
       audioRef.current.volume = Math.max(0, Math.min(1, effectiveVolume));
     }
   }, [settings.musicVolume, muted]);
@@ -467,7 +467,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{
         isPlaying,
         currentTrack,
-        volume: settings.musicVolume || 30,
+        volume: settings.musicVolume ?? 15,
         muted,
         isLoading,
         play,
