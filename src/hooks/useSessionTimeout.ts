@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGameRecording } from '@/contexts/GameRecordingContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,13 +7,22 @@ import { toast } from 'sonner';
 const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours
 const WARNING_TIME = 10 * 60 * 1000; // 10 minutes before timeout
 const ACTIVITY_CHECK_INTERVAL = 60 * 1000; // Check every minute
+const ACTIVITY_THROTTLE = 30 * 1000; // ✅ 节流：30秒内只更新一次
 
 export const useSessionTimeout = () => {
   const { user, signOut } = useAuth();
   const gameRecording = useGameRecording();
+  const lastActivityUpdateRef = useRef<number>(0);
 
   const updateActivity = useCallback(async () => {
     if (!user) return;
+
+    // ✅ 节流：防止频繁更新
+    const now = Date.now();
+    if (now - lastActivityUpdateRef.current < ACTIVITY_THROTTLE) {
+      return;
+    }
+    lastActivityUpdateRef.current = now;
 
     try {
       const sessionToken = localStorage.getItem('sb-session-token') || 
@@ -37,14 +46,14 @@ export const useSessionTimeout = () => {
     if (!user) return;
 
     try {
-      const sessionToken = localStorage.getItem('sb-session-token');
-      if (!sessionToken) return;
-
+      // ✅ 改用 user_id 查询而不是 session_token（因为 token 被哈希了）
       const { data: session } = await supabase
         .from('user_sessions')
         .select('expires_at')
-        .eq('session_token', sessionToken)
-        .single();
+        .eq('user_id', user.id)
+        .order('last_activity', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (session) {
         const expiresAt = new Date(session.expires_at).getTime();
@@ -86,10 +95,10 @@ export const useSessionTimeout = () => {
     // Update activity on mount
     updateActivity();
 
-    // Add activity listeners including game keyboard events
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click', 'keydown', 'keyup'];
+    // ✅ 减少事件监听，只监听关键交互事件
+    const events = ['mousedown', 'keydown', 'touchstart', 'click'];
     events.forEach(event => {
-      document.addEventListener(event, handleActivity, true);
+      document.addEventListener(event, handleActivity, { passive: true });
     });
 
     // Set up periodic checks
@@ -97,7 +106,7 @@ export const useSessionTimeout = () => {
 
     return () => {
       events.forEach(event => {
-        document.removeEventListener(event, handleActivity, true);
+        document.removeEventListener(event, handleActivity);
       });
       clearInterval(activityInterval);
     };

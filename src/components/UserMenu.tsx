@@ -182,25 +182,10 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
           onClick={() => setShowBadgeCollection(false)}
         >
           <div 
-            className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg p-4 relative"
+            className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <Button 
-              className="absolute top-2 right-2 z-10" 
-              variant="ghost" 
-              size="icon"
-              onClick={() => setShowBadgeCollection(false)}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-            <BadgeCollection />
-            <Button 
-              className="mt-4 w-full" 
-              variant="outline" 
-              onClick={() => setShowBadgeCollection(false)}
-            >
-              {t('close') || '关闭'}
-            </Button>
+            <BadgeCollection onClose={() => setShowBadgeCollection(false)} />
           </div>
         </div>
       )}

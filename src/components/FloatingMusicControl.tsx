@@ -110,15 +110,24 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
     };
   }, [handleWheel]);
 
-  // ✅ 全局滚轮音量控制 - 游戏进行中时在任意位置都可以调节音量
+  // ✅ 全局滚轮音量控制 - 在任意页面都可以调节音量（移除 isGameActive 限制）
   useEffect(() => {
     const handleGlobalWheel = (e: WheelEvent) => {
-      // 只在游戏活动且有音乐时响应全局滚轮
-      if (!isGameActive || !currentSource) return;
+      // 有音乐时响应全局滚轮
+      if (!currentSource && !currentTrack) return;
       
-      // 检查是否在某些需要滚轮的元素上（如滚动区域）
+      // 检查是否在某些需要滚轮的元素上（如滚动区域、输入框等）
       const target = e.target as HTMLElement;
-      if (target.closest('.scroll-area') || target.closest('[data-no-music-wheel]')) {
+      if (
+        target.closest('.scroll-area') || 
+        target.closest('[data-no-music-wheel]') ||
+        target.closest('[data-radix-scroll-area-viewport]') ||
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.closest('.overflow-auto') ||
+        target.closest('.overflow-y-auto') ||
+        target.closest('.overflow-x-auto')
+      ) {
         return;
       }
       
@@ -131,7 +140,7 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
     return () => {
       window.removeEventListener('wheel', handleGlobalWheel);
     };
-  }, [isGameActive, currentSource, handleVolumeWheel]);
+  }, [currentSource, currentTrack, handleVolumeWheel]);
 
   // 游戏状态变化时自动调整显示状态
   useEffect(() => {
