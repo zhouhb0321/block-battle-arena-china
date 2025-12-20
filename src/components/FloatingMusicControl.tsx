@@ -9,6 +9,7 @@ import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music, Shuffle, R
 import { useMusicContext } from '@/contexts/MusicContext';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import VolumeIndicator from '@/components/ui/VolumeIndicator';
 import { cn } from '@/lib/utils';
 
 type ControlState = 'hidden' | 'mini' | 'expanded';
@@ -44,10 +45,47 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
   const [state, setState] = useState<ControlState>('mini');
   const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isVolumeChanging, setIsVolumeChanging] = useState(false);
   
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
   const volumeIndicatorTimerRef = useRef<NodeJS.Timeout | null>(null);
   const controlRef = useRef<HTMLDivElement>(null);
+  const targetVolumeRef = useRef<number>(volume);
+  const animationFrameRef = useRef<number | null>(null);
+
+  // 平滑音量过渡
+  const smoothSetVolume = useCallback((targetVolume: number) => {
+    targetVolumeRef.current = targetVolume;
+    
+    // 取消之前的动画
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    
+    const startVolume = volume;
+    const diff = targetVolume - startVolume;
+    const duration = 100; // 100ms 过渡
+    const startTime = performance.now();
+    
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // 使用 ease-out 缓动
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      const currentVolume = startVolume + diff * easeProgress;
+      
+      setVolume(Math.round(currentVolume));
+      
+      if (progress < 1) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        animationFrameRef.current = null;
+      }
+    };
+    
+    animationFrameRef.current = requestAnimationFrame(animate);
+  }, [volume, setVolume]);
 
   // 重置隐藏计时器
   const resetHideTimer = useCallback(() => {
@@ -71,6 +109,7 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
   // 显示音量指示器
   const showVolumeIndicatorTemp = useCallback(() => {
     setShowVolumeIndicator(true);
+    setIsVolumeChanging(true);
     
     if (volumeIndicatorTimerRef.current) {
       clearTimeout(volumeIndicatorTimerRef.current);
@@ -78,18 +117,19 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
 
     volumeIndicatorTimerRef.current = setTimeout(() => {
       setShowVolumeIndicator(false);
-    }, 1000);
+      setIsVolumeChanging(false);
+    }, 1500);
   }, []);
 
-  // 处理滚轮音量调节
+  // 处理滚轮音量调节 - 使用平滑过渡
   const handleVolumeWheel = useCallback((deltaY: number) => {
     const delta = deltaY > 0 ? -5 : 5;
     const newVolume = Math.max(0, Math.min(100, volume + delta));
     
-    setVolume(newVolume);
+    smoothSetVolume(newVolume);
     showVolumeIndicatorTemp();
     resetHideTimer();
-  }, [volume, setVolume, showVolumeIndicatorTemp, resetHideTimer]);
+  }, [volume, smoothSetVolume, showVolumeIndicatorTemp, resetHideTimer]);
 
   // 控件内滚轮事件
   const handleWheel = useCallback((e: WheelEvent) => {
@@ -109,6 +149,15 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
       control.removeEventListener('wheel', handleWheel);
     };
   }, [handleWheel]);
+  
+  // 清理动画帧
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   // ✅ 全局滚轮音量控制 - 在任意页面都可以调节音量（移除 isGameActive 限制）
   useEffect(() => {
@@ -249,12 +298,12 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* 音量指示器 */}
-      {showVolumeIndicator && (
-        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black/90 text-white px-4 py-2 rounded-lg text-lg font-bold animate-fade-in whitespace-nowrap z-10">
-          {muted ? '🔇 静音' : `🔊 ${Math.round(volume)}%`}
-        </div>
-      )}
+      {/* 增强版音量指示器 */}
+      <VolumeIndicator
+        volume={volume}
+        isMuted={muted}
+        isVisible={showVolumeIndicator}
+      />
 
       {/* Mini 状态 - 圆形按钮 */}
       {state === 'mini' && (
@@ -337,6 +386,7 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
                 max={100}
                 step={1}
                 className="cursor-pointer"
+                showGlow={isVolumeChanging}
               />
             </div>
 
@@ -462,6 +512,7 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
                 max={100}
                 step={1}
                 className="cursor-pointer"
+                showGlow={isVolumeChanging}
               />
             </div>
 
