@@ -6,7 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Play, Trophy, Clock, Target, Medal, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ReplayPreparationDialog } from './ReplayPreparationDialog';
-import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
 import { ReplayPlayerV4Unified } from './ReplayPlayerV4Unified';
 
 interface LeaderboardEntry {
@@ -324,28 +323,16 @@ const LeaderboardView: React.FC = () => {
         />
       )}
 
-      {/* 统一的播放器（不受对话框关闭影响） */}
-      {playerReplayData && isPlayerOpen && (
-        <>
-          {isV4Replay(playerReplayData) ? (
-            (() => {
-              const v4Data = getV4Data(playerReplayData);
-              return v4Data ? (
-                <ReplayPlayerV4Unified
-                  replay={v4Data}
-                  onClose={() => setIsPlayerOpen(false)}
-                  autoPlay={true}
-                />
-              ) : null;
-            })()
-          ) : (
-            <EnhancedReplayPlayer
-              replay={playerReplayData}
-              isOpen={isPlayerOpen}
-              onClose={() => setIsPlayerOpen(false)}
-            />
-          )}
-        </>
+      {/* V4 统一播放器 */}
+      {playerReplayData && isPlayerOpen && isV4Replay(playerReplayData) && (
+        <ReplayPlayerV4Unified
+          replay={getV4Data(playerReplayData)}
+          onClose={() => {
+            setIsPlayerOpen(false);
+            setPlayerReplayData(null);
+          }}
+          autoPlay={true}
+        />
       )}
     </div>
   );

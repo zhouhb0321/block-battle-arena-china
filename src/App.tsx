@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { GameRecordingProvider } from "@/contexts/GameRecordingContext";
 import { ReplayDiagnosticsProvider } from "@/contexts/ReplayDiagnosticsContext";
 import { MusicProvider } from "@/contexts/MusicContext";
+import { FloatingMusicControl } from "@/components/FloatingMusicControl";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
@@ -40,6 +41,7 @@ function App() {
                     <LanguageProvider>
                       <GameProvider>
                         <Toaster />
+                        <FloatingMusicControl />
                         <BrowserRouter>
                           <Routes>
                             <Route path="/" element={<Index />} />
