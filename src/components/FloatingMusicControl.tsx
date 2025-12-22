@@ -278,8 +278,9 @@ export const FloatingMusicControl: React.FC<FloatingMusicControlProps> = ({
     return '单曲循环';
   };
 
-  // 如果没有音乐播放源，不显示
-  if (!currentSource && !currentTrack) {
+  // 如果没有播放列表且没有当前曲目，不显示
+  // 只要有播放列表就显示控制器（无需等待播放）
+  if (playlist.length === 0 && !currentTrack) {
     return null;
   }
 

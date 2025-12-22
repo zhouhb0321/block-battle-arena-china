@@ -497,8 +497,8 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   }
   
   return (
-    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-7xl bg-card rounded-lg shadow-2xl border border-border">
+    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-7xl max-h-[95vh] bg-card rounded-lg shadow-2xl border border-border overflow-hidden flex flex-col">
         {/* 头部 */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div>
@@ -711,7 +711,7 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
               
               <TabsContent value="moments" className="mt-2 space-y-2">
                 <div className="text-sm font-medium mb-2">关键时刻</div>
-                <div className="space-y-1 max-h-[400px] overflow-y-auto">
+                <div className="space-y-1 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
                   {keyMoments.length === 0 ? (
                     <div className="text-xs text-muted-foreground text-center py-4">
                       暂无关键时刻
