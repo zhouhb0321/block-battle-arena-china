@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import { ReplayCompressor } from '@/utils/replayCompression';
-import { EnhancedReplayPlayer } from './EnhancedReplayPlayer';
+import { SimpleReplayPlayer } from './replay/SimpleReplayPlayer';
 import { toUint8Array } from '@/utils/byteArrayUtils';
 import type { CompressedReplay } from '@/utils/replayTypes';
 
@@ -262,13 +262,16 @@ export const ReplayImporter: React.FC<ReplayImporterProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* 播放器 */}
-      {importedReplay && (
-        <EnhancedReplayPlayer
-          replay={importedReplay}
-          isOpen={isPlayerOpen}
-          onClose={() => setIsPlayerOpen(false)}
-        />
+      {/* 播放器 - 暂不支持旧格式播放，需要V4格式 */}
+      {importedReplay && isPlayerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+          <Card className="p-6 text-center">
+            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
+            <h3 className="text-lg font-bold mb-2">暂不支持此格式</h3>
+            <p className="text-muted-foreground mb-4">导入的回放格式不是 V4，暂时无法播放</p>
+            <Button onClick={() => setIsPlayerOpen(false)}>关闭</Button>
+          </Card>
+        </div>
       )}
     </>
   );
