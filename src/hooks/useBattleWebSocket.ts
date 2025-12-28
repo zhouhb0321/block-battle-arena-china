@@ -7,6 +7,14 @@ export interface BattleWebSocketMessage {
   data?: any;
   userId?: string;
   from?: string;
+  seed?: string;
+  countdown?: number;
+  syncTime?: number;
+  participants?: any[];
+  winningTeam?: 'A' | 'B';
+  remainingA?: number;
+  remainingB?: number;
+  totalPlayers?: number;
 }
 
 export interface BattleWebSocketHook {

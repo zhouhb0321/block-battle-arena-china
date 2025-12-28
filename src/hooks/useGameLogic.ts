@@ -698,7 +698,7 @@ export const useGameLogic = ({
     }
   }, [canHold, gameOver, isPaused, currentPiece, holdPiece, createGamePiece, isRecording, recordInput]);
 
-  const startGame = useCallback(() => {
+  const startGame = useCallback((overrideSeed?: string) => {
     // Clear any existing lock delay timer
     clearLockDelayTimer();
     
@@ -725,10 +725,13 @@ export const useGameLogic = ({
       setPhase('countdown');
     }
 
-    // Apply replay seed for deterministic playback
-    const useSeed = replaySeed || seedRef.current || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    // Use override seed (for multiplayer sync), replay seed, or generate new one
+    const useSeed = overrideSeed || replaySeed || seedRef.current || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     if (!seedRef.current) {
       seedRef.current = useSeed;
+    } else if (overrideSeed) {
+      // Override existing seed for multiplayer sync
+      seedRef.current = overrideSeed;
     }
     
     // Reset 7-bag with proper seed for replay consistency
