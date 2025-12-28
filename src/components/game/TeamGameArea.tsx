@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useBattleWebSocket } from '@/hooks/useBattleWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Crown, ArrowLeft } from 'lucide-react';
-import MultiplayerBattleLayout, { PlayerState } from './MultiplayerBattleLayout';
+import UnifiedBattleLayout, { BattlePlayerState, BattleAchievement } from './UnifiedBattleLayout';
 import GameMusicManager from '@/components/GameMusicManager';
 import { calculateAttack, generateGarbageLines, addGarbageToBoard } from '@/utils/garbageSystem';
 import type { GameMode } from '@/utils/gameTypes';
@@ -298,7 +298,7 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   }, [gameLogic.gameOver, gameStarted, user?.id, sendMessage]);
 
   // Build main player state
-  const mainPlayerState: PlayerState = {
+  const mainPlayerState: BattlePlayerState = useMemo(() => ({
     id: user?.id || '',
     username: user?.user_metadata?.username || 'Player',
     team: userTeam,
@@ -315,36 +315,72 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
     apm: gameLogic.apm,
     combo: gameLogic.comboCount,
     b2b: gameLogic.isB2B,
-    totalAttack: 0,
+    attack: 0,
+    pieces: 0,
+    time: gameLogic.time,
     alive: !gameLogic.gameOver,
     garbageQueued: incomingGarbage
-  };
+  }), [user, userTeam, gameLogic, incomingGarbage]);
 
-  // Build other players states
-  const otherPlayersStates: PlayerState[] = participants
-    .filter(p => p.id !== user?.id)
-    .map(p => ({
-      id: p.id,
-      username: p.username,
-      team: p.team,
-      rank: p.rank,
-      board: p.gameState?.board || Array(20).fill(null).map(() => Array(10).fill(0)),
-      currentPiece: null,
-      ghostPiece: null,
-      holdPiece: null,
-      nextPieces: [],
-      canHold: true,
-      score: p.gameState?.score || 0,
-      lines: p.gameState?.lines || 0,
-      level: p.gameState?.level || 1,
-      pps: p.gameState?.pps || 0,
-      apm: p.gameState?.apm || 0,
-      combo: p.gameState?.combo || 0,
-      b2b: p.gameState?.b2b || 0,
-      totalAttack: p.gameState?.totalAttack || 0,
-      alive: p.gameState?.alive !== false,
-      garbageQueued: p.gameState?.garbageQueued || 0
-    }));
+  // 分离队友和对手
+  const { teammates, opponents } = useMemo(() => {
+    const others = participants.filter(p => p.id !== user?.id);
+    const teammatesList = others
+      .filter(p => p.team === userTeam)
+      .map(p => ({
+        id: p.id,
+        username: p.username,
+        team: p.team,
+        rank: p.rank,
+        board: p.gameState?.board || Array(20).fill(null).map(() => Array(10).fill(0)),
+        currentPiece: null,
+        ghostPiece: null,
+        holdPiece: null,
+        nextPieces: [],
+        canHold: true,
+        score: p.gameState?.score || 0,
+        lines: p.gameState?.lines || 0,
+        level: p.gameState?.level || 1,
+        pps: p.gameState?.pps || 0,
+        apm: p.gameState?.apm || 0,
+        combo: p.gameState?.combo || 0,
+        b2b: p.gameState?.b2b || 0,
+        attack: p.gameState?.totalAttack || 0,
+        pieces: 0,
+        time: 0,
+        alive: p.gameState?.alive !== false,
+        garbageQueued: p.gameState?.garbageQueued || 0
+      } as BattlePlayerState));
+    
+    const opponentsList = others
+      .filter(p => p.team !== userTeam)
+      .map(p => ({
+        id: p.id,
+        username: p.username,
+        team: p.team,
+        rank: p.rank,
+        board: p.gameState?.board || Array(20).fill(null).map(() => Array(10).fill(0)),
+        currentPiece: null,
+        ghostPiece: null,
+        holdPiece: null,
+        nextPieces: [],
+        canHold: true,
+        score: p.gameState?.score || 0,
+        lines: p.gameState?.lines || 0,
+        level: p.gameState?.level || 1,
+        pps: p.gameState?.pps || 0,
+        apm: p.gameState?.apm || 0,
+        combo: p.gameState?.combo || 0,
+        b2b: p.gameState?.b2b || 0,
+        attack: p.gameState?.totalAttack || 0,
+        pieces: 0,
+        time: 0,
+        alive: p.gameState?.alive !== false,
+        garbageQueued: p.gameState?.garbageQueued || 0
+      } as BattlePlayerState));
+    
+    return { teammates: teammatesList, opponents: opponentsList };
+  }, [participants, user?.id, userTeam]);
 
   const handleAchievementComplete = (id: string) => {
     setAchievements(prev => prev.filter(a => a.id !== id));
@@ -416,13 +452,14 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
         </div>
       )}
       
-      <MultiplayerBattleLayout
+      <UnifiedBattleLayout
         mainPlayer={mainPlayerState}
-        otherPlayers={otherPlayersStates}
+        opponents={opponents}
+        teammates={teammates}
         matchInfo={{
           mode: 'team',
-          teamAScore: participants.filter(p => p.team === 'A' && p.gameState?.alive !== false).length,
-          teamBScore: participants.filter(p => p.team === 'B' && p.gameState?.alive !== false).length
+          teamAWins: participants.filter(p => p.team === 'A' && p.gameState?.alive !== false).length,
+          teamBWins: participants.filter(p => p.team === 'B' && p.gameState?.alive !== false).length
         }}
         attackTarget={attackTarget}
         onTargetChange={setAttackTarget}
@@ -431,7 +468,7 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
         onBack={handleExit}
         isGameActive={gameStarted}
         isPaused={gameLogic.isPaused}
-        achievements={achievements}
+        achievements={achievements as BattleAchievement[]}
         onAchievementComplete={handleAchievementComplete}
       />
 
