@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useBattleWebSocket } from '@/hooks/useBattleWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +43,9 @@ interface TeamMember {
   };
 }
 
+// 状态同步节流间隔 (ms)
+const SYNC_THROTTLE_INTERVAL = 150;
+
 const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   roomId,
   roomData,
@@ -66,6 +69,11 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   const [waitingForPlayers, setWaitingForPlayers] = useState(true);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [allPlayersReady, setAllPlayersReady] = useState(false);
+  const [gameSeed, setGameSeed] = useState<string | undefined>(undefined);
+  
+  // 节流相关 refs
+  const lastSyncTimeRef = useRef<number>(0);
+  const pendingSyncRef = useRef<NodeJS.Timeout | null>(null);
 
   // Determine user's team
   const userTeam = participants.find(p => p.id === user?.id)?.team || 'A';
@@ -145,7 +153,8 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   useEffect(() => {
     if (!lastMessage) return;
 
-    const message = JSON.parse(lastMessage.data);
+    // lastMessage 已经是解析后的对象，不需要再次 JSON.parse
+    const message = lastMessage;
 
     switch (message.type) {
       case 'participant_update':
@@ -153,19 +162,34 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
         break;
 
       case 'game_start':
+        // 保存游戏种子用于同步方块生成
+        if (message.seed) {
+          setGameSeed(message.seed);
+        }
         setGameStarted(true);
-        gameLogic.startGame();
+        // 使用种子启动游戏以确保所有玩家方块序列一致
+        gameLogic.startGame(message.seed);
         break;
 
       case 'team_attack':
-        if (message.data.fromTeam !== userTeam) {
+        if (message.data?.fromTeam !== userTeam) {
           // Receive attack from opposing team
-          setIncomingGarbage(prev => prev + message.data.lines);
+          setIncomingGarbage(prev => prev + (message.data?.lines || 0));
           
           // Apply garbage after delay
           setTimeout(() => {
-            const garbageLines = generateGarbageLines(message.data.lines);
+            const garbageLines = generateGarbageLines(message.data?.lines || 0);
             // Note: actual garbage application would need board update mechanism
+            setIncomingGarbage(0);
+          }, 500);
+        }
+        break;
+
+      case 'receive_team_attack':
+        // 处理接收到的团队攻击
+        if (message.data?.fromTeam !== userTeam) {
+          setIncomingGarbage(prev => prev + (message.data?.lines || 0));
+          setTimeout(() => {
             setIncomingGarbage(0);
           }, 500);
         }
@@ -194,32 +218,69 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
           setTimeout(onGameEnd, 3000);
         }
         break;
+        
+      case 'player_joined':
+      case 'player_left':
+        // 这些消息由服务器广播，更新玩家列表
+        break;
     }
   }, [lastMessage, userTeam, gameLogic, onGameEnd]);
 
-  // Send game state updates
+  // Send game state updates with throttling
   useEffect(() => {
     if (!gameStarted || !user) return;
 
-    const gameState = {
-      board: gameLogic.board,
-      score: gameLogic.score,
-      lines: gameLogic.lines,
-      level: gameLogic.level,
-      apm: gameLogic.apm,
-      pps: gameLogic.pps,
-      combo: gameLogic.comboCount,
-      b2b: gameLogic.isB2B,
-      totalAttack: 0,
-      alive: !gameLogic.gameOver,
-      garbageQueued: incomingGarbage
+    const now = Date.now();
+    const timeSinceLastSync = now - lastSyncTimeRef.current;
+
+    const sendStateUpdate = () => {
+      const gameState = {
+        board: gameLogic.board,
+        score: gameLogic.score,
+        lines: gameLogic.lines,
+        level: gameLogic.level,
+        apm: gameLogic.apm,
+        pps: gameLogic.pps,
+        combo: gameLogic.comboCount,
+        b2b: gameLogic.isB2B,
+        totalAttack: 0,
+        alive: !gameLogic.gameOver,
+        garbageQueued: incomingGarbage
+      };
+
+      sendMessage({
+        type: 'team_state_update',
+        data: gameState
+      });
+      
+      lastSyncTimeRef.current = Date.now();
     };
 
-    sendMessage({
-      type: 'team_state_update',
-      data: gameState
-    });
-  }, [gameLogic.score, gameLogic.lines, gameLogic.level, gameStarted, user, sendMessage, incomingGarbage]);
+    // 如果距离上次同步时间超过节流间隔，立即发送
+    if (timeSinceLastSync >= SYNC_THROTTLE_INTERVAL) {
+      // 清除之前的待发送定时器
+      if (pendingSyncRef.current) {
+        clearTimeout(pendingSyncRef.current);
+        pendingSyncRef.current = null;
+      }
+      sendStateUpdate();
+    } else {
+      // 否则设置延迟发送，确保状态最终会被同步
+      if (!pendingSyncRef.current) {
+        pendingSyncRef.current = setTimeout(() => {
+          sendStateUpdate();
+          pendingSyncRef.current = null;
+        }, SYNC_THROTTLE_INTERVAL - timeSinceLastSync);
+      }
+    }
+
+    return () => {
+      if (pendingSyncRef.current) {
+        clearTimeout(pendingSyncRef.current);
+        pendingSyncRef.current = null;
+      }
+    };
+  }, [gameLogic.score, gameLogic.lines, gameLogic.level, gameLogic.board, gameStarted, user, sendMessage, incomingGarbage]);
 
   // Handle game over
   useEffect(() => {
