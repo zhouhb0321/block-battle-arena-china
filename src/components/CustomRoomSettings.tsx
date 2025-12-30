@@ -19,6 +19,11 @@ export interface CustomRoomConfig {
   preset: 'classic' | 'modern' | 'ultra_fast' | 'custom';
   room_password?: string;
   allow_spectators: boolean;
+  // 新增对战设置
+  garbage_strategy: 'instant' | 'delayed' | 'cancellable';
+  attack_multiplier: number;
+  lock_delay_mode: 'classic' | 'modern' | 'extended';
+  seed?: string;
 }
 
 interface CustomRoomSettingsProps {
@@ -36,6 +41,9 @@ const PRESETS: Record<string, Partial<CustomRoomConfig>> = {
     time_limit: null,
     allow_hold: true,
     starting_level: 1,
+    garbage_strategy: 'instant',
+    attack_multiplier: 1.0,
+    lock_delay_mode: 'modern',
   },
   modern: {
     preset: 'modern',
@@ -44,6 +52,9 @@ const PRESETS: Record<string, Partial<CustomRoomConfig>> = {
     time_limit: 180,
     allow_hold: true,
     starting_level: 5,
+    garbage_strategy: 'cancellable',
+    attack_multiplier: 1.2,
+    lock_delay_mode: 'modern',
   },
   ultra_fast: {
     preset: 'ultra_fast',
@@ -52,6 +63,9 @@ const PRESETS: Record<string, Partial<CustomRoomConfig>> = {
     time_limit: 120,
     allow_hold: false,
     starting_level: 15,
+    garbage_strategy: 'instant',
+    attack_multiplier: 1.5,
+    lock_delay_mode: 'classic',
   },
 };
 
@@ -70,6 +84,10 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
     preset: 'classic',
     room_password: '',
     allow_spectators: true,
+    garbage_strategy: 'instant',
+    attack_multiplier: 1.0,
+    lock_delay_mode: 'modern',
+    seed: '',
   });
   
   const [usePassword, setUsePassword] = useState(false);
@@ -339,6 +357,87 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
                   allow_spectators: checked 
                 }))}
               />
+            </div>
+
+            {/* 垃圾行策略 */}
+            <div className="space-y-2">
+              <Label>垃圾行策略</Label>
+              <Select
+                value={config.garbage_strategy}
+                onValueChange={(value: 'instant' | 'delayed' | 'cancellable') => setConfig(prev => ({ 
+                  ...prev, 
+                  garbage_strategy: value,
+                  preset: 'custom'
+                }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="instant">立即添加 - 垃圾行立刻出现</SelectItem>
+                  <SelectItem value="delayed">延迟添加 - 下一个方块落地后出现</SelectItem>
+                  <SelectItem value="cancellable">可抵消 - 消行可以抵消即将到来的垃圾行</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 攻击倍率 */}
+            <div className="space-y-2">
+              <Label>攻击倍率: {config.attack_multiplier.toFixed(1)}x</Label>
+              <Slider
+                value={[config.attack_multiplier * 10]}
+                onValueChange={([value]) => setConfig(prev => ({ 
+                  ...prev, 
+                  attack_multiplier: value / 10,
+                  preset: 'custom'
+                }))}
+                min={5}
+                max={20}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                控制攻击发送的倍率（0.5x-2.0x）
+              </p>
+            </div>
+
+            {/* 锁定延迟模式 */}
+            <div className="space-y-2">
+              <Label>锁定延迟模式</Label>
+              <Select
+                value={config.lock_delay_mode}
+                onValueChange={(value: 'classic' | 'modern' | 'extended') => setConfig(prev => ({ 
+                  ...prev, 
+                  lock_delay_mode: value,
+                  preset: 'custom'
+                }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="classic">经典 - 500ms 锁定，15次重置</SelectItem>
+                  <SelectItem value="modern">现代 - 500ms 锁定，无限重置</SelectItem>
+                  <SelectItem value="extended">扩展 - 1000ms 锁定，无限重置</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 随机种子 */}
+            <div className="space-y-2">
+              <Label>随机种子（可选）</Label>
+              <Input
+                value={config.seed || ''}
+                onChange={(e) => setConfig(prev => ({ 
+                  ...prev, 
+                  seed: e.target.value || undefined 
+                }))}
+                placeholder="留空使用随机种子"
+                maxLength={32}
+              />
+              <p className="text-xs text-muted-foreground">
+                固定种子可用于比赛复现，相同种子会生成相同的方块序列
+              </p>
             </div>
           </TabsContent>
         </Tabs>

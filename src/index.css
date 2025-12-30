@@ -188,3 +188,53 @@
     border: 1px solid hsl(var(--border));
   }
 }
+
+/* Battle Effects Animations */
+@layer base {
+  @keyframes bounce-in {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes slide-right {
+    0% { transform: translateX(0) translateY(-50%); opacity: 1; }
+    100% { transform: translateX(100px) translateY(-50%); opacity: 0; }
+  }
+
+  @keyframes fade-in {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+    20%, 40%, 60%, 80% { transform: translateX(2px); }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 10px currentColor; }
+    50% { box-shadow: 0 0 25px currentColor; }
+  }
+
+  .animate-bounce-in {
+    animation: bounce-in 0.5s ease-out;
+  }
+
+  .animate-slide-right {
+    animation: slide-right 0.8s ease-out forwards;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 1s ease-in-out infinite;
+  }
+}
