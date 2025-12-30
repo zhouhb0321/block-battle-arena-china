@@ -1,17 +1,17 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sword, Users, Zap, Target, Coffee, User, Gamepad2, Bot, Trophy, Crown, AlertCircle, Plus, LogIn } from 'lucide-react';
+import { Sword, Users, Zap, Target, Coffee, User, Gamepad2, Bot, Trophy, Crown, AlertCircle, Plus, LogIn, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { debugLog } from '@/utils/debugLogger';
 import { toast } from 'sonner';
 import TeamBattleMenu from './TeamBattleMenu';
 import { useBattleRoom } from '@/hooks/useBattleRoom';
+import CustomRoomSettings, { CustomRoomConfig } from '@/components/CustomRoomSettings';
 
 interface MultiPlayerMenuProps {
   onSelectMode: (mode: string, config?: any) => void;
@@ -29,6 +29,8 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
   const [roomCode, setRoomCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [showRoomSettings, setShowRoomSettings] = useState(false);
+  const [pendingMode, setPendingMode] = useState<'versus' | 'battle_royale' | 'league' | null>(null);
   const [subView, setSubView] = useState<'menu' | 'team-battle'>('menu');
 
   useEffect(() => {
@@ -63,7 +65,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     }
   };
 
-  const handleCreateRoom = async (mode: 'versus' | 'battle_royale' | 'league') => {
+  const handleCreateRoom = async (mode: 'versus' | 'battle_royale' | 'league', customConfig?: CustomRoomConfig) => {
     if (!user) {
       setError('需要登录才能创建房间');
       return;
@@ -73,14 +75,28 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     setError(null);
 
     try {
-      const room = await createRoom(mode);
+      // Convert CustomRoomConfig to the format expected by createRoom
+      const settings = customConfig ? {
+        password: customConfig.room_password,
+        allowSpectators: customConfig.allow_spectators,
+        customSettings: {
+          gravity_level: customConfig.gravity_level,
+          garbage_multiplier: customConfig.garbage_multiplier,
+          time_limit: customConfig.time_limit,
+          allow_hold: customConfig.allow_hold,
+          starting_level: customConfig.starting_level,
+          preset: customConfig.preset
+        }
+      } : undefined;
+
+      const room = await createRoom(mode, settings);
       if (room) {
         toast.success(`房间创建成功！房间号: ${room.room_code}`);
         // Route to appropriate view based on mode
         if (mode === 'league') {
-          onSelectMode('team-battle', { roomId: room.id });
+          onSelectMode('team-battle', { roomId: room.id, customConfig });
         } else {
-          onSelectMode('battle-lobby', { roomId: room.id });
+          onSelectMode('battle-lobby', { roomId: room.id, customConfig });
         }
       }
     } catch (error) {
@@ -90,6 +106,15 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
       setIsCreating(false);
     }
   };
+
+  // 处理自定义房间设置确认
+  const handleRoomSettingsConfirm = useCallback(async (config: CustomRoomConfig) => {
+    if (pendingMode) {
+      await handleCreateRoom(pendingMode, config);
+      setShowRoomSettings(false);
+      setPendingMode(null);
+    }
+  }, [pendingMode]);
 
   const handleModeSelect = async (mode: string) => {
     if (!user) {
@@ -102,15 +127,23 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
       return;
     }
 
-    // For 1v1 and custom-room, create a room directly
-    if (mode === 'one-vs-one' || mode === 'custom-room') {
+    // For custom-room, show settings dialog first
+    if (mode === 'custom-room') {
+      setPendingMode('versus');
+      setShowRoomSettings(true);
+      return;
+    }
+
+    // For 1v1, create a room directly with default settings
+    if (mode === 'one-vs-one') {
       await handleCreateRoom('versus');
       return;
     }
 
-    // Team battle - create league room
+    // Team battle - show settings dialog
     if (mode === 'team-battle') {
-      await handleCreateRoom('league');
+      setPendingMode('league');
+      setShowRoomSettings(true);
       return;
     }
 
@@ -362,6 +395,17 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
           返回主菜单
         </Button>
       </div>
+
+      {/* 自定义房间设置对话框 */}
+      <CustomRoomSettings
+        open={showRoomSettings}
+        onClose={() => {
+          setShowRoomSettings(false);
+          setPendingMode(null);
+        }}
+        onConfirm={handleRoomSettingsConfirm}
+        mode={pendingMode || 'versus'}
+      />
     </div>
   );
 };
