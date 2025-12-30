@@ -3,7 +3,7 @@
  * 支持 1v1、团队战、大逃杀模式
  * 合并 TetrioBattleLayout 和 MultiplayerBattleLayout 的优点
  */
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,13 @@ import AchievementDisplay from '@/components/AchievementDisplay';
 import GameStatusIndicators from '@/components/GameStatusIndicators';
 import MiniPlayerView from './MiniPlayerView';
 import GarbageQueueDisplay from './GarbageQueueDisplay';
+import { 
+  KOEffect, 
+  ComboEffect, 
+  B2BEffect, 
+  AttackSentEffect,
+  IncomingAttackWarning 
+} from './BattleEffects';
 import {
   Shield, Sword, Clock, Zap, ArrowLeft, Settings,
   Crown, Wifi, WifiOff
@@ -87,6 +94,11 @@ export interface UnifiedBattleLayoutProps {
   // 成就系统
   achievements?: BattleAchievement[];
   onAchievementComplete?: (id: string) => void;
+  // 对战特效
+  showKO?: boolean;
+  koTargetName?: string;
+  onKOComplete?: () => void;
+  lastAttackSent?: number;
   // 回调
   onBack?: () => void;
   onSettings?: () => void;
@@ -628,6 +640,10 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
   outgoingGarbage = 0,
   achievements = [],
   onAchievementComplete,
+  showKO = false,
+  koTargetName,
+  onKOComplete,
+  lastAttackSent = 0,
   onBack,
   onSettings,
   isGameActive,
@@ -638,6 +654,42 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
 }) => {
   // 判断是否为 1v1 模式
   const is1v1 = matchInfo.mode === '1v1' || (opponents.length === 1 && teammates.length === 0);
+
+  // 追踪上一次的 combo 和 b2b 以检测变化
+  const prevComboRef = useRef(mainPlayer.combo);
+  const prevB2BRef = useRef(mainPlayer.b2b);
+  const [comboChanged, setComboChanged] = useState(false);
+  const [b2bChanged, setB2BChanged] = useState(false);
+  const [showAttackSent, setShowAttackSent] = useState(false);
+  const [attackSentLines, setAttackSentLines] = useState(0);
+
+  // 检测 combo 变化
+  useEffect(() => {
+    if (mainPlayer.combo > prevComboRef.current && mainPlayer.combo > 1) {
+      setComboChanged(true);
+      const timer = setTimeout(() => setComboChanged(false), 600);
+      return () => clearTimeout(timer);
+    }
+    prevComboRef.current = mainPlayer.combo;
+  }, [mainPlayer.combo]);
+
+  // 检测 b2b 变化
+  useEffect(() => {
+    if (mainPlayer.b2b > prevB2BRef.current && mainPlayer.b2b > 0) {
+      setB2BChanged(true);
+      const timer = setTimeout(() => setB2BChanged(false), 500);
+      return () => clearTimeout(timer);
+    }
+    prevB2BRef.current = mainPlayer.b2b;
+  }, [mainPlayer.b2b]);
+
+  // 检测攻击发送
+  useEffect(() => {
+    if (lastAttackSent > 0) {
+      setAttackSentLines(lastAttackSent);
+      setShowAttackSent(true);
+    }
+  }, [lastAttackSent]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/90 to-primary/5 p-2 md:p-4">
@@ -726,6 +778,43 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
           />
         )}
       </div>
+
+      {/* ============= 对战特效层 ============= */}
+      
+      {/* KO 提示 */}
+      <KOEffect
+        show={showKO}
+        targetName={koTargetName}
+        onComplete={onKOComplete}
+      />
+
+      {/* Combo 动画 */}
+      {isGameActive && mainPlayer.combo > 1 && (
+        <div className="fixed top-1/3 right-8 z-40 pointer-events-none">
+          <ComboEffect combo={mainPlayer.combo} show={comboChanged || mainPlayer.combo > 1} />
+        </div>
+      )}
+
+      {/* B2B 动画 */}
+      {isGameActive && mainPlayer.b2b > 0 && (
+        <div className="fixed top-1/3 left-8 z-40 pointer-events-none">
+          <B2BEffect b2b={mainPlayer.b2b} show={b2bChanged || mainPlayer.b2b > 0} />
+        </div>
+      )}
+
+      {/* 攻击发送动画 */}
+      <AttackSentEffect
+        lines={attackSentLines}
+        show={showAttackSent}
+        onComplete={() => setShowAttackSent(false)}
+      />
+
+      {/* 即将收到攻击警告 */}
+      {incomingGarbage >= 4 && isGameActive && (
+        <div className="fixed bottom-1/4 left-4 z-40 pointer-events-none">
+          <IncomingAttackWarning lines={incomingGarbage} show={true} />
+        </div>
+      )}
 
       {/* 暂停遮罩 */}
       {isPaused && (
