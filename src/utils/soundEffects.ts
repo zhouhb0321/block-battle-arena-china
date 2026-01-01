@@ -11,7 +11,8 @@ export type SoundEffectType =
   | 'perfect_clear' | 'b2b'
   | 'lock' | 'move' | 'rotate' | 'hold' | 'hard_drop'
   | 'garbage_warning' | 'garbage_receive'
-  | 'countdown' | 'game_start' | 'game_over';
+  | 'countdown' | 'game_start' | 'game_over'
+  | 'ko' | 'attack_sent' | 'attack_received';
 
 // 音效配置
 interface SoundConfig {
@@ -65,6 +66,11 @@ const SOUND_CONFIGS: Record<SoundEffectType, SoundConfig> = {
   countdown: { frequency: 440, duration: 200, type: 'sine', gain: 0.3 },
   game_start: { frequencies: [523, 659, 784], duration: 300, type: 'sine', gain: 0.4 },
   game_over: { frequencies: [440, 349, 294, 220], duration: 500, type: 'sine', gain: 0.35 },
+  
+  // 对战音效
+  ko: { frequencies: [880, 660, 440], duration: 400, type: 'sawtooth', gain: 0.5 },
+  attack_sent: { frequencies: [523, 784], duration: 150, type: 'square', gain: 0.35 },
+  attack_received: { frequencies: [200, 150, 100], duration: 250, type: 'sawtooth', gain: 0.4 },
 };
 
 class SoundEffectsManager {
@@ -244,6 +250,19 @@ class SoundEffectsManager {
   
   playGarbageReceive() {
     this.play('garbage_receive');
+  }
+  
+  // 对战音效
+  playKO() {
+    this.play('ko');
+  }
+  
+  playAttackSent() {
+    this.play('attack_sent');
+  }
+  
+  playAttackReceived() {
+    this.play('attack_received');
   }
 }
 

@@ -12,6 +12,8 @@ import { Crown, ArrowLeft } from 'lucide-react';
 import UnifiedBattleLayout, { BattlePlayerState, BattleAchievement } from './UnifiedBattleLayout';
 import GameMusicManager from '@/components/GameMusicManager';
 import { calculateAttack, generateGarbageLines, addGarbageToBoard } from '@/utils/garbageSystem';
+import { compressGameState, decompressGameState, FullGameState, CompressedGameState } from '@/utils/battleCompression';
+import { soundEffects } from '@/utils/soundEffects';
 import type { GameMode } from '@/utils/gameTypes';
 
 interface TeamGameAreaProps {
@@ -80,6 +82,8 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   // 节流相关 refs
   const lastSyncTimeRef = useRef<number>(0);
   const pendingSyncRef = useRef<NodeJS.Timeout | null>(null);
+  const previousStateRef = useRef<FullGameState | null>(null);
+  const statsIntervalRef = useRef(0);
 
   // Determine user's team
   const userTeam = participants.find(p => p.id === user?.id)?.team || 'A';
@@ -103,6 +107,9 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
 
       if (attackLines > 0) {
         setOutgoingGarbage(prev => prev + attackLines);
+        
+        // 播放攻击发送音效
+        soundEffects.playAttackSent();
         
         // 触发攻击发送特效 (使用时间戳确保每次攻击都能触发)
         lastAttackTimestampRef.current = Date.now();
@@ -183,12 +190,19 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
 
       case 'team_attack':
         if (message.data?.fromTeam !== userTeam) {
+          const attackLines = message.data?.lines || 0;
           // Receive attack from opposing team
-          setIncomingGarbage(prev => prev + (message.data?.lines || 0));
+          setIncomingGarbage(prev => prev + attackLines);
+          
+          // 播放收到攻击音效
+          soundEffects.playAttackReceived();
+          if (attackLines >= 4) {
+            soundEffects.playGarbageWarning();
+          }
           
           // Apply garbage after delay
           setTimeout(() => {
-            const garbageLines = generateGarbageLines(message.data?.lines || 0);
+            const garbageLines = generateGarbageLines(attackLines);
             // Note: actual garbage application would need board update mechanism
             setIncomingGarbage(0);
           }, 500);
@@ -198,7 +212,15 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
       case 'receive_team_attack':
         // 处理接收到的团队攻击
         if (message.data?.fromTeam !== userTeam) {
-          setIncomingGarbage(prev => prev + (message.data?.lines || 0));
+          const attackLines = message.data?.lines || 0;
+          setIncomingGarbage(prev => prev + attackLines);
+          
+          // 播放收到攻击音效
+          soundEffects.playAttackReceived();
+          if (attackLines >= 4) {
+            soundEffects.playGarbageWarning();
+          }
+          
           setTimeout(() => {
             setIncomingGarbage(0);
           }, 500);
@@ -217,7 +239,8 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
         // 查找被淘汰的玩家名称
         const eliminatedPlayer = participants.find(p => p.id === message.userId);
         if (eliminatedPlayer && eliminatedPlayer.team !== userTeam) {
-          // 对方队伍成员被淘汰，显示 KO 特效
+          // 对方队伍成员被淘汰，显示 KO 特效并播放音效
+          soundEffects.playKO();
           setKoTargetName(eliminatedPlayer.username);
           setShowKO(true);
         }
@@ -252,7 +275,7 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
     const timeSinceLastSync = now - lastSyncTimeRef.current;
 
     const sendStateUpdate = () => {
-      const gameState = {
+      const currentState: FullGameState = {
         board: gameLogic.board,
         score: gameLogic.score,
         lines: gameLogic.lines,
@@ -260,17 +283,31 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
         apm: gameLogic.apm,
         pps: gameLogic.pps,
         combo: gameLogic.comboCount,
-        b2b: gameLogic.isB2B,
+        b2b: gameLogic.isB2B ? 1 : 0,
         totalAttack: 0,
         alive: !gameLogic.gameOver,
         garbageQueued: incomingGarbage
       };
 
+      // 每秒(约6次同步)发送一次完整统计数据
+      statsIntervalRef.current++;
+      const includeStats = statsIntervalRef.current >= 6;
+      if (includeStats) statsIntervalRef.current = 0;
+
+      // 使用压缩发送增量更新
+      const compressed = compressGameState(
+        currentState,
+        previousStateRef.current,
+        includeStats
+      );
+
       sendMessage({
         type: 'team_state_update',
-        data: gameState
+        data: compressed,
+        compressed: true
       });
       
+      previousStateRef.current = currentState;
       lastSyncTimeRef.current = Date.now();
     };
 

@@ -15,6 +15,7 @@ export interface BattleWebSocketMessage {
   remainingA?: number;
   remainingB?: number;
   totalPlayers?: number;
+  compressed?: boolean; // 标记消息是否使用压缩格式
 }
 
 export interface BattleWebSocketHook {
