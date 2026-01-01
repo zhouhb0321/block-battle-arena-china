@@ -61,9 +61,10 @@ export const KOEffect: React.FC<KOEffectProps> = ({ show, targetName, onComplete
 interface ComboEffectProps {
   combo: number;
   show: boolean;
+  className?: string;
 }
 
-export const ComboEffect: React.FC<ComboEffectProps> = ({ combo, show }) => {
+export const ComboEffect: React.FC<ComboEffectProps> = ({ combo, show, className }) => {
   const [displayCombo, setDisplayCombo] = useState(0);
   const [animating, setAnimating] = useState(false);
 
@@ -94,8 +95,9 @@ export const ComboEffect: React.FC<ComboEffectProps> = ({ combo, show }) => {
 
   return (
     <div className={cn(
-      "absolute -right-16 top-1/3 transform transition-all duration-200",
-      animating && "scale-125"
+      "transform transition-all duration-200",
+      animating && "scale-125",
+      className
     )}>
       <div className={cn(
         "flex flex-col items-center gap-0.5",
@@ -119,9 +121,10 @@ export const ComboEffect: React.FC<ComboEffectProps> = ({ combo, show }) => {
 interface B2BEffectProps {
   b2b: number;
   show: boolean;
+  className?: string;
 }
 
-export const B2BEffect: React.FC<B2BEffectProps> = ({ b2b, show }) => {
+export const B2BEffect: React.FC<B2BEffectProps> = ({ b2b, show, className }) => {
   const [displayB2B, setDisplayB2B] = useState(0);
   const [animating, setAnimating] = useState(false);
 
@@ -138,8 +141,9 @@ export const B2BEffect: React.FC<B2BEffectProps> = ({ b2b, show }) => {
 
   return (
     <div className={cn(
-      "absolute -left-20 top-1/3 transform transition-all duration-200",
-      animating && "scale-110"
+      "transform transition-all duration-200",
+      animating && "scale-110",
+      className
     )}>
       <div className="flex flex-col items-center gap-0.5">
         <div className={cn(

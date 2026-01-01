@@ -317,15 +317,31 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({
           />
         )}
 
-        {/* 游戏棋盘 */}
-        <div className={cn("border-2", accent.border, "rounded-lg p-1", accent.bg, "shadow-lg", accent.glow)}>
-          <EnhancedGameBoard
-            board={player.board}
-            currentPiece={player.currentPiece}
-            ghostPiece={enableGhost ? player.ghostPiece : null}
-            cellSize={cellSize}
-            showGrid={true}
-          />
+        {/* 游戏棋盘容器 - 相对定位用于放置特效 */}
+        <div className="relative">
+          <div className={cn("border-2", accent.border, "rounded-lg p-1", accent.bg, "shadow-lg", accent.glow)}>
+            <EnhancedGameBoard
+              board={player.board}
+              currentPiece={player.currentPiece}
+              ghostPiece={enableGhost ? player.ghostPiece : null}
+              cellSize={cellSize}
+              showGrid={true}
+            />
+          </div>
+          
+          {/* Combo 效果 - 棋盘右侧 */}
+          {isMainPlayer && player.combo > 1 && (
+            <div className="absolute -right-20 top-1/3 pointer-events-none z-20">
+              <ComboEffect combo={player.combo} show={true} />
+            </div>
+          )}
+          
+          {/* B2B 效果 - 棋盘左侧 */}
+          {isMainPlayer && player.b2b > 0 && (
+            <div className="absolute -left-24 top-1/3 pointer-events-none z-20">
+              <B2BEffect b2b={player.b2b} show={true} />
+            </div>
+          )}
         </div>
 
         <RightPanel />
@@ -788,20 +804,6 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
         onComplete={onKOComplete}
       />
 
-      {/* Combo 动画 */}
-      {isGameActive && mainPlayer.combo > 1 && (
-        <div className="fixed top-1/3 right-8 z-40 pointer-events-none">
-          <ComboEffect combo={mainPlayer.combo} show={comboChanged || mainPlayer.combo > 1} />
-        </div>
-      )}
-
-      {/* B2B 动画 */}
-      {isGameActive && mainPlayer.b2b > 0 && (
-        <div className="fixed top-1/3 left-8 z-40 pointer-events-none">
-          <B2BEffect b2b={mainPlayer.b2b} show={b2bChanged || mainPlayer.b2b > 0} />
-        </div>
-      )}
-
       {/* 攻击发送动画 */}
       <AttackSentEffect
         lines={attackSentLines}
@@ -809,9 +811,9 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
         onComplete={() => setShowAttackSent(false)}
       />
 
-      {/* 即将收到攻击警告 */}
+      {/* 即将收到攻击警告 - 相对于棋盘位置 */}
       {incomingGarbage >= 4 && isGameActive && (
-        <div className="fixed bottom-1/4 left-4 z-40 pointer-events-none">
+        <div className="fixed bottom-1/4 left-1/4 z-40 pointer-events-none">
           <IncomingAttackWarning lines={incomingGarbage} show={true} />
         </div>
       )}
