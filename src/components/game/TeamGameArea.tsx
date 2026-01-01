@@ -71,6 +71,12 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   const [allPlayersReady, setAllPlayersReady] = useState(false);
   const [gameSeed, setGameSeed] = useState<string | undefined>(undefined);
   
+  // 对战特效状态
+  const [showKO, setShowKO] = useState(false);
+  const [koTargetName, setKoTargetName] = useState<string>('');
+  const [lastAttackSent, setLastAttackSent] = useState(0);
+  const lastAttackTimestampRef = useRef(0);
+  
   // 节流相关 refs
   const lastSyncTimeRef = useRef<number>(0);
   const pendingSyncRef = useRef<NodeJS.Timeout | null>(null);
@@ -97,6 +103,10 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
 
       if (attackLines > 0) {
         setOutgoingGarbage(prev => prev + attackLines);
+        
+        // 触发攻击发送特效 (使用时间戳确保每次攻击都能触发)
+        lastAttackTimestampRef.current = Date.now();
+        setLastAttackSent(attackLines + lastAttackTimestampRef.current * 0.0001);
         
         // Send attack to opposing team
         sendMessage({
@@ -204,6 +214,14 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
         break;
 
       case 'team_member_eliminated':
+        // 查找被淘汰的玩家名称
+        const eliminatedPlayer = participants.find(p => p.id === message.userId);
+        if (eliminatedPlayer && eliminatedPlayer.team !== userTeam) {
+          // 对方队伍成员被淘汰，显示 KO 特效
+          setKoTargetName(eliminatedPlayer.username);
+          setShowKO(true);
+        }
+        
         setParticipants(prev => prev.map(p =>
           p.id === message.userId
             ? { ...p, gameState: { ...p.gameState, alive: false } }
@@ -470,6 +488,11 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
         isPaused={gameLogic.isPaused}
         achievements={achievements as BattleAchievement[]}
         onAchievementComplete={handleAchievementComplete}
+        // 对战特效属性
+        showKO={showKO}
+        koTargetName={koTargetName}
+        onKOComplete={() => setShowKO(false)}
+        lastAttackSent={lastAttackSent}
       />
 
       {/* Victory Screen */}
