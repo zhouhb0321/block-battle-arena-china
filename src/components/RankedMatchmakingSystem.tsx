@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import RankingSystem, { getRankByPoints } from '@/components/RankingSystem';
-import MultiplayerBattleLayout, { PlayerState } from '@/components/game/MultiplayerBattleLayout';
+import UnifiedBattleLayout, { BattlePlayerState } from '@/components/game/UnifiedBattleLayout';
 import GameMusicManager from '@/components/GameMusicManager';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
@@ -230,23 +230,49 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
     return Math.min(baseWaitTime, 120);
   };
 
+  // 计算当前匹配分数范围 (随时间扩大)
+  const getCurrentRatingRange = useCallback(() => {
+    const initialRange = 100; // 初始 ±100 分
+    const expansionRate = 50; // 每10秒扩大50分
+    const maxRange = 500; // 最大 ±500 分
+    return Math.min(initialRange + Math.floor(searchTime / 10) * expansionRate, maxRange);
+  }, [searchTime]);
+
   const handleStartSearch = () => {
+    if (!user || user.isGuest) {
+      return;
+    }
+    
     setIsSearching(true);
     setSearchTime(0);
     
-    // Connect to matchmaking WebSocket
+    // Connect to matchmaking WebSocket with rating info
     connect('ranked-queue');
     
-    // Simulate finding a match for demo
+    // Send matchmaking request with rating range
+    setTimeout(() => {
+      sendMessage({
+        type: 'join_queue',
+        data: {
+          userId: user.id,
+          rating: playerRating,
+          ratingRange: getCurrentRatingRange()
+        }
+      });
+    }, 500);
+    
+    // Simulate finding a match for demo (with rating-based matching)
     const estimatedTime = calculateEstimatedWaitTime();
     setTimeout(() => {
       setIsSearching(false);
       setMatchFound(true);
+      // 模拟匹配到分数相近的对手 (实际应由服务器处理)
+      const opponentRating = playerRating + Math.floor(Math.random() * 200) - 100;
       setMatchState({
         id: 'demo-match',
         opponentId: 'opponent-123',
         opponentUsername: 'Opponent',
-        opponentRating: 1200,
+        opponentRating: opponentRating,
         bestOf: 5,
         playerWins: 0,
         opponentWins: 0,
@@ -260,11 +286,13 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
   const handleCancelSearch = () => {
     setIsSearching(false);
     setSearchTime(0);
+    // Notify server to leave queue
+    sendMessage({ type: 'leave_queue' });
   };
 
   // Show match in progress
   if (matchFound && matchState) {
-    const mainPlayerState: PlayerState = {
+    const mainPlayerState: BattlePlayerState = {
       id: user?.id || '',
       username: user?.user_metadata?.username || 'Player',
       rank: getRankByPoints(playerRating).tier,
@@ -280,13 +308,15 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
       pps: gameLogic.pps,
       apm: gameLogic.apm,
       combo: gameLogic.comboCount,
-      b2b: gameLogic.isB2B,
-      totalAttack: 0,
+      b2b: gameLogic.isB2B ? 1 : 0,
+      attack: 0,
+      pieces: 0,
+      time: gameLogic.time,
       alive: !gameLogic.gameOver,
       garbageQueued: incomingGarbage
     };
 
-    const opponentPlayerState: PlayerState = {
+    const opponentPlayerState: BattlePlayerState = {
       id: matchState.opponentId,
       username: matchState.opponentUsername,
       rank: getRankByPoints(matchState.opponentRating).tier,
@@ -303,7 +333,9 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
       apm: opponentState.apm,
       combo: opponentState.combo,
       b2b: opponentState.b2b,
-      totalAttack: 0,
+      attack: 0,
+      pieces: 0,
+      time: 0,
       alive: opponentState.alive,
       garbageQueued: opponentState.garbageQueued
     };
@@ -342,11 +374,11 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
       <div className="min-h-screen bg-gradient-to-br from-background to-primary/5">
         <GameMusicManager isGameActive={gameStarted} isGamePaused={gameLogic.isPaused} />
         
-        <MultiplayerBattleLayout
+        <UnifiedBattleLayout
           mainPlayer={mainPlayerState}
-          otherPlayers={[opponentPlayerState]}
+          opponents={[opponentPlayerState]}
           matchInfo={{
-            mode: 'versus',
+            mode: '1v1',
             bestOf: matchState.bestOf,
             currentGame: matchState.currentGame
           }}
@@ -359,6 +391,8 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
           }}
           isGameActive={gameStarted}
           isPaused={gameLogic.isPaused}
+          cellSize={28}
+          enableGhost={settings.enableGhost}
         />
       </div>
     );
@@ -480,6 +514,11 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
                     </div>
                     <h3 className="text-2xl font-bold mb-4 text-white">{t('ranked.finding_match')}</h3>
                     
+                    {/* 显示当前匹配范围 */}
+                    <div className="mb-4 text-sm text-gray-300">
+                      搜索范围: {playerRating} ± {getCurrentRatingRange()} 分
+                    </div>
+                    
                     <div className="mb-6">
                       <div className="text-4xl font-mono font-bold text-red-400 mb-2">
                         {Math.floor(searchTime / 60)}:{(searchTime % 60).toString().padStart(2, '0')}
@@ -490,7 +529,7 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
                       />
                     </div>
                     
-                    <Button 
+                    <Button
                       onClick={handleCancelSearch}
                       variant="outline"
                       className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white"
