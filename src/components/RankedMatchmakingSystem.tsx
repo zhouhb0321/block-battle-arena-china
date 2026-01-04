@@ -54,7 +54,7 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
   });
 
   // WebSocket connection
-  const { sendMessage, isConnected, lastMessage, connect } = useBattleWebSocket();
+  const { sendMessage, isConnected, lastMessage, connect, connectionStatus } = useBattleWebSocket();
 
   // Opponent's game state (received via WebSocket)
   const [opponentState, setOpponentState] = useState({
@@ -393,6 +393,7 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
           isPaused={gameLogic.isPaused}
           cellSize={28}
           enableGhost={settings.enableGhost}
+          connectionStatus={connectionStatus}
         />
       </div>
     );
