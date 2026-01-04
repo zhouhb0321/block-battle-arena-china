@@ -173,6 +173,12 @@ interface VersusLayoutProps {
   onAchievementComplete?: (id: string) => void;
 }
 
+/**
+ * 1v1 对战布局 - 与单人模式布局一致
+ * 左侧: Hold + 成就 + 统计
+ * 中间: 游戏棋盘
+ * 右侧: Next队列
+ */
 const VersusLayout: React.FC<VersusLayoutProps> = ({
   mainPlayer,
   opponent,
@@ -188,7 +194,7 @@ const VersusLayout: React.FC<VersusLayoutProps> = ({
   const rightAccent = getAccentClasses(opponent.team, false);
 
   return (
-    <div className="flex justify-center items-center gap-4 lg:gap-8">
+    <div className="flex justify-center items-start gap-6 lg:gap-10">
       {/* 玩家1 (左侧 - 主玩家) */}
       <PlayerSection
         player={mainPlayer}
@@ -215,7 +221,7 @@ const VersusLayout: React.FC<VersusLayoutProps> = ({
         totalMatches={matchInfo.bestOf || 5}
       />
 
-      {/* 玩家2 (右侧 - 对手) */}
+      {/* 玩家2 (右侧 - 对手) - 完全对称的布局 */}
       <PlayerSection
         player={opponent}
         accent={rightAccent}
@@ -230,7 +236,7 @@ const VersusLayout: React.FC<VersusLayoutProps> = ({
   );
 };
 
-// ============= 玩家区域组件 =============
+// ============= 玩家区域组件 (与SinglePlayerGameArea布局一致) =============
 interface PlayerSectionProps {
   player: BattlePlayerState;
   accent: ReturnType<typeof getAccentClasses>;
@@ -244,6 +250,11 @@ interface PlayerSectionProps {
   isMainPlayer?: boolean;
 }
 
+/**
+ * 单个玩家的游戏区域
+ * 布局: [左面板] [棋盘] [右面板]
+ * 镜像时: [右面板] [棋盘] [左面板]
+ */
 const PlayerSection: React.FC<PlayerSectionProps> = ({
   player,
   accent,
@@ -256,12 +267,41 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({
   onAchievementComplete,
   isMainPlayer = false
 }) => {
+  // 左面板: HOLD + 成就 + 统计
   const LeftPanel = () => (
-    <div className="flex flex-col gap-2 w-24">
+    <div className="flex flex-col gap-3 w-36">
       {/* HOLD */}
-      <div className={cn(accent.bg, "border", accent.border, "rounded-lg p-2")}>
-        <div className="text-[10px] text-muted-foreground mb-1 text-center font-bold tracking-wider">HOLD</div>
+      <div className={cn(accent.bg, "border", accent.border, "rounded-lg p-3")}>
+        <div className="text-xs text-muted-foreground mb-2 text-center font-bold tracking-wider">HOLD</div>
         <HoldPieceDisplay holdPiece={player.holdPiece} canHold={player.canHold} />
+      </div>
+
+      {/* 成就显示 */}
+      {isMainPlayer && achievements.length > 0 && (
+        <div className="min-h-[100px]">
+          <AchievementDisplay
+            achievements={achievements}
+            onAchievementComplete={onAchievementComplete || (() => {})}
+          />
+        </div>
+      )}
+
+      {/* 统计数据面板 */}
+      <div className={cn(accent.bg, "border", accent.border, "rounded-lg p-3")}>
+        <div className="space-y-2">
+          <div className="text-center border-b border-border/40 pb-2 mb-2">
+            <div className="font-bold text-lg truncate">{player.username}</div>
+            {player.rank && (
+              <Badge variant="outline" className="text-[10px] mt-1">{player.rank}</Badge>
+            )}
+          </div>
+          <StatRow label="得分" value={player.score.toLocaleString()} />
+          <StatRow label="行数" value={player.lines.toString()} />
+          <StatRow label="等级" value={`Lv.${player.level}`} />
+          <StatRow label="PPS" value={player.pps.toFixed(2)} />
+          <StatRow label="APM" value={player.apm.toFixed(1)} />
+          <StatRow label="时间" value={formatTime(player.time)} />
+        </div>
       </div>
 
       {/* B2B 指示器 */}
@@ -271,88 +311,86 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({
           <div className="text-lg font-bold text-yellow-400">×{player.b2b}</div>
         </div>
       )}
+    </div>
+  );
 
-      {/* 统计数据 */}
-      <div className={cn(accent.bg, "border", accent.border, "rounded-lg p-2 space-y-1")}>
-        <StatRow label="PIECES" value={player.pieces.toString()} />
-        <StatRow label="PPS" value={player.pps.toFixed(2)} />
-        <StatRow label="ATTACK" value={player.attack.toString()} />
-        <StatRow label="APM" value={player.apm.toFixed(1)} />
-        <StatRow label="TIME" value={formatTime(player.time)} />
+  // 右面板: NEXT 队列
+  const RightPanel = () => (
+    <div className="flex flex-col gap-3 w-36">
+      <div className={cn(accent.bg, "border", accent.border, "rounded-lg p-3")}>
+        <div className="text-xs text-muted-foreground mb-2 text-center font-bold tracking-wider">NEXT</div>
+        <NextPiecePreview nextPieces={player.nextPieces.slice(0, 5)} compact={false} />
       </div>
+    </div>
+  );
 
-      {/* 成就显示 */}
-      {isMainPlayer && achievements.length > 0 && (
-        <div className="min-h-[80px]">
-          <AchievementDisplay
-            achievements={achievements}
-            onAchievementComplete={onAchievementComplete || (() => {})}
+  // 棋盘区域 (相对定位用于放置特效)
+  const GameBoardArea = () => (
+    <div className="relative flex flex-col items-center">
+      {/* 垃圾行队列 - 显示在棋盘左侧 */}
+      <div className="flex">
+        {isMainPlayer && (incomingGarbage > 0 || outgoingGarbage > 0) && (
+          <div className="mr-1">
+            <GarbageQueueDisplay
+              incomingGarbage={incomingGarbage}
+              outgoingGarbage={outgoingGarbage}
+              maxDisplay={20}
+            />
+          </div>
+        )}
+        
+        {/* 游戏棋盘 */}
+        <div className={cn(
+          "border-2 rounded-lg p-1",
+          accent.border,
+          accent.bg,
+          "shadow-lg",
+          accent.glow
+        )}>
+          <EnhancedGameBoard
+            board={player.board}
+            currentPiece={player.currentPiece}
+            ghostPiece={enableGhost ? player.ghostPiece : null}
+            cellSize={cellSize}
+            showGrid={true}
+            showHiddenRows={false}
           />
+        </div>
+      </div>
+      
+      {/* Combo 效果 - 棋盘右侧 */}
+      {isMainPlayer && player.combo > 1 && (
+        <div className="absolute -right-16 top-1/3 pointer-events-none z-20">
+          <ComboEffect combo={player.combo} show={true} />
+        </div>
+      )}
+      
+      {/* B2B 效果 - 棋盘左侧 */}
+      {isMainPlayer && player.b2b > 0 && (
+        <div className="absolute -left-20 top-1/3 pointer-events-none z-20">
+          <B2BEffect b2b={player.b2b} show={true} />
+        </div>
+      )}
+
+      {/* 玩家连接状态 */}
+      {player.isConnected === false && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+          <div className="flex items-center gap-2 text-destructive">
+            <WifiOff className="w-6 h-6" />
+            <span className="text-sm font-medium">连接断开</span>
+          </div>
         </div>
       )}
     </div>
   );
 
-  const RightPanel = () => (
-    <div className="flex flex-col gap-2 w-24">
-      {/* NEXT 队列 */}
-      <div className={cn(accent.bg, "border", accent.border, "rounded-lg p-2")}>
-        <div className="text-[10px] text-muted-foreground mb-1 text-center font-bold tracking-wider">NEXT</div>
-        <NextPiecePreview nextPieces={player.nextPieces.slice(0, 5)} compact={true} />
-      </div>
-    </div>
-  );
-
   return (
     <div className="flex flex-col items-center">
-      <div className={cn("flex gap-2", !isLeft && "flex-row-reverse")}>
+      {/* 根据位置调整布局顺序实现镜像效果 */}
+      <div className={cn("flex gap-3", !isLeft && "flex-row-reverse")}>
         <LeftPanel />
-
-        {/* 垃圾行队列 */}
-        {isMainPlayer && (incomingGarbage > 0 || outgoingGarbage > 0) && (
-          <GarbageQueueDisplay
-            incomingGarbage={incomingGarbage}
-            outgoingGarbage={outgoingGarbage}
-            maxDisplay={20}
-          />
-        )}
-
-        {/* 游戏棋盘容器 - 相对定位用于放置特效 */}
-        <div className="relative">
-          <div className={cn("border-2", accent.border, "rounded-lg p-1", accent.bg, "shadow-lg", accent.glow)}>
-            <EnhancedGameBoard
-              board={player.board}
-              currentPiece={player.currentPiece}
-              ghostPiece={enableGhost ? player.ghostPiece : null}
-              cellSize={cellSize}
-              showGrid={true}
-            />
-          </div>
-          
-          {/* Combo 效果 - 棋盘右侧 */}
-          {isMainPlayer && player.combo > 1 && (
-            <div className="absolute -right-20 top-1/3 pointer-events-none z-20">
-              <ComboEffect combo={player.combo} show={true} />
-            </div>
-          )}
-          
-          {/* B2B 效果 - 棋盘左侧 */}
-          {isMainPlayer && player.b2b > 0 && (
-            <div className="absolute -left-24 top-1/3 pointer-events-none z-20">
-              <B2BEffect b2b={player.b2b} show={true} />
-            </div>
-          )}
-        </div>
-
+        <GameBoardArea />
         <RightPanel />
-      </div>
-
-      {/* 玩家名称和状态 */}
-      <div className={cn("mt-2 text-center font-bold text-lg uppercase tracking-wider", accent.text)}>
-        {player.username}
-        {player.isConnected === false && (
-          <WifiOff className="inline-block ml-2 w-4 h-4 text-destructive" />
-        )}
       </div>
     </div>
   );
