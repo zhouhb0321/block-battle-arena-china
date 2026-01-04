@@ -22,11 +22,13 @@ import {
   AttackSentEffect,
   IncomingAttackWarning 
 } from './BattleEffects';
+import NetworkStatusIndicator from './NetworkStatusIndicator';
 import {
   Shield, Sword, Clock, Zap, ArrowLeft, Settings,
   Crown, Wifi, WifiOff
 } from 'lucide-react';
 import type { GamePiece, GameState } from '@/utils/gameTypes';
+import type { ConnectionStatus } from '@/hooks/useBattleWebSocket';
 
 // ============= 类型定义 =============
 export type BattleMode = '1v1' | 'team' | 'ffa' | 'battle_royale';
@@ -108,7 +110,8 @@ export interface UnifiedBattleLayoutProps {
   // 显示选项
   cellSize?: number;
   enableGhost?: boolean;
-  showConnectionStatus?: boolean;
+  // 网络状态
+  connectionStatus?: ConnectionStatus;
 }
 
 // ============= 辅助组件 =============
@@ -704,7 +707,7 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
   isPaused,
   cellSize = 22,
   enableGhost = true,
-  showConnectionStatus = false
+  connectionStatus
 }) => {
   // 判断是否为 1v1 模式
   const is1v1 = matchInfo.mode === '1v1' || (opponents.length === 1 && teammates.length === 0);
@@ -790,8 +793,14 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
               <span className="font-mono">{formatTime(matchInfo.elapsedTime)}</span>
             </div>
           )}
-          {showConnectionStatus && (
-            <Wifi className="w-4 h-4 text-green-500" />
+          {/* 网络状态指示器 */}
+          {connectionStatus && (
+            <NetworkStatusIndicator
+              isConnected={connectionStatus.isConnected}
+              ping={connectionStatus.ping}
+              reconnecting={connectionStatus.reconnecting}
+              reconnectAttempt={connectionStatus.reconnectAttempt}
+            />
           )}
           {onSettings && (
             <Button variant="ghost" size="sm" onClick={onSettings}>

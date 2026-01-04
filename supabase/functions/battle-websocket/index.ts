@@ -82,7 +82,7 @@ class BattleManager {
 
     // 设置WebSocket消息处理
     socket.onmessage = (event) => {
-      this.handleMessage(roomId, userId, JSON.parse(event.data));
+      this.handleMessage(roomId, userId, JSON.parse(event.data), socket);
     };
 
     socket.onclose = () => {
@@ -123,11 +123,36 @@ class BattleManager {
     }
   }
 
-  async handleMessage(roomId: string, userId: string, message: any) {
+  async handleMessage(roomId: string, userId: string, message: any, socket: WebSocket) {
     const room = this.rooms.get(roomId);
     if (!room) return;
 
     switch (message.type) {
+      // Ping/Pong for latency measurement
+      case 'ping':
+        socket.send(JSON.stringify({
+          type: 'pong',
+          pingId: message.pingId
+        }));
+        break;
+
+      // Request state sync (for reconnection)
+      case 'request_sync':
+        const syncData = {
+          type: 'sync_state',
+          gameState: Object.fromEntries(room.gameState),
+          scores: Object.fromEntries(room.scores),
+          participants: [...room.participants.keys()].map(id => ({
+            id,
+            team: room.teams?.get(id),
+            alive: room.gameState.get(id)?.alive !== false
+          })),
+          currentMatch: room.currentMatch,
+          teamStats: room.teamStats ? Object.fromEntries(room.teamStats) : null
+        };
+        socket.send(JSON.stringify(syncData));
+        break;
+
       case 'game_state_update':
         room.gameState.set(userId, message.data);
         this.broadcastToRoom(roomId, {
@@ -145,7 +170,8 @@ class BattleManager {
         this.broadcastToRoom(roomId, {
           type: 'team_state_update',
           userId,
-          data: message.data
+          data: message.data,
+          compressed: message.compressed
         }, userId);
         break;
 

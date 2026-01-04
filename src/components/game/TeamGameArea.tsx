@@ -148,7 +148,7 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
     onInstantSoftDrop: gameLogic.instantSoftDrop
   });
 
-  const { sendMessage, isConnected, lastMessage, connect } = useBattleWebSocket();
+  const { sendMessage, isConnected, lastMessage, connect, connectionStatus } = useBattleWebSocket();
 
   // Connect to room on mount
   useEffect(() => {
@@ -530,6 +530,8 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
         koTargetName={koTargetName}
         onKOComplete={() => setShowKO(false)}
         lastAttackSent={lastAttackSent}
+        // 网络状态
+        connectionStatus={connectionStatus}
       />
 
       {/* Victory Screen */}
