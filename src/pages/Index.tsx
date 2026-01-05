@@ -21,6 +21,7 @@ import TeamGameArea from '@/components/game/TeamGameArea';
 import { AIBattleGame } from '@/components/game/AIBattleGame';
 import BattleRoomLobby from '@/components/battle/BattleRoomLobby';
 import BattleGameView from '@/components/battle/BattleGameView';
+import BattleHistoryPage from '@/components/BattleHistoryPage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft, GraduationCap } from 'lucide-react';
@@ -35,6 +36,7 @@ const Index = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [battleRoomId, setBattleRoomId] = useState<string | null>(null);
   const [pendingRoomCode, setPendingRoomCode] = useState<string | null>(null);
+  const [selectedReplayId, setSelectedReplayId] = useState<string | null>(null);
 
   // 检查 URL 参数中的房间号
   useEffect(() => {
@@ -108,10 +110,15 @@ const Index = () => {
     setCurrentView('home');
   };
 
+  const handleWatchReplay = (replayId: string) => {
+    setSelectedReplayId(replayId);
+    setCurrentView('replays');
+  };
+
   const handleViewChange = (view: ViewType) => {
     console.log('视图切换请求:', { view, isAuthenticated, isAdmin: user?.isAdmin });
     
-    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked' || view === 'admin' || view === 'multiplayer' || view === 'practice')) {
+    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked' || view === 'admin' || view === 'multiplayer' || view === 'practice' || view === 'battle-history')) {
       setShowAuthModal(true);
       return;
     }
@@ -242,6 +249,13 @@ const Index = () => {
         );
       case 'admin':
         return <AdminPanel />;
+      case 'battle-history':
+        return (
+          <BattleHistoryPage 
+            onBack={handleBackToMenu}
+            onWatchReplay={handleWatchReplay}
+          />
+        );
       case 'leaderboard':
         return <LeaderboardView />;
       case 'profile':

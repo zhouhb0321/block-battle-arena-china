@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Crown, Trophy, Target, Zap, Timer, TrendingUp, 
-  BarChart3, Award, ArrowLeft, RotateCcw, Share2 
+  BarChart3, Award, ArrowLeft, RotateCcw, Share2, Play 
 } from 'lucide-react';
 
 export interface PlayerMatchStats {
@@ -47,16 +47,20 @@ export interface MatchResultData {
 
 interface MatchResultsPanelProps {
   data: MatchResultData;
+  replayId?: string;
   onRematch?: () => void;
   onBackToMenu?: () => void;
   onShare?: () => void;
+  onWatchReplay?: (replayId: string) => void;
 }
 
 const MatchResultsPanel: React.FC<MatchResultsPanelProps> = ({
   data,
+  replayId,
   onRematch,
   onBackToMenu,
-  onShare
+  onShare,
+  onWatchReplay
 }) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -311,6 +315,16 @@ const MatchResultsPanel: React.FC<MatchResultsPanelProps> = ({
               <Button variant="outline" onClick={onBackToMenu} className="flex-1">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 返回菜单
+              </Button>
+            )}
+            {replayId && onWatchReplay && (
+              <Button 
+                variant="secondary" 
+                onClick={() => onWatchReplay(replayId)} 
+                className="flex-1"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                观看回放
               </Button>
             )}
             {onRematch && (
