@@ -35,9 +35,10 @@ export interface BattleWebSocketHook {
   connectionStatus: ConnectionStatus;
   sendMessage: (message: BattleWebSocketMessage) => void;
   lastMessage: BattleWebSocketMessage | null;
-  connect: (roomId: string) => void;
+  connect: (roomId: string, asSpectator?: boolean) => void;
   disconnect: () => void;
   requestStateSync: () => void; // 请求状态同步
+  isSpectator: boolean;
 }
 
 // Ping 测量间隔 (ms)
@@ -53,6 +54,7 @@ export const useBattleWebSocket = (): BattleWebSocketHook => {
   const [isConnected, setIsConnected] = useState(false);
   const [ping, setPing] = useState<number | null>(null);
   const [lastMessage, setLastMessage] = useState<BattleWebSocketMessage | null>(null);
+  const [isSpectator, setIsSpectator] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     isConnected: false,
     ping: null,
@@ -64,6 +66,7 @@ export const useBattleWebSocket = (): BattleWebSocketHook => {
 
   const reconnectAttempts = useRef(0);
   const currentRoomId = useRef<string | null>(null);
+  const currentSpectatorMode = useRef<boolean>(false);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingPings = useRef<Map<string, number>>(new Map());
   const lastGameState = useRef<any>(null); // 保存最后的游戏状态用于重连
@@ -122,13 +125,15 @@ export const useBattleWebSocket = (): BattleWebSocketHook => {
     }
   }, []);
 
-  const connect = useCallback((roomId: string) => {
+  const connect = useCallback((roomId: string, asSpectator: boolean = false) => {
     if (!user || user.isGuest) {
       console.error('User must be authenticated to connect to battle websocket');
       return;
     }
 
     currentRoomId.current = roomId;
+    currentSpectatorMode.current = asSpectator;
+    setIsSpectator(asSpectator);
     
     // 更新状态为重连中（如果是重连）
     if (reconnectAttempts.current > 0) {
@@ -139,7 +144,9 @@ export const useBattleWebSocket = (): BattleWebSocketHook => {
       }));
     }
 
-    const wsUrl = `wss://wcwnyvoezudyxiayyzek.supabase.co/functions/v1/battle-websocket?roomId=${roomId}&userId=${user.id}`;
+    // 添加 spectator 参数到 WebSocket URL
+    const spectatorParam = asSpectator ? '&spectator=true' : '';
+    const wsUrl = `wss://wcwnyvoezudyxiayyzek.supabase.co/functions/v1/battle-websocket?roomId=${roomId}&userId=${user.id}${spectatorParam}`;
     
     try {
       const ws = new WebSocket(wsUrl);
@@ -220,7 +227,7 @@ export const useBattleWebSocket = (): BattleWebSocketHook => {
           setTimeout(() => {
             reconnectAttempts.current++;
             if (currentRoomId.current) {
-              connect(currentRoomId.current);
+              connect(currentRoomId.current, currentSpectatorMode.current);
             }
           }, delay);
         } else {
@@ -300,6 +307,7 @@ export const useBattleWebSocket = (): BattleWebSocketHook => {
     lastMessage,
     connect,
     disconnect,
-    requestStateSync
+    requestStateSync,
+    isSpectator
   };
 };
