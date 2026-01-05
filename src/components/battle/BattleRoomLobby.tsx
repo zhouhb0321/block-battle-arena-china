@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ShareDialog from '@/components/ShareDialog';
+import SpectatorModeToggle from './SpectatorModeToggle';
+import { useSpectatorMode } from '@/hooks/useSpectatorMode';
 import { 
   Users, Crown, Check, X, Copy, MessageSquare, 
   Play, ArrowLeft, Eye, Settings, Send, Share2
@@ -44,18 +46,21 @@ interface BattleRoom {
   custom_settings?: any;
   room_password?: string;
   allow_spectators?: boolean;
+  spectator_count?: number;
 }
 
 interface BattleRoomLobbyProps {
   roomId: string;
   onStartGame: () => void;
   onLeave: () => void;
+  onSpectate?: () => void;
 }
 
 const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
   roomId,
   onStartGame,
-  onLeave
+  onLeave,
+  onSpectate
 }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -68,6 +73,14 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
   const [countdown, setCountdown] = useState<number | null>(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // 观战模式 Hook
+  const {
+    isSpectating,
+    spectatorCount,
+    toggleSpectatorMode,
+    loading: spectatorLoading
+  } = useSpectatorMode(roomId);
 
   // 加载房间信息
   useEffect(() => {
@@ -458,44 +471,67 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
               离开房间
             </Button>
             
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3">
+              {/* 观战/参战切换按钮 */}
               {room.allow_spectators && (
-                <Button variant="outline">
-                  <Eye className="h-4 w-4 mr-2" />
-                  观战模式
-                </Button>
+                <SpectatorModeToggle
+                  isSpectating={isSpectating}
+                  spectatorCount={spectatorCount}
+                  onToggle={async () => {
+                    await toggleSpectatorMode();
+                    if (!isSpectating && onSpectate) {
+                      onSpectate();
+                    }
+                  }}
+                  loading={spectatorLoading}
+                  disabled={countdown !== null}
+                />
               )}
               
-              <Button
-                onClick={toggleReady}
-                variant={isReady ? 'outline' : 'default'}
-                className={isReady ? 'border-green-500 text-green-500' : ''}
-              >
-                {isReady ? (
-                  <>
-                    <X className="h-4 w-4 mr-2" />
-                    取消准备
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    准备
-                  </>
-                )}
-              </Button>
+              {/* 只有参战模式下才显示准备按钮 */}
+              {!isSpectating && (
+                <>
+                  <Button
+                    onClick={toggleReady}
+                    variant={isReady ? 'outline' : 'default'}
+                    className={isReady ? 'border-green-500 text-green-500' : ''}
+                    disabled={countdown !== null}
+                  >
+                    {isReady ? (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        取消准备
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        准备
+                      </>
+                    )}
+                  </Button>
 
-              {isHost && (
-                <Button
-                  onClick={onStartGame}
-                  disabled={!allReady || participants.length < 2}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  开始游戏
-                </Button>
+                  {isHost && (
+                    <Button
+                      onClick={onStartGame}
+                      disabled={!allReady || participants.length < 2}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      开始游戏
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
+          
+          {/* 观战提示 */}
+          {isSpectating && (
+            <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-amber-600 dark:text-amber-400">
+              <Eye className="inline-block w-4 h-4 mr-2" />
+              您正在观战模式。游戏开始后可以实时观看对战，点击上方按钮可切换回参战模式。
+            </div>
+          )}
         </CardContent>
       </Card>
       

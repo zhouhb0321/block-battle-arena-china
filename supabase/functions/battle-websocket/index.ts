@@ -8,6 +8,7 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 interface BattleRoom {
   id: string;
   participants: Map<string, WebSocket>;
+  spectators: Map<string, WebSocket>; // 观战者
   gameState: Map<string, any>;
   mode: 'versus' | 'battle_royale' | 'league' | 'team_battle';
   currentMatch: number;
@@ -26,6 +27,7 @@ class BattleManager {
     const room: BattleRoom = {
       id: roomId,
       participants: new Map(),
+      spectators: new Map(), // 初始化观战者
       gameState: new Map(),
       mode: mode as any,
       currentMatch: 1,
@@ -36,7 +38,7 @@ class BattleManager {
     return room;
   }
 
-  async joinRoom(roomId: string, userId: string, socket: WebSocket): Promise<boolean> {
+  async joinRoom(roomId: string, userId: string, socket: WebSocket, asSpectator: boolean = false): Promise<boolean> {
     let room = this.rooms.get(roomId);
     
     if (!room) {
@@ -56,6 +58,57 @@ class BattleManager {
       room.teamStats = new Map([['A', { alive: 0, totalScore: 0, avgAPM: 0 }], ['B', { alive: 0, totalScore: 0, avgAPM: 0 }]]);
     }
 
+    // 观战者逻辑
+    if (asSpectator) {
+      room.spectators.set(userId, socket);
+      
+      // 设置观战者消息处理
+      socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        // 观战者只能发送有限的消息类型
+        if (message.type === 'ping') {
+          socket.send(JSON.stringify({ type: 'pong', pingId: message.pingId }));
+        } else if (message.type === 'request_sync') {
+          // 发送当前游戏状态给观战者
+          socket.send(JSON.stringify({
+            type: 'spectator_sync',
+            gameState: Object.fromEntries(room!.gameState),
+            participants: [...room!.participants.keys()],
+            spectators: room!.spectators.size
+          }));
+        }
+      };
+
+      socket.onclose = () => {
+        room?.spectators.delete(userId);
+        this.broadcastToRoom(roomId, {
+          type: 'spectator_left',
+          spectatorCount: room?.spectators.size || 0
+        });
+      };
+
+      // 通知所有人有新观战者
+      this.broadcastToRoom(roomId, {
+        type: 'spectator_joined',
+        spectatorCount: room.spectators.size
+      });
+
+      // 发送当前状态给观战者
+      socket.send(JSON.stringify({
+        type: 'spectator_init',
+        gameState: Object.fromEntries(room.gameState),
+        participants: [...room.participants.keys()].map(id => ({
+          id,
+          team: room!.teams?.get(id),
+          alive: room!.gameState.get(id)?.alive !== false
+        })),
+        spectatorCount: room.spectators.size
+      }));
+
+      return true;
+    }
+
+    // 参与者逻辑
     const maxPlayers = room.teamMode ? (room.teamSize || 1) * 2 : (room.mode === 'versus' ? 2 : 8);
     if (room.participants.size >= maxPlayers) {
       return false;
@@ -93,7 +146,8 @@ class BattleManager {
     this.broadcastToRoom(roomId, {
       type: 'player_joined',
       userId,
-      totalPlayers: room.participants.size
+      totalPlayers: room.participants.size,
+      spectatorCount: room.spectators.size
     }, userId);
 
     // 如果房间满了，开始游戏
@@ -529,11 +583,21 @@ class BattleManager {
 
     const messageStr = JSON.stringify(message);
     
-    room.participants.forEach((socket, userId) => {
-      if (userId !== excludeUserId && socket.readyState === WebSocket.OPEN) {
+    // 广播给参与者
+    room.participants.forEach((socket, odId) => {
+      if (odId !== excludeUserId && socket.readyState === WebSocket.OPEN) {
         socket.send(messageStr);
       }
     });
+
+    // 同时广播给观战者（除了某些私密消息）
+    if (!message.type?.includes('private')) {
+      room.spectators.forEach((socket) => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(messageStr);
+        }
+      });
+    }
   }
 
   startGame(roomId: string) {
@@ -563,16 +627,18 @@ serve(async (req) => {
 
   const url = new URL(req.url);
   const roomId = url.searchParams.get('roomId');
-  const userId = url.searchParams.get('userId');
+  const odId = url.searchParams.get('userId');
+  const spectator = url.searchParams.get('spectator') === 'true';
 
-  if (!roomId || !userId) {
+  if (!roomId || !odId) {
     return new Response("Missing roomId or userId", { status: 400 });
   }
 
   const { socket, response } = Deno.upgradeWebSocket(req);
 
   socket.onopen = async () => {
-    const joined = await battleManager.joinRoom(roomId, userId, socket);
+    console.log(`User ${odId} joining room ${roomId} as ${spectator ? 'spectator' : 'participant'}`);
+    const joined = await battleManager.joinRoom(roomId, odId, socket, spectator);
     if (!joined) {
       socket.close(1000, "Failed to join room");
     }

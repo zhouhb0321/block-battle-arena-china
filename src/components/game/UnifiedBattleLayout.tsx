@@ -2,6 +2,11 @@
  * 统一多人对战布局组件
  * 支持 1v1、团队战、大逃杀模式
  * 合并 TetrioBattleLayout 和 MultiplayerBattleLayout 的优点
+ * 
+ * 布局规则:
+ * - 2人: 左右对称大图
+ * - 3+人: 主玩家全尺寸，其他玩家缩略图
+ * - 观战模式: 所有玩家自适应布局
  */
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
@@ -15,6 +20,7 @@ import AchievementDisplay from '@/components/AchievementDisplay';
 import GameStatusIndicators from '@/components/GameStatusIndicators';
 import MiniPlayerView from './MiniPlayerView';
 import GarbageQueueDisplay from './GarbageQueueDisplay';
+import AdaptiveMultiPlayerLayout from './AdaptiveMultiPlayerLayout';
 import { 
   KOEffect, 
   ComboEffect, 
@@ -25,7 +31,7 @@ import {
 import NetworkStatusIndicator from './NetworkStatusIndicator';
 import {
   Shield, Sword, Clock, Zap, ArrowLeft, Settings,
-  Crown, Wifi, WifiOff
+  Crown, Wifi, WifiOff, Eye
 } from 'lucide-react';
 import type { GamePiece, GameState } from '@/utils/gameTypes';
 import type { ConnectionStatus } from '@/hooks/useBattleWebSocket';
@@ -112,6 +118,9 @@ export interface UnifiedBattleLayoutProps {
   enableGhost?: boolean;
   // 网络状态
   connectionStatus?: ConnectionStatus;
+  // 观战模式
+  isSpectating?: boolean;
+  spectatorCount?: number;
 }
 
 // ============= 辅助组件 =============
@@ -707,10 +716,15 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
   isPaused,
   cellSize = 22,
   enableGhost = true,
-  connectionStatus
+  connectionStatus,
+  isSpectating = false,
+  spectatorCount = 0
 }) => {
   // 判断是否为 1v1 模式
   const is1v1 = matchInfo.mode === '1v1' || (opponents.length === 1 && teammates.length === 0);
+  
+  // 多于2人时使用自适应布局
+  const useAdaptiveLayout = opponents.length + teammates.length >= 2;
 
   // 追踪上一次的 combo 和 b2b 以检测变化
   const prevComboRef = useRef(mainPlayer.combo);
@@ -759,16 +773,24 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
             </Button>
           )}
           <Badge variant="outline" className="text-sm">
-            {matchInfo.mode === 'team' && '团队战'}
-            {matchInfo.mode === '1v1' && '1v1 对战'}
-            {matchInfo.mode === 'ffa' && '混战'}
-            {matchInfo.mode === 'battle_royale' && '大逃杀'}
+          {matchInfo.mode === 'team' && '团队战'}
+          {matchInfo.mode === '1v1' && '1v1 对战'}
+          {matchInfo.mode === 'ffa' && '混战'}
+          {matchInfo.mode === 'battle_royale' && '大逃杀'}
+        </Badge>
+        
+        {isSpectating && (
+          <Badge variant="outline" className="gap-1 text-amber-500 border-amber-500/50">
+            <Eye className="w-3 h-3" />
+            观战中
           </Badge>
-          {matchInfo.bestOf && (
-            <span className="text-sm text-muted-foreground">
-              BO{matchInfo.bestOf} - 第{matchInfo.currentGame || 1}局
-            </span>
-          )}
+        )}
+        
+        {matchInfo.bestOf && (
+          <span className="text-sm text-muted-foreground">
+            BO{matchInfo.bestOf} - 第{matchInfo.currentGame || 1}局
+          </span>
+        )}
         </div>
 
         {/* 团队比分 */}
@@ -793,6 +815,15 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
               <span className="font-mono">{formatTime(matchInfo.elapsedTime)}</span>
             </div>
           )}
+          
+          {/* 观战人数 */}
+          {spectatorCount > 0 && (
+            <Badge variant="secondary" className="gap-1">
+              <Eye className="w-3 h-3" />
+              {spectatorCount}
+            </Badge>
+          )}
+          
           {/* 网络状态指示器 */}
           {connectionStatus && (
             <NetworkStatusIndicator
@@ -823,6 +854,19 @@ const UnifiedBattleLayout: React.FC<UnifiedBattleLayoutProps> = ({
             outgoingGarbage={outgoingGarbage}
             achievements={achievements}
             onAchievementComplete={onAchievementComplete}
+          />
+        ) : useAdaptiveLayout ? (
+          <AdaptiveMultiPlayerLayout
+            mainPlayer={mainPlayer}
+            otherPlayers={[...teammates, ...opponents]}
+            matchInfo={matchInfo}
+            incomingGarbage={incomingGarbage}
+            outgoingGarbage={outgoingGarbage}
+            achievements={achievements}
+            onAchievementComplete={onAchievementComplete}
+            attackTarget={attackTarget}
+            onTargetChange={onTargetChange}
+            enableGhost={enableGhost}
           />
         ) : (
           <MultiPlayerLayout
