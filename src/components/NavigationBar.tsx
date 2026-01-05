@@ -3,7 +3,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
-import { Play, Users, Settings, LogIn, Shield, History, Medal, GraduationCap } from 'lucide-react';
+import { Play, Users, Settings, LogIn, Shield, History, Medal, GraduationCap, Swords } from 'lucide-react';
 import UserMenu from './UserMenu';
 import LanguageSelector from './LanguageSelector';
 import ThemeSwitcher from './ThemeSwitcher';
@@ -84,6 +84,16 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             >
               <History className="w-4 h-4" />
               {t('nav.replays')}
+            </Button>
+
+            <Button
+              variant={currentView === 'battle-history' ? 'default' : 'ghost'}
+              onClick={() => onViewChange('battle-history')}
+              className="flex items-center gap-2"
+              disabled={!isAuthenticated}
+            >
+              <Swords className="w-4 h-4" />
+              对战历史
             </Button>
 
             <Button
