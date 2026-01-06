@@ -103,12 +103,15 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
   };
 
   const extendedBoard = createExtendedBoard();
+  
+  // 根据 showHiddenRows 决定渲染哪些行
+  const rowsToRender = showHiddenRows ? extendedBoard : extendedBoard.slice(3);
 
-  const getCellStyle = (cellValue: number | string, rowIndex: number) => {
+  const getCellStyle = (cellValue: number | string, actualRowIndex: number) => {
     let cellStyle: React.CSSProperties = {};
     let cellClass = '';
-    const isHidden = showHiddenRows && rowIndex < 3;
-    const isClearing = clearingLines.includes(rowIndex);
+    const isHidden = showHiddenRows && actualRowIndex < 3;
+    const isClearing = clearingLines.includes(actualRowIndex);
 
     if (typeof cellValue === 'string') {
       if (cellValue.startsWith('ghost-')) {
@@ -203,15 +206,17 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
           gridTemplateRows: `repeat(${showHiddenRows ? 23 : 20}, ${cellSize}px)`,
         }}
       >
-        {extendedBoard.map((row, rowIndex) => 
-          row.map((cellValue, colIndex) => {
-            const { cellStyle, cellClass } = getCellStyle(cellValue, rowIndex);
+        {rowsToRender.map((row, displayIndex) => {
+          // 计算实际行索引（用于消行动画等）
+          const actualRowIndex = showHiddenRows ? displayIndex : displayIndex + 3;
+          return row.map((cellValue, colIndex) => {
+            const { cellStyle, cellClass } = getCellStyle(cellValue, actualRowIndex);
             
             return (
               <div
-                key={`${rowIndex}-${colIndex}`}
+                key={`${actualRowIndex}-${colIndex}`}
                 className={`game-cell ${cellClass} ${
-                  showHiddenRows && rowIndex < 3 ? 'hidden-row' : ''
+                  showHiddenRows && actualRowIndex < 3 ? 'hidden-row' : ''
                 } ${showGrid ? 'show-grid' : ''}`}
                 style={{
                   ...cellStyle,
@@ -221,8 +226,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
                 }}
               />
             );
-          })
-        )}
+          });
+        })}
       </div>
       
       <style>{`
