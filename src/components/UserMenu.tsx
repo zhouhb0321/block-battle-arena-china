@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useGameRecording } from '@/contexts/GameRecordingContext';
@@ -14,16 +14,31 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { 
   User, Settings, LogOut, Shield, Trophy, CreditCard, Users, Award,
-  GraduationCap, History, Swords, Cog
+  GraduationCap, History, Swords, Cog, Keyboard
 } from 'lucide-react';
 import UserProfileSettings from './UserProfileSettings';
 import SubscriptionPlans from './SubscriptionPlans';
 import FriendSystem from './FriendSystem';
 import BadgeCollection from './BadgeCollection';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface UserMenuProps {
   onNavigate: (page: string) => void;
 }
+
+// 快捷键映射
+const KEYBOARD_SHORTCUTS: Record<string, { action: string; label: string }> = {
+  'p': { action: 'practice', label: 'P' },
+  's': { action: 'settings', label: 'S' },
+  'r': { action: 'replays', label: 'R' },
+  'h': { action: 'battle-history', label: 'H' },
+  'l': { action: 'leaderboard', label: 'L' },
+};
 
 const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
@@ -33,6 +48,32 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
   const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
   const [showFriendSystem, setShowFriendSystem] = useState(false);
   const [showBadgeCollection, setShowBadgeCollection] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // 键盘快捷键处理
+  const handleKeyboardShortcut = useCallback((e: KeyboardEvent) => {
+    // 忽略在输入框中的按键
+    if (
+      e.target instanceof HTMLInputElement || 
+      e.target instanceof HTMLTextAreaElement ||
+      e.ctrlKey || e.metaKey || e.altKey
+    ) {
+      return;
+    }
+
+    const key = e.key.toLowerCase();
+    const shortcut = KEYBOARD_SHORTCUTS[key];
+    
+    if (shortcut && user) {
+      e.preventDefault();
+      onNavigate(shortcut.action);
+    }
+  }, [onNavigate, user]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyboardShortcut);
+    return () => window.removeEventListener('keydown', handleKeyboardShortcut);
+  }, [handleKeyboardShortcut]);
 
   if (!user) return null;
 
@@ -83,108 +124,174 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
     return Math.floor(Math.random() * 50) + 1;
   };
 
+  // 渲染带快捷键提示的菜单项
+  const renderMenuItem = (
+    icon: React.ReactNode, 
+    label: string, 
+    action: string, 
+    shortcutKey?: string
+  ) => (
+    <DropdownMenuItem 
+      onClick={() => onNavigate(action)}
+      className="flex items-center justify-between"
+    >
+      <span className="flex items-center">
+        {icon}
+        <span className="ml-2">{label}</span>
+      </span>
+      {shortcutKey && (
+        <kbd className="hidden sm:inline-flex ml-auto h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+          {shortcutKey}
+        </kbd>
+      )}
+    </DropdownMenuItem>
+  );
+
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-            <User className="w-4 h-4" />
-            <span className="hidden sm:inline text-sm">
-              {user.username || user.email}
-            </span>
-            {user.isAdmin && (
-              <Badge variant="destructive" className="text-xs px-1 py-0">
-                {t('admin')}
-              </Badge>
-            )}
-            {user.isGuest && (
-              <Badge variant="secondary" className="text-xs px-1 py-0">
-                Guest
-              </Badge>
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="flex flex-col">
-            <span className="font-medium">{user.username || user.email}</span>
-            <span className="text-sm text-muted-foreground">
-              {t('level')} {getUserLevel()}
-            </span>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
+      <TooltipProvider>
+        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="flex items-center gap-1.5 px-2 sm:px-3">
+                  <User className="w-4 h-4" />
+                  <span className="hidden sm:inline text-sm max-w-[100px] truncate">
+                    {user.username || user.email}
+                  </span>
+                  {user.isAdmin && (
+                    <Badge variant="destructive" className="text-xs px-1 py-0 hidden sm:inline-flex">
+                      {t('admin')}
+                    </Badge>
+                  )}
+                  {user.isGuest && (
+                    <Badge variant="secondary" className="text-xs px-1 py-0">
+                      Guest
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="sm:hidden">
+              <p>{user.username || user.email}</p>
+            </TooltipContent>
+          </Tooltip>
           
-          {/* 游戏功能区 */}
-          <DropdownMenuItem onClick={() => onNavigate('practice')}>
-            <GraduationCap className="w-4 h-4 mr-2" />
-            {t('nav.practice')}
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem onClick={() => onNavigate('replays')}>
-            <History className="w-4 h-4 mr-2" />
-            {t('nav.replays')}
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem onClick={() => onNavigate('battle-history')}>
-            <Swords className="w-4 h-4 mr-2" />
-            {t('battleHistory') || '对战历史'}
-          </DropdownMenuItem>
-          
-          <DropdownMenuSeparator />
-          
-          {/* 设置与个人 */}
-          <DropdownMenuItem onClick={() => onNavigate('settings')}>
-            <Cog className="w-4 h-4 mr-2" />
-            {t('nav.settings')}
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem onClick={() => setShowProfileSettings(true)}>
-            <Settings className="w-4 h-4 mr-2" />
-            {t('userProfile')}
-          </DropdownMenuItem>
-          
-          {!user.isGuest && (
-            <DropdownMenuItem onClick={() => setShowSubscriptionPlans(true)}>
-              <CreditCard className="w-4 h-4 mr-2" />
-              {t('premium')}
-            </DropdownMenuItem>
-          )}
-          
-          {!user.isGuest && (
-            <DropdownMenuItem onClick={() => setShowFriendSystem(true)}>
-              <Users className="w-4 h-4 mr-2" />
-              {t('friends') || '好友'}
-            </DropdownMenuItem>
-          )}
-          
-          {!user.isGuest && (
-            <DropdownMenuItem onClick={() => setShowBadgeCollection(true)}>
-              <Award className="w-4 h-4 mr-2" />
-              {t('badges') || '徽章'}
-            </DropdownMenuItem>
-          )}
-          
-          <DropdownMenuItem onClick={() => onNavigate('leaderboard')}>
-            <Trophy className="w-4 h-4 mr-2" />
-            {t('leaderboard')}
-          </DropdownMenuItem>
-          
-          {user.isAdmin && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onNavigate('admin')}>
-                <Shield className="w-4 h-4 mr-2" />
-                {t('adminPanel')}
+          <DropdownMenuContent 
+            align="end" 
+            className="w-56 sm:w-64 max-h-[80vh] overflow-y-auto"
+            sideOffset={8}
+          >
+            <DropdownMenuLabel className="flex flex-col py-3">
+              <span className="font-medium truncate">{user.username || user.email}</span>
+              <span className="text-sm text-muted-foreground">
+                {t('level')} {getUserLevel()}
+              </span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            
+            {/* 游戏功能区 */}
+            <div className="py-1">
+              <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {t('game.title') || 'Game'}
+              </p>
+              {renderMenuItem(
+                <GraduationCap className="w-4 h-4" />,
+                t('nav.practice'),
+                'practice',
+                'P'
+              )}
+              {renderMenuItem(
+                <History className="w-4 h-4" />,
+                t('nav.replays'),
+                'replays',
+                'R'
+              )}
+              {renderMenuItem(
+                <Swords className="w-4 h-4" />,
+                t('battleHistory') || '对战历史',
+                'battle-history',
+                'H'
+              )}
+            </div>
+            
+            <DropdownMenuSeparator />
+            
+            {/* 设置与个人 */}
+            <div className="py-1">
+              <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {t('nav.settings') || 'Account'}
+              </p>
+              {renderMenuItem(
+                <Cog className="w-4 h-4" />,
+                t('nav.settings'),
+                'settings',
+                'S'
+              )}
+              
+              <DropdownMenuItem onClick={() => setShowProfileSettings(true)}>
+                <Settings className="w-4 h-4 mr-2" />
+                {t('userProfile')}
               </DropdownMenuItem>
-            </>
-          )}
-          
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleSignOut}>
-            <LogOut className="w-4 h-4 mr-2" />
-            {t('signOut')}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+              
+              {!user.isGuest && (
+                <DropdownMenuItem onClick={() => setShowSubscriptionPlans(true)}>
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  {t('premium')}
+                </DropdownMenuItem>
+              )}
+              
+              {!user.isGuest && (
+                <DropdownMenuItem onClick={() => setShowFriendSystem(true)}>
+                  <Users className="w-4 h-4 mr-2" />
+                  {t('friends') || '好友'}
+                </DropdownMenuItem>
+              )}
+              
+              {!user.isGuest && (
+                <DropdownMenuItem onClick={() => setShowBadgeCollection(true)}>
+                  <Award className="w-4 h-4 mr-2" />
+                  {t('badges') || '徽章'}
+                </DropdownMenuItem>
+              )}
+            </div>
+            
+            <DropdownMenuSeparator />
+            
+            {renderMenuItem(
+              <Trophy className="w-4 h-4" />,
+              t('leaderboard'),
+              'leaderboard',
+              'L'
+            )}
+            
+            {user.isAdmin && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => onNavigate('admin')}>
+                  <Shield className="w-4 h-4 mr-2" />
+                  {t('adminPanel')}
+                </DropdownMenuItem>
+              </>
+            )}
+            
+            <DropdownMenuSeparator />
+            
+            {/* 快捷键提示 */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-2 text-xs text-muted-foreground">
+              <Keyboard className="w-3 h-3" />
+              <span>{t('keyboardShortcuts') || 'Keyboard shortcuts available'}</span>
+            </div>
+            
+            <DropdownMenuSeparator className="sm:hidden" />
+            
+            <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+              <LogOut className="w-4 h-4 mr-2" />
+              {t('signOut')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TooltipProvider>
 
       {showProfileSettings && (
         <UserProfileSettings 
@@ -204,11 +311,11 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
 
       {showBadgeCollection && (
         <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
           onClick={() => setShowBadgeCollection(false)}
         >
           <div 
-            className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg p-4"
+            className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg p-3 sm:p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <BadgeCollection onClose={() => setShowBadgeCollection(false)} />
