@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -13,7 +12,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, LogOut, Shield, Trophy, CreditCard, Users, Award, X } from 'lucide-react';
+import { 
+  User, Settings, LogOut, Shield, Trophy, CreditCard, Users, Award,
+  GraduationCap, History, Swords, Cog
+} from 'lucide-react';
 import UserProfileSettings from './UserProfileSettings';
 import SubscriptionPlans from './SubscriptionPlans';
 import FriendSystem from './FriendSystem';
@@ -110,6 +112,30 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          
+          {/* 游戏功能区 */}
+          <DropdownMenuItem onClick={() => onNavigate('practice')}>
+            <GraduationCap className="w-4 h-4 mr-2" />
+            {t('nav.practice')}
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem onClick={() => onNavigate('replays')}>
+            <History className="w-4 h-4 mr-2" />
+            {t('nav.replays')}
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem onClick={() => onNavigate('battle-history')}>
+            <Swords className="w-4 h-4 mr-2" />
+            {t('battleHistory') || '对战历史'}
+          </DropdownMenuItem>
+          
+          <DropdownMenuSeparator />
+          
+          {/* 设置与个人 */}
+          <DropdownMenuItem onClick={() => onNavigate('settings')}>
+            <Cog className="w-4 h-4 mr-2" />
+            {t('nav.settings')}
+          </DropdownMenuItem>
           
           <DropdownMenuItem onClick={() => setShowProfileSettings(true)}>
             <Settings className="w-4 h-4 mr-2" />

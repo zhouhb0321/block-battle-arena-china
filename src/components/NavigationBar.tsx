@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
-import { Play, Users, Settings, LogIn, Shield, History, Medal, GraduationCap, Swords } from 'lucide-react';
+import { Play, Users, LogIn, Medal } from 'lucide-react';
 import UserMenu from './UserMenu';
 import LanguageSelector from './LanguageSelector';
 import ThemeSwitcher from './ThemeSwitcher';
@@ -35,7 +34,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             </h1>
           </div>
 
-          {/* Navigation Links */}
+          {/* Navigation Links - 精简为3个核心按钮 */}
           <div className="hidden md:flex items-center space-x-4">
             <Button
               variant={currentView === 'game' ? 'default' : 'ghost'}
@@ -57,46 +56,6 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             </Button>
 
             <Button
-              variant={currentView === 'practice' ? 'default' : 'ghost'}
-              onClick={() => onViewChange('practice')}
-              className="flex items-center gap-2"
-              disabled={!isAuthenticated}
-            >
-              <GraduationCap className="w-4 h-4" />
-              {t('nav.practice')}
-            </Button>
-
-            <Button
-              variant={currentView === 'settings' ? 'default' : 'ghost'}
-              onClick={() => onViewChange('settings')}
-              className="flex items-center gap-2"
-              disabled={!isAuthenticated}
-            >
-              <Settings className="w-4 h-4" />
-              {t('nav.settings')}
-            </Button>
-
-            <Button
-              variant={currentView === 'replays' ? 'default' : 'ghost'}
-              onClick={() => onViewChange('replays')}
-              className="flex items-center gap-2"
-              disabled={!isAuthenticated}
-            >
-              <History className="w-4 h-4" />
-              {t('nav.replays')}
-            </Button>
-
-            <Button
-              variant={currentView === 'battle-history' ? 'default' : 'ghost'}
-              onClick={() => onViewChange('battle-history')}
-              className="flex items-center gap-2"
-              disabled={!isAuthenticated}
-            >
-              <Swords className="w-4 h-4" />
-              对战历史
-            </Button>
-
-            <Button
               variant={currentView === 'leaderboard' ? 'default' : 'ghost'}
               onClick={() => onViewChange('leaderboard')}
               className="flex items-center gap-2"
@@ -104,21 +63,6 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               <Medal className="w-4 h-4" />
               {t('nav.leaderboard')}
             </Button>
-
-            {/* Admin Button */}
-            {user?.isAdmin && (
-              <Button
-                variant={currentView === 'admin' ? 'default' : 'ghost'}
-                onClick={() => {
-                  console.log('导航栏管理面板按钮点击', { user: user.isAdmin });
-                  onViewChange('admin');
-                }}
-                className="flex items-center gap-2 text-game-purple"
-              >
-                <Shield className="w-4 h-4" />
-                {t('admin.panel')}
-              </Button>
-            )}
           </div>
 
           {/* User Menu, Theme Switcher, Language Selector, and Login Button */}
