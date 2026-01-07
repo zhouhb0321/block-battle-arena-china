@@ -416,6 +416,7 @@ export type Database = {
           created_by: string
           current_players: number
           custom_settings: Json | null
+          expires_at: string | null
           finished_at: string | null
           id: string
           max_players: number
@@ -435,6 +436,7 @@ export type Database = {
           created_by: string
           current_players?: number
           custom_settings?: Json | null
+          expires_at?: string | null
           finished_at?: string | null
           id?: string
           max_players?: number
@@ -454,6 +456,7 @@ export type Database = {
           created_by?: string
           current_players?: number
           custom_settings?: Json | null
+          expires_at?: string | null
           finished_at?: string | null
           id?: string
           max_players?: number
@@ -1767,6 +1770,7 @@ export type Database = {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
       }
+      cleanup_expired_rooms: { Args: never; Returns: undefined }
       cleanup_expired_sessions: { Args: never; Returns: undefined }
       get_subscribers_safe: {
         Args: never

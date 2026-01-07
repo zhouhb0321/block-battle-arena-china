@@ -15,45 +15,76 @@ interface EnhancedGameBoardProps {
   isLockDelayActive?: boolean;
   lockDelayResetCount?: number;
   clearingLines?: number[];
+  // 4W 模式支持 - 动态棋盘尺寸
+  boardWidth?: number;   // 棋盘宽度 (4-10)
+  boardHeight?: number;  // 可见行数 (10-40)
 }
 
 const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
   board,
   currentPiece,
   ghostPiece,
-  cellSize = 24,
+  cellSize: propCellSize,
   showGrid = true,
   showHiddenRows = true,
   isLockDelayActive = false,
   lockDelayResetCount = 0,
-  clearingLines = []
+  clearingLines = [],
+  boardWidth: propBoardWidth,
+  boardHeight: propBoardHeight
 }) => {
   const { settings } = useUserSettings();
   const { actualTheme } = useTheme();
   const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
+  
+  // 从 board 推断实际尺寸，或使用 props
+  const actualBoardWidth = propBoardWidth ?? board[0]?.length ?? 10;
+  const actualVisibleRows = propBoardHeight ?? 20;
+  const hiddenRows = 3;
+  const totalRows = actualVisibleRows + hiddenRows;
+  
+  // 自适应计算 cellSize 以适应屏幕
+  const calculateAdaptiveCellSize = () => {
+    if (propCellSize) return propCellSize;
+    
+    // 对于非标准尺寸棋盘，自动缩放
+    if (actualBoardWidth !== 10 || actualVisibleRows !== 20) {
+      const maxWidth = 280; // 最大棋盘宽度像素
+      const maxHeight = 480; // 最大棋盘高度像素
+      
+      const widthBasedSize = Math.floor(maxWidth / actualBoardWidth);
+      const heightBasedSize = Math.floor(maxHeight / actualVisibleRows);
+      
+      return Math.min(widthBasedSize, heightBasedSize, 28);
+    }
+    
+    return 24; // 默认 cellSize
+  };
+  
+  const cellSize = calculateAdaptiveCellSize();
 
   const createExtendedBoard = () => {
     // ✅ 增强防御性检查：确保 board 存在且是有效数组
     if (!board || !Array.isArray(board) || board.length === 0) {
       console.warn('[EnhancedGameBoard] Invalid board data', board);
-      return Array(23).fill(null).map(() => Array(10).fill(0));
+      return Array(totalRows).fill(null).map(() => Array(actualBoardWidth).fill(0));
     }
     
-    // ✅ 新增：验证并修复每一行
+    // ✅ 验证并修复每一行
     const extendedBoard = board.map((row, idx) => {
       if (!row || !Array.isArray(row)) {
         console.warn(`[EnhancedGameBoard] Row ${idx} is invalid, creating empty row`);
-        return Array(10).fill(0);
+        return Array(actualBoardWidth).fill(0);
       }
-      // 确保每行有 10 个元素
+      // 确保每行有正确数量的元素
       const fixedRow = [...row];
-      while (fixedRow.length < 10) fixedRow.push(0);
-      return fixedRow.slice(0, 10);
+      while (fixedRow.length < actualBoardWidth) fixedRow.push(0);
+      return fixedRow.slice(0, actualBoardWidth);
     });
     
-    // ✅ 确保棋盘有 23 行
-    while (extendedBoard.length < 23) {
-      extendedBoard.unshift(Array(10).fill(0));
+    // ✅ 确保棋盘有正确行数
+    while (extendedBoard.length < totalRows) {
+      extendedBoard.unshift(Array(actualBoardWidth).fill(0));
     }
 
     if (ghostPiece && settings.enableGhost && ghostPiece.type) {
@@ -105,12 +136,13 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
   const extendedBoard = createExtendedBoard();
   
   // 根据 showHiddenRows 决定渲染哪些行
-  const rowsToRender = showHiddenRows ? extendedBoard : extendedBoard.slice(3);
+  const rowsToRender = showHiddenRows ? extendedBoard : extendedBoard.slice(hiddenRows);
+  const displayRowCount = showHiddenRows ? totalRows : actualVisibleRows;
 
   const getCellStyle = (cellValue: number | string, actualRowIndex: number) => {
     let cellStyle: React.CSSProperties = {};
     let cellClass = '';
-    const isHidden = showHiddenRows && actualRowIndex < 3;
+    const isHidden = showHiddenRows && actualRowIndex < hiddenRows;
     const isClearing = clearingLines.includes(actualRowIndex);
 
     if (typeof cellValue === 'string') {
@@ -199,16 +231,16 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
       <div 
         className="game-board relative border-2 border-gray-600 bg-transparent"
         style={{
-          width: cellSize * 10,
-          height: cellSize * (showHiddenRows ? 23 : 20),
+          width: cellSize * actualBoardWidth,
+          height: cellSize * displayRowCount,
           display: 'grid',
-          gridTemplateColumns: `repeat(10, ${cellSize}px)`,
-          gridTemplateRows: `repeat(${showHiddenRows ? 23 : 20}, ${cellSize}px)`,
+          gridTemplateColumns: `repeat(${actualBoardWidth}, ${cellSize}px)`,
+          gridTemplateRows: `repeat(${displayRowCount}, ${cellSize}px)`,
         }}
       >
         {rowsToRender.map((row, displayIndex) => {
           // 计算实际行索引（用于消行动画等）
-          const actualRowIndex = showHiddenRows ? displayIndex : displayIndex + 3;
+          const actualRowIndex = showHiddenRows ? displayIndex : displayIndex + hiddenRows;
           return row.map((cellValue, colIndex) => {
             const { cellStyle, cellClass } = getCellStyle(cellValue, actualRowIndex);
             
@@ -216,7 +248,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
               <div
                 key={`${actualRowIndex}-${colIndex}`}
                 className={`game-cell ${cellClass} ${
-                  showHiddenRows && actualRowIndex < 3 ? 'hidden-row' : ''
+                  showHiddenRows && actualRowIndex < hiddenRows ? 'hidden-row' : ''
                 } ${showGrid ? 'show-grid' : ''}`}
                 style={{
                   ...cellStyle,
