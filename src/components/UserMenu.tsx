@@ -50,8 +50,13 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
   const [showBadgeCollection, setShowBadgeCollection] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  // 键盘快捷键处理
+  // 键盘快捷键处理 - 游戏进行中禁用导航快捷键
   const handleKeyboardShortcut = useCallback((e: KeyboardEvent) => {
+    // 游戏进行中或回放中，不处理导航快捷键（避免与游戏控制键冲突）
+    if (gameRecording.isActive || gameRecording.isReplaying) {
+      return;
+    }
+
     // 忽略在输入框中的按键
     if (
       e.target instanceof HTMLInputElement || 
@@ -68,7 +73,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
       e.preventDefault();
       onNavigate(shortcut.action);
     }
-  }, [onNavigate, user]);
+  }, [onNavigate, user, gameRecording.isActive, gameRecording.isReplaying]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyboardShortcut);
