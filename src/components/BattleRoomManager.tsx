@@ -62,6 +62,15 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
   const loadRooms = async () => {
     try {
       setError(null);
+      
+      // 先触发清理过期房间
+      try {
+        await supabase.rpc('cleanup_expired_rooms');
+      } catch (cleanupErr) {
+        // 清理失败不影响加载房间列表
+        debugLog.warn('Failed to cleanup expired rooms:', cleanupErr);
+      }
+      
       const { data, error } = await supabase
         .from('battle_rooms')
         .select('*')
@@ -141,7 +150,12 @@ const BattleRoomManager: React.FC<BattleRoomManagerProps> = ({ onJoinRoom }) => 
             time_limit: config.time_limit,
             allow_hold: config.allow_hold,
             starting_level: config.starting_level,
-            preset: config.preset
+            preset: config.preset,
+            board_width: config.board_width,
+            board_height: config.board_height,
+            garbage_strategy: config.garbage_strategy,
+            attack_multiplier: config.attack_multiplier,
+            lock_delay_mode: config.lock_delay_mode
           } : undefined,
           room_password: config?.room_password,
           allow_spectators: config?.allow_spectators ?? true

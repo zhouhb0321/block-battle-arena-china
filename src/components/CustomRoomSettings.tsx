@@ -16,14 +16,17 @@ export interface CustomRoomConfig {
   time_limit: number | null;
   allow_hold: boolean;
   starting_level: number;
-  preset: 'classic' | 'modern' | 'ultra_fast' | 'custom';
+  preset: 'classic' | 'modern' | 'ultra_fast' | '4wide' | 'tall' | 'custom';
   room_password?: string;
   allow_spectators: boolean;
-  // 新增对战设置
+  // 对战设置
   garbage_strategy: 'instant' | 'delayed' | 'cancellable';
   attack_multiplier: number;
   lock_delay_mode: 'classic' | 'modern' | 'extended';
   seed?: string;
+  // 棋盘尺寸设置 (4W 模式支持)
+  board_width: number;   // 4-10 列
+  board_height: number;  // 10-40 行（可见行数）
 }
 
 interface CustomRoomSettingsProps {
@@ -44,6 +47,8 @@ const PRESETS: Record<string, Partial<CustomRoomConfig>> = {
     garbage_strategy: 'instant',
     attack_multiplier: 1.0,
     lock_delay_mode: 'modern',
+    board_width: 10,
+    board_height: 20,
   },
   modern: {
     preset: 'modern',
@@ -55,6 +60,8 @@ const PRESETS: Record<string, Partial<CustomRoomConfig>> = {
     garbage_strategy: 'cancellable',
     attack_multiplier: 1.2,
     lock_delay_mode: 'modern',
+    board_width: 10,
+    board_height: 20,
   },
   ultra_fast: {
     preset: 'ultra_fast',
@@ -66,6 +73,34 @@ const PRESETS: Record<string, Partial<CustomRoomConfig>> = {
     garbage_strategy: 'instant',
     attack_multiplier: 1.5,
     lock_delay_mode: 'classic',
+    board_width: 10,
+    board_height: 20,
+  },
+  '4wide': {
+    preset: '4wide',
+    gravity_level: 1,
+    garbage_multiplier: 1.0,
+    time_limit: null,
+    allow_hold: true,
+    starting_level: 1,
+    garbage_strategy: 'instant',
+    attack_multiplier: 1.0,
+    lock_delay_mode: 'modern',
+    board_width: 4,
+    board_height: 20,
+  },
+  tall: {
+    preset: 'tall',
+    gravity_level: 1,
+    garbage_multiplier: 1.0,
+    time_limit: null,
+    allow_hold: true,
+    starting_level: 1,
+    garbage_strategy: 'instant',
+    attack_multiplier: 1.0,
+    lock_delay_mode: 'modern',
+    board_width: 10,
+    board_height: 40,
   },
 };
 
@@ -88,6 +123,8 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
     attack_multiplier: 1.0,
     lock_delay_mode: 'modern',
     seed: '',
+    board_width: 10,
+    board_height: 20,
   });
   
   const [usePassword, setUsePassword] = useState(false);
@@ -149,7 +186,7 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
                     标准重力，标准垃圾行，无时间限制
                   </CardDescription>
                   <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                    <div>重力: 等级 1</div>
+                    <div>棋盘: 10×20</div>
                     <div>垃圾行: 1.0x</div>
                     <div>允许 Hold</div>
                   </div>
@@ -173,7 +210,7 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
                     快速重力，增强垃圾行，3分钟限时
                   </CardDescription>
                   <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                    <div>重力: 等级 3</div>
+                    <div>棋盘: 10×20</div>
                     <div>垃圾行: 1.2x</div>
                     <div>时限: 180秒</div>
                   </div>
@@ -197,9 +234,57 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
                     超高重力，双倍垃圾行，禁用Hold
                   </CardDescription>
                   <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                    <div>重力: 等级 10</div>
+                    <div>棋盘: 10×20</div>
                     <div>垃圾行: 2.0x</div>
                     <div>禁用 Hold</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className={`cursor-pointer transition-all ${
+                  config.preset === '4wide' 
+                    ? 'border-primary border-2' 
+                    : 'hover:border-primary/50'
+                }`}
+                onClick={() => handlePresetChange('4wide')}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="w-5 h-5 text-orange-500" />
+                    <h3 className="font-semibold">4W 模式</h3>
+                  </div>
+                  <CardDescription className="text-xs">
+                    窄棋盘挑战，只有4列宽度
+                  </CardDescription>
+                  <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                    <div>棋盘: 4×20</div>
+                    <div>垃圾行: 1.0x</div>
+                    <div>允许 Hold</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className={`cursor-pointer transition-all ${
+                  config.preset === 'tall' 
+                    ? 'border-primary border-2' 
+                    : 'hover:border-primary/50'
+                }`}
+                onClick={() => handlePresetChange('tall')}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="w-5 h-5 text-green-500" />
+                    <h3 className="font-semibold">高塔模式</h3>
+                  </div>
+                  <CardDescription className="text-xs">
+                    超高棋盘，40行堆叠空间
+                  </CardDescription>
+                  <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                    <div>棋盘: 10×40</div>
+                    <div>垃圾行: 1.0x</div>
+                    <div>允许 Hold</div>
                   </div>
                 </CardContent>
               </Card>
@@ -208,6 +293,51 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
 
           {/* 自定义设置 */}
           <TabsContent value="custom" className="space-y-6">
+            {/* 棋盘尺寸设置 */}
+            <div className="p-4 rounded-lg bg-muted/30 space-y-4">
+              <h4 className="font-medium text-sm">棋盘尺寸</h4>
+              
+              {/* 棋盘宽度 */}
+              <div className="space-y-2">
+                <Label>棋盘宽度: {config.board_width} 列</Label>
+                <Slider
+                  value={[config.board_width]}
+                  onValueChange={([value]) => setConfig(prev => ({ 
+                    ...prev, 
+                    board_width: value,
+                    preset: 'custom'
+                  }))}
+                  min={4}
+                  max={10}
+                  step={1}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  4 列 = 4W 模式，10 列 = 标准模式
+                </p>
+              </div>
+
+              {/* 棋盘高度 */}
+              <div className="space-y-2">
+                <Label>棋盘高度: {config.board_height} 行</Label>
+                <Slider
+                  value={[config.board_height]}
+                  onValueChange={([value]) => setConfig(prev => ({ 
+                    ...prev, 
+                    board_height: value,
+                    preset: 'custom'
+                  }))}
+                  min={10}
+                  max={40}
+                  step={5}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  10-40 行可见区域（默认 20 行）
+                </p>
+              </div>
+            </div>
+
             {/* 重力等级 */}
             <div className="space-y-2">
               <Label>重力等级: {config.gravity_level}</Label>

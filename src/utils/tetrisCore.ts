@@ -2,13 +2,18 @@
 import type { GamePiece } from './gameTypes';
 import { TETROMINO_TYPE_IDS, getPieceShape } from './pieceGeneration';
 
-// Board constants
+// Board constants (defaults)
 export const BOARD_WIDTH = 10;
-export const BOARD_HEIGHT = 23;
+export const BOARD_HEIGHT = 23;  // 3 hidden + 20 visible
+export const DEFAULT_VISIBLE_ROWS = 20;
+export const HIDDEN_ROWS = 3;
 
-// Create empty board
-export const createEmptyBoard = (): number[][] => {
-  return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
+// Create empty board with configurable dimensions
+export const createEmptyBoard = (
+  width: number = BOARD_WIDTH, 
+  height: number = BOARD_HEIGHT
+): number[][] => {
+  return Array(height).fill(null).map(() => Array(width).fill(0));
 };
 
 // ✅ 获取方块旋转后的形状（核心修复）
@@ -25,13 +30,22 @@ export const getRotatedShape = (piece: GamePiece): number[][] => {
   return getPieceShape(pieceType, rotation);
 };
 
-// 检查给定的方块位置是否有效
-export const isValidPosition = (board: number[][], piece: GamePiece): boolean => {
+// 检查给定的方块位置是否有效 - 支持动态棋盘尺寸
+export const isValidPosition = (
+  board: number[][], 
+  piece: GamePiece,
+  boardWidth?: number,
+  boardHeight?: number
+): boolean => {
   // Defensive check: ensure piece is defined and has valid structure
   if (!piece || !piece.type || !piece.type.shape) {
     console.error('[tetrisCore] isValidPosition: piece structure is undefined or invalid', piece);
     return false;
   }
+  
+  // 使用传入的尺寸或从棋盘推断
+  const width = boardWidth ?? board[0]?.length ?? BOARD_WIDTH;
+  const height = boardHeight ?? board.length ?? BOARD_HEIGHT;
   
   const { x, y } = piece;
   // ✅ 使用旋转后的形状
@@ -50,12 +64,12 @@ export const isValidPosition = (board: number[][], piece: GamePiece): boolean =>
         let boardY = y + row;
 
         // 允许在顶部区域旋转(允许负Y),但仍检查水平边界和下方边界
-        if (boardX < 0 || boardX >= BOARD_WIDTH || boardY >= BOARD_HEIGHT) {
+        if (boardX < 0 || boardX >= width || boardY >= height) {
           return false;
         }
         
         // 只有在棋盘范围内才检查碰撞
-        if (boardY >= 0 && board[boardY][boardX] !== 0) {
+        if (boardY >= 0 && board[boardY] && board[boardY][boardX] !== 0) {
           return false;
         }
       }
@@ -109,8 +123,15 @@ export const placePiece = (board: number[][], piece: GamePiece): number[][] => {
   return newBoard;
 };
 
-// 移除完整的行
-export const clearLines = (board: number[][]): { newBoard: number[][]; linesCleared: number } => {
+// 移除完整的行 - 支持动态棋盘尺寸
+export const clearLines = (
+  board: number[][],
+  boardWidth?: number,
+  boardHeight?: number
+): { newBoard: number[][]; linesCleared: number } => {
+  const width = boardWidth ?? board[0]?.length ?? BOARD_WIDTH;
+  const height = boardHeight ?? board.length ?? BOARD_HEIGHT;
+  
   let linesCleared = 0;
   const newBoard = board.filter(row => {
     if (row.every(cell => cell !== 0)) {
@@ -120,8 +141,8 @@ export const clearLines = (board: number[][]): { newBoard: number[][]; linesClea
     return true;
   });
 
-  while (newBoard.length < BOARD_HEIGHT) {
-    newBoard.unshift(Array(BOARD_WIDTH).fill(0));
+  while (newBoard.length < height) {
+    newBoard.unshift(Array(width).fill(0));
   }
 
   return { newBoard, linesCleared };
