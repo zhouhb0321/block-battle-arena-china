@@ -12,7 +12,7 @@ import SpectatorModeToggle from './SpectatorModeToggle';
 import { useSpectatorMode } from '@/hooks/useSpectatorMode';
 import { 
   Users, Crown, Check, X, Copy, MessageSquare, 
-  Play, ArrowLeft, Eye, Settings, Send, Share2
+  Play, ArrowLeft, Eye, Settings, Send, Share2, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,10 +43,18 @@ interface BattleRoom {
   max_players: number;
   current_players: number;
   created_by: string;
-  custom_settings?: any;
+  custom_settings?: {
+    team_mode?: boolean;
+    team_size?: number;
+    team_scoring?: 'individual' | 'combined';
+    attack_strategy?: 'focus' | 'random' | 'even';
+    [key: string]: any;
+  };
   room_password?: string;
   allow_spectators?: boolean;
   spectator_count?: number;
+  team_mode?: boolean;
+  team_size?: number;
 }
 
 interface BattleRoomLobbyProps {
@@ -274,6 +282,78 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
     onLeave();
   };
 
+  // 切换队伍
+  const handleSwitchTeam = async () => {
+    if (!user || !room) return;
+    
+    const myParticipant = participants.find(p => p.user_id === user.id);
+    if (!myParticipant) return;
+
+    const currentTeam = myParticipant.team || 'A';
+    const newTeam = currentTeam === 'A' ? 'B' : 'A';
+    
+    // 检查目标队伍是否已满
+    const teamSize = room.custom_settings?.team_size || 2;
+    const targetTeamCount = participants.filter(p => p.team === newTeam).length;
+    
+    if (targetTeamCount >= teamSize) {
+      toast.error('目标队伍已满');
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('battle_participants')
+      .update({ team: newTeam })
+      .eq('room_id', roomId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast.error('切换队伍失败');
+      return;
+    }
+
+    toast.success(`已切换到 Team ${newTeam}`);
+  };
+
+  // 团队模式相关计算
+  const isTeamMode = room?.custom_settings?.team_mode || room?.team_mode;
+  const teamSize = room?.custom_settings?.team_size || room?.team_size || 2;
+  const teamAPlayers = participants.filter(p => p.team === 'A');
+  const teamBPlayers = participants.filter(p => p.team === 'B');
+  const myParticipant = participants.find(p => p.user_id === user?.id);
+
+  // 团队模式下的玩家卡片组件
+  const TeamPlayerCard = ({ player, isHost, isMe }: { player: Participant; isHost: boolean; isMe: boolean }) => (
+    <div className={`p-3 rounded-lg border-2 transition-all ${
+      player.score === 1 ? 'border-green-500 bg-green-500/10' : 'border-border bg-card'
+    } ${isMe ? 'ring-2 ring-primary' : ''}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+            {isHost ? (
+              <Crown className="h-4 w-4 text-yellow-500" />
+            ) : (
+              <Users className="h-4 w-4 text-primary" />
+            )}
+          </div>
+          <div>
+            <p className="font-medium text-sm">{player.username}</p>
+            <p className="text-xs text-muted-foreground">
+              {isHost ? '房主' : isMe ? '你' : '队友'}
+            </p>
+          </div>
+        </div>
+        {player.score === 1 ? (
+          <Badge className="bg-green-500 text-xs">
+            <Check className="h-3 w-3" />
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="text-xs">等待</Badge>
+        )}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -348,63 +428,133 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5" />
               玩家列表
+              {isTeamMode && (
+                <Badge variant="outline" className="ml-2">
+                  {room.custom_settings?.team_size || 2}v{room.custom_settings?.team_size || 2} 团队赛
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              {Array.from({ length: room.max_players }).map((_, index) => {
-                const participant = participants[index];
+            {isTeamMode ? (
+              // 团队模式布局
+              <div className="grid grid-cols-2 gap-6">
+                {/* Team A */}
+                <div className="border-l-4 border-blue-500 pl-4 space-y-3">
+                  <h3 className="font-bold text-blue-500 flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Team A
+                  </h3>
+                  {teamAPlayers.map((player) => (
+                    <TeamPlayerCard 
+                      key={player.id} 
+                      player={player} 
+                      isHost={player.user_id === room.created_by}
+                      isMe={player.user_id === user?.id}
+                    />
+                  ))}
+                  {/* 空位 */}
+                  {Array(teamSize - teamAPlayers.length).fill(null).map((_, i) => (
+                    <div key={`a-empty-${i}`} className="p-3 rounded-lg border-2 border-dashed border-muted bg-muted/10 text-center text-sm text-muted-foreground">
+                      等待玩家加入...
+                    </div>
+                  ))}
+                </div>
                 
-                return (
-                  <div
-                    key={index}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      participant 
-                        ? participant.score === 1
-                          ? 'border-green-500 bg-green-500/10'
-                          : 'border-border bg-card'
-                        : 'border-dashed border-muted bg-muted/20'
-                    }`}
-                  >
-                    {participant ? (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                            {participant.user_id === room.created_by ? (
-                              <Crown className="h-5 w-5 text-yellow-500" />
-                            ) : (
-                              <Users className="h-5 w-5 text-primary" />
-                            )}
+                {/* Team B */}
+                <div className="border-l-4 border-red-500 pl-4 space-y-3">
+                  <h3 className="font-bold text-red-500 flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Team B
+                  </h3>
+                  {teamBPlayers.map((player) => (
+                    <TeamPlayerCard 
+                      key={player.id} 
+                      player={player} 
+                      isHost={player.user_id === room.created_by}
+                      isMe={player.user_id === user?.id}
+                    />
+                  ))}
+                  {/* 空位 */}
+                  {Array(teamSize - teamBPlayers.length).fill(null).map((_, i) => (
+                    <div key={`b-empty-${i}`} className="p-3 rounded-lg border-2 border-dashed border-muted bg-muted/10 text-center text-sm text-muted-foreground">
+                      等待玩家加入...
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              // 普通模式布局
+              <div className="grid grid-cols-2 gap-4">
+                {Array.from({ length: room.max_players }).map((_, index) => {
+                  const participant = participants[index];
+                  
+                  return (
+                    <div
+                      key={index}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        participant 
+                          ? participant.score === 1
+                            ? 'border-green-500 bg-green-500/10'
+                            : 'border-border bg-card'
+                          : 'border-dashed border-muted bg-muted/20'
+                      }`}
+                    >
+                      {participant ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                              {participant.user_id === room.created_by ? (
+                                <Crown className="h-5 w-5 text-yellow-500" />
+                              ) : (
+                                <Users className="h-5 w-5 text-primary" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium">{participant.username}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {participant.user_id === room.created_by ? '房主' : `玩家 ${index + 1}`}
+                              </p>
+                            </div>
                           </div>
                           <div>
-                            <p className="font-medium">{participant.username}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {participant.user_id === room.created_by ? '房主' : `玩家 ${index + 1}`}
-                            </p>
+                            {participant.score === 1 ? (
+                              <Badge className="bg-green-500">
+                                <Check className="h-3 w-3 mr-1" />
+                                已准备
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">
+                                等待中
+                              </Badge>
+                            )}
                           </div>
                         </div>
-                        <div>
-                          {participant.score === 1 ? (
-                            <Badge className="bg-green-500">
-                              <Check className="h-3 w-3 mr-1" />
-                              已准备
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">
-                              等待中
-                            </Badge>
-                          )}
+                      ) : (
+                        <div className="flex items-center justify-center h-14 text-muted-foreground">
+                          <span>等待玩家加入...</span>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-14 text-muted-foreground">
-                        <span>等待玩家加入...</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 团队模式下的切换队伍按钮 */}
+            {isTeamMode && myParticipant && (
+              <div className="mt-4 pt-4 border-t flex justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={handleSwitchTeam}
+                  disabled={countdown !== null}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  切换到 {myParticipant.team === 'A' ? 'Team B' : 'Team A'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
