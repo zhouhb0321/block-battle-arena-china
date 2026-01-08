@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription } from '@/components/ui/card';
-import { Lock, Unlock, Settings2, Zap, Target } from 'lucide-react';
+import { Lock, Unlock, Settings2, Zap, Target, Users } from 'lucide-react';
 
 export interface CustomRoomConfig {
   gravity_level: number;
@@ -27,6 +27,11 @@ export interface CustomRoomConfig {
   // 棋盘尺寸设置 (4W 模式支持)
   board_width: number;   // 4-10 列
   board_height: number;  // 10-40 行（可见行数）
+  // 团队对战设置
+  team_mode: boolean;
+  team_size: number;     // 2=2v2, 3=3v3, 4=4v4
+  team_scoring: 'individual' | 'combined';
+  attack_strategy: 'focus' | 'random' | 'even';
 }
 
 interface CustomRoomSettingsProps {
@@ -125,6 +130,10 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
     seed: '',
     board_width: 10,
     board_height: 20,
+    team_mode: mode === 'league',
+    team_size: 2,
+    team_scoring: 'combined',
+    attack_strategy: 'random',
   });
   
   const [usePassword, setUsePassword] = useState(false);
@@ -568,6 +577,100 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
               <p className="text-xs text-muted-foreground">
                 固定种子可用于比赛复现，相同种子会生成相同的方块序列
               </p>
+            </div>
+
+            {/* 团队模式设置 */}
+            <div className="p-4 rounded-lg bg-muted/30 space-y-4">
+              <h4 className="font-medium text-sm flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                团队对战设置
+              </h4>
+
+              {/* 开启团队模式 */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>团队对战模式</Label>
+                  <p className="text-xs text-muted-foreground">
+                    开启后玩家将分为两队进行对战
+                  </p>
+                </div>
+                <Switch
+                  checked={config.team_mode}
+                  onCheckedChange={(checked) => setConfig(prev => ({ 
+                    ...prev, 
+                    team_mode: checked 
+                  }))}
+                />
+              </div>
+
+              {config.team_mode && (
+                <>
+                  {/* 队伍大小 */}
+                  <div className="space-y-2">
+                    <Label>队伍规模</Label>
+                    <Select
+                      value={config.team_size.toString()}
+                      onValueChange={(value) => setConfig(prev => ({ 
+                        ...prev, 
+                        team_size: parseInt(value)
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2">2v2 (每队2人)</SelectItem>
+                        <SelectItem value="3">3v3 (每队3人)</SelectItem>
+                        <SelectItem value="4">4v4 (每队4人)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 积分模式 */}
+                  <div className="space-y-2">
+                    <Label>积分模式</Label>
+                    <Select
+                      value={config.team_scoring}
+                      onValueChange={(value: 'individual' | 'combined') => setConfig(prev => ({ 
+                        ...prev, 
+                        team_scoring: value
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="combined">团队积分 - 全队攻击力相加</SelectItem>
+                        <SelectItem value="individual">个人积分 - 取最高攻击力</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      团队积分模式下，所有队员的攻击力会合并计算
+                    </p>
+                  </div>
+
+                  {/* 攻击分配策略 */}
+                  <div className="space-y-2">
+                    <Label>攻击分配策略</Label>
+                    <Select
+                      value={config.attack_strategy}
+                      onValueChange={(value: 'focus' | 'random' | 'even') => setConfig(prev => ({ 
+                        ...prev, 
+                        attack_strategy: value
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="focus">集中攻击 - 攻击对方最强玩家</SelectItem>
+                        <SelectItem value="random">随机攻击 - 随机选择目标</SelectItem>
+                        <SelectItem value="even">平均分配 - 攻击所有对手</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
             </div>
           </TabsContent>
         </Tabs>

@@ -159,9 +159,14 @@ export const useBattleRoom = () => {
         throw new Error('房间不存在或已关闭');
       }
 
-      // 检查密码
-      if (room.room_password && room.room_password !== password) {
-        throw new Error('房间密码错误');
+      // 检查密码 - 更明确的错误提示
+      if (room.room_password) {
+        if (!password) {
+          throw new Error('此房间需要密码');
+        }
+        if (room.room_password !== password) {
+          throw new Error('房间密码错误');
+        }
       }
 
       // 检查人数
@@ -182,6 +187,23 @@ export const useBattleRoom = () => {
         return room;
       }
 
+      // 团队模式：自动分配队伍
+      let assignedTeam: string | undefined;
+      const customSettings = room.custom_settings as any;
+      if (customSettings?.team_mode) {
+        // 获取当前队伍人数
+        const { data: currentParticipants } = await supabase
+          .from('battle_participants')
+          .select('team')
+          .eq('room_id', room.id);
+        
+        const teamACount = currentParticipants?.filter(p => p.team === 'A').length || 0;
+        const teamBCount = currentParticipants?.filter(p => p.team === 'B').length || 0;
+        
+        // 分配到人数较少的队伍
+        assignedTeam = teamACount <= teamBCount ? 'A' : 'B';
+      }
+
       // 加入房间 (使用数据库允许的状态值: active, eliminated, disconnected)
       const { error: joinError } = await supabase
         .from('battle_participants')
@@ -190,7 +212,8 @@ export const useBattleRoom = () => {
           user_id: user.id,
           username: user.username || 'Player',
           position: room.current_players + 1,
-          status: 'active'
+          status: 'active',
+          team: assignedTeam
         });
 
       if (joinError) throw joinError;

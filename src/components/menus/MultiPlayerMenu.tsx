@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import TeamBattleMenu from './TeamBattleMenu';
 import { useBattleRoom } from '@/hooks/useBattleRoom';
 import CustomRoomSettings, { CustomRoomConfig } from '@/components/CustomRoomSettings';
+import RoomPasswordDialog from '@/components/RoomPasswordDialog';
 
 interface MultiPlayerMenuProps {
   onSelectMode: (mode: string, config?: any) => void;
@@ -32,6 +33,12 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
   const [showRoomSettings, setShowRoomSettings] = useState(false);
   const [pendingMode, setPendingMode] = useState<'versus' | 'battle_royale' | 'league' | null>(null);
   const [subView, setSubView] = useState<'menu' | 'team-battle'>('menu');
+  
+  // 密码对话框状态
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [pendingRoom, setPendingRoom] = useState<{ id: string; code: string } | null>(null);
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     loadRoomStats();
@@ -206,6 +213,29 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     setError(null);
 
     try {
+      // 先查询房间是否有密码
+      const { data: roomData, error: queryError } = await supabase
+        .from('battle_rooms')
+        .select('id, room_code, room_password, status')
+        .eq('room_code', roomCode.trim())
+        .eq('status', 'waiting')
+        .single();
+
+      if (queryError || !roomData) {
+        setError('房间不存在或已关闭');
+        setIsJoining(false);
+        return;
+      }
+
+      // 如果房间有密码，显示密码对话框
+      if (roomData.room_password) {
+        setPendingRoom({ id: roomData.id, code: roomData.room_code });
+        setShowPasswordDialog(true);
+        setIsJoining(false);
+        return;
+      }
+
+      // 无密码直接加入
       const room = await joinRoom(roomCode.trim());
       if (room) {
         toast.success('成功加入房间');
@@ -217,6 +247,36 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     } finally {
       setIsJoining(false);
     }
+  };
+
+  // 密码验证后加入房间
+  const handlePasswordConfirm = async (password: string) => {
+    if (!pendingRoom) return;
+
+    setPasswordLoading(true);
+    setPasswordError(undefined);
+
+    try {
+      const room = await joinRoom(pendingRoom.id, password);
+      if (room) {
+        setShowPasswordDialog(false);
+        setPendingRoom(null);
+        toast.success('成功加入房间');
+        onSelectMode('battle-lobby', { roomId: room.id });
+      } else {
+        setPasswordError('密码错误或加入失败');
+      }
+    } catch (error: any) {
+      setPasswordError(error.message || '密码验证失败');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handlePasswordDialogClose = () => {
+    setShowPasswordDialog(false);
+    setPendingRoom(null);
+    setPasswordError(undefined);
   };
 
   const menuOptions = [
@@ -405,6 +465,16 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
         }}
         onConfirm={handleRoomSettingsConfirm}
         mode={pendingMode || 'versus'}
+      />
+
+      {/* 房间密码输入对话框 */}
+      <RoomPasswordDialog
+        open={showPasswordDialog}
+        onClose={handlePasswordDialogClose}
+        onConfirm={handlePasswordConfirm}
+        roomCode={pendingRoom?.code || ''}
+        loading={passwordLoading}
+        error={passwordError}
       />
     </div>
   );
