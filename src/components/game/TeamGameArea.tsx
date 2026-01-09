@@ -45,8 +45,8 @@ interface TeamMember {
   };
 }
 
-// 状态同步节流间隔 (ms)
-const SYNC_THROTTLE_INTERVAL = 150;
+// 状态同步节流间隔 (ms) - 降低以提高实时性
+const SYNC_THROTTLE_INTERVAL = 100;
 
 const TeamGameArea: React.FC<TeamGameAreaProps> = ({
   roomId,
@@ -228,9 +228,34 @@ const TeamGameArea: React.FC<TeamGameAreaProps> = ({
         break;
 
       case 'team_state_update':
+        // 解压缩数据（如果是压缩的）
+        let gameData = message.data;
+        if (message.compressed && typeof decompressGameState === 'function') {
+          try {
+            gameData = decompressGameState(message.data, null);
+          } catch (e) {
+            console.warn('Failed to decompress game state:', e);
+          }
+        }
+        
         setParticipants(prev => prev.map(p => 
           p.id === message.userId 
-            ? { ...p, gameState: message.data }
+            ? { 
+                ...p, 
+                gameState: {
+                  board: gameData.board || p.gameState?.board || Array(23).fill(null).map(() => Array(10).fill(0)),
+                  score: gameData.score ?? p.gameState?.score ?? 0,
+                  lines: gameData.lines ?? p.gameState?.lines ?? 0,
+                  level: gameData.level ?? p.gameState?.level ?? 1,
+                  apm: gameData.apm ?? p.gameState?.apm ?? 0,
+                  pps: gameData.pps ?? p.gameState?.pps ?? 0,
+                  combo: gameData.combo ?? p.gameState?.combo ?? 0,
+                  b2b: gameData.b2b ?? p.gameState?.b2b ?? 0,
+                  totalAttack: gameData.totalAttack ?? p.gameState?.totalAttack ?? 0,
+                  alive: gameData.alive !== false,
+                  garbageQueued: gameData.garbageQueued ?? p.gameState?.garbageQueued ?? 0
+                }
+              }
             : p
         ));
         break;
