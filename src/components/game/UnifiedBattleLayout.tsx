@@ -19,6 +19,7 @@ import NextPiecePreview from '@/components/NextPiecePreview';
 import AchievementDisplay from '@/components/AchievementDisplay';
 import GameStatusIndicators from '@/components/GameStatusIndicators';
 import MiniPlayerView from './MiniPlayerView';
+import EnhancedMiniPlayerView from './EnhancedMiniPlayerView';
 import GarbageQueueDisplay from './GarbageQueueDisplay';
 import AdaptiveMultiPlayerLayout from './AdaptiveMultiPlayerLayout';
 import { 
@@ -517,31 +518,65 @@ const MultiPlayerLayout: React.FC<MultiPlayerLayoutProps> = ({
     const teamPlayers = allPlayers.filter(p => p.team === team);
     const alive = teamPlayers.filter(p => p.alive).length;
     const totalScore = teamPlayers.reduce((sum, p) => sum + p.score, 0);
-    return { alive, total: teamPlayers.length, totalScore };
+    const avgApm = teamPlayers.length > 0 
+      ? teamPlayers.reduce((sum, p) => sum + p.apm, 0) / teamPlayers.length 
+      : 0;
+    return { alive, total: teamPlayers.length, totalScore, avgApm };
   };
+
+  const myTeamStats = getTeamStats(mainPlayer.team || 'A');
+  const opponentTeamStats = getTeamStats(mainPlayer.team === 'A' ? 'B' : 'A');
 
   return (
     <div className="flex gap-4 justify-center">
-      {/* 左侧队友 */}
+      {/* 左侧: 队友棋盘 + 我方团队统计 */}
       {teammates.length > 0 && (
-        <div className="hidden lg:flex flex-col gap-2 w-[140px]">
-          <div className="flex items-center gap-1 text-sm font-medium text-primary mb-1">
-            <Shield className="w-4 h-4" />
+        <div className="hidden lg:flex flex-col gap-2 w-[100px]">
+          {/* 团队统计面板 */}
+          <Card className="bg-primary/5 border-primary/30 p-2">
+            <div className="flex items-center justify-between mb-1">
+              <Badge variant="default" className="text-[9px] px-1">
+                Team {mainPlayer.team || 'A'}
+              </Badge>
+              <span className="text-[9px] text-muted-foreground">
+                {myTeamStats.alive}/{myTeamStats.total}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-1 text-[9px]">
+              <div>
+                <span className="text-muted-foreground">总分</span>
+                <div className="font-mono">{(myTeamStats.totalScore / 1000).toFixed(1)}k</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">APM</span>
+                <div className="font-mono">{myTeamStats.avgApm.toFixed(0)}</div>
+              </div>
+            </div>
+          </Card>
+
+          <div className="flex items-center gap-1 text-xs font-medium text-primary mb-1">
+            <Shield className="w-3 h-3" />
             <span>队友</span>
           </div>
           {teammates.map(player => (
-            <MiniPlayerView
+            <EnhancedMiniPlayerView
               key={player.id}
-              username={player.username}
-              board={player.board}
-              score={player.score}
-              lines={player.lines}
-              apm={player.apm}
-              alive={player.alive}
-              team={player.team}
-              rank={player.rank}
-              garbageQueued={player.garbageQueued}
-              isUnderAttack={attackTarget === player.id}
+              player={{
+                id: player.id,
+                username: player.username,
+                team: player.team,
+                rank: player.rank,
+                board: player.board,
+                score: player.score,
+                lines: player.lines,
+                apm: player.apm,
+                pps: player.pps,
+                alive: player.alive,
+                garbageQueued: player.garbageQueued,
+                combo: player.combo,
+                b2b: player.b2b
+              }}
+              showFullBoard={true}
             />
           ))}
         </div>
@@ -616,79 +651,89 @@ const MultiPlayerLayout: React.FC<MultiPlayerLayoutProps> = ({
         <NextPiecePreview nextPieces={mainPlayer.nextPieces.slice(0, 5)} />
       </div>
 
-      {/* 右侧对手 */}
-      <div className="flex flex-col gap-2 w-[140px] md:w-[280px]">
-        <div className="flex items-center gap-1 text-sm font-medium text-destructive mb-1">
-          <Sword className="w-4 h-4" />
+      {/* 右侧: 对手棋盘 + 敌方团队统计 */}
+      <div className="flex flex-col gap-2 w-[100px] md:w-[200px]">
+        {/* 敌方团队统计 */}
+        {matchInfo.mode === 'team' && (
+          <Card className="bg-destructive/5 border-destructive/30 p-2">
+            <div className="flex items-center justify-between mb-1">
+              <Badge variant="destructive" className="text-[9px] px-1">
+                Team {mainPlayer.team === 'A' ? 'B' : 'A'}
+              </Badge>
+              <span className="text-[9px] text-muted-foreground">
+                {opponentTeamStats.alive}/{opponentTeamStats.total}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-1 text-[9px]">
+              <div>
+                <span className="text-muted-foreground">总分</span>
+                <div className="font-mono">{(opponentTeamStats.totalScore / 1000).toFixed(1)}k</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">APM</span>
+                <div className="font-mono">{opponentTeamStats.avgApm.toFixed(0)}</div>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        <div className="flex items-center gap-1 text-xs font-medium text-destructive mb-1">
+          <Sword className="w-3 h-3" />
           <span>对手</span>
-          <span className="text-xs text-muted-foreground ml-1">
-            ({opponents.filter(p => p.alive).length}/{opponents.length} 存活)
+          <span className="text-[9px] text-muted-foreground ml-1">
+            ({opponents.filter(p => p.alive).length}/{opponents.length})
           </span>
         </div>
 
         {/* 攻击目标选择器 */}
         {opponents.length > 1 && onTargetChange && (
           <div className="flex flex-wrap gap-1 mb-2">
-            {['random', 'badge', 'ko'].map(strategy => (
+            {['random', 'focus', 'ko'].map(strategy => (
               <Button
                 key={strategy}
                 variant={attackTarget === strategy ? "default" : "outline"}
                 size="sm"
-                className="text-xs h-6 px-2"
+                className="text-[9px] h-5 px-1.5"
                 onClick={() => onTargetChange(strategy)}
               >
                 {strategy === 'random' && '随机'}
-                {strategy === 'badge' && '徽章'}
+                {strategy === 'focus' && '集火'}
                 {strategy === 'ko' && 'KO'}
               </Button>
             ))}
           </div>
         )}
 
-        {/* 对手缩略图 */}
+        {/* 对手棋盘 - 使用精确渲染 */}
         <div className={cn(
           "grid gap-2",
           opponents.length <= 2 && "grid-cols-1",
-          opponents.length > 2 && opponents.length <= 4 && "grid-cols-2",
-          opponents.length > 4 && "grid-cols-2 md:grid-cols-3"
+          opponents.length > 2 && "grid-cols-2"
         )}>
           {opponents.map(player => (
-            <MiniPlayerView
+            <EnhancedMiniPlayerView
               key={player.id}
-              username={player.username}
-              board={player.board}
-              score={player.score}
-              lines={player.lines}
-              apm={player.apm}
-              alive={player.alive}
-              team={player.team}
-              rank={player.rank}
-              garbageQueued={player.garbageQueued}
-              isUnderAttack={attackTarget === player.id}
+              player={{
+                id: player.id,
+                username: player.username,
+                team: player.team,
+                rank: player.rank,
+                board: player.board,
+                score: player.score,
+                lines: player.lines,
+                apm: player.apm,
+                pps: player.pps,
+                alive: player.alive,
+                garbageQueued: player.garbageQueued,
+                combo: player.combo,
+                b2b: player.b2b
+              }}
+              showFullBoard={true}
+              isAttackTarget={attackTarget === player.id}
               onClick={() => onTargetChange?.(player.id)}
             />
           ))}
         </div>
-
-        {/* 团队统计 */}
-        {matchInfo.mode === 'team' && (
-          <Card className="mt-2 bg-destructive/5 border-destructive/20">
-            <CardContent className="p-2 text-xs">
-              <div className="flex justify-between">
-                <span>团队总分:</span>
-                <span className="font-mono">
-                  {getTeamStats(mainPlayer.team === 'A' ? 'B' : 'A').totalScore.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>存活人数:</span>
-                <span className="font-mono">
-                  {getTeamStats(mainPlayer.team === 'A' ? 'B' : 'A').alive}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

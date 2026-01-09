@@ -3,6 +3,21 @@ import { Badge } from '@/components/ui/badge';
 import { Skull, Zap, Target, Swords } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Block color mapping for precise rendering
+const getBlockColor = (cell: number): string => {
+  const colors: Record<number, string> = {
+    1: 'bg-cyan-500',      // I piece
+    2: 'bg-blue-600',      // J piece
+    3: 'bg-orange-500',    // L piece
+    4: 'bg-yellow-400',    // O piece
+    5: 'bg-green-500',     // S piece
+    6: 'bg-purple-500',    // T piece
+    7: 'bg-red-500',       // Z piece
+    8: 'bg-gray-500',      // Garbage
+  };
+  return colors[cell] || 'bg-muted/20';
+};
+
 interface MiniPlayerViewProps {
   username: string;
   board: number[][];
@@ -16,6 +31,7 @@ interface MiniPlayerViewProps {
   isAttacking?: boolean;
   garbageQueued?: number;
   isCurrentUser?: boolean;
+  showFullBoard?: boolean; // New prop for precise board rendering
   onClick?: () => void;
 }
 
@@ -32,6 +48,7 @@ const MiniPlayerView: React.FC<MiniPlayerViewProps> = ({
   isAttacking,
   garbageQueued = 0,
   isCurrentUser,
+  showFullBoard = false,
   onClick
 }) => {
   // Calculate stack height (simplified visualization)
@@ -47,8 +64,34 @@ const MiniPlayerView: React.FC<MiniPlayerViewProps> = ({
   const stackHeight = getStackHeight();
   const dangerLevel = stackHeight > 15 ? 'critical' : stackHeight > 10 ? 'warning' : 'safe';
 
-  // Render mini board (5 columns x 10 rows simplified view)
-  const renderMiniBoard = () => {
+  // Render full precision board (10 columns x 20 rows, 3px cells)
+  const renderFullPrecisionBoard = () => {
+    const cellSize = 3;
+    const visibleRows = board.slice(3); // Skip hidden rows
+    
+    return (
+      <div 
+        className="grid gap-0 border border-border/30 rounded overflow-hidden"
+        style={{ gridTemplateColumns: `repeat(10, ${cellSize}px)` }}
+      >
+        {visibleRows.map((row, rowIdx) =>
+          row.map((cell, colIdx) => (
+            <div
+              key={`${rowIdx}-${colIdx}`}
+              className={cn(
+                "transition-colors",
+                cell !== 0 ? getBlockColor(cell) : 'bg-muted/10'
+              )}
+              style={{ width: cellSize, height: cellSize }}
+            />
+          ))
+        )}
+      </div>
+    );
+  };
+
+  // Render simplified mini board (5 columns x 10 rows)
+  const renderSimplifiedBoard = () => {
     const miniRows = 10;
     const miniCols = 5;
     const rowStep = Math.floor(board.length / miniRows);
@@ -135,7 +178,7 @@ const MiniPlayerView: React.FC<MiniPlayerViewProps> = ({
           </div>
         )}
         
-        {renderMiniBoard()}
+        {showFullBoard ? renderFullPrecisionBoard() : renderSimplifiedBoard()}
       </div>
 
       {/* Stats */}
