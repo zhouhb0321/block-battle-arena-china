@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription } from '@/components/ui/card';
-import { Lock, Unlock, Settings2, Zap, Target, Users } from 'lucide-react';
+import { Lock, Unlock, Settings2, Zap, Target, Users, Video, Trophy } from 'lucide-react';
 
 export interface CustomRoomConfig {
   gravity_level: number;
@@ -32,6 +32,9 @@ export interface CustomRoomConfig {
   team_size: number;     // 2=2v2, 3=3v3, 4=4v4
   team_scoring: 'individual' | 'combined';
   attack_strategy: 'focus' | 'random' | 'even';
+  // 录像保存设置
+  save_replay: boolean;
+  tournament_type: 'elimination' | 'group_stage' | 'finals' | 'practice' | null;
 }
 
 interface CustomRoomSettingsProps {
@@ -134,6 +137,8 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
     team_size: 2,
     team_scoring: 'combined',
     attack_strategy: 'random',
+    save_replay: false,
+    tournament_type: null,
   });
   
   const [usePassword, setUsePassword] = useState(false);
@@ -671,6 +676,60 @@ export const CustomRoomSettings: React.FC<CustomRoomSettingsProps> = ({
                   </div>
                 </>
               )}
+            </div>
+
+            {/* 录像保存设置 */}
+            <div className="p-4 rounded-lg bg-muted/30 space-y-4">
+              <h4 className="font-medium text-sm flex items-center gap-2">
+                <Video className="w-4 h-4" />
+                录像保存设置
+              </h4>
+
+              {/* 强制保存所有录像 */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>保存所有对局录像</Label>
+                  <p className="text-xs text-muted-foreground">
+                    启用后，本房间所有对局都会自动保存录像
+                  </p>
+                </div>
+                <Switch
+                  checked={config.save_replay}
+                  onCheckedChange={(checked) => setConfig(prev => ({ 
+                    ...prev, 
+                    save_replay: checked 
+                  }))}
+                />
+              </div>
+
+              {/* 赛事类型 */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4" />
+                  赛事类型
+                </Label>
+                <Select
+                  value={config.tournament_type || 'none'}
+                  onValueChange={(value) => setConfig(prev => ({ 
+                    ...prev, 
+                    tournament_type: value === 'none' ? null : value as any
+                  }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">普通对战</SelectItem>
+                    <SelectItem value="elimination">淘汰赛</SelectItem>
+                    <SelectItem value="group_stage">小组赛</SelectItem>
+                    <SelectItem value="finals">决赛</SelectItem>
+                    <SelectItem value="practice">练习赛</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  淘汰赛、小组赛和决赛的录像会自动保存
+                </p>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

@@ -130,30 +130,35 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
     }
   });
 
-  // 添加键盘控制循环 - 只有在游戏结束时才停止
+  // 添加键盘控制循环 - 保持运行以确保 ARR 正常工作
   useEffect(() => {
-    if (gameLogic.gameOver) {
-      if (keyboardLoopRef.current) {
-        cancelAnimationFrame(keyboardLoopRef.current);
-        keyboardLoopRef.current = null;
-      }
-      return;
-    }
-
+    let isRunning = true;
+    
     const keyboardLoop = (timestamp: number) => {
-      keyboardControls.processHeldKeys(timestamp);
+      if (!isRunning) return;
+      
+      // 即使游戏结束或暂停，也保持循环运行（但不处理输入）
+      // processHeldKeys 内部会检查 gameOver 和 paused
+      if (!gameLogic.gameOver) {
+        keyboardControls.processHeldKeys(timestamp);
+      }
+      
       keyboardLoopRef.current = requestAnimationFrame(keyboardLoop);
     };
 
     keyboardLoopRef.current = requestAnimationFrame(keyboardLoop);
+    
+    console.log('[GameKeyboardHandler] Keyboard loop started');
 
     return () => {
+      isRunning = false;
       if (keyboardLoopRef.current) {
         cancelAnimationFrame(keyboardLoopRef.current);
         keyboardLoopRef.current = null;
       }
+      console.log('[GameKeyboardHandler] Keyboard loop stopped');
     };
-  }, [gameLogic.gameOver, keyboardControls, keyboardLoopRef]);
+  }, [keyboardControls, keyboardLoopRef, gameLogic.gameOver]);
 
   return null; // This component only handles keyboard logic
 };

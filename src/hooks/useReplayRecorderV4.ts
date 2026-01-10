@@ -1,5 +1,6 @@
 /**
  * Replay Recorder V4 - Placement-driven with Keyframes
+ * With conditional save logic based on Top 500, Personal Best, Ranked, Tournament
  */
 
 import { useState, useRef, useCallback } from 'react';
@@ -8,6 +9,7 @@ import { toast } from 'sonner';
 import type { V4ReplayData, V4Event, V4LockEvent, V4KeyframeEvent } from '@/utils/replayV4/types';
 import { ReplayOpcode, InputAction } from '@/utils/replayV4/types';
 import { encodeV4Replay, validateV4Replay, decodeV4Replay } from '@/utils/replayV4/codec';
+import { evaluateReplaySaveConditions, type SaveEvaluationResult } from '@/utils/replaySaveConditions';
 
 interface RecorderSettings {
   das: number;
@@ -322,8 +324,9 @@ export function useReplayRecorderV4() {
   const stopRecording = useCallback(async (
     gameStats: GameStats,
     gameMode: string,
-    endReason: 'complete' | 'gameover' | 'quit' = 'complete'
-  ): Promise<{ saved: boolean; replayId?: string; isNewRecord?: boolean }> => {
+    endReason: 'complete' | 'gameover' | 'quit' = 'complete',
+    roomContext?: { roomId?: string; saveReplay?: boolean; tournamentType?: string | null }
+  ): Promise<{ saved: boolean; replayId?: string; isNewRecord?: boolean; saveCategory?: string }> => {
     if (!isRecording) {
       console.warn('[RecorderV4] Not recording');
       return { saved: false };
@@ -332,7 +335,8 @@ export function useReplayRecorderV4() {
     console.log('[RecorderV4] Stopping recording', { 
       lockCount: lockCountRef.current, 
       eventCount: eventsRef.current.length,
-      endReason 
+      endReason,
+      roomContext
     });
     
     setIsRecording(false);
@@ -352,6 +356,28 @@ export function useReplayRecorderV4() {
       userId: currentUser.id,
       email: currentUser.email
     });
+    
+    // ===== NEW: Evaluate save conditions =====
+    const saveEvaluation = await evaluateReplaySaveConditions(
+      gameMode,
+      {
+        score: gameStats.score,
+        duration: gameStats.duration,
+        lines: gameStats.lines
+      },
+      currentUser.id,
+      roomContext
+    );
+    
+    console.log('[RecorderV4] Save evaluation result:', saveEvaluation);
+    
+    if (!saveEvaluation.shouldSave) {
+      console.log('[RecorderV4] ℹ️ Replay not saved:', saveEvaluation.reason);
+      toast.info('录像未保存', {
+        description: saveEvaluation.reason
+      });
+      return { saved: false };
+    }
     
     // Add END event
     const timestamp = Date.now() - startTimeRef.current;
@@ -546,7 +572,7 @@ export function useReplayRecorderV4() {
       const base64String = btoa(String.fromCharCode(...binaryData));
       console.log('[RecorderV4] Base64 encoded, length:', base64String.length, 'starts with:', base64String.substring(0, 20));
       
-      // Save to database using authenticated user ID
+      // Save to database using authenticated user ID with save category info
       const { data, error } = await supabase
         .from('compressed_replays')
         .insert({
@@ -566,7 +592,12 @@ export function useReplayRecorderV4() {
           game_settings: metadataRef.current.settings,
           checksum: extractedChecksum,
           is_playable: true,
-          username: currentUser.email?.split('@')[0] || metadataRef.current.username
+          username: currentUser.email?.split('@')[0] || metadataRef.current.username,
+          // NEW: Save category metadata
+          save_category: saveEvaluation.category,
+          leaderboard_rank: saveEvaluation.rank || null,
+          is_featured: saveEvaluation.category === 'top500',
+          is_personal_best: saveEvaluation.category === 'personal_best'
         })
         .select('id')
         .single();
@@ -584,16 +615,29 @@ export function useReplayRecorderV4() {
         id: data.id,
         lockCount: lockCountRef.current,
         eventCount: eventsRef.current.length,
-        size: binaryData.length
+        size: binaryData.length,
+        saveCategory: saveEvaluation.category,
+        rank: saveEvaluation.rank
       });
       
+      // Show appropriate toast based on save category
+      const categoryLabels: Record<string, string> = {
+        'top500': `🏆 进入 Top 500 排行榜 #${saveEvaluation.rank || ''}`,
+        'personal_best': '🎯 个人最佳记录！',
+        'ranked': '⚔️ 排位赛录像',
+        'tournament': '🏅 赛事录像',
+        'admin': '📹 管理员指定保存'
+      };
+      
       toast.success('录像已保存', {
-        description: `${lockCountRef.current} 个方块锁定, ${(binaryData.length / 1024).toFixed(1)} KB`
+        description: categoryLabels[saveEvaluation.category] || `${lockCountRef.current} 个方块, ${(binaryData.length / 1024).toFixed(1)} KB`
       });
       
       return {
         saved: true,
-        replayId: data.id
+        replayId: data.id,
+        isNewRecord: saveEvaluation.category === 'personal_best' || saveEvaluation.category === 'top500',
+        saveCategory: saveEvaluation.category
       };
       
     } catch (err) {

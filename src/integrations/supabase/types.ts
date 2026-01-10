@@ -423,12 +423,14 @@ export type Database = {
           mode: string
           room_code: string
           room_password: string | null
+          save_replay: boolean | null
           settings: Json | null
           spectator_count: number | null
           started_at: string | null
           status: string
           team_mode: boolean | null
           team_size: number | null
+          tournament_type: string | null
         }
         Insert: {
           allow_spectators?: boolean | null
@@ -443,12 +445,14 @@ export type Database = {
           mode: string
           room_code: string
           room_password?: string | null
+          save_replay?: boolean | null
           settings?: Json | null
           spectator_count?: number | null
           started_at?: string | null
           status?: string
           team_mode?: boolean | null
           team_size?: number | null
+          tournament_type?: string | null
         }
         Update: {
           allow_spectators?: boolean | null
@@ -463,12 +467,14 @@ export type Database = {
           mode?: string
           room_code?: string
           room_password?: string | null
+          save_replay?: boolean | null
           settings?: Json | null
           spectator_count?: number | null
           started_at?: string | null
           status?: string
           team_mode?: boolean | null
           team_size?: number | null
+          tournament_type?: string | null
         }
         Relationships: []
       }
@@ -494,10 +500,12 @@ export type Database = {
           is_personal_best: boolean
           is_playable: boolean | null
           is_world_record: boolean
+          leaderboard_rank: number | null
           match_id: string | null
           opponent_id: string | null
           place_actions_count: number | null
           pps: number
+          save_category: string | null
           seed: string
           updated_at: string
           user_id: string
@@ -525,10 +533,12 @@ export type Database = {
           is_personal_best?: boolean
           is_playable?: boolean | null
           is_world_record?: boolean
+          leaderboard_rank?: number | null
           match_id?: string | null
           opponent_id?: string | null
           place_actions_count?: number | null
           pps?: number
+          save_category?: string | null
           seed: string
           updated_at?: string
           user_id: string
@@ -556,10 +566,12 @@ export type Database = {
           is_personal_best?: boolean
           is_playable?: boolean | null
           is_world_record?: boolean
+          leaderboard_rank?: number | null
           match_id?: string | null
           opponent_id?: string | null
           place_actions_count?: number | null
           pps?: number
+          save_category?: string | null
           seed?: string
           updated_at?: string
           user_id?: string
