@@ -221,12 +221,40 @@ export const useKeyboardControls = ({
       if (heldTime > gameSettings.das) {
         const arrInterval = gameSettings.arr === 0 ? 0 : Math.max(gameSettings.arr, 1);
         
-        if (key === controls.moveLeft && (arrInterval === 0 || timeSinceLastMove >= arrInterval)) {
-          onMoveLeft();
-          lastMoveTime.current[key] = timestamp;
-        } else if (key === controls.moveRight && (arrInterval === 0 || timeSinceLastMove >= arrInterval)) {
-          onMoveRight();
-          lastMoveTime.current[key] = timestamp;
+        // Debug ARR triggering
+        if ((key === controls.moveLeft || key === controls.moveRight) && 
+            (arrInterval === 0 || timeSinceLastMove >= arrInterval)) {
+          console.log('[ARR Debug]', {
+            key,
+            heldTime: heldTime.toFixed(1),
+            das: gameSettings.das,
+            arr: gameSettings.arr,
+            arrInterval,
+            timeSinceLastMove: timeSinceLastMove.toFixed(1),
+            shouldTrigger: true
+          });
+        }
+        
+        if (key === controls.moveLeft) {
+          if (arrInterval === 0) {
+            // ARR=0: 每帧都移动（瞬移模式）
+            onMoveLeft();
+            lastMoveTime.current[key] = timestamp;
+          } else if (timeSinceLastMove >= arrInterval) {
+            // 正常 ARR 间隔
+            onMoveLeft();
+            lastMoveTime.current[key] = timestamp;
+          }
+        } else if (key === controls.moveRight) {
+          if (arrInterval === 0) {
+            // ARR=0: 每帧都移动（瞬移模式）
+            onMoveRight();
+            lastMoveTime.current[key] = timestamp;
+          } else if (timeSinceLastMove >= arrInterval) {
+            // 正常 ARR 间隔
+            onMoveRight();
+            lastMoveTime.current[key] = timestamp;
+          }
         }
       }
     });
