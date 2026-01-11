@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Lock, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModalClose } from '@/hooks/useModalClose';
 
 interface BadgeItemProps {
   badge: any;
@@ -81,6 +82,14 @@ const BadgeCollection: React.FC<BadgeCollectionProps> = ({ onClose }) => {
   const [unlockedBadges, setUnlockedBadges] = useState<Map<string, string>>(new Map());
   const [category, setCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+
+  // Use unified modal close hook (only when onClose is provided)
+  useModalClose({
+    isOpen: !!onClose,
+    onClose: onClose || (() => {}),
+    closeOnEscape: !!onClose,
+    closeOnOverlayClick: false // Content click is handled by parent
+  });
 
   useEffect(() => {
     if (user && !user.isGuest) {

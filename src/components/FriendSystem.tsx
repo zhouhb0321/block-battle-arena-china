@@ -11,6 +11,7 @@ import FriendLeaderboard from './FriendLeaderboard';
 import FriendActivity from './FriendActivity';
 import { Users, MessageCircle, UserPlus, X, Check, UserX } from 'lucide-react';
 import { toast } from 'sonner';
+import { useModalClose } from '@/hooks/useModalClose';
 
 interface Friend {
   id: string;
@@ -41,6 +42,14 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
   const [loading, setLoading] = useState(false);
 
   const MAX_FRIENDS = user?.isGuest ? 0 : 50;
+
+  // Use unified modal close hook
+  const { handleOverlayClick, handleContentClick } = useModalClose({
+    isOpen: true,
+    onClose,
+    closeOnEscape: true,
+    closeOnOverlayClick: true
+  });
 
   const { onlineUsers } = useFriendPresence(
     user?.id, 
@@ -270,8 +279,11 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
 
   if (user?.isGuest) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-md">
+      <div 
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        onClick={handleOverlayClick}
+      >
+        <Card className="w-full max-w-md" onClick={handleContentClick}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>好友系统</CardTitle>
@@ -284,6 +296,9 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
             <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground">游客用户无法使用好友功能</p>
             <p className="text-sm text-muted-foreground mt-2">请注册账户后使用此功能</p>
+            <Button onClick={onClose} className="mt-4">
+              关闭
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -298,11 +313,11 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
   return (
     <div 
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+      onClick={handleOverlayClick}
     >
       <Card 
         className="w-full max-w-5xl h-[700px] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        onClick={handleContentClick}
       >
         <CardHeader>
           <div className="flex items-center justify-between">

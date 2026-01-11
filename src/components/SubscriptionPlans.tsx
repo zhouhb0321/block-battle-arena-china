@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -7,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { Check, Star, Zap, Crown, X } from 'lucide-react';
+import { useModalClose } from '@/hooks/useModalClose';
 
 interface PricingPlan {
   id: string;
@@ -23,6 +23,14 @@ const SubscriptionPlans: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [loading, setLoading] = useState<string | null>(null);
+
+  // Use unified modal close hook
+  const { handleOverlayClick, handleContentClick } = useModalClose({
+    isOpen: true,
+    onClose,
+    closeOnEscape: true,
+    closeOnOverlayClick: true
+  });
 
   const plans: PricingPlan[] = [
     {
@@ -85,8 +93,14 @@ const SubscriptionPlans: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-background rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      onClick={handleOverlayClick}
+    >
+      <div 
+        className="bg-background rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={handleContentClick}
+      >
         <div className="p-6 border-b">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">{t('premium')} Plans</h2>
