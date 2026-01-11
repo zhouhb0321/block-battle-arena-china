@@ -14,7 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { 
   User, Settings, LogOut, Shield, Trophy, CreditCard, Users, Award,
-  GraduationCap, History, Swords, Cog, Keyboard
+  GraduationCap, History, Swords, Cog, Keyboard, X
 } from 'lucide-react';
 import UserProfileSettings from './UserProfileSettings';
 import SubscriptionPlans from './SubscriptionPlans';
@@ -26,6 +26,40 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useModalClose } from '@/hooks/useModalClose';
+
+// Separate BadgeCollection modal component for proper close handling
+const BadgeCollectionModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const { handleOverlayClick, handleContentClick } = useModalClose({
+    isOpen: true,
+    onClose,
+    closeOnEscape: true,
+    closeOnOverlayClick: true
+  });
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={handleOverlayClick}
+    >
+      <div 
+        className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg relative"
+        onClick={handleContentClick}
+      >
+        {/* Explicit close button */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onClose}
+          className="absolute top-3 right-3 z-10 h-8 w-8"
+        >
+          <X className="w-4 h-4" />
+        </Button>
+        <BadgeCollection onClose={onClose} />
+      </div>
+    </div>
+  );
+};
 
 interface UserMenuProps {
   onNavigate: (page: string) => void;
@@ -315,17 +349,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
       )}
 
       {showBadgeCollection && (
-        <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
-          onClick={() => setShowBadgeCollection(false)}
-        >
-          <div 
-            className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg p-3 sm:p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <BadgeCollection onClose={() => setShowBadgeCollection(false)} />
-          </div>
-        </div>
+        <BadgeCollectionModal onClose={() => setShowBadgeCollection(false)} />
       )}
     </>
   );

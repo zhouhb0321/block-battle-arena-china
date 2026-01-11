@@ -6,8 +6,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import UsernameChangeDialog from './UsernameChangeDialog';
 import BadgeCollection from './BadgeCollection';
-import { User, Mail, Trophy, Calendar, Edit, X, Star, Award } from 'lucide-react';
+import { User, Mail, Trophy, Calendar, Edit, X, Star, Award, RotateCcw, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useModalClose } from '@/hooks/useModalClose';
 
 interface UserProfileSettingsProps {
   onClose: () => void;
@@ -27,8 +28,17 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
   const { user } = useAuth();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [featuredBadges, setFeaturedBadges] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('profile');
+
+  // Use unified modal close hook
+  const { handleOverlayClick, handleContentClick } = useModalClose({
+    isOpen: true,
+    onClose,
+    closeOnEscape: true,
+    closeOnOverlayClick: true
+  });
 
   useEffect(() => {
     if (user && !user.isGuest) {
@@ -39,36 +49,53 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
     }
   }, [user]);
 
-  // ESC键关闭功能
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
-
   const loadUserProfile = async () => {
     if (!user || user.isGuest) return;
 
+    setLoading(true);
+    setLoadError(false);
+
     try {
+      // Use maybeSingle() to avoid error when no data exists
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error loading user profile:', error);
+        setLoadError(true);
         return;
       }
 
-      setUserProfile(data);
+      if (!data) {
+        // User profile doesn't exist, try to create one
+        console.log('User profile not found, creating...');
+        const { data: newProfile, error: createError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: user.id,
+            email: user.email || '',
+            username: user.username || user.email?.split('@')[0] || 'Player',
+            user_type: 'regular'
+          })
+          .select()
+          .single();
+        
+        if (createError) {
+          console.error('Error creating user profile:', createError);
+          setLoadError(true);
+          return;
+        }
+        
+        setUserProfile(newProfile);
+      } else {
+        setUserProfile(data);
+      }
     } catch (error) {
       console.error('Error loading user profile:', error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -112,13 +139,27 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-2xl">
+      <div 
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        onClick={handleOverlayClick}
+      >
+        <Card className="w-full max-w-2xl" onClick={handleContentClick}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                用户资料
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
           <CardContent className="p-6">
             <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+              <div className="h-4 bg-muted rounded w-1/4"></div>
+              <div className="h-4 bg-muted rounded w-1/2"></div>
+              <div className="h-4 bg-muted rounded w-1/3"></div>
             </div>
           </CardContent>
         </Card>
@@ -128,38 +169,62 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
 
   if (!user || user.isGuest) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-2xl">
+      <div 
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        onClick={handleOverlayClick}
+      >
+        <Card className="w-full max-w-2xl" onClick={handleContentClick}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>用户资料</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                用户资料
+              </CardTitle>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
           </CardHeader>
           <CardContent className="p-6 text-center">
-            <p className="text-gray-600">游客用户无法查看资料设置</p>
+            <p className="text-muted-foreground">游客用户无法查看资料设置</p>
+            <Button onClick={onClose} className="mt-4">
+              关闭
+            </Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  if (!userProfile) {
+  if (loadError || !userProfile) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-2xl">
+      <div 
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        onClick={handleOverlayClick}
+      >
+        <Card className="w-full max-w-2xl" onClick={handleContentClick}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>用户资料</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-destructive" />
+                用户资料
+              </CardTitle>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-6 text-center">
-            <p className="text-gray-600">无法加载用户资料</p>
+          <CardContent className="p-6 text-center space-y-4">
+            <p className="text-muted-foreground">无法加载用户资料</p>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={loadUserProfile}>
+                <RotateCcw className="w-4 h-4 mr-2" />
+                重试
+              </Button>
+              <Button onClick={onClose}>
+                关闭
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -174,15 +239,11 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ onClose }) =>
   return (
     <div 
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
+      onClick={handleOverlayClick}
     >
       <Card 
         className="w-full max-w-4xl max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+        onClick={handleContentClick}
       >
         <CardHeader>
           <div className="flex items-center justify-between">
