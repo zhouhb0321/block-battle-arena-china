@@ -30,19 +30,22 @@ const UsernameChangeDialog: React.FC<UsernameChangeDialogProps> = ({ trigger }) 
     if (!user || user.isGuest) return;
 
     try {
+      // Use maybeSingle() to avoid PGRST116 error when no data exists
       const { data, error } = await supabase
         .from('user_profiles')
         .select('username, username_changes_count, user_type, username_last_changed_at')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error loading user profile:', error);
         return;
       }
 
-      setUserProfile(data);
-      setNewUsername(data?.username || '');
+      if (data) {
+        setUserProfile(data);
+        setNewUsername(data.username || '');
+      }
     } catch (error) {
       console.error('Error loading user profile:', error);
     }
