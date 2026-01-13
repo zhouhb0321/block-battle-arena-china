@@ -51,11 +51,39 @@ const UsernameChangeDialog: React.FC<UsernameChangeDialogProps> = ({ trigger }) 
     }
   };
 
+  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
+
+  // 加载订阅状态
+  useEffect(() => {
+    const loadSubscription = async () => {
+      if (!user || user.isGuest) return;
+      
+      const { data, error } = await supabase
+        .from('subscribers')
+        .select('subscribed, subscription_tier, username_changes_used')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (!error && data) {
+        setSubscriptionStatus(data);
+      }
+    };
+    
+    if (isOpen) {
+      loadSubscription();
+    }
+  }, [isOpen, user]);
+
   const canChangeUsername = () => {
     if (!userProfile) return false;
     
     const userType = userProfile.user_type;
     const changesCount = userProfile.username_changes_count || 0;
+    
+    // 检查订阅状态
+    if (subscriptionStatus?.subscribed && subscriptionStatus?.subscription_tier) {
+      return true; // 活跃订阅用户可以无限修改
+    }
     
     // 付费和捐赠用户可以无限修改
     if (userType === 'premium' || userType === 'donor' || userType === 'vip') {
@@ -162,6 +190,11 @@ const UsernameChangeDialog: React.FC<UsernameChangeDialogProps> = ({ trigger }) 
     
     const userType = userProfile.user_type;
     const changesCount = userProfile.username_changes_count || 0;
+    
+    // 检查订阅状态
+    if (subscriptionStatus?.subscribed && subscriptionStatus?.subscription_tier) {
+      return '无限制 (订阅用户)';
+    }
     
     if (userType === 'premium' || userType === 'donor' || userType === 'vip') {
       return '无限制';
