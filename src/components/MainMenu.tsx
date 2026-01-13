@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
-
+import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 
 interface MainMenuProps {
   onGameStart: () => void;
@@ -61,6 +61,9 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameStart, onLeaderboard, onSetti
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {/* 邮箱验证提示 */}
+      <EmailVerificationBanner />
+      
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold mb-2 bg-game-gradient-primary bg-clip-text text-transparent">{t('game.title')}</h1>
         <p className="text-muted-foreground">{t('game.description')}</p>
