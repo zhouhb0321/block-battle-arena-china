@@ -1,18 +1,20 @@
-// 排位匹配系统钩子
+// 排位匹配系统钩子 - 使用 Glicko-2 评分系统
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBattleWebSocket } from './useBattleWebSocket';
-import { EloCalculator, SeededRandom } from '@/utils/replayCompression';
-import type { RankedMatch, EloRating } from '@/utils/replayTypes';
+import { Glicko2Calculator, type Glicko2Rating } from '@/utils/glicko2System';
+import type { RankedMatch } from '@/utils/replayTypes';
 
 interface MatchmakingState {
   isSearching: boolean;
   estimatedWaitTime: number;
   currentMatch: RankedMatch | null;
-  playerRating: number;
+  playerRating: Glicko2Rating;
   queuePosition: number;
+  activeSeasonId: string | null;
+  rankTier: string;
 }
 
 export const useRankedMatchmaking = () => {
@@ -23,9 +25,48 @@ export const useRankedMatchmaking = () => {
     isSearching: false,
     estimatedWaitTime: 0,
     currentMatch: null,
-    playerRating: 1200,
-    queuePosition: 0
+    playerRating: Glicko2Calculator.getInitialRating(),
+    queuePosition: 0,
+    activeSeasonId: null,
+    rankTier: 'bronze'
   });
+
+  // 获取活跃赛季和玩家评分
+  useEffect(() => {
+    const loadSeasonAndRating = async () => {
+      if (!user || user.isGuest) return;
+
+      // 获取活跃赛季
+      const { data: season } = await supabase
+        .from('league_seasons')
+        .select('id')
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (!season) return;
+
+      // 获取玩家排名数据
+      const { data: ranking } = await supabase
+        .from('league_rankings')
+        .select('rating, rating_deviation, volatility, rank_tier')
+        .eq('season_id', season.id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      setMatchmakingState(prev => ({
+        ...prev,
+        activeSeasonId: season.id,
+        playerRating: ranking ? {
+          rating: ranking.rating || 1500,
+          ratingDeviation: ranking.rating_deviation || 350,
+          volatility: ranking.volatility || 0.06
+        } : Glicko2Calculator.getInitialRating(),
+        rankTier: ranking?.rank_tier || 'bronze'
+      }));
+    };
+
+    loadSeasonAndRating();
+  }, [user]);
 
   const searchStartTime = useRef<number>(0);
   const matchmakingTimer = useRef<NodeJS.Timeout | null>(null);
@@ -229,8 +270,8 @@ export const useRankedMatchmaking = () => {
       if (newMatch.player1Wins >= 3 || newMatch.player2Wins >= 3) {
         const finalWinnerId = newMatch.player1Wins >= 3 ? newMatch.player1Id : newMatch.player2Id;
         
-        // 更新ELO积分
-        await updateEloRatings(
+        // 更新 Glicko-2 评分
+        await updateGlicko2Ratings(
           finalWinnerId,
           finalWinnerId === newMatch.player1Id ? newMatch.player2Id : newMatch.player1Id,
           newMatch.player1Rating,
@@ -259,56 +300,91 @@ export const useRankedMatchmaking = () => {
     }
   }, [matchmakingState.currentMatch]);
 
-  // 更新ELO积分
-  const updateEloRatings = async (
+  // 使用 Glicko-2 更新评分
+  const updateGlicko2Ratings = async (
     winnerId: string,
     loserId: string,
     winnerRating: number,
     loserRating: number
   ) => {
-    // 获取K因子
+    if (!matchmakingState.activeSeasonId) return;
+
+    // 获取双方完整的 Glicko-2 数据
     const { data: winnerData } = await supabase
       .from('league_rankings')
-      .select('matches_played, peak_rating, games_won')
+      .select('rating, rating_deviation, volatility, matches_played, peak_rating, games_won, rank_tier')
+      .eq('season_id', matchmakingState.activeSeasonId)
       .eq('user_id', winnerId)
-      .single();
+      .maybeSingle();
 
     const { data: loserData } = await supabase
       .from('league_rankings')
-      .select('matches_played, peak_rating, games_lost')
+      .select('rating, rating_deviation, volatility, matches_played, peak_rating, games_lost, rank_tier')
+      .eq('season_id', matchmakingState.activeSeasonId)
       .eq('user_id', loserId)
-      .single();
+      .maybeSingle();
 
-    const winnerKFactor = EloCalculator.getKFactor(winnerData?.matches_played || 0);
-    const loserKFactor = EloCalculator.getKFactor(loserData?.matches_played || 0);
+    // 构建 Glicko-2 评分对象
+    const winnerGlicko: Glicko2Rating = winnerData ? {
+      rating: winnerData.rating || 1500,
+      ratingDeviation: winnerData.rating_deviation || 350,
+      volatility: winnerData.volatility || 0.06
+    } : Glicko2Calculator.getInitialRating();
 
-    // 计算新积分
-    const { winnerNewRating, loserNewRating } = EloCalculator.calculate(
-      winnerRating, 
-      loserRating, 
-      Math.max(winnerKFactor, loserKFactor)
-    );
+    const loserGlicko: Glicko2Rating = loserData ? {
+      rating: loserData.rating || 1500,
+      ratingDeviation: loserData.rating_deviation || 350,
+      volatility: loserData.volatility || 0.06
+    } : Glicko2Calculator.getInitialRating();
 
-    // 更新胜者积分
+    // 计算新评分
+    const newWinnerRating = Glicko2Calculator.calculate(winnerGlicko, loserGlicko, 1);
+    const newLoserRating = Glicko2Calculator.calculate(loserGlicko, winnerGlicko, 0);
+
+    // 确定段位
+    const getRankTier = (rating: number): string => {
+      if (rating >= 2400) return 'master';
+      if (rating >= 2000) return 'diamond';
+      if (rating >= 1750) return 'platinum';
+      if (rating >= 1500) return 'gold';
+      if (rating >= 1250) return 'silver';
+      return 'bronze';
+    };
+
+    // 更新胜者评分
     await supabase
       .from('league_rankings')
       .upsert({
+        season_id: matchmakingState.activeSeasonId,
         user_id: winnerId,
-        elo_rating: winnerNewRating,
-        peak_rating: Math.max(winnerNewRating, winnerData?.peak_rating || winnerNewRating),
+        rating: Math.round(newWinnerRating.rating),
+        rating_deviation: Math.round(newWinnerRating.ratingDeviation),
+        volatility: newWinnerRating.volatility,
+        elo_rating: Math.round(newWinnerRating.rating),
+        peak_rating: Math.max(Math.round(newWinnerRating.rating), winnerData?.peak_rating || 1500),
         matches_played: (winnerData?.matches_played || 0) + 1,
-        games_won: (winnerData?.games_won || 0) + 1
+        games_won: (winnerData?.games_won || 0) + 1,
+        rank_tier: getRankTier(newWinnerRating.rating),
+        provisional: Glicko2Calculator.isProvisional(newWinnerRating),
+        updated_at: new Date().toISOString()
       });
 
-    // 更新败者积分
+    // 更新败者评分
     await supabase
       .from('league_rankings')
       .upsert({
+        season_id: matchmakingState.activeSeasonId,
         user_id: loserId,
-        elo_rating: loserNewRating,
-        peak_rating: Math.max(loserNewRating, loserData?.peak_rating || loserNewRating),
+        rating: Math.round(newLoserRating.rating),
+        rating_deviation: Math.round(newLoserRating.ratingDeviation),
+        volatility: newLoserRating.volatility,
+        elo_rating: Math.round(newLoserRating.rating),
+        peak_rating: Math.max(Math.round(newLoserRating.rating), loserData?.peak_rating || 1500),
         matches_played: (loserData?.matches_played || 0) + 1,
-        games_lost: (loserData?.games_lost || 0) + 1
+        games_lost: (loserData?.games_lost || 0) + 1,
+        rank_tier: getRankTier(newLoserRating.rating),
+        provisional: Glicko2Calculator.isProvisional(newLoserRating),
+        updated_at: new Date().toISOString()
       });
   };
 
