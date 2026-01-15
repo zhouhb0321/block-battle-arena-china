@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
 import PasswordResetForm from './PasswordResetForm';
 
@@ -27,7 +27,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     e.preventDefault();
 
     if (!email || !password) {
-      toast.error('请填写邮箱和密码');
+      toast.error(t('auth.fillEmailPassword'));
       return;
     }
 
@@ -37,46 +37,46 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       if (isLogin) {
         const { error } = await login(email, password);
         if (error) {
-          console.error('登录错误详情:', error);
-          if (error.message.includes('邮箱或密码错误') || error.message.includes('Invalid login credentials')) {
-            toast.error('邮箱或密码错误，请检查后重试');
-          } else if (error.message.includes('请先验证邮箱') || error.message.includes('Email not confirmed')) {
-            toast.error('请先验证邮箱，检查邮箱中的激活链接');
-          } else if (error.message.includes('网络连接') || error.message.includes('timeout') || error.message.includes('超时') || error.message.includes('fetch')) {
-            toast.error('网络连接问题，请检查网络后重试');
-          } else if (error.message.includes('请求过于频繁') || error.message.includes('Too many requests')) {
-            toast.error('登录尝试过于频繁，请稍后重试');
-          } else if (error.message.includes('中断') || error.message.includes('abort')) {
-            toast.error('请求被中断，请重试');
+          console.error('Login error:', error);
+          if (error.message.includes('Invalid login credentials')) {
+            toast.error(t('auth.invalidCredentials'));
+          } else if (error.message.includes('Email not confirmed')) {
+            toast.error(t('auth.verifyEmail'));
+          } else if (error.message.includes('timeout') || error.message.includes('fetch')) {
+            toast.error(t('auth.networkError'));
+          } else if (error.message.includes('Too many requests')) {
+            toast.error(t('auth.rateLimited'));
+          } else if (error.message.includes('abort')) {
+            toast.error(t('auth.requestAborted'));
           } else {
-            toast.error(error.message || '登录失败，请稍后重试');
+            toast.error(error.message || t('common.failed'));
           }
           return;
         }
-        toast.success('登录成功！');
+        toast.success(t('auth.loginSuccess'));
       } else {
         if (!username) {
-          toast.error('请填写用户名');
+          toast.error(t('auth.fillUsername'));
           setLoading(false);
           return;
         }
         const { error } = await register(email, password, username);
         if (error) {
           if (error.message.includes('User already registered')) {
-            toast.error('用户已存在');
+            toast.error(t('auth.userExists'));
           } else if (error.message.includes('Email not confirmed')) {
-            toast.error('请检查邮箱验证链接');
+            toast.error(t('auth.checkEmailLink'));
           } else {
-            toast.error(error.message || '注册失败，请重试');
+            toast.error(error.message || t('auth.registerFailed'));
           }
           return;
         }
-        toast.success('注册成功！请检查邮箱验证链接');
+        toast.success(t('auth.registerSuccess'));
       }
       onClose();
     } catch (error: any) {
       console.error('Authentication failed:', error);
-      toast.error('网络错误，请重试');
+      toast.error(t('auth.networkError'));
     } finally {
       setLoading(false);
     }
@@ -89,7 +89,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       onClose();
     } catch (error: any) {
       console.error('Guest login failed:', error);
-      toast.error('游客登录失败');
+      toast.error(t('auth.guestLoginFailed'));
     } finally {
       setLoading(false);
     }
@@ -115,19 +115,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       <DialogContent className="sm:max-w-[425px] bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">
-            {isLogin ? '登录' : '注册'}
+            {isLogin ? t('auth.login') : t('auth.register')}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            {isLogin ? '登录您的账户开始游戏' : '创建新账户'}
+            {isLogin ? t('auth.loginDesc') : t('auth.registerDesc')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           {!isLogin && (
             <div className="grid gap-2">
-              <label htmlFor="username" className="text-foreground">用户名</label>
+              <Label htmlFor="username">{t('auth.username')}</Label>
               <Input
                 id="username"
-                placeholder="请输入用户名"
+                placeholder={t('auth.enterUsername')}
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -136,10 +136,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </div>
           )}
           <div className="grid gap-2">
-            <label htmlFor="email" className="text-foreground">邮箱</label>
+            <Label htmlFor="email">{t('auth.email')}</Label>
             <Input
               id="email"
-              placeholder="请输入邮箱地址"
+              placeholder={t('auth.enterEmail')}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -147,10 +147,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             />
           </div>
           <div className="grid gap-2">
-            <label htmlFor="password" className="text-foreground">密码</label>
+            <Label htmlFor="password">{t('auth.password')}</Label>
             <Input
               id="password"
-              placeholder="请输入密码"
+              placeholder={t('auth.enterPassword')}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -158,7 +158,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             />
           </div>
           <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            {loading ? '处理中...' : (isLogin ? '登录' : '注册')}
+            {loading ? t('auth.processing') : (isLogin ? t('auth.login') : t('auth.register'))}
           </Button>
         </form>
         
@@ -169,7 +169,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               className="text-sm text-primary hover:text-primary/80 underline"
               onClick={() => setShowPasswordReset(true)}
             >
-              忘记密码？
+              {t('auth.forgotPassword')}
             </button>
           </div>
         )}
@@ -182,10 +182,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             variant="outline"
             disabled={loading}
           >
-            {loading ? '处理中...' : '游客登录'}
+            {loading ? t('auth.processing') : t('auth.guestLogin')}
           </Button>
           <p className="text-sm text-muted-foreground mt-2 text-center">
-            以游客身份快速开始游戏
+            {t('auth.guestDescription')}
           </p>
         </div>
         
@@ -195,7 +195,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             className="text-sm text-muted-foreground hover:text-foreground" 
             onClick={() => setIsLogin(!isLogin)}
           >
-            {isLogin ? '还没有账户？立即注册' : '已有账户？立即登录'}
+            {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}
           </button>
         </div>
       </DialogContent>
