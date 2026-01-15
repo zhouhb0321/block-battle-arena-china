@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Target, Infinity } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { GAME_MODES, type GameMode } from '@/utils/gameTypes';
 
 interface GameModeSelectorProps {
@@ -12,6 +12,7 @@ interface GameModeSelectorProps {
 }
 
 const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect, onBack }) => {
+  const { t } = useLanguage();
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
 
   const handleModeClick = (mode: GameMode) => {
@@ -40,10 +41,10 @@ const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect, onBac
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <Button variant="outline" onClick={onBack} className="mb-4">
-          返回主菜单
+          {t('nav.backToMenu')}
         </Button>
-        <h2 className="text-2xl font-bold text-white">选择游戏模式</h2>
-        <div className="w-20" /> {/* 占位符保持居中 */}
+        <h2 className="text-2xl font-bold text-foreground">{t('mode.select')}</h2>
+        <div className="w-20" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -52,8 +53,8 @@ const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect, onBac
             key={mode.id}
             className={`cursor-pointer transition-all hover:shadow-lg ${
               selectedMode?.id === mode.id
-                ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                ? 'ring-2 ring-primary bg-primary/10'
+                : 'hover:bg-accent'
             }`}
             onClick={() => handleModeClick(mode)}
           >
@@ -64,10 +65,10 @@ const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect, onBac
                   {mode.displayName}
                 </CardTitle>
                 {mode.isTimeAttack && (
-                  <Badge variant="secondary">限时</Badge>
+                  <Badge variant="secondary">{t('mode.timed')}</Badge>
                 )}
                 {mode.targetLines && (
-                  <Badge variant="outline">冲刺</Badge>
+                  <Badge variant="outline">{t('mode.sprint')}</Badge>
                 )}
               </div>
             </CardHeader>
@@ -80,19 +81,19 @@ const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect, onBac
                 {mode.targetLines && (
                   <div className="flex items-center gap-2">
                     <Target className="w-4 h-4 text-green-500" />
-                    <span>目标: {mode.targetLines} 行</span>
+                    <span>{t('mode.target')}: {mode.targetLines} {t('game.lines')}</span>
                   </div>
                 )}
                 {mode.timeLimit && (
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-blue-500" />
-                    <span>时限: {formatTimeLimit(mode.timeLimit)}</span>
+                    <span>{t('mode.timeLimit')}: {formatTimeLimit(mode.timeLimit)}</span>
                   </div>
                 )}
                 {!mode.targetLines && !mode.timeLimit && (
                   <div className="flex items-center gap-2">
                     <Infinity className="w-4 h-4 text-purple-500" />
-                    <span>无限制游戏</span>
+                    <span>{t('mode.unlimited')}</span>
                   </div>
                 )}
               </div>
@@ -111,20 +112,20 @@ const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onModeSelect, onBac
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
+              <p className="text-muted-foreground mb-4">
                 {selectedMode.description}
               </p>
               {selectedMode.targetLines && (
-                <p className="text-sm">目标: 清除 {selectedMode.targetLines} 行</p>
+                <p className="text-sm">{t('mode.target')}: {selectedMode.targetLines} {t('game.lines')}</p>
               )}
               {selectedMode.timeLimit && (
-                <p className="text-sm">时限: {formatTimeLimit(selectedMode.timeLimit)}</p>
+                <p className="text-sm">{t('mode.timeLimit')}: {formatTimeLimit(selectedMode.timeLimit)}</p>
               )}
             </CardContent>
           </Card>
           
           <Button onClick={handleStartGame} size="lg" className="px-8">
-            开始游戏
+            {t('mode.startGame')}
           </Button>
         </div>
       )}
