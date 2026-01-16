@@ -34,7 +34,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
   const [pendingMode, setPendingMode] = useState<'versus' | 'battle_royale' | 'league' | null>(null);
   const [subView, setSubView] = useState<'menu' | 'team-battle'>('menu');
   
-  // 密码对话框状态
+  // Password dialog state
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [pendingRoom, setPendingRoom] = useState<{ id: string; code: string } | null>(null);
   const [passwordError, setPasswordError] = useState<string | undefined>();
@@ -60,7 +60,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
 
       if (error) {
         debugLog.error('Error loading room stats', error);
-        setError('加载房间统计失败');
+        setError(t('common.loadStatsFailed'));
         return;
       }
 
@@ -68,13 +68,13 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
       setOnlinePlayers(rooms?.reduce((sum, room) => sum + room.current_players, 0) || 0);
     } catch (error) {
       debugLog.error('Exception loading room stats', error);
-      setError('网络连接错误');
+      setError(t('common.networkError'));
     }
   };
 
   const handleCreateRoom = async (mode: 'versus' | 'battle_royale' | 'league', customConfig?: CustomRoomConfig) => {
     if (!user) {
-      setError('需要登录才能创建房间');
+      setError(t('room.needLogin'));
       return;
     }
 
@@ -82,7 +82,6 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     setError(null);
 
     try {
-      // Convert CustomRoomConfig to the format expected by createRoom
       const settings = customConfig ? {
         password: customConfig.room_password,
         allowSpectators: customConfig.allow_spectators,
@@ -98,8 +97,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
 
       const room = await createRoom(mode, settings);
       if (room) {
-        toast.success(`房间创建成功！房间号: ${room.room_code}`);
-        // Route to appropriate view based on mode
+        toast.success(t('room.createSuccess') + room.room_code);
         if (mode === 'league') {
           onSelectMode('team-battle', { roomId: room.id, customConfig });
         } else {
@@ -108,13 +106,12 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
       }
     } catch (error) {
       debugLog.error('Create room failed', error);
-      setError('创建房间失败，请重试');
+      setError(t('room.createFailed'));
     } finally {
       setIsCreating(false);
     }
   };
 
-  // 处理自定义房间设置确认
   const handleRoomSettingsConfirm = useCallback(async (config: CustomRoomConfig) => {
     if (pendingMode) {
       await handleCreateRoom(pendingMode, config);
@@ -125,42 +122,37 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
 
   const handleModeSelect = async (mode: string) => {
     if (!user) {
-      setError('需要登录才能进行多人游戏');
+      setError(t('multiplayer.needLoginMulti'));
       return;
     }
 
     if (user.isGuest && (mode === 'ranked' || mode === 'tournament')) {
-      toast.error('访客用户无法参与排位赛和锦标赛');
+      toast.error(t('auth.guestRestricted'));
       return;
     }
 
-    // For custom-room, show settings dialog first
     if (mode === 'custom-room') {
       setPendingMode('versus');
       setShowRoomSettings(true);
       return;
     }
 
-    // For 1v1, create a room directly with default settings
     if (mode === 'one-vs-one') {
       await handleCreateRoom('versus');
       return;
     }
 
-    // Team battle - show settings dialog
     if (mode === 'team-battle') {
       setPendingMode('league');
       setShowRoomSettings(true);
       return;
     }
 
-    // Ranked mode - go to matchmaking system
     if (mode === 'ranked') {
       onSelectMode('ranked');
       return;
     }
 
-    // Bot room - go to practice AI battle
     if (mode === 'bot-room') {
       onSelectMode('ai-battle');
       return;
@@ -173,7 +165,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
       await onSelectMode(mode);
     } catch (error) {
       debugLog.error('Mode selection failed', error);
-      setError('模式选择失败，请重试');
+      setError(t('common.modeFailed'));
     } finally {
       setLoading(false);
     }
@@ -187,11 +179,11 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     
     try {
       await loginAsGuest();
-      toast.success('访客登录成功');
+      toast.success(t('auth.guestSuccess'));
     } catch (error) {
       debugLog.error('Guest login failed', error);
-      setError('访客登录失败，请重试');
-      toast.error('访客登录失败');
+      setError(t('auth.guestLoginFailed'));
+      toast.error(t('auth.guestLoginFailed'));
     } finally {
       setLoading(false);
     }
@@ -199,7 +191,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
 
   const handleJoinByCode = async () => {
     if (!roomCode.trim()) {
-      setError('请输入房间号');
+      setError(t('room.enterCode'));
       return;
     }
 
@@ -213,7 +205,6 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     setError(null);
 
     try {
-      // 先查询房间是否有密码
       const { data: roomData, error: queryError } = await supabase
         .from('battle_rooms')
         .select('id, room_code, room_password, status')
@@ -222,12 +213,11 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
         .single();
 
       if (queryError || !roomData) {
-        setError('房间不存在或已关闭');
+        setError(t('room.notExist'));
         setIsJoining(false);
         return;
       }
 
-      // 如果房间有密码，显示密码对话框
       if (roomData.room_password) {
         setPendingRoom({ id: roomData.id, code: roomData.room_code });
         setShowPasswordDialog(true);
@@ -235,21 +225,19 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
         return;
       }
 
-      // 无密码直接加入
       const room = await joinRoom(roomCode.trim());
       if (room) {
-        toast.success('成功加入房间');
+        toast.success(t('room.joinSuccess'));
         onSelectMode('battle-lobby', { roomId: room.id });
       }
     } catch (error) {
-      debugLog.error('加入房间失败:', error);
-      setError('加入房间失败，请检查房间号');
+      debugLog.error('Join room failed:', error);
+      setError(t('room.joinFailed'));
     } finally {
       setIsJoining(false);
     }
   };
 
-  // 密码验证后加入房间
   const handlePasswordConfirm = async (password: string) => {
     if (!pendingRoom) return;
 
@@ -261,13 +249,13 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
       if (room) {
         setShowPasswordDialog(false);
         setPendingRoom(null);
-        toast.success('成功加入房间');
+        toast.success(t('room.joinSuccess'));
         onSelectMode('battle-lobby', { roomId: room.id });
       } else {
-        setPasswordError('密码错误或加入失败');
+        setPasswordError(t('room.passwordError'));
       }
     } catch (error: any) {
-      setPasswordError(error.message || '密码验证失败');
+      setPasswordError(error.message || t('room.passwordError'));
     } finally {
       setPasswordLoading(false);
     }
@@ -282,8 +270,8 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
   const menuOptions = [
     {
       id: 'one-vs-one',
-      title: '1v1 对战',
-      description: '经典一对一俄罗斯方块对战',
+      title: t('multiplayer.1v1'),
+      description: t('multiplayer.1v1Desc'),
       icon: <Sword className="w-8 h-8" />,
       disabled: false,
       guestAllowed: true
@@ -298,24 +286,24 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     },
     {
       id: 'ranked',
-      title: '排位赛',
-      description: '参与排位匹配，提升段位',
+      title: t('multiplayer.ranked'),
+      description: t('multiplayer.rankedDesc'),
       icon: <Target className="w-8 h-8" />,
       disabled: false,
       guestAllowed: false
     },
     {
       id: 'custom-room',
-      title: '自定义房间',
-      description: '创建或加入自定义对战房间',
+      title: t('multiplayer.customRoom'),
+      description: t('multiplayer.customRoomDesc'),
       icon: <Users className="w-8 h-8" />,
       disabled: false,
       guestAllowed: true
     },
     {
       id: 'battle-royal',
-      title: '大逃杀模式',
-      description: '多人混战，最后一人获胜',
+      title: t('multiplayer.battleRoyale'),
+      description: t('multiplayer.battleRoyaleDesc'),
       icon: <Zap className="w-8 h-8" />,
       disabled: true,
       comingSoon: true,
@@ -323,8 +311,8 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
     },
     {
       id: 'bot-room',
-      title: 'AI 机器人对战',
-      description: '与不同难度的 AI 机器人对战',
+      title: t('multiplayer.botRoom'),
+      description: t('multiplayer.botRoomDesc'),
       icon: <Coffee className="w-8 h-8" />,
       disabled: false,
       guestAllowed: true
@@ -334,15 +322,15 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">多人游戏</h1>
-        <div className="flex gap-4 text-sm text-gray-600 mb-4">
-          <span>🎮 活跃房间: {activeRooms}</span>
-          <span>👥 在线玩家: {onlinePlayers}</span>
-          {user && <span>👤 {user.isGuest ? '访客用户' : '注册用户'}: {user.username}</span>}
+        <h1 className="text-3xl font-bold mb-2">{t('multiplayer.title')}</h1>
+        <div className="flex gap-4 text-sm text-muted-foreground mb-4">
+          <span>🎮 {t('room.activeRooms')}: {activeRooms}</span>
+          <span>👥 {t('room.onlinePlayers')}: {onlinePlayers}</span>
+          {user && <span>👤 {user.isGuest ? t('common.guestUser') : t('common.registeredUser')}: {user.username}</span>}
         </div>
         
         {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 mb-4">
+          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive mb-4">
             <AlertCircle className="w-4 h-4" />
             <span>{error}</span>
             <Button 
@@ -351,20 +339,20 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
               onClick={loadRoomStats}
               className="ml-auto"
             >
-              重试
+              {t('common.retry')}
             </Button>
           </div>
         )}
 
         {!user && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-            <p className="text-blue-800 mb-3">需要登录才能进行多人游戏</p>
+          <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg mb-4">
+            <p className="text-foreground mb-3">{t('multiplayer.needLoginMulti')}</p>
             <Button 
               onClick={handleGuestLogin} 
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
-              {loading ? '登录中...' : '访客快速登录'}
+              {loading ? t('common.loading') : t('multiplayer.quickLogin')}
             </Button>
           </div>
         )}
@@ -375,14 +363,14 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            快速加入房间
+            {t('room.quickJoin')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
             <Input
               type="text"
-              placeholder="输入4位数字房间号"
+              placeholder={t('room.enterRoomCode')}
               value={roomCode}
               onChange={(e) => {
                 const value = e.target.value.replace(/\D/g, '').slice(0, 4);
@@ -397,7 +385,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
               disabled={!roomCode.trim() || isJoining}
               className="px-6"
             >
-              {isJoining ? '加入中...' : '加入'}
+              {isJoining ? t('room.joining') : t('room.join')}
             </Button>
           </div>
         </CardContent>
@@ -429,8 +417,8 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
                   <h3 className="text-xl font-bold">
                     {option.title}
                     {option.comingSoon && (
-                      <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
-                        即将推出
+                      <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                        {t('common.comingSoon')}
                       </span>
                     )}
                   </h3>
@@ -439,8 +427,8 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
                   </p>
                   
                   {!user && !option.guestAllowed && (
-                    <div className="text-xs text-amber-600 font-medium bg-amber-100 px-2 py-1 rounded">
-                      需要登录
+                    <div className="text-xs text-amber-600 font-medium bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded">
+                      {t('common.needLogin')}
                     </div>
                   )}
                 </div>
@@ -452,11 +440,11 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
 
       <div className="flex justify-center">
         <Button onClick={onBack} variant="outline" disabled={loading}>
-          返回主菜单
+          {t('nav.backToMenu')}
         </Button>
       </div>
 
-      {/* 自定义房间设置对话框 */}
+      {/* Custom Room Settings Dialog */}
       <CustomRoomSettings
         open={showRoomSettings}
         onClose={() => {
@@ -467,7 +455,7 @@ const MultiPlayerMenu: React.FC<MultiPlayerMenuProps> = ({ onSelectMode, onBack 
         mode={pendingMode || 'versus'}
       />
 
-      {/* 房间密码输入对话框 */}
+      {/* Room Password Dialog */}
       <RoomPasswordDialog
         open={showPasswordDialog}
         onClose={handlePasswordDialogClose}

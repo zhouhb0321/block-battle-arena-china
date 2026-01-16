@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,7 @@ interface Advertisement {
 
 const AdvertisingManagementPro: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -85,7 +87,7 @@ const AdvertisingManagementPro: React.FC = () => {
       setAds(data || []);
     } catch (error) {
       console.error('Error fetching ads:', error);
-      toast.error('加载广告失败');
+      toast.error(t('admin.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -106,7 +108,7 @@ const AdvertisingManagementPro: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      toast.error('无权限');
+      toast.error(t('admin.noPermission'));
       return;
     }
 
@@ -134,7 +136,7 @@ const AdvertisingManagementPro: React.FC = () => {
         if (error) throw error;
         
         await logAdManagementAction(user!.id, 'update', selectedAd.id, adData);
-        toast.success('广告更新成功');
+        toast.success(t('admin.updateSuccess'));
       } else {
         const { error } = await supabase
           .from('advertisements')
@@ -143,7 +145,7 @@ const AdvertisingManagementPro: React.FC = () => {
         if (error) throw error;
         
         await logAdManagementAction(user!.id, 'create', '', adData);
-        toast.success('广告创建成功');
+        toast.success(t('admin.createSuccess'));
       }
 
       setIsDialogOpen(false);
@@ -151,7 +153,7 @@ const AdvertisingManagementPro: React.FC = () => {
       fetchAds();
     } catch (error) {
       console.error('Error saving ad:', error);
-      toast.error('保存广告失败');
+      toast.error(t('admin.saveFailed'));
     }
   };
 
@@ -165,16 +167,16 @@ const AdvertisingManagementPro: React.FC = () => {
       if (error) throw error;
       
       await logAdManagementAction(user!.id, 'toggle', ad.id, { is_active: !ad.is_active });
-      toast.success(`广告已${!ad.is_active ? '启用' : '停用'}`);
+      toast.success(!ad.is_active ? t('admin.enableSuccess') : t('admin.disableSuccess'));
       fetchAds();
     } catch (error) {
       console.error('Error toggling ad:', error);
-      toast.error('操作失败');
+      toast.error(t('common.failed'));
     }
   };
 
   const handleDelete = async (adId: string) => {
-    if (!confirm('确定要删除这个广告吗？')) return;
+    if (!confirm(t('admin.deleteConfirm'))) return;
 
     try {
       const { error } = await supabase
@@ -185,11 +187,11 @@ const AdvertisingManagementPro: React.FC = () => {
       if (error) throw error;
       
       await logAdManagementAction(user!.id, 'delete', adId, {});
-      toast.success('广告删除成功');
+      toast.success(t('admin.deleteSuccess'));
       fetchAds();
     } catch (error) {
       console.error('Error deleting ad:', error);
-      toast.error('删除失败');
+      toast.error(t('admin.deleteFailed'));
     }
   };
 
@@ -241,31 +243,31 @@ const AdvertisingManagementPro: React.FC = () => {
   };
 
   if (!isAdmin) {
-    return <div className="p-8 text-center">无权限访问</div>;
+    return <div className="p-8 text-center">{t('admin.noAccess')}</div>;
   }
 
   if (loading) {
-    return <div className="p-8 text-center">加载中...</div>;
+    return <div className="p-8 text-center">{t('admin.loading')}</div>;
   }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">广告管理系统</h1>
+        <h1 className="text-3xl font-bold">{t('admin.adManagement')}</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
               <Plus className="w-4 h-4 mr-2" />
-              创建广告
+              {t('admin.createAd')}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{selectedAd ? '编辑广告' : '创建广告'}</DialogTitle>
+              <DialogTitle>{selectedAd ? t('admin.editAd') : t('admin.createAd')}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">广告标题</Label>
+                <Label htmlFor="title">{t('admin.adTitle')}</Label>
                 <Input
                   id="title"
                   value={formData.title}
@@ -275,7 +277,7 @@ const AdvertisingManagementPro: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="content">广告内容</Label>
+                <Label htmlFor="content">{t('admin.adContent')}</Label>
                 <Textarea
                   id="content"
                   value={formData.content}
@@ -285,7 +287,7 @@ const AdvertisingManagementPro: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">广告图片</Label>
+                <Label htmlFor="image">{t('admin.adImage')}</Label>
                 <Input
                   id="image"
                   type="file"
@@ -299,23 +301,23 @@ const AdvertisingManagementPro: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="position">广告位置</Label>
+                  <Label htmlFor="position">{t('admin.adPosition')}</Label>
                   <Select value={formData.position} onValueChange={(value) => setFormData({ ...formData, position: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="left">左侧</SelectItem>
-                      <SelectItem value="right">右侧</SelectItem>
-                      <SelectItem value="top">顶部</SelectItem>
-                      <SelectItem value="bottom">底部</SelectItem>
-                      <SelectItem value="popup">弹窗</SelectItem>
+                      <SelectItem value="left">{t('admin.position.left')}</SelectItem>
+                      <SelectItem value="right">{t('admin.position.right')}</SelectItem>
+                      <SelectItem value="top">{t('admin.position.top')}</SelectItem>
+                      <SelectItem value="bottom">{t('admin.position.bottom')}</SelectItem>
+                      <SelectItem value="popup">{t('admin.position.popup')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="priority">优先级</Label>
+                  <Label htmlFor="priority">{t('admin.priority')}</Label>
                   <Input
                     id="priority"
                     type="number"
@@ -327,20 +329,20 @@ const AdvertisingManagementPro: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="region">目标地区</Label>
+                  <Label htmlFor="region">{t('admin.targetRegion')}</Label>
                   <Input
                     id="region"
-                    placeholder="如: CN, US, JP"
+                    placeholder="CN, US, JP"
                     value={formData.region}
                     onChange={(e) => setFormData({ ...formData, region: e.target.value })}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="language">目标语言</Label>
+                  <Label htmlFor="language">{t('admin.targetLanguage')}</Label>
                   <Input
                     id="language"
-                    placeholder="如: zh, en, ja"
+                    placeholder="zh, en, ja"
                     value={formData.language}
                     onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                   />
@@ -349,7 +351,7 @@ const AdvertisingManagementPro: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="start_date">开始日期</Label>
+                  <Label htmlFor="start_date">{t('admin.startDate')}</Label>
                   <Input
                     id="start_date"
                     type="datetime-local"
@@ -359,7 +361,7 @@ const AdvertisingManagementPro: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="end_date">结束日期</Label>
+                  <Label htmlFor="end_date">{t('admin.endDate')}</Label>
                   <Input
                     id="end_date"
                     type="datetime-local"
@@ -371,7 +373,7 @@ const AdvertisingManagementPro: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="budget">预算 (¥)</Label>
+                  <Label htmlFor="budget">{t('admin.budget')}</Label>
                   <Input
                     id="budget"
                     type="number"
@@ -382,7 +384,7 @@ const AdvertisingManagementPro: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="frequency_cap">频次上限 (次/天)</Label>
+                  <Label htmlFor="frequency_cap">{t('admin.frequencyCap')}</Label>
                   <Input
                     id="frequency_cap"
                     type="number"
@@ -393,7 +395,7 @@ const AdvertisingManagementPro: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="target_url">点击跳转URL</Label>
+                <Label htmlFor="target_url">{t('admin.targetUrl')}</Label>
                 <Input
                   id="target_url"
                   type="url"
@@ -403,10 +405,10 @@ const AdvertisingManagementPro: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ab_test_group">A/B测试分组</Label>
+                <Label htmlFor="ab_test_group">{t('admin.abTestGroup')}</Label>
                 <Input
                   id="ab_test_group"
-                  placeholder="如: A, B, C"
+                  placeholder="A, B, C"
                   value={formData.ab_test_group}
                   onChange={(e) => setFormData({ ...formData, ab_test_group: e.target.value })}
                 />
@@ -418,15 +420,15 @@ const AdvertisingManagementPro: React.FC = () => {
                   checked={formData.is_active}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                 />
-                <Label htmlFor="is_active">立即启用</Label>
+                <Label htmlFor="is_active">{t('admin.enableNow')}</Label>
               </div>
 
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  取消
+                  {t('admin.cancel')}
                 </Button>
                 <Button type="submit">
-                  {selectedAd ? '更新' : '创建'}
+                  {selectedAd ? t('admin.update') : t('admin.create')}
                 </Button>
               </div>
             </form>
@@ -436,27 +438,27 @@ const AdvertisingManagementPro: React.FC = () => {
 
       <Tabs defaultValue="list" className="w-full">
         <TabsList>
-          <TabsTrigger value="list">广告列表</TabsTrigger>
-          <TabsTrigger value="analytics">数据分析</TabsTrigger>
-          <TabsTrigger value="logs">操作日志</TabsTrigger>
+          <TabsTrigger value="list">{t('admin.adList')}</TabsTrigger>
+          <TabsTrigger value="analytics">{t('admin.analytics')}</TabsTrigger>
+          <TabsTrigger value="logs">{t('admin.operationLogs')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>所有广告</CardTitle>
+              <CardTitle>{t('admin.allAds')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>标题</TableHead>
-                    <TableHead>位置</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>展示/点击</TableHead>
+                    <TableHead>{t('admin.adTitle')}</TableHead>
+                    <TableHead>{t('admin.adPosition')}</TableHead>
+                    <TableHead>{t('admin.status')}</TableHead>
+                    <TableHead>{t('admin.impressionsClicks')}</TableHead>
                     <TableHead>CTR</TableHead>
-                    <TableHead>预算/支出</TableHead>
-                    <TableHead>操作</TableHead>
+                    <TableHead>{t('admin.budgetSpent')}</TableHead>
+                    <TableHead>{t('admin.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -466,9 +468,9 @@ const AdvertisingManagementPro: React.FC = () => {
                       <TableCell>{ad.position}</TableCell>
                       <TableCell>
                         {ad.is_active ? (
-                          <Badge variant="default">活跃</Badge>
+                          <Badge variant="default">{t('admin.active')}</Badge>
                         ) : (
-                          <Badge variant="secondary">停用</Badge>
+                          <Badge variant="secondary">{t('admin.disabled')}</Badge>
                         )}
                       </TableCell>
                       <TableCell>{ad.impressions} / {ad.clicks}</TableCell>
@@ -513,17 +515,17 @@ const AdvertisingManagementPro: React.FC = () => {
           {ads.length > 0 ? (
             <AdAnalyticsDashboard adId={ads[0].id} />
           ) : (
-            <div className="text-center p-8">暂无广告数据</div>
+            <div className="text-center p-8">{t('admin.noAdData')}</div>
           )}
         </TabsContent>
 
         <TabsContent value="logs">
           <Card>
             <CardHeader>
-              <CardTitle>操作日志</CardTitle>
+              <CardTitle>{t('admin.operationLogs')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">操作日志功能开发中...</p>
+              <p className="text-muted-foreground">{t('admin.logsInDevelopment')}</p>
             </CardContent>
           </Card>
         </TabsContent>
