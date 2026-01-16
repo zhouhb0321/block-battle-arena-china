@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Bot, Play } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import BotManager from '@/components/BotManager';
 import { useBattleWebSocket } from '@/hooks/useBattleWebSocket';
@@ -15,6 +15,7 @@ interface BotRoomMenuProps {
 
 const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [roomStatus, setRoomStatus] = useState<'selecting' | 'room'>('selecting');
   const [availableRooms, setAvailableRooms] = useState<any[]>([]);
@@ -70,7 +71,6 @@ const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
 
       if (error) throw error;
 
-      // 加入参与者表
       await supabase
         .from('battle_participants')
         .insert({
@@ -95,7 +95,6 @@ const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
     if (!user || user.isGuest) return;
 
     try {
-      // 检查房间状态
       const { data: room } = await supabase
         .from('battle_rooms')
         .select('*')
@@ -103,11 +102,10 @@ const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
         .single();
 
       if (!room || room.status !== 'waiting') {
-        alert('房间不可用');
+        alert(t('room.roomUnavailable'));
         return;
       }
 
-      // 加入房间
       await supabase
         .from('battle_participants')
         .insert({
@@ -129,7 +127,6 @@ const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
   const startGame = () => {
     if (!currentRoomId) return;
 
-    // 发送开始游戏消息
     sendMessage({
       type: 'start_game',
       data: {
@@ -138,12 +135,11 @@ const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
       }
     });
 
-    // 启动游戏
     onGameStart('multiplayer', {
       gameMode: {
         id: 'bot_battle',
-        displayName: 'Bot对战',
-        description: '与AI机器人对战',
+        displayName: t('bot.room'),
+        description: t('multiplayer.botRoomDesc'),
         isTimeAttack: false
       },
       roomId: currentRoomId,
@@ -167,25 +163,25 @@ const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
           <div className="flex items-center">
             <Button variant="ghost" onClick={handleBackToMenu} className="mr-4">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              返回
+              {t('common.back')}
             </Button>
-            <h2 className="text-3xl font-bold text-red-500 flex items-center gap-2">
+            <h2 className="text-3xl font-bold text-primary flex items-center gap-2">
               <Bot className="w-8 h-8" />
-              Bot房间
+              {t('bot.room')}
             </h2>
           </div>
           
           <div className="flex items-center gap-4">
             <div className="text-sm">
               {isConnected ? (
-                <span className="text-green-500">● 已连接</span>
+                <span className="text-green-500">● {t('bot.connected')}</span>
               ) : (
-                <span className="text-red-500">● 连接中...</span>
+                <span className="text-destructive">● {t('bot.connecting')}</span>
               )}
             </div>
-            <Button onClick={startGame} className="bg-red-500 hover:bg-red-600">
+            <Button onClick={startGame} className="bg-primary hover:bg-primary/90">
               <Play className="w-4 h-4 mr-2" />
-              开始游戏
+              {t('bot.startGame')}
             </Button>
           </div>
         </div>
@@ -208,61 +204,61 @@ const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
       <div className="flex items-center mb-6">
         <Button variant="ghost" onClick={onBack} className="mr-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          返回
+          {t('common.back')}
         </Button>
-        <h2 className="text-3xl font-bold text-red-500 flex items-center gap-2">
+        <h2 className="text-3xl font-bold text-primary flex items-center gap-2">
           <Bot className="w-8 h-8" />
-          Bot房间
+          {t('bot.room')}
         </h2>
       </div>
 
-      {/* 创建新的Bot房间 */}
+      {/* Create new Bot room */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-red-500" />
-            创建Bot房间
+            <Bot className="w-5 h-5 text-primary" />
+            {t('bot.createRoom')}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-600 mb-4">
-            创建一个专门的Bot房间，可以添加不同难度的AI机器人进行对战练习
+          <p className="text-muted-foreground mb-4">
+            {t('bot.createRoomDesc')}
           </p>
           <Button 
             onClick={createBotRoom}
             disabled={loading}
-            className="bg-red-500 hover:bg-red-600"
+            className="bg-primary hover:bg-primary/90"
           >
-            {loading ? '创建中...' : '创建Bot房间'}
+            {loading ? t('common.creating') : t('bot.createRoom')}
           </Button>
         </CardContent>
       </Card>
 
-      {/* 现有的Bot房间 */}
+      {/* Available Bot rooms */}
       <Card>
         <CardHeader>
-          <CardTitle>可用的Bot房间</CardTitle>
+          <CardTitle>{t('bot.availableRooms')}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : availableRooms.length === 0 ? (
-            <p className="text-center text-gray-500 py-8">暂无可用的Bot房间</p>
+            <p className="text-center text-muted-foreground py-8">{t('bot.noRooms')}</p>
           ) : (
             <div className="space-y-2">
               {availableRooms.map((room) => (
                 <div
                   key={room.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
                 >
                   <div className="flex items-center gap-3">
-                    <Bot className="w-5 h-5 text-red-500" />
+                    <Bot className="w-5 h-5 text-primary" />
                     <div>
-                      <div className="font-medium">Bot房间 #{room.room_code}</div>
-                      <div className="text-sm text-gray-500">
-                        创建者: {room.created_by} | 玩家: {room.current_players}/{room.max_players}
+                      <div className="font-medium">{t('bot.room')} #{room.room_code}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {t('bot.creator')}: {room.created_by} | {t('bot.players')}: {room.current_players}/{room.max_players}
                       </div>
                     </div>
                   </div>
@@ -270,9 +266,9 @@ const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
                     size="sm"
                     onClick={() => joinBotRoom(room.id)}
                     disabled={room.current_players >= room.max_players}
-                    className="bg-red-500 hover:bg-red-600"
+                    className="bg-primary hover:bg-primary/90"
                   >
-                    加入
+                    {t('room.join')}
                   </Button>
                 </div>
               ))}
@@ -281,17 +277,17 @@ const BotRoomMenu: React.FC<BotRoomMenuProps> = ({ onGameStart, onBack }) => {
         </CardContent>
       </Card>
 
-      {/* Bot房间说明 */}
+      {/* Bot room description */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>关于Bot房间</CardTitle>
+          <CardTitle>{t('bot.aboutRooms')}</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm space-y-2 text-gray-600">
-          <p>• Bot房间是专门与AI机器人对战的游戏模式</p>
-          <p>• 房间中的Bot显示为<span className="text-red-500 font-bold">红色方块</span>，易于识别</p>
-          <p>• 支持4种不同难度的Bot：简单、中等、困难、专家</p>
-          <p>• 可以同时与多个Bot和真实玩家一起游戏</p>
-          <p>• 适合练习技巧和挑战更高难度</p>
+        <CardContent className="text-sm space-y-2 text-muted-foreground">
+          <p>• {t('bot.aboutDesc1')}</p>
+          <p>• {t('bot.aboutDesc2')}</p>
+          <p>• {t('bot.aboutDesc3')}</p>
+          <p>• {t('bot.aboutDesc4')}</p>
+          <p>• {t('bot.aboutDesc5')}</p>
         </CardContent>
       </Card>
     </div>

@@ -201,6 +201,9 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.noPermission': '无权限',
     'admin.noAccess': '无权限访问',
     'admin.loading': '加载中...',
+    'admin.noAdData': '暂无广告数据',
+    'admin.logsInDevelopment': '操作日志功能开发中...',
+    'room.passwordError': '密码错误或加入失败',
     
     // Common
     'common.welcome': '欢迎回来',
@@ -498,6 +501,9 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.noPermission': '無權限',
     'admin.noAccess': '無權限訪問',
     'admin.loading': '載入中...',
+    'admin.noAdData': '暫無廣告數據',
+    'admin.logsInDevelopment': '操作日誌功能開發中...',
+    'room.passwordError': '密碼錯誤或加入失敗',
     
     // Common
     'common.welcome': '歡迎回來',
@@ -795,6 +801,9 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.noPermission': 'No permission',
     'admin.noAccess': 'No access permission',
     'admin.loading': 'Loading...',
+    'admin.noAdData': 'No ad data available',
+    'admin.logsInDevelopment': 'Operation logs feature under development...',
+    'room.passwordError': 'Wrong password or join failed',
     
     // Common
     'common.welcome': 'Welcome back',
@@ -1092,6 +1101,9 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.noPermission': '権限がありません',
     'admin.noAccess': 'アクセス権限がありません',
     'admin.loading': '読み込み中...',
+    'admin.noAdData': '広告データがありません',
+    'admin.logsInDevelopment': '操作ログ機能は開発中です...',
+    'room.passwordError': 'パスワードが間違っているか、参加に失敗しました',
     
     // Common
     'common.welcome': 'おかえりなさい',
@@ -1389,6 +1401,9 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.noPermission': '권한 없음',
     'admin.noAccess': '접근 권한 없음',
     'admin.loading': '로딩 중...',
+    'admin.noAdData': '광고 데이터 없음',
+    'admin.logsInDevelopment': '작업 로그 기능 개발 중...',
+    'room.passwordError': '비밀번호가 잘못되었거나 참가에 실패했습니다',
     
     // Common
     'common.welcome': '다시 오신 것을 환영합니다',
@@ -1686,6 +1701,9 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.noPermission': 'Sin permiso',
     'admin.noAccess': 'Sin permiso de acceso',
     'admin.loading': 'Cargando...',
+    'admin.noAdData': 'Sin datos de anuncios',
+    'admin.logsInDevelopment': 'Función de registros de operaciones en desarrollo...',
+    'room.passwordError': 'Contraseña incorrecta o error al unirse',
     
     // Common
     'common.welcome': 'Bienvenido de nuevo',
