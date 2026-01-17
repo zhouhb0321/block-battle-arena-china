@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 
 interface ReplayBrowserProps {
@@ -14,6 +15,7 @@ interface ReplayBrowserProps {
 
 export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [replays, setReplays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterMode, setFilterMode] = useState<string>('all');
@@ -39,12 +41,10 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
         .eq('is_playable', true)
         .order('created_at', { ascending: false });
 
-      // 游戏模式筛选
       if (filterMode !== 'all') {
         query = query.eq('game_mode', filterMode);
       }
 
-      // 时间范围筛选
       if (filterTime !== 'all') {
         const now = new Date();
         let startDate = new Date();
@@ -64,7 +64,6 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
         query = query.gte('created_at', startDate.toISOString());
       }
 
-      // 个人最佳筛选
       if (filterBest) {
         query = query.eq('is_personal_best', true);
       }
@@ -73,7 +72,6 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
 
       if (error) throw error;
       
-      // 排序
       let sortedData = data || [];
       switch (sortBy) {
         case 'score':
@@ -84,21 +82,20 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
           break;
         case 'date':
         default:
-          // 已经按日期排序
           break;
       }
       
       setReplays(sortedData);
     } catch (error) {
       console.error('Failed to load replays:', error);
-      toast.error('加载回放失败');
+      toast.error(t('replay.loadFailed'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (replayId: string) => {
-    if (!confirm('确定要删除这个回放吗？此操作无法撤销。')) return;
+    if (!confirm(t('replay.deleteConfirm'))) return;
 
     try {
       const { error } = await supabase
@@ -108,18 +105,18 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
 
       if (error) throw error;
 
-      toast.success('回放已删除');
+      toast.success(t('replay.deleted'));
       loadReplays();
     } catch (error) {
       console.error('Failed to delete replay:', error);
-      toast.error('删除回放失败');
+      toast.error(t('replay.deleteFailed'));
     }
   };
 
   const handleShare = (replay: any) => {
     const shareUrl = `${window.location.origin}/replay/${replay.id}`;
     navigator.clipboard.writeText(shareUrl);
-    toast.success('分享链接已复制到剪贴板');
+    toast.success(t('replay.linkCopied'));
   };
 
   const formatTime = (seconds: number) => {
@@ -134,13 +131,12 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     
-    if (days === 0) return '今天';
-    if (days === 1) return '昨天';
-    if (days < 7) return `${days}天前`;
-    return date.toLocaleDateString('zh-CN');
+    if (days === 0) return t('replay.today');
+    if (days === 1) return t('replay.yesterday');
+    if (days < 7) return t('replay.daysAgo').replace('{days}', String(days));
+    return date.toLocaleDateString();
   };
 
-  // 生成游戏板缩略图
   const generateThumbnail = (board: number[][] | null) => {
     if (!board || !Array.isArray(board)) return null;
     
@@ -169,38 +165,38 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
 
   return (
     <div className="space-y-6">
-      {/* 筛选器 */}
+      {/* Filter bar */}
       <Card className="bg-card/50 backdrop-blur-sm border-border">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-4 items-center">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">筛选:</span>
+              <span className="text-sm font-medium">{t('replay.filter')}:</span>
             </div>
 
             <Select value={filterMode} onValueChange={setFilterMode}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="游戏模式" />
+                <SelectValue placeholder={t('replay.gameMode')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">所有模式</SelectItem>
-                <SelectItem value="sprint40">40行竞速</SelectItem>
-                <SelectItem value="sprint100">100行竞速</SelectItem>
-                <SelectItem value="timeAttack2">2分钟挑战</SelectItem>
-                <SelectItem value="timeAttack5">5分钟挑战</SelectItem>
-                <SelectItem value="endless">无尽模式</SelectItem>
+                <SelectItem value="all">{t('replay.allModes')}</SelectItem>
+                <SelectItem value="sprint40">{t('game.sprint40')}</SelectItem>
+                <SelectItem value="sprint100">{t('replay.sprint100')}</SelectItem>
+                <SelectItem value="timeAttack2">{t('game.ultra2min')}</SelectItem>
+                <SelectItem value="timeAttack5">{t('replay.timeAttack5')}</SelectItem>
+                <SelectItem value="endless">{t('game.endless')}</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={filterTime} onValueChange={setFilterTime}>
               <SelectTrigger className="w-32">
-                <SelectValue placeholder="时间" />
+                <SelectValue placeholder={t('game.time')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">全部时间</SelectItem>
-                <SelectItem value="today">今天</SelectItem>
-                <SelectItem value="week">本周</SelectItem>
-                <SelectItem value="month">本月</SelectItem>
+                <SelectItem value="all">{t('replay.allTime')}</SelectItem>
+                <SelectItem value="today">{t('replay.today')}</SelectItem>
+                <SelectItem value="week">{t('replay.thisWeek')}</SelectItem>
+                <SelectItem value="month">{t('replay.thisMonth')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -209,7 +205,7 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
               size="sm"
               onClick={() => setFilterBest(!filterBest)}
             >
-              仅显示最佳
+              {t('replay.bestOnly')}
             </Button>
 
             <div className="flex items-center gap-2">
@@ -219,45 +215,42 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="date">最新</SelectItem>
-                  <SelectItem value="score">最高分</SelectItem>
-                  <SelectItem value="time">最快</SelectItem>
+                  <SelectItem value="date">{t('replay.newest')}</SelectItem>
+                  <SelectItem value="score">{t('replay.highestScore')}</SelectItem>
+                  <SelectItem value="time">{t('replay.fastest')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="ml-auto text-sm text-muted-foreground">
-              共 {replays.length} 个回放
+              {t('replay.totalReplays').replace('{count}', String(replays.length))}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 回放列表 */}
+      {/* Replay list */}
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">加载中...</div>
+        <div className="text-center py-12 text-muted-foreground">{t('common.loading')}</div>
       ) : paginatedReplays.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          没有找到回放记录
+          {t('replay.noReplays')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {paginatedReplays.map((replay) => (
             <Card key={replay.id} className="group hover:shadow-lg transition-all bg-card/50 backdrop-blur-sm overflow-hidden">
               <CardContent className="p-0 space-y-0">
-                {/* 游戏板缩略图 */}
                 <div className="relative">
                   {generateThumbnail(replay.initial_board)}
                   <div className="absolute top-2 right-2">
                     {replay.is_personal_best && (
-                      <Badge variant="default" className="bg-yellow-500 shadow-lg">最佳</Badge>
+                      <Badge variant="default" className="bg-yellow-500 shadow-lg">{t('replay.best')}</Badge>
                     )}
                   </div>
                 </div>
 
-                {/* 内容区域 */}
                 <div className="p-4 space-y-3">
-                  {/* 标题和日期 */}
                   <div>
                     <h3 className="font-semibold text-base truncate">{replay.game_mode}</h3>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -266,18 +259,17 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
                     </p>
                   </div>
 
-                  {/* 统计数据 */}
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">得分</span>
+                      <span className="text-muted-foreground">{t('game.score')}</span>
                       <span className="font-mono font-bold">{replay.final_score.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">行数</span>
+                      <span className="text-muted-foreground">{t('game.lines')}</span>
                       <span className="font-mono font-bold">{replay.final_lines}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">时长</span>
+                      <span className="text-muted-foreground">{t('replay.duration')}</span>
                       <span className="font-mono">{formatTime(replay.duration_seconds)}</span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -286,7 +278,6 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
                     </div>
                   </div>
 
-                  {/* 操作按钮 */}
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -294,7 +285,7 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
                       onClick={() => onPlayReplay(replay.id)}
                     >
                       <Play className="w-3 h-3 mr-1" />
-                      播放
+                      {t('replay.play')}
                     </Button>
                     <Button
                       size="sm"
@@ -318,7 +309,7 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
         </div>
       )}
 
-      {/* 分页 */}
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2">
           <Button
@@ -326,7 +317,7 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
             disabled={page === 1}
             onClick={() => setPage(page - 1)}
           >
-            上一页
+            {t('replay.prevPage')}
           </Button>
           <div className="flex items-center gap-2">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
@@ -345,7 +336,7 @@ export const ReplayBrowser: React.FC<ReplayBrowserProps> = ({ onPlayReplay }) =>
             disabled={page === totalPages}
             onClick={() => setPage(page + 1)}
           >
-            下一页
+            {t('replay.nextPage')}
           </Button>
         </div>
       )}

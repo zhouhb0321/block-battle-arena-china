@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import TimingTab from '@/components/settings/TimingTab';
 import ControlsTab from '@/components/settings/ControlsTab';
 import AudioTab from '@/components/settings/AudioTab';
@@ -23,6 +24,7 @@ interface SettingsMenuProps {
 
 const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const {
     settings,
     hasChanges,
@@ -35,11 +37,10 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
     applyAllRecommendations
   } = useSettingsBinding();
 
-  // 键位录制相关
   const { recordingKey, handleKeyRecord } = useKeyRecording(
     settings,
     updateSetting,
-    () => {} // hasChanges is managed by useSettingsBinding
+    () => {}
   );
 
   return (
@@ -48,26 +49,25 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={onBackToMenu}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            返回
+            {t('common.back')}
           </Button>
-          <h2 className="text-3xl font-bold">游戏设置</h2>
+          <h2 className="text-3xl font-bold">{t('settings.title')}</h2>
         </div>
         
         <div className="flex gap-2">
           <Button variant="outline" onClick={resetSettings}>
-            重置设置
+            {t('settings.reset')}
           </Button>
           <Button 
             onClick={commitSettings} 
             disabled={loading || !hasChanges}
             className={hasChanges ? 'bg-green-600 hover:bg-green-700' : ''}
           >
-            {loading ? '保存中...' : hasChanges ? '保存更改' : '已保存'}
+            {loading ? t('settings.saving') : hasChanges ? t('settings.saveChanges') : t('settings.saved')}
           </Button>
         </div>
       </div>
 
-      {/* 智能提示组件 */}
       <SettingsHints
         hints={hints}
         onApplyRecommendation={applyRecommendation}
@@ -76,12 +76,12 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
 
       <Tabs defaultValue="timing" className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="timing">手感</TabsTrigger>
-          <TabsTrigger value="controls">键位</TabsTrigger>
-          <TabsTrigger value="visual">视觉</TabsTrigger>
-          <TabsTrigger value="blocks">方块</TabsTrigger>
-          <TabsTrigger value="audio">音效</TabsTrigger>
-          <TabsTrigger value="music">音乐</TabsTrigger>
+          <TabsTrigger value="timing">{t('settings.tabs.handling')}</TabsTrigger>
+          <TabsTrigger value="controls">{t('settings.tabs.controls')}</TabsTrigger>
+          <TabsTrigger value="visual">{t('settings.tabs.visual')}</TabsTrigger>
+          <TabsTrigger value="blocks">{t('settings.tabs.blocks')}</TabsTrigger>
+          <TabsTrigger value="audio">{t('settings.tabs.audio')}</TabsTrigger>
+          <TabsTrigger value="music">{t('settings.tabs.music')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="timing" className="space-y-4">
@@ -93,7 +93,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
             <HandlingPreview settings={settings} />
           </div>
           
-          {/* Input Graph - Collapsible */}
           <InputGraph />
         </TabsContent>
 
@@ -139,7 +138,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onBackToMenu }) => {
         <Card className="mt-6 border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/50">
           <CardContent className="pt-6">
             <p className="text-orange-800 dark:text-orange-200 text-sm">
-              您当前为游客模式，设置仅保存在本次会话中。登录后可永久保存您的个人设置。
+              {t('settings.guestModeWarning')}
             </p>
           </CardContent>
         </Card>

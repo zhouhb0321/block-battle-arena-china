@@ -1,17 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Trophy, TrendingUp, Zap } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { zhCN, zhTW, enUS, ja, ko, es } from 'date-fns/locale';
 
 interface FriendActivityProps {
   friendIds: string[];
 }
 
 const FriendActivity: React.FC<FriendActivityProps> = ({ friendIds }) => {
+  const { t, language } = useLanguage();
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const getDateLocale = () => {
+    const locales: Record<string, any> = {
+      'zh': zhCN,
+      'zh-TW': zhTW,
+      'en': enUS,
+      'ja': ja,
+      'ko': ko,
+      'es': es
+    };
+    return locales[language] || enUS;
+  };
 
   useEffect(() => {
     loadActivities();
@@ -26,7 +40,6 @@ const FriendActivity: React.FC<FriendActivityProps> = ({ friendIds }) => {
 
     setLoading(true);
     try {
-      // 获取好友的最新个人最佳记录
       const { data: friendReplays } = await supabase
         .from('compressed_replays')
         .select('user_id, username, final_score, final_lines, game_mode, created_at, is_personal_best, pps, apm')
@@ -50,21 +63,25 @@ const FriendActivity: React.FC<FriendActivityProps> = ({ friendIds }) => {
   };
 
   const getGameModeLabel = (gameMode: string) => {
-    const labels: Record<string, string> = {
-      'sprint_40': '40行冲刺',
-      'sprint_100': '100行冲刺',
-      'marathon': '马拉松',
-      'ultra': '无尽模式',
-      'ranked': '排位赛'
+    const modeKeys: Record<string, string> = {
+      'sprint_40': 'game.sprint40',
+      'sprint_100': 'replay.sprint100',
+      'marathon': 'replay.marathon',
+      'ultra': 'game.endless',
+      'ranked': 'game.ranked',
+      'sprint40': 'game.sprint40',
+      'timeAttack2': 'game.ultra2min',
+      'endless': 'game.endless'
     };
-    return labels[gameMode] || gameMode;
+    const key = modeKeys[gameMode];
+    return key ? t(key) : gameMode;
   };
 
   if (friendIds.length === 0) {
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-center text-muted-foreground text-sm">添加好友后即可查看动态</p>
+          <p className="text-center text-muted-foreground text-sm">{t('friend.addFriendsToViewActivity')}</p>
         </CardContent>
       </Card>
     );
@@ -75,14 +92,14 @@ const FriendActivity: React.FC<FriendActivityProps> = ({ friendIds }) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <TrendingUp className="w-5 h-5 text-primary" />
-          好友动态
+          {t('friend.activity')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="text-center py-4 text-muted-foreground text-sm">加载中...</div>
+          <div className="text-center py-4 text-muted-foreground text-sm">{t('common.loading')}</div>
         ) : activities.length === 0 ? (
-          <div className="text-center py-4 text-muted-foreground text-sm">暂无好友动态</div>
+          <div className="text-center py-4 text-muted-foreground text-sm">{t('friend.noActivity')}</div>
         ) : (
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {activities.map((activity, index) => (
@@ -93,11 +110,11 @@ const FriendActivity: React.FC<FriendActivityProps> = ({ friendIds }) => {
                 {getActivityIcon(activity.game_mode)}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">
-                    <span className="text-primary">{activity.username}</span> 刷新了个人最佳记录！
+                    <span className="text-primary">{activity.username}</span> {t('friend.newPersonalBest')}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {getGameModeLabel(activity.game_mode)} · 分数: {activity.final_score.toLocaleString()} · 
-                    消行: {activity.final_lines}
+                    {getGameModeLabel(activity.game_mode)} · {t('game.score')}: {activity.final_score.toLocaleString()} · 
+                    {t('game.lines')}: {activity.final_lines}
                   </p>
                   <div className="flex gap-3 mt-1">
                     <span className="text-xs text-muted-foreground">PPS: {activity.pps?.toFixed(2) || '0.00'}</span>
@@ -106,7 +123,7 @@ const FriendActivity: React.FC<FriendActivityProps> = ({ friendIds }) => {
                   <p className="text-xs text-muted-foreground mt-1">
                     {formatDistanceToNow(new Date(activity.created_at), { 
                       addSuffix: true,
-                      locale: zhCN
+                      locale: getDateLocale()
                     })}
                   </p>
                 </div>

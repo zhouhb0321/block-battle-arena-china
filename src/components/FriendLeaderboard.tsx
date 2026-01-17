@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ interface FriendLeaderboardProps {
 }
 
 const FriendLeaderboard: React.FC<FriendLeaderboardProps> = ({ userId, friendIds }) => {
+  const { t } = useLanguage();
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [sortBy, setSortBy] = useState<'rating' | 'best_pps' | 'best_apm'>('rating');
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,7 @@ const FriendLeaderboard: React.FC<FriendLeaderboardProps> = ({ userId, friendIds
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-center text-muted-foreground text-sm">添加好友后即可查看排行榜</p>
+          <p className="text-center text-muted-foreground text-sm">{t('friend.addFriendsToViewLeaderboard')}</p>
         </CardContent>
       </Card>
     );
@@ -65,14 +67,14 @@ const FriendLeaderboard: React.FC<FriendLeaderboardProps> = ({ userId, friendIds
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Trophy className="w-5 h-5 text-primary" />
-            好友排行榜
+            {t('friend.leaderboard')}
           </CardTitle>
           <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
             <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="rating">评分</SelectItem>
+              <SelectItem value="rating">{t('friend.sortRating')}</SelectItem>
               <SelectItem value="best_pps">PPS</SelectItem>
               <SelectItem value="best_apm">APM</SelectItem>
             </SelectContent>
@@ -81,7 +83,7 @@ const FriendLeaderboard: React.FC<FriendLeaderboardProps> = ({ userId, friendIds
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="text-center py-4 text-muted-foreground text-sm">加载中...</div>
+          <div className="text-center py-4 text-muted-foreground text-sm">{t('common.loading')}</div>
         ) : (
           <div className="space-y-2">
             {leaderboard.map((player, index) => (
