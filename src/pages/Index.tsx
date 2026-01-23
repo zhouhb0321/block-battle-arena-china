@@ -22,9 +22,11 @@ import { AIBattleGame } from '@/components/game/AIBattleGame';
 import BattleRoomLobby from '@/components/battle/BattleRoomLobby';
 import BattleGameView from '@/components/battle/BattleGameView';
 import BattleHistoryPage from '@/components/BattleHistoryPage';
+import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp';
+import OnboardingTutorial from '@/components/OnboardingTutorial';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft, GraduationCap } from 'lucide-react';
+import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft, GraduationCap, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ViewType } from '@/types/navigation';
 import { GAME_MODES } from '@/utils/gameTypes';
@@ -37,6 +39,28 @@ const Index = () => {
   const [battleRoomId, setBattleRoomId] = useState<string | null>(null);
   const [pendingRoomCode, setPendingRoomCode] = useState<string | null>(null);
   const [selectedReplayId, setSelectedReplayId] = useState<string | null>(null);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check if new user needs onboarding
+  useEffect(() => {
+    const hasCompletedOnboarding = localStorage.getItem('onboarding-completed');
+    if (!hasCompletedOnboarding && isAuthenticated) {
+      setShowOnboarding(true);
+    }
+  }, [isAuthenticated]);
+
+  // F1 or ? key to open shortcuts help
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F1' || (e.key === '?' && !e.ctrlKey && !e.metaKey)) {
+        e.preventDefault();
+        setShowShortcutsHelp(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // 检查 URL 参数中的房间号
   useEffect(() => {
@@ -468,6 +492,25 @@ const Index = () => {
       <AuthModal 
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
+      />
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        isOpen={showShortcutsHelp}
+        onClose={() => setShowShortcutsHelp(false)}
+      />
+
+      {/* New User Onboarding */}
+      <OnboardingTutorial
+        isOpen={showOnboarding}
+        onClose={() => {
+          setShowOnboarding(false);
+          localStorage.setItem('onboarding-completed', 'true');
+        }}
+        onComplete={() => {
+          setShowOnboarding(false);
+          localStorage.setItem('onboarding-completed', 'true');
+        }}
       />
     </div>
   );
