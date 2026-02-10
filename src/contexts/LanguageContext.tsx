@@ -457,7 +457,28 @@ const translations: Record<Language, Record<string, string>> = {
     'tutorial.finish': '完成',
     'tutorial.categoryBasics': '基础操作',
     'tutorial.categoryModes': '游戏模式',
-    'tutorial.categoryAdvanced': '进阶技巧'
+    'tutorial.categoryAdvanced': '进阶技巧',
+    
+    // Leaderboard
+    'leaderboard.title': '全球排行榜',
+    'leaderboard.refresh': '刷新',
+    'leaderboard.sprint40Tab': '40行竞速 - Top 500',
+    'leaderboard.timeAttack2Tab': '2分钟竞速 - Top 500',
+    'leaderboard.sprint40Title': '40行竞速 - 用时最短的500名',
+    'leaderboard.timeAttack2Title': '2分钟竞速 - 得分最高的500名',
+    'leaderboard.noData': '暂无排行榜数据',
+    'leaderboard.loading': '加载排行榜中...',
+    'leaderboard.playable': '可播放',
+    'leaderboard.incomplete': '数据不完整',
+    'leaderboard.watchReplay': '观看回放',
+    'leaderboard.cantPlay': '无法播放',
+    'leaderboard.score': '得分',
+    'leaderboard.lines': '行数',
+    'leaderboard.points': '分',
+    'leaderboard.searchPlayer': '搜索玩家...',
+    'leaderboard.shareReplay': '分享',
+    'leaderboard.linkCopied': '回放链接已复制！',
+    'leaderboard.back': '返回'
   },
   
   'zh-TW': {
@@ -908,7 +929,28 @@ const translations: Record<Language, Record<string, string>> = {
     'tutorial.finish': '完成',
     'tutorial.categoryBasics': '基礎操作',
     'tutorial.categoryModes': '遊戲模式',
-    'tutorial.categoryAdvanced': '進階技巧'
+    'tutorial.categoryAdvanced': '進階技巧',
+    
+    // Leaderboard
+    'leaderboard.title': '全球排行榜',
+    'leaderboard.refresh': '刷新',
+    'leaderboard.sprint40Tab': '40行競速 - Top 500',
+    'leaderboard.timeAttack2Tab': '2分鐘競速 - Top 500',
+    'leaderboard.sprint40Title': '40行競速 - 用時最短的500名',
+    'leaderboard.timeAttack2Title': '2分鐘競速 - 得分最高的500名',
+    'leaderboard.noData': '暫無排行榜數據',
+    'leaderboard.loading': '載入排行榜中...',
+    'leaderboard.playable': '可播放',
+    'leaderboard.incomplete': '數據不完整',
+    'leaderboard.watchReplay': '觀看回放',
+    'leaderboard.cantPlay': '無法播放',
+    'leaderboard.score': '得分',
+    'leaderboard.lines': '行數',
+    'leaderboard.points': '分',
+    'leaderboard.searchPlayer': '搜尋玩家...',
+    'leaderboard.shareReplay': '分享',
+    'leaderboard.linkCopied': '回放連結已複製！',
+    'leaderboard.back': '返回'
   },
   
   en: {
@@ -1359,7 +1401,28 @@ const translations: Record<Language, Record<string, string>> = {
     'tutorial.finish': 'Finish',
     'tutorial.categoryBasics': 'Basics',
     'tutorial.categoryModes': 'Game Modes',
-    'tutorial.categoryAdvanced': 'Advanced'
+    'tutorial.categoryAdvanced': 'Advanced',
+    
+    // Leaderboard
+    'leaderboard.title': 'Global Leaderboard',
+    'leaderboard.refresh': 'Refresh',
+    'leaderboard.sprint40Tab': '40-Line Sprint - Top 500',
+    'leaderboard.timeAttack2Tab': '2-Min Time Attack - Top 500',
+    'leaderboard.sprint40Title': '40-Line Sprint - Fastest 500',
+    'leaderboard.timeAttack2Title': '2-Min Time Attack - Top 500 Scores',
+    'leaderboard.noData': 'No leaderboard data yet',
+    'leaderboard.loading': 'Loading leaderboard...',
+    'leaderboard.playable': 'Playable',
+    'leaderboard.incomplete': 'Incomplete data',
+    'leaderboard.watchReplay': 'Watch Replay',
+    'leaderboard.cantPlay': "Can't play",
+    'leaderboard.score': 'Score',
+    'leaderboard.lines': 'Lines',
+    'leaderboard.points': 'pts',
+    'leaderboard.searchPlayer': 'Search player...',
+    'leaderboard.shareReplay': 'Share',
+    'leaderboard.linkCopied': 'Replay link copied!',
+    'leaderboard.back': 'Back'
   },
   
   ja: {
@@ -1810,7 +1873,28 @@ const translations: Record<Language, Record<string, string>> = {
     'tutorial.finish': '完了',
     'tutorial.categoryBasics': '基本操作',
     'tutorial.categoryModes': 'ゲームモード',
-    'tutorial.categoryAdvanced': '上級テクニック'
+    'tutorial.categoryAdvanced': '上級テクニック',
+    
+    // Leaderboard
+    'leaderboard.title': 'グローバルランキング',
+    'leaderboard.refresh': '更新',
+    'leaderboard.sprint40Tab': '40ラインスプリント - Top 500',
+    'leaderboard.timeAttack2Tab': '2分タイムアタック - Top 500',
+    'leaderboard.sprint40Title': '40ラインスプリント - 最速500名',
+    'leaderboard.timeAttack2Title': '2分タイムアタック - 最高スコア500名',
+    'leaderboard.noData': 'ランキングデータがありません',
+    'leaderboard.loading': 'ランキング読み込み中...',
+    'leaderboard.playable': '再生可能',
+    'leaderboard.incomplete': 'データ不完全',
+    'leaderboard.watchReplay': 'リプレイ再生',
+    'leaderboard.cantPlay': '再生不可',
+    'leaderboard.score': 'スコア',
+    'leaderboard.lines': 'ライン',
+    'leaderboard.points': '点',
+    'leaderboard.searchPlayer': 'プレイヤー検索...',
+    'leaderboard.shareReplay': '共有',
+    'leaderboard.linkCopied': 'リプレイリンクをコピーしました！',
+    'leaderboard.back': '戻る'
   },
   
   ko: {
@@ -2261,7 +2345,28 @@ const translations: Record<Language, Record<string, string>> = {
     'tutorial.finish': '완료',
     'tutorial.categoryBasics': '기본 조작',
     'tutorial.categoryModes': '게임 모드',
-    'tutorial.categoryAdvanced': '고급 기술'
+    'tutorial.categoryAdvanced': '고급 기술',
+    
+    // Leaderboard
+    'leaderboard.title': '글로벌 리더보드',
+    'leaderboard.refresh': '새로고침',
+    'leaderboard.sprint40Tab': '40줄 스프린트 - Top 500',
+    'leaderboard.timeAttack2Tab': '2분 타임어택 - Top 500',
+    'leaderboard.sprint40Title': '40줄 스프린트 - 최단 시간 500명',
+    'leaderboard.timeAttack2Title': '2분 타임어택 - 최고 점수 500명',
+    'leaderboard.noData': '리더보드 데이터가 없습니다',
+    'leaderboard.loading': '리더보드 로딩 중...',
+    'leaderboard.playable': '재생 가능',
+    'leaderboard.incomplete': '데이터 불완전',
+    'leaderboard.watchReplay': '리플레이 보기',
+    'leaderboard.cantPlay': '재생 불가',
+    'leaderboard.score': '점수',
+    'leaderboard.lines': '줄',
+    'leaderboard.points': '점',
+    'leaderboard.searchPlayer': '플레이어 검색...',
+    'leaderboard.shareReplay': '공유',
+    'leaderboard.linkCopied': '리플레이 링크가 복사되었습니다!',
+    'leaderboard.back': '뒤로'
   },
   
   es: {
@@ -2712,7 +2817,28 @@ const translations: Record<Language, Record<string, string>> = {
     'tutorial.finish': 'Terminar',
     'tutorial.categoryBasics': 'Básico',
     'tutorial.categoryModes': 'Modos de Juego',
-    'tutorial.categoryAdvanced': 'Avanzado'
+    'tutorial.categoryAdvanced': 'Avanzado',
+    
+    // Leaderboard
+    'leaderboard.title': 'Clasificación Global',
+    'leaderboard.refresh': 'Actualizar',
+    'leaderboard.sprint40Tab': 'Sprint 40 Líneas - Top 500',
+    'leaderboard.timeAttack2Tab': 'Ataque 2 Min - Top 500',
+    'leaderboard.sprint40Title': 'Sprint 40 Líneas - Los 500 más rápidos',
+    'leaderboard.timeAttack2Title': 'Ataque 2 Min - Top 500 Puntuaciones',
+    'leaderboard.noData': 'Aún no hay datos de clasificación',
+    'leaderboard.loading': 'Cargando clasificación...',
+    'leaderboard.playable': 'Reproducible',
+    'leaderboard.incomplete': 'Datos incompletos',
+    'leaderboard.watchReplay': 'Ver Replay',
+    'leaderboard.cantPlay': 'No reproducible',
+    'leaderboard.score': 'Puntuación',
+    'leaderboard.lines': 'Líneas',
+    'leaderboard.points': 'pts',
+    'leaderboard.searchPlayer': 'Buscar jugador...',
+    'leaderboard.shareReplay': 'Compartir',
+    'leaderboard.linkCopied': '¡Enlace de replay copiado!',
+    'leaderboard.back': 'Volver'
   }
 };
 
