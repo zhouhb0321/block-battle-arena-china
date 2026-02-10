@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Trophy, Clock, Target, Medal, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Play, Trophy, Clock, Target, Medal, AlertCircle, ArrowLeft, Share2, RefreshCw, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from 'sonner';
 import { ReplayPreparationDialog } from './ReplayPreparationDialog';
 import { ReplayPlayerV4Unified } from './ReplayPlayerV4Unified';
 
@@ -23,14 +26,27 @@ interface LeaderboardEntry {
   version?: string;
 }
 
-const LeaderboardView: React.FC = () => {
+interface LeaderboardViewProps {
+  onBack?: () => void;
+}
+
+const LOCALE_MAP: Record<string, string> = {
+  zh: 'zh-CN',
+  'zh-TW': 'zh-TW',
+  en: 'en-US',
+  ja: 'ja-JP',
+  ko: 'ko-KR',
+  es: 'es-ES',
+};
+
+const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onBack }) => {
+  const { t, language } = useLanguage();
   const [sprint40Leaderboard, setSprint40Leaderboard] = useState<LeaderboardEntry[]>([]);
   const [timeAttack2Leaderboard, setTimeAttack2Leaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntryForPreparation, setSelectedEntryForPreparation] = useState<LeaderboardEntry | null>(null);
   const [isPreparationDialogOpen, setIsPreparationDialogOpen] = useState(false);
-  
-  // ✅ P0 修复：独立的播放器状态
   const [playerReplayData, setPlayerReplayData] = useState<any>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
@@ -41,7 +57,6 @@ const LeaderboardView: React.FC = () => {
   const loadLeaderboards = async () => {
     setLoading(true);
     try {
-      // Load v3.0+ 40-line sprint leaderboard (fastest times)
       const { data: sprint40Data, error: sprint40Error } = await supabase
         .from('compressed_replays')
         .select('id, username, game_mode, final_score, final_lines, duration_seconds, pps, apm, is_personal_best, created_at, actions_count, version')
@@ -54,7 +69,6 @@ const LeaderboardView: React.FC = () => {
         setSprint40Leaderboard(sprint40Data);
       }
 
-      // Load v3.0+ 2-minute time attack leaderboard (highest scores)
       const { data: timeAttack2Data, error: timeAttack2Error } = await supabase
         .from('compressed_replays')
         .select('id, username, game_mode, final_score, final_lines, duration_seconds, pps, apm, is_personal_best, created_at, actions_count, version')
@@ -66,7 +80,6 @@ const LeaderboardView: React.FC = () => {
       if (!timeAttack2Error && timeAttack2Data) {
         setTimeAttack2Leaderboard(timeAttack2Data);
       }
-
     } catch (error) {
       console.error('Error loading leaderboards:', error);
     } finally {
@@ -74,36 +87,42 @@ const LeaderboardView: React.FC = () => {
     }
   };
 
+  const filteredSprint40 = useMemo(() => {
+    if (!searchQuery.trim()) return sprint40Leaderboard;
+    const q = searchQuery.toLowerCase();
+    return sprint40Leaderboard.filter(e => e.username.toLowerCase().includes(q));
+  }, [sprint40Leaderboard, searchQuery]);
+
+  const filteredTimeAttack2 = useMemo(() => {
+    if (!searchQuery.trim()) return timeAttack2Leaderboard;
+    const q = searchQuery.toLowerCase();
+    return timeAttack2Leaderboard.filter(e => e.username.toLowerCase().includes(q));
+  }, [timeAttack2Leaderboard, searchQuery]);
+
   const handleViewReplay = (entry: LeaderboardEntry) => {
     setSelectedEntryForPreparation(entry);
     setIsPreparationDialogOpen(true);
   };
 
-  // ✅ P0 修复：处理播放准备完成
-  const handlePlayReady = (replayData: any) => {
-    console.group('[LeaderboardView] Opening player');
-    console.log('Replay data:', {
-      isV4: isV4Replay(replayData),
-      hasEvents: replayData?.events?.length || replayData?.actions?.length,
-      metadata: replayData?.metadata || replayData?.initialPieceSequence
+  const handleShareReplay = (entry: LeaderboardEntry) => {
+    const url = `${window.location.origin}/replay/${entry.id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success(t('leaderboard.linkCopied'));
     });
-    console.groupEnd();
-    
+  };
+
+  const handlePlayReady = (replayData: any) => {
     setPlayerReplayData(replayData);
     setIsPlayerOpen(true);
     setIsPreparationDialogOpen(false);
   };
 
-  // Helper functions for V4 detection
   const isV4Replay = (data: any): boolean => {
     return data && (data.format === 'v4' || (data.version === '4.0' && data.v4Data));
   };
 
   const getV4Data = (data: any): any | null => {
-    if (data && data.v4Data) {
-      return data.v4Data;
-    }
-    return null;
+    return data?.v4Data || null;
   };
 
   const formatTime = (seconds: number) => {
@@ -112,8 +131,13 @@ const LeaderboardView: React.FC = () => {
     return `${minutes}:${remainingSeconds.toFixed(3).padStart(6, '0')}`;
   };
 
-  const formatScore = (score: number) => {
-    return score.toLocaleString();
+  const formatScore = (score: number) => score.toLocaleString();
+
+  const formatDate = (dateStr: string) => {
+    const locale = LOCALE_MAP[language] || 'en-US';
+    return new Date(dateStr).toLocaleDateString(locale, {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
   };
 
   const getRankIcon = (rank: number) => {
@@ -123,13 +147,10 @@ const LeaderboardView: React.FC = () => {
     return <span className="w-5 h-5 flex items-center justify-center text-sm font-bold">#{rank}</span>;
   };
 
-  const LeaderboardTable = ({ 
-    data, 
-    type 
-  }: { 
-    data: LeaderboardEntry[]; 
-    type: 'sprint40' | 'timeAttack2' 
-  }) => (
+  const isPlayable = (entry: LeaderboardEntry) =>
+    !!(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 3.0);
+
+  const LeaderboardTable = ({ data, type }: { data: LeaderboardEntry[]; type: 'sprint40' | 'timeAttack2' }) => (
     <div className="space-y-2">
       {data.map((entry, index) => (
         <Card key={entry.id} className="hover:shadow-lg transition-shadow">
@@ -140,29 +161,24 @@ const LeaderboardView: React.FC = () => {
                   {getRankIcon(index + 1)}
                   <span className="font-bold text-lg">#{index + 1}</span>
                 </div>
-                
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="font-semibold text-lg">{entry.username}</h3>
                     {entry.is_personal_best && (
                       <Badge className="bg-yellow-500 text-black">
-                        <Trophy className="w-3 h-3 mr-1" />
-                        PB
+                        <Trophy className="w-3 h-3 mr-1" />PB
                       </Badge>
                     )}
-                    {(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 3.0) ? (
+                    {isPlayable(entry) ? (
                       <Badge variant="default" className="bg-green-500 text-white">
-                        <Play className="w-3 h-3 mr-1" />
-                        可播放
+                        <Play className="w-3 h-3 mr-1" />{t('leaderboard.playable')}
                       </Badge>
                     ) : (
                       <Badge variant="secondary" className="text-muted-foreground">
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        数据不完整
+                        <AlertCircle className="w-3 h-3 mr-1" />{t('leaderboard.incomplete')}
                       </Badge>
                     )}
                   </div>
-                  
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     {type === 'sprint40' ? (
                       <>
@@ -172,17 +188,17 @@ const LeaderboardView: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-1">
                           <Target className="w-4 h-4 text-blue-500" />
-                          <span>得分: {formatScore(entry.final_score)}</span>
+                          <span>{t('leaderboard.score')}: {formatScore(entry.final_score)}</span>
                         </div>
                       </>
                     ) : (
                       <>
                         <div className="flex items-center gap-1">
                           <Target className="w-4 h-4 text-blue-500" />
-                          <span className="font-bold">{formatScore(entry.final_score)} 分</span>
+                          <span className="font-bold">{formatScore(entry.final_score)} {t('leaderboard.points')}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span>行数: {entry.final_lines}</span>
+                          <span>{t('leaderboard.lines')}: {entry.final_lines}</span>
                         </div>
                       </>
                     )}
@@ -193,37 +209,32 @@ const LeaderboardView: React.FC = () => {
                       <span>APM: {entry.apm.toFixed(1)}</span>
                     </div>
                   </div>
-
-                  <div className="mt-2 text-xs text-gray-500">
-                    {new Date(entry.created_at).toLocaleDateString('zh-CN', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    {formatDate(entry.created_at)}
                   </div>
                 </div>
               </div>
-
-              <Button
-                onClick={() => handleViewReplay(entry)}
-                className="ml-4"
-                size="sm"
-                disabled={!(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 3.0)}
-              >
-                {(entry.actions_count && entry.actions_count > 0 && entry.version && parseFloat(entry.version) >= 3.0) ? (
-                  <>
-                    <Play className="w-4 h-4 mr-1" />
-                    观看回放
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="w-4 h-4 mr-1" />
-                    无法播放
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-2 ml-4">
+                <Button
+                  onClick={() => handleShareReplay(entry)}
+                  variant="outline"
+                  size="sm"
+                  title={t('leaderboard.shareReplay')}
+                >
+                  <Share2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  onClick={() => handleViewReplay(entry)}
+                  size="sm"
+                  disabled={!isPlayable(entry)}
+                >
+                  {isPlayable(entry) ? (
+                    <><Play className="w-4 h-4 mr-1" />{t('leaderboard.watchReplay')}</>
+                  ) : (
+                    <><AlertCircle className="w-4 h-4 mr-1" />{t('leaderboard.cantPlay')}</>
+                  )}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -235,8 +246,8 @@ const LeaderboardView: React.FC = () => {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">加载排行榜中...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">{t('leaderboard.loading')}</p>
         </div>
       </div>
     );
@@ -245,16 +256,34 @@ const LeaderboardView: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">全球排行榜</h2>
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <Button onClick={onBack} variant="ghost" size="icon">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          )}
+          <h2 className="text-2xl font-bold">{t('leaderboard.title')}</h2>
+        </div>
         <Button onClick={loadLeaderboards} variant="outline" size="sm">
-          刷新
+          <RefreshCw className="w-4 h-4 mr-1" />
+          {t('leaderboard.refresh')}
         </Button>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder={t('leaderboard.searchPlayer')}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       <Tabs defaultValue="sprint40" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="sprint40">40行竞速 - Top 500</TabsTrigger>
-          <TabsTrigger value="timeAttack2">2分钟竞速 - Top 500</TabsTrigger>
+          <TabsTrigger value="sprint40">{t('leaderboard.sprint40Tab')}</TabsTrigger>
+          <TabsTrigger value="timeAttack2">{t('leaderboard.timeAttack2Tab')}</TabsTrigger>
         </TabsList>
         
         <TabsContent value="sprint40" className="space-y-4">
@@ -262,17 +291,17 @@ const LeaderboardView: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="w-5 h-5" />
-                40行竞速 - 用时最短的500名
+                {t('leaderboard.sprint40Title')}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {sprint40Leaderboard.length === 0 ? (
+              {filteredSprint40.length === 0 ? (
                 <div className="text-center py-8">
-                  <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">暂无排行榜数据</p>
+                  <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">{t('leaderboard.noData')}</p>
                 </div>
               ) : (
-                <LeaderboardTable data={sprint40Leaderboard} type="sprint40" />
+                <LeaderboardTable data={filteredSprint40} type="sprint40" />
               )}
             </CardContent>
           </Card>
@@ -283,17 +312,17 @@ const LeaderboardView: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="w-5 h-5" />
-                2分钟竞速 - 得分最高的500名
+                {t('leaderboard.timeAttack2Title')}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {timeAttack2Leaderboard.length === 0 ? (
+              {filteredTimeAttack2.length === 0 ? (
                 <div className="text-center py-8">
-                  <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">暂无排行榜数据</p>
+                  <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">{t('leaderboard.noData')}</p>
                 </div>
               ) : (
-                <LeaderboardTable data={timeAttack2Leaderboard} type="timeAttack2" />
+                <LeaderboardTable data={filteredTimeAttack2} type="timeAttack2" />
               )}
             </CardContent>
           </Card>
@@ -323,7 +352,6 @@ const LeaderboardView: React.FC = () => {
         />
       )}
 
-      {/* V4 统一播放器 */}
       {playerReplayData && isPlayerOpen && isV4Replay(playerReplayData) && (
         <ReplayPlayerV4Unified
           replay={getV4Data(playerReplayData)}
