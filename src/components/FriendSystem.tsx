@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useFriendPresence } from '@/hooks/useFriendPresence';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import FriendLeaderboard from './FriendLeaderboard';
 import FriendActivity from './FriendActivity';
 import PrivateChatDialog from './PrivateChatDialog';
@@ -49,6 +50,7 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
 
   const MAX_FRIENDS = user?.isGuest ? 0 : 50;
+  const { unreadByFriend, markAsRead } = useUnreadMessages();
 
   // Use unified modal close hook
   const { handleOverlayClick, handleContentClick } = useModalClose({
@@ -276,6 +278,7 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
   const openChat = (friend: Friend) => {
     setSelectedFriend(friend);
     setChatOpen(true);
+    markAsRead(friend.id);
   };
 
   const getLocale = () => {
@@ -391,9 +394,14 @@ const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
                             </p>
                           </div>
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => openChat(friend)}>
+                        <Button size="sm" variant="outline" onClick={() => openChat(friend)} className="relative">
                           <MessageCircle className="w-4 h-4 mr-1" />
                           {t('friend.chat')}
+                          {(unreadByFriend[friend.id] || 0) > 0 && (
+                            <Badge variant="destructive" className="absolute -top-2 -right-2 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center rounded-full">
+                              {unreadByFriend[friend.id]}
+                            </Badge>
+                          )}
                         </Button>
                       </div>
                     ))

@@ -2,10 +2,12 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
-import { Play, Users, LogIn, Medal } from 'lucide-react';
+import { Play, Users, LogIn, Medal, MessageCircle } from 'lucide-react';
 import UserMenu from './UserMenu';
 import LanguageSelector from './LanguageSelector';
 import ThemeSwitcher from './ThemeSwitcher';
+import { Badge } from '@/components/ui/badge';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import type { ViewType } from '@/types/navigation';
 
 interface NavigationBarProps {
@@ -21,6 +23,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 }) => {
   const { user, isAuthenticated } = useAuth();
   const { t } = useLanguage();
+  const { unreadCount } = useUnreadMessages();
 
   return (
     <nav className="bg-background/95 backdrop-blur-md border-b border-border sticky top-0 z-50">
@@ -69,6 +72,14 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           <div className="flex items-center gap-3">
             <ThemeSwitcher />
             <LanguageSelector />
+            {isAuthenticated && unreadCount > 0 && (
+              <div className="relative">
+                <MessageCircle className="w-5 h-5 text-muted-foreground" />
+                <Badge variant="destructive" className="absolute -top-2 -right-2 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center rounded-full">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Badge>
+              </div>
+            )}
             {isAuthenticated && user ? (
               <UserMenu 
                 onNavigate={onViewChange}
