@@ -131,7 +131,6 @@ const PrivateChatDialog: React.FC<PrivateChatDialogProps> = ({
           sender_id: user.id,
           receiver_id: friendId,
           content: newMessage.trim(),
-          conversation_id: [user.id, friendId].sort().join('_')
         });
 
       if (error) throw error;

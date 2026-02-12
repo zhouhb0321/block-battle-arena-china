@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useModalClose } from '@/hooks/useModalClose';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 
 // Separate BadgeCollection modal component for proper close handling
 const BadgeCollectionModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -78,6 +79,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
   const gameRecording = useGameRecording();
+  const { unreadCount } = useUnreadMessages();
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
   const [showFriendSystem, setShowFriendSystem] = useState(false);
@@ -281,9 +283,16 @@ const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
               )}
               
               {!user.isGuest && (
-                <DropdownMenuItem onClick={() => setShowFriendSystem(true)}>
-                  <Users className="w-4 h-4 mr-2" />
-                  {t('friends') || '好友'}
+                <DropdownMenuItem onClick={() => setShowFriendSystem(true)} className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Users className="w-4 h-4 mr-2" />
+                    {t('friends') || '好友'}
+                  </span>
+                  {unreadCount > 0 && (
+                    <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-[10px] flex items-center justify-center rounded-full ml-2">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  )}
                 </DropdownMenuItem>
               )}
               
