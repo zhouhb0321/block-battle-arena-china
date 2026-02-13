@@ -250,7 +250,7 @@ export function useReplayRecorderV4() {
     const timestamp = Date.now() - startTimeRef.current;
     lockCountRef.current++;
     
-    // Record LOCK event
+    // Record LOCK event with full board state for 100% fidelity replay
     const lockEvent: V4LockEvent = {
       type: ReplayOpcode.LOCK,
       timestamp,
@@ -260,7 +260,13 @@ export function useReplayRecorderV4() {
       rotation,
       linesCleared,
       isTSpin,
-      isMini
+      isMini,
+      boardAfterLock: JSON.parse(JSON.stringify(currentBoard)),  // Deep copy of board after lock
+      nextPieces: sanitizedNext,
+      holdPiece: sanitizedHold,
+      score,
+      lines,
+      level
     };
     eventsRef.current.push(lockEvent);
     
