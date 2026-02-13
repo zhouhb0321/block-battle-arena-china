@@ -55,6 +55,29 @@ export interface V4LockEvent {
   linesCleared: number;
   isTSpin: boolean;
   isMini: boolean;
+  boardAfterLock?: number[][];  // Full board state after piece locked + lines cleared
+  nextPieces?: string[];
+  holdPiece?: string | null;
+  score?: number;
+  lines?: number;
+  level?: number;
+}
+
+// Reconstructed game state for replay playback
+export interface V4GameState {
+  timestamp: number;
+  board: number[][];
+  currentPiece?: {
+    type: string;
+    x: number;
+    y: number;
+    rotation: number;
+  } | null;
+  nextPieces: string[];
+  holdPiece: string | null;
+  score: number;
+  lines: number;
+  level: number;
 }
 
 export interface V4KeyframeEvent {

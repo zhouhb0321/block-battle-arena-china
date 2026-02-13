@@ -105,8 +105,32 @@ function encodeEvent(event: V4Event): Uint8Array {
       parts.push(encodeVarint(e.y));
       parts.push(encodeVarint(e.rotation));
       parts.push(encodeVarint(e.linesCleared));
-      const flags = (e.isTSpin ? 1 : 0) | (e.isMini ? 2 : 0);
+      const flags = (e.isTSpin ? 1 : 0) | (e.isMini ? 2 : 0) | (e.boardAfterLock ? 4 : 0);
       parts.push(new Uint8Array([flags]));
+      
+      // Encode boardAfterLock + extra state if present
+      if (e.boardAfterLock) {
+        const PIECE_TYPE_TO_ID: Record<string, number> = {
+          'I': 1, 'O': 2, 'T': 3, 'S': 4, 'Z': 5, 'J': 6, 'L': 7
+        };
+        const normalizedBoard = e.boardAfterLock.map(row => 
+          row.map(cell => {
+            if (typeof cell === 'string') return PIECE_TYPE_TO_ID[cell] || 0;
+            return cell;
+          })
+        );
+        const lockJson = JSON.stringify({
+          board: normalizedBoard,
+          next: e.nextPieces || [],
+          hold: e.holdPiece ?? null,
+          score: e.score || 0,
+          lines: e.lines || 0,
+          level: e.level || 1
+        });
+        const lockJsonBytes = new TextEncoder().encode(lockJson);
+        parts.push(encodeVarint(lockJsonBytes.length));
+        parts.push(lockJsonBytes);
+      }
       break;
     }
     
@@ -231,7 +255,29 @@ function decodeEvent(data: Uint8Array, offset: number): [V4Event | null, number]
         const [rotation, pos4] = decodeVarint(data, pos3);
         const [linesCleared, pos5] = decodeVarint(data, pos4);
         const flags = data[pos5];
-        const pos6 = pos5 + 1;
+        let pos6 = pos5 + 1;
+        
+        let boardAfterLock: number[][] | undefined;
+        let nextPieces: string[] | undefined;
+        let holdPiece: string | null | undefined;
+        let score: number | undefined;
+        let lines: number | undefined;
+        let level: number | undefined;
+        
+        // Decode boardAfterLock if flag bit 2 is set
+        if (flags & 4) {
+          const [jsonLen, pos7] = decodeVarint(data, pos6);
+          const jsonBytes = data.slice(pos7, pos7 + jsonLen);
+          const json = JSON.parse(new TextDecoder().decode(jsonBytes));
+          boardAfterLock = json.board;
+          nextPieces = json.next;
+          holdPiece = json.hold;
+          score = json.score;
+          lines = json.lines;
+          level = json.level;
+          pos6 = pos7 + jsonLen;
+        }
+        
         return [{
           type: Op.LOCK,
           timestamp,
@@ -241,7 +287,13 @@ function decodeEvent(data: Uint8Array, offset: number): [V4Event | null, number]
           rotation,
           linesCleared,
           isTSpin: (flags & 1) !== 0,
-          isMini: (flags & 2) !== 0
+          isMini: (flags & 2) !== 0,
+          boardAfterLock,
+          nextPieces,
+          holdPiece,
+          score,
+          lines,
+          level
         }, pos6];
       }
       
