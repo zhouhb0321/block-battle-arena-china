@@ -1,108 +1,78 @@
 
 
-# Plan: Redesign Replay System - State-Snapshot Playback
+# Plan: Fix Replay System - Correct Per-Replay Loading + Consistent Layout
 
-## Problem Analysis
+## Problems Identified
 
-The current replay system has a **fundamental architectural flaw**: it tries to **re-simulate the game** by replaying INPUT events through the full game engine (gravity, lock delay, collision detection). This causes:
+### Problem 1: "All replays point to same game"
+**Root Cause**: RLS policy conflict on `compressed_replays`. All SELECT policies are **RESTRICTIVE** (AND logic), meaning:
+- Policy A: `user_id = auth.uid() OR opponent_id = auth.uid()`
+- Policy B: `is_featured = true OR is_world_record = true`
 
-1. **Gravity desynchronization**: The replay engine runs its own gravity timer (`updateReplayTime`), which never matches the original timing exactly
-2. **State drift**: Small timing differences accumulate across hundreds of pieces, causing pieces to land in wrong positions
-3. **Board mismatch**: By the time keyframe correction kicks in (every 10 locks), the visual state has already diverged significantly
-4. **Unnecessary complexity**: Running the entire game engine for playback introduces dozens of possible failure points
+Both must pass simultaneously, so non-featured/non-world-record replays from other users are blocked. For the leaderboard (which queries ALL users' replays), only replays that are both owned-by-current-user AND featured/world-record would return. Since most replays are neither featured nor world records, the leaderboard likely returns very few or inconsistent results.
 
-The screenshots show clear evidence: pieces are in wrong positions, the board layout doesn't match what was actually played.
+Additionally, `ReplaySystem.tsx` opens `SimpleReplayPlayer` without a `key` prop, so React may not remount when switching between replays.
 
-## New Architecture: State-Snapshot Playback
+### Problem 2: Replay layout doesn't match main game
+The replay players (`SimpleReplayPlayer` and `ReplayPlayerV4Unified`) use completely different layouts from `SinglePlayerGameArea`. The user wants consistency: left panel (Hold + stats), center (board), right panel (Next pieces).
 
-Instead of re-simulating, the new system will simply **animate between recorded states**. The data is already there - LOCK events record final piece positions, FRAME events record per-frame positions, and KEYFRAMEs record full board snapshots.
-
-```text
-OLD (broken):
-  Record INPUTs -> Replay: re-run game engine with INPUTs -> drift -> wrong board
-
-NEW (correct):
-  Record LOCK + FRAME + KF -> Replay: animate FRAME positions, apply LOCK boards directly
-```
+### Problem 3: Unnecessary replays being saved
+Training modes (`tspin_training_*`, `speed_training_*`) and games with 0 lines/0 score are being saved. Single-player casual modes shouldn't be recorded.
 
 ## Implementation Steps
 
-### Step 1: Create New Lightweight Replay Player
+### Step 1: Fix RLS - Add PERMISSIVE leaderboard policy
+Create a migration to add a PERMISSIVE SELECT policy allowing authenticated users to view all replays in the `compressed_replays` table (needed for global leaderboard). The existing restrictive policies will still apply as additional constraints, so we need to convert the user-own policy to PERMISSIVE and add a new public leaderboard read policy.
 
-**New file: `src/components/replay/StateReplayPlayer.tsx`**
+```sql
+-- Drop existing restrictive SELECT policies
+DROP POLICY IF EXISTS "Users can view their own replays" ON compressed_replays;
+DROP POLICY IF EXISTS "Authenticated users can view featured replays" ON compressed_replays;
 
-A completely new replay player that does NOT use `useGameLogic`. Instead it:
+-- Recreate as PERMISSIVE (default)
+CREATE POLICY "Users can view their own replays"
+  ON compressed_replays FOR SELECT
+  USING (user_id = auth.uid() OR opponent_id = auth.uid());
 
-- Reads LOCK events to get the sequence of board states (each LOCK has the board from its keyframe, or we reconstruct from piece placement)
-- Reads FRAME events for smooth piece animation between locks
-- Reads KEYFRAME events for full board state snapshots
-- Uses a simple `requestAnimationFrame` loop to advance through time
-- Renders the board, current piece, hold piece, and next pieces directly from recorded data
-- Supports play/pause, speed control, seeking (via keyframes)
+CREATE POLICY "Authenticated users can view leaderboard replays"
+  ON compressed_replays FOR SELECT
+  USING (
+    auth.role() = 'authenticated' AND
+    game_mode IN ('sprint40', 'timeAttack2', 'ultra2min', '40lines', 'sprint')
+  );
 
-### Step 2: Build Board State Sequence from Recorded Data
-
-**New file: `src/utils/replayV4/stateReconstructor.ts`**
-
-Takes the V4 replay data and builds a timeline of complete game states:
-
-```text
-For each KEYFRAME: store full board snapshot
-Between keyframes: reconstruct board by applying LOCK events
-  - Start from last keyframe board
-  - For each LOCK: place piece at (x, y, rotation) on the board, then clear lines
-Result: array of { timestamp, board, currentPiece, nextPieces, holdPiece, score, lines, level }
+CREATE POLICY "Anyone can view featured replays"
+  ON compressed_replays FOR SELECT
+  USING (is_featured = true OR is_world_record = true);
 ```
 
-This pre-processes the entire replay before playback starts, so seeking is instant.
+### Step 2: Add `key` prop to replay players
+In `ReplaySystem.tsx` and `LeaderboardView.tsx`, add `key={playerReplayData?.id || 'replay'}` to force React to remount the player when a different replay is selected.
 
-### Step 3: Enhance Recording to Capture Complete Board at Every Lock
+### Step 3: Unify replay player to use `ReplayPlayerV4Unified`
+Remove `SimpleReplayPlayer` usage from `ReplaySystem.tsx` and use `ReplayPlayerV4Unified` instead (which already implements state-snapshot playback).
 
-**Modify: `src/hooks/useReplayRecorderV4.ts`**
+### Step 4: Redesign `ReplayPlayerV4Unified` layout to match `SinglePlayerGameArea`
+Restructure the replay player layout to mirror the main game:
+- Left panel: Hold piece display + stats (Score, Lines, Level, PPS, APM, Time)
+- Center: Game board (same size/styling as main game)
+- Right panel: Next piece preview (5 pieces)
+- Bottom: Floating playback controls bar (similar to `SimpleReplayPlayer`'s design)
+- Remove the card-based layout and use full-screen with wallpaper background
 
-Currently, full board state is only recorded every 10 locks (keyframes). Update `recordLock` to always include the post-lock board state in the LOCK event itself. This makes reconstruction trivial and guarantees 100% fidelity.
-
-Add a new field to `V4LockEvent`:
-- `boardAfterLock: number[][]` - the board state AFTER this piece was placed and lines cleared
-
-### Step 4: Update V4 Types
-
-**Modify: `src/utils/replayV4/types.ts`**
-
-- Add `boardAfterLock` field to `V4LockEvent`
-- Add a new `V4GameState` interface for the reconstructed state timeline
-
-### Step 5: Update ReplayPlayerV4Unified
-
-**Modify: `src/components/ReplayPlayerV4Unified.tsx`**
-
-Replace the current INPUT-driven playback with state-snapshot playback:
-- Remove `useGameLogic` dependency entirely for replay
-- Use the new `StateReplayPlayer` component or inline the logic
-- Animate piece positions using FRAME events for smooth visuals
-- Apply board states directly from the pre-computed timeline
-- Keep all existing UI (controls, timeline, key moments, tabs)
-
-### Step 6: Backward Compatibility
-
-The new system will detect whether `boardAfterLock` exists in LOCK events:
-- **New recordings**: Use `boardAfterLock` directly (100% fidelity)
-- **Old recordings**: Fall back to keyframe + piece placement reconstruction (best effort)
+### Step 5: Fix save conditions - exclude training and zero-score games
+Update `replaySaveConditions.ts`:
+- Skip training modes (`*_training_*`)
+- Skip games with 0 lines AND 0 score
+- Skip endless/casual single-player modes (already handled, but enforce)
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/utils/replayV4/types.ts` | Add `boardAfterLock` to `V4LockEvent`, add `V4GameState` interface |
-| `src/utils/replayV4/stateReconstructor.ts` | **NEW** - Pre-compute game state timeline from replay data |
-| `src/hooks/useReplayRecorderV4.ts` | Include full board in every LOCK event |
-| `src/components/ReplayPlayerV4Unified.tsx` | Replace game-engine playback with state-snapshot playback |
-| `src/components/replay/StateReplayPlayer.tsx` | **NEW** - Lightweight state-driven replay renderer |
-
-## Key Design Decisions
-
-1. **No game engine in replay**: The replay player will NOT import or use `useGameLogic`. It simply renders pre-recorded states.
-2. **Board stored per-lock**: ~200 bytes per lock event (20x10 board), for a typical 100-lock game that's ~20KB - negligible.
-3. **FRAME events for animation**: Smooth piece movement between locks using the 60fps position samples already being recorded.
-4. **Instant seeking**: Pre-computed state array allows O(1) jump to any point in the replay.
+| Migration SQL | Fix RLS policies - make SELECT permissive for leaderboard access |
+| `src/components/ReplayPlayerV4Unified.tsx` | Redesign layout to match SinglePlayerGameArea |
+| `src/components/ReplaySystem.tsx` | Use ReplayPlayerV4Unified instead of SimpleReplayPlayer; add key prop |
+| `src/components/LeaderboardView.tsx` | Add key prop to replay player |
+| `src/utils/replaySaveConditions.ts` | Exclude training modes and zero-score games |
 
