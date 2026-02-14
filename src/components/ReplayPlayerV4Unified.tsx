@@ -288,84 +288,82 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     return style;
   };
   
+  const getPanelThemeClasses = () => 'bg-background/40 border-border/60 backdrop-blur-sm';
+  
   return (
-    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-7xl max-h-[95vh] bg-card rounded-lg shadow-2xl border border-border overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <div>
-            <h2 className="text-xl font-bold">V4 Replay Player</h2>
-            <p className="text-sm text-muted-foreground">
-              {metadata.username} · {metadata.gameMode} · {stateTimeline.length} states
-            </p>
+    <div className="fixed inset-0 z-50 bg-background flex items-center justify-center">
+      {/* Close button - floating top-right */}
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <Button variant="ghost" size="icon" onClick={() => setShowDetails(!showDetails)} className="text-foreground/70 hover:text-foreground">
+          <Settings className="w-4 h-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={onClose} className="text-foreground/70 hover:text-foreground">
+          <X className="w-5 h-5" />
+        </Button>
+      </div>
+      
+      {/* Main layout matching SinglePlayerGameArea */}
+      <div className="flex justify-center items-start p-4 gap-4">
+        {/* Left panel: Hold + Stats (mirrors SinglePlayerGameArea) */}
+        <div className="w-48 flex flex-col gap-4">
+          {/* Hold piece */}
+          <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
+            <div className="text-sm font-bold mb-2 text-center">HOLD</div>
+            <div className="flex items-center justify-center min-h-[60px]">
+              {currentState.holdPiece ? renderPiecePreview(currentState.holdPiece, 18) : (
+                <span className="text-xs text-muted-foreground">Empty</span>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setShowDetails(!showDetails)}>
-              <Settings className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-5 h-5" />
-            </Button>
+          
+          {/* Stats panel */}
+          <div className={`p-4 rounded-lg border ${getPanelThemeClasses()}`}>
+            <div className="space-y-3">
+              <div className="text-center border-b border-border/40 pb-2 mb-3">
+                <div className="font-bold text-lg">{metadata.username}</div>
+                <div className="text-xs text-muted-foreground">{metadata.gameMode}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>Score:</div>
+                <div className="font-mono text-right">{currentState.score.toLocaleString()}</div>
+                <div>Lines:</div>
+                <div className="font-mono text-right">{currentState.lines}</div>
+                <div>Level:</div>
+                <div className="font-mono text-right">{currentState.level}</div>
+                <div>PPS:</div>
+                <div className="font-mono text-right">{replayStats.pps}</div>
+                <div>APM:</div>
+                <div className="font-mono text-right">{replay.stats?.apm?.toFixed(1) || '0.0'}</div>
+                <div>Time:</div>
+                <div className="font-mono text-right">{formatTime(currentTime)}</div>
+              </div>
+            </div>
           </div>
         </div>
         
-        {/* Main content */}
-        <div className="flex flex-col lg:flex-row gap-4 p-4 overflow-auto">
-          {/* Left: Hold piece */}
-          <div className="lg:w-32 flex-shrink-0">
-            <Card className="p-3">
-              <div className="text-sm text-muted-foreground mb-2">Hold</div>
-              <div className="flex items-center justify-center min-h-[60px]">
-                {currentState.holdPiece ? renderPiecePreview(currentState.holdPiece, 14) : (
-                  <span className="text-xs text-muted-foreground">Empty</span>
-                )}
-              </div>
-            </Card>
-          </div>
-          
-          {/* Center: Board + controls */}
-          <div className="flex-1 flex flex-col items-center gap-4">
-            {/* Stats */}
-            <div className="grid grid-cols-4 gap-4 w-full max-w-2xl">
-              <Card className="p-3 text-center">
-                <div className="text-sm text-muted-foreground">Score</div>
-                <div className="text-2xl font-bold">{currentState.score}</div>
-              </Card>
-              <Card className="p-3 text-center">
-                <div className="text-sm text-muted-foreground">Lines</div>
-                <div className="text-2xl font-bold">{currentState.lines}</div>
-              </Card>
-              <Card className="p-3 text-center">
-                <div className="text-sm text-muted-foreground">Level</div>
-                <div className="text-2xl font-bold">{currentState.level}</div>
-              </Card>
-              <Card className="p-3 text-center">
-                <div className="text-sm text-muted-foreground">Time</div>
-                <div className="text-lg font-bold">{formatTime(currentTime)}</div>
-              </Card>
-            </div>
-            
-            {/* Board - direct rendering without game engine */}
+        {/* Center: Game board */}
+        <div className="relative">
+          <div className="p-4 rounded-lg border bg-transparent">
             <div 
-              className="relative border-2 border-muted-foreground/30"
+              className="relative"
               style={{
                 width: cellSize * 10,
-                height: cellSize * (visibleRows + hiddenRows),
+                height: cellSize * visibleRows,
                 display: 'grid',
                 gridTemplateColumns: `repeat(10, ${cellSize}px)`,
-                gridTemplateRows: `repeat(${visibleRows + hiddenRows}, ${cellSize}px)`,
+                gridTemplateRows: `repeat(${visibleRows}, ${cellSize}px)`,
+                border: '2px solid hsl(var(--muted-foreground) / 0.3)',
               }}
             >
-              {displayBoard.slice(0, visibleRows + hiddenRows).map((row, rowIdx) => 
+              {displayBoard.slice(hiddenRows, hiddenRows + visibleRows).map((row, rowIdx) => 
                 row.map((cellValue, colIdx) => {
-                  const isHidden = rowIdx < hiddenRows;
-                  const style = getCellStyle(cellValue, isHidden);
-                  const cellClass = currentSkin.getBlockClass(getColorByTypeId(cellValue), false);
+                  const style = getCellStyle(cellValue, false);
+                  const cellClass = cellValue !== 0 ? currentSkin.getBlockClass(getColorByTypeId(cellValue), false) : '';
                   
                   return (
                     <div
                       key={`${rowIdx}-${colIdx}`}
-                      className={cellValue !== 0 ? cellClass : ''}
+                      className={cellClass}
                       style={{
                         ...style,
                         width: cellSize,
@@ -377,187 +375,142 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
                 })
               )}
             </div>
-            
-            {/* Playback controls */}
-            <Card className="w-full max-w-2xl p-4 space-y-4">
-              {/* Progress bar */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(totalDuration)}</span>
-                </div>
-                <div className="relative">
-                  <Slider
-                    value={[currentTime]}
-                    max={totalDuration}
-                    step={16}
-                    onValueChange={(value) => handleSeek(value[0])}
-                    className="w-full"
-                  />
-                  {/* Key moment markers */}
-                  <div className="absolute top-0 left-0 right-0 h-2 pointer-events-none">
-                    {keyMoments.map((moment, idx) => {
-                      const position = (moment.timestamp / totalDuration) * 100;
-                      const Icon = moment.type === 'tetris' ? Zap : 
-                                   moment.type === 'tspin' ? Target : 
-                                   moment.type === 'combo' ? Flame : null;
-                      return (
-                        <div key={idx} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
-                          style={{ left: `${position}%` }} title={moment.label}>
-                          {Icon && <Icon className="w-3 h-3 text-primary" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Play buttons */}
-              <div className="flex items-center justify-center gap-2">
-                <Button variant="outline" size="icon" onClick={handleReset} title="Reset (Home)">
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={() => handleSkipBackward(10)} title="-10s">
-                  <Rewind className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={jumpToPreviousMoment} title="Prev moment (P)">
-                  <SkipBack className="w-4 h-4" />
-                </Button>
-                <Button size="lg" onClick={handlePlayPause} title="Play/Pause (Space)">
-                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                </Button>
-                <Button variant="outline" size="icon" onClick={jumpToNextMoment} title="Next moment (N)">
-                  <SkipForward className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={() => handleSkipForward(10)} title="+10s">
-                  <FastForward className="w-4 h-4" />
-                </Button>
-              </div>
-              
-              {/* Speed control */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Speed:</span>
-                  <span className="text-sm font-medium">{playbackSpeed}x</span>
-                </div>
-                <div className="grid grid-cols-5 gap-2">
-                  {[0.25, 0.5, 1, 2, 4].map(speed => (
-                    <Button
-                      key={speed}
-                      variant={playbackSpeed === speed ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setPlaybackSpeed(speed)}
-                      className="w-full"
-                    >
-                      {speed}x
-                    </Button>
-                  ))}
-                </div>
-                <div className="text-xs text-muted-foreground text-center">
-                  Use [ and ] keys to adjust speed
-                </div>
-              </div>
-              
-              {/* Keyboard shortcuts */}
-              <details className="text-xs text-muted-foreground">
-                <summary className="cursor-pointer hover:text-foreground flex items-center gap-2">
-                  <Info className="w-3 h-3" /> Keyboard shortcuts
-                </summary>
-                <div className="mt-2 space-y-1 pl-5">
-                  <div>• <kbd className="px-1.5 py-0.5 bg-muted rounded">Space</kbd> - Play/Pause</div>
-                  <div>• <kbd className="px-1.5 py-0.5 bg-muted rounded">←</kbd> / <kbd className="px-1.5 py-0.5 bg-muted rounded">→</kbd> - Skip 5s</div>
-                  <div>• <kbd className="px-1.5 py-0.5 bg-muted rounded">P</kbd> / <kbd className="px-1.5 py-0.5 bg-muted rounded">N</kbd> - Prev/Next moment</div>
-                  <div>• <kbd className="px-1.5 py-0.5 bg-muted rounded">[</kbd> / <kbd className="px-1.5 py-0.5 bg-muted rounded">]</kbd> - Slower/Faster</div>
-                  <div>• <kbd className="px-1.5 py-0.5 bg-muted rounded">Home</kbd> / <kbd className="px-1.5 py-0.5 bg-muted rounded">End</kbd> - Start/End</div>
-                </div>
-              </details>
-            </Card>
-          </div>
-          
-          {/* Right: Next pieces + key moments + analytics */}
-          <div className="lg:w-64 flex-shrink-0">
-            <Tabs defaultValue="next" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="next">Next</TabsTrigger>
-                <TabsTrigger value="moments">Moments</TabsTrigger>
-                <TabsTrigger value="analytics">Stats</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="next" className="mt-2">
-                <Card className="p-3 space-y-3">
-                  {currentState.nextPieces.slice(0, 5).map((piece, idx) => (
-                    <div key={idx} className="flex items-center justify-center">
-                      {renderPiecePreview(piece, 14)}
-                    </div>
-                  ))}
-                  {currentState.nextPieces.length === 0 && (
-                    <div className="text-xs text-muted-foreground text-center py-4">No next pieces</div>
-                  )}
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="moments" className="mt-2 space-y-2">
-                <div className="text-sm font-medium mb-2">Key Moments</div>
-                <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                  {keyMoments.length === 0 ? (
-                    <div className="text-xs text-muted-foreground text-center py-4">No key moments</div>
-                  ) : (
-                    keyMoments.map((moment, idx) => {
-                      const Icon = moment.type === 'tetris' ? Zap : 
-                                   moment.type === 'tspin' ? Target : 
-                                   moment.type === 'combo' ? Flame : null;
-                      const isActive = Math.abs(currentTime - moment.timestamp) < 500;
-                      
-                      return (
-                        <Button
-                          key={idx}
-                          variant={isActive ? 'default' : 'outline'}
-                          size="sm"
-                          className="w-full justify-start gap-2"
-                          onClick={() => handleSeek(moment.timestamp)}
-                        >
-                          {Icon && <Icon className="w-3 h-3" />}
-                          <span className="flex-1 text-left truncate">{moment.label}</span>
-                          <span className="text-xs opacity-70">{formatTime(moment.timestamp)}</span>
-                        </Button>
-                      );
-                    })
-                  )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="analytics" className="mt-2">
-                <ReplayAnalytics replay={replay} />
-              </TabsContent>
-            </Tabs>
           </div>
         </div>
         
-        {/* Technical details */}
-        {showDetails && (
-          <Card className="m-4 p-4 bg-muted/50 text-xs space-y-2">
-            <div className="font-semibold">Technical Info (State-Snapshot Playback)</div>
-            <div className="grid grid-cols-2 gap-4 text-muted-foreground">
-              <div className="space-y-1">
-                <div>Seed: {metadata.seed.slice(0, 16)}...</div>
-                <div>Duration: {formatTime(replay.stats.duration)}</div>
-                <div>Lock events: {lockEvents.length}</div>
-                <div>Keyframes: {keyframes.length}</div>
-                <div>Frame samples: {frameEvents.length}</div>
-                <div>State timeline: {stateTimeline.length} states</div>
-              </div>
-              <div className="space-y-1">
-                <div>PPS: {replayStats.pps}</div>
-                <div>Tetris: {replayStats.tetrisCount}</div>
-                <div>T-Spin: {replayStats.tspinCount}</div>
-                <div>Max Combo: {replayStats.maxCombo}</div>
-                <div>Total Lines: {replayStats.totalLines}</div>
-                <div>DAS: {metadata.settings.das}ms / ARR: {metadata.settings.arr}ms</div>
+        {/* Right panel: Next pieces (mirrors SinglePlayerGameArea) */}
+        <div className="w-48">
+          <div className={`p-3 rounded-lg border ${getPanelThemeClasses()}`}>
+            <h3 className="text-sm font-bold mb-3 text-center">NEXT</h3>
+            <div className="space-y-3">
+              {currentState.nextPieces.slice(0, 5).map((piece, idx) => (
+                <div key={idx} className={`flex justify-center p-2 ${idx === 0 ? 'bg-background/20 backdrop-blur-sm rounded' : ''}`}>
+                  {renderPiecePreview(piece, 18)}
+                </div>
+              ))}
+              {currentState.nextPieces.length === 0 && (
+                <div className="text-xs text-muted-foreground text-center py-4">No next pieces</div>
+              )}
+            </div>
+          </div>
+          
+          {/* Key moments (compact) */}
+          {keyMoments.length > 0 && (
+            <div className={`p-3 rounded-lg border mt-4 ${getPanelThemeClasses()}`}>
+              <div className="text-sm font-bold mb-2 text-center">Key Moments</div>
+              <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                {keyMoments.slice(0, 8).map((moment, idx) => {
+                  const Icon = moment.type === 'tetris' ? Zap : 
+                               moment.type === 'tspin' ? Target : 
+                               moment.type === 'combo' ? Flame : null;
+                  return (
+                    <Button
+                      key={idx}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start gap-1 h-7 text-xs"
+                      onClick={() => handleSeek(moment.timestamp)}
+                    >
+                      {Icon && <Icon className="w-3 h-3" />}
+                      <span className="flex-1 text-left truncate">{moment.label}</span>
+                      <span className="opacity-50">{formatTime(moment.timestamp)}</span>
+                    </Button>
+                  );
+                })}
               </div>
             </div>
-          </Card>
-        )}
+          )}
+        </div>
       </div>
+      
+      {/* Floating playback controls bar at bottom */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4">
+        <Card className="p-4 space-y-3 bg-card/90 backdrop-blur-md border-border">
+          {/* Progress bar */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(totalDuration)}</span>
+            </div>
+            <div className="relative">
+              <Slider
+                value={[currentTime]}
+                max={totalDuration}
+                step={16}
+                onValueChange={(value) => handleSeek(value[0])}
+                className="w-full"
+              />
+              {/* Key moment markers */}
+              <div className="absolute top-0 left-0 right-0 h-2 pointer-events-none">
+                {keyMoments.map((moment, idx) => {
+                  const position = (moment.timestamp / totalDuration) * 100;
+                  return (
+                    <div key={idx} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary"
+                      style={{ left: `${position}%` }} title={moment.label} />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          
+          {/* Controls row */}
+          <div className="flex items-center justify-center gap-2">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleReset} title="Reset">
+              <RotateCcw className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSkipBackward(10)} title="-10s">
+              <Rewind className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={jumpToPreviousMoment} title="Prev moment">
+              <SkipBack className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="default" onClick={handlePlayPause} title="Play/Pause" className="h-10 w-10 rounded-full">
+              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={jumpToNextMoment} title="Next moment">
+              <SkipForward className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSkipForward(10)} title="+10s">
+              <FastForward className="w-3.5 h-3.5" />
+            </Button>
+            
+            {/* Speed buttons inline */}
+            <div className="ml-4 flex items-center gap-1">
+              {[0.5, 1, 2, 4].map(speed => (
+                <Button
+                  key={speed}
+                  variant={playbackSpeed === speed ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setPlaybackSpeed(speed)}
+                >
+                  {speed}x
+                </Button>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </div>
+      
+      {/* Technical details overlay */}
+      {showDetails && (
+        <div className="absolute top-16 right-4 z-10">
+          <Card className="p-4 bg-card/95 backdrop-blur-md text-xs space-y-2 w-64">
+            <div className="font-semibold">Technical Info</div>
+            <div className="text-muted-foreground space-y-1">
+              <div>Seed: {metadata.seed.slice(0, 16)}...</div>
+              <div>Duration: {formatTime(replay.stats.duration)}</div>
+              <div>Lock events: {lockEvents.length}</div>
+              <div>Keyframes: {keyframes.length}</div>
+              <div>Frame samples: {frameEvents.length}</div>
+              <div>State timeline: {stateTimeline.length} states</div>
+              <div>PPS: {replayStats.pps} | Tetris: {replayStats.tetrisCount}</div>
+              <div>T-Spin: {replayStats.tspinCount} | Combo: {replayStats.maxCombo}</div>
+              <div>DAS: {metadata.settings.das}ms / ARR: {metadata.settings.arr}ms</div>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

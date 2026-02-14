@@ -35,6 +35,21 @@ export async function evaluateReplaySaveConditions(
 ): Promise<SaveEvaluationResult> {
   console.log('[ReplaySave] Evaluating save conditions:', { gameMode, stats, userId, roomContext });
 
+  // Skip training modes entirely
+  if (gameMode.includes('training') || gameMode.includes('practice')) {
+    return { shouldSave: false, reason: 'Training/practice mode - not saved', category: 'none' };
+  }
+
+  // Skip zero-score AND zero-lines games
+  if (stats.score === 0 && stats.lines === 0) {
+    return { shouldSave: false, reason: 'Zero score and zero lines - not saved', category: 'none' };
+  }
+
+  // Skip casual single-player modes
+  if (gameMode === 'endless' || gameMode === 'zen' || gameMode === 'custom') {
+    return { shouldSave: false, reason: 'Casual single-player mode - not saved', category: 'none' };
+  }
+
   // Condition 5: Admin-designated save (check first - highest priority)
   if (roomContext?.saveReplay) {
     return { 
