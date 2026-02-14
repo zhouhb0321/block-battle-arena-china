@@ -10,7 +10,7 @@ import { ReplayBrowser } from './replay/ReplayBrowser';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ReplayPreparationDialog } from './ReplayPreparationDialog';
-import { SimpleReplayPlayer } from './replay/SimpleReplayPlayer';
+import { ReplayPlayerV4Unified } from './ReplayPlayerV4Unified';
 import { DualReplayComparison } from './DualReplayComparison';
 import type { GameReplay } from '@/utils/gameTypes';
 
@@ -500,7 +500,8 @@ const ReplaySystem: React.FC = () => {
 
       {/* 统一的播放器（不受对话框关闭影响） */}
       {playerReplayData && isPlayerOpen && isV4Replay(playerReplayData) && (
-        <SimpleReplayPlayer
+        <ReplayPlayerV4Unified
+          key={playerReplayData?.id || playerReplayData?.v4Data?.metadata?.seed || 'replay'}
           replay={getV4Data(playerReplayData)}
           onClose={() => setIsPlayerOpen(false)}
           autoPlay={true}
