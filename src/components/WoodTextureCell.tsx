@@ -10,6 +10,16 @@ interface WoodTextureCellProps {
   className?: string;
 }
 
+// Helper to adjust color brightness
+function adjustBrightness(color: string, amount: number): string {
+  const hex = color.replace('#', '');
+  const num = parseInt(hex, 16);
+  const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+  const g = Math.max(0, Math.min(255, (num >> 8 & 0x00FF) + amount));
+  const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+  return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+}
+
 const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
   cellValue,
   rowIndex,
@@ -22,7 +32,7 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
     height: `${cellSize}px`,
   };
   
-  // Empty cell styles
+  // Empty cell
   if (cellValue === 0) {
     return (
       <div
@@ -30,199 +40,79 @@ const WoodTextureCell: React.FC<WoodTextureCellProps> = ({
         style={{
           ...baseStyle,
           backgroundColor: '#1a1a1a',
-          border: '1px solid #333',
+          border: '1px solid #2a2a2a',
         }}
       />
     );
   }
   
-  // Ghost piece styles
+  // Ghost piece - dark semi-transparent outline
   if (typeof cellValue === 'string' && cellValue.startsWith('ghost-')) {
-    const color = cellValue.replace('ghost-', '');
     return (
       <div
         className={className}
         style={{
           ...baseStyle,
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          border: `2px dashed ${color}`,
-          opacity: 0.4,
+          backgroundColor: 'rgba(40, 40, 40, 0.3)',
+          border: '2px dashed #555',
+          opacity: 0.5,
           borderRadius: '2px',
         }}
       />
     );
   }
   
-  // Active piece styles (solid pieces)
+  // Active piece (solid) - beveled style
   if (typeof cellValue === 'string' && cellValue.startsWith('solid-')) {
     const color = cellValue.replace('solid-', '');
+    const lighter = adjustBrightness(color, 50);
+    const darker = adjustBrightness(color, -50);
     return (
       <div
-        className={`wood-texture-block ${isClearing ? 'clearing' : ''} ${className}`}
+        className={`beveled-block ${isClearing ? 'clearing' : ''} ${className}`}
         style={{
           ...baseStyle,
           backgroundColor: color,
-          border: `1px solid ${color}`,
-          borderRadius: '3px',
-          position: 'relative',
-          overflow: 'hidden',
+          border: `2px solid ${darker}`,
+          boxShadow: `inset 2px 2px 0 ${lighter}, inset -2px -2px 0 ${darker}`,
+          borderRadius: '2px',
         }}
-      >
-        {/* 降低木纹纹理的对比度 */}
-        <div
-          className="wood-grain-overlay"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: `
-              linear-gradient(
-                45deg,
-                rgba(0,0,0,0.05) 0%,
-                transparent 25%,
-                rgba(0,0,0,0.02) 50%,
-                transparent 75%,
-                rgba(0,0,0,0.05) 100%
-              ),
-              linear-gradient(
-                90deg,
-                rgba(255,255,255,0.05) 0%,
-                transparent 20%,
-                rgba(255,255,255,0.02) 40%,
-                transparent 60%,
-                rgba(255,255,255,0.05) 80%,
-                transparent 100%
-              )
-            `,
-            backgroundSize: '8px 8px, 12px 4px',
-          }}
-        />
-        
-        {/* 减少高光效果 */}
-        <div
-          className="highlight-overlay"
-          style={{
-            position: 'absolute',
-            top: '1px',
-            left: '1px',
-            right: '3px',
-            height: '20%',
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)',
-            borderRadius: '2px 2px 0 0',
-          }}
-        />
-        
-        {/* 减少阴影效果 */}
-        <div
-          className="shadow-overlay"
-          style={{
-            position: 'absolute',
-            bottom: '0',
-            left: '0',
-            right: '0',
-            height: '15%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.15), transparent)',
-            borderRadius: '0 0 2px 2px',
-          }}
-        />
-      </div>
+      />
     );
   }
   
-  // Placed pieces styles (with wood texture effect) - 使用统一的颜色系统
+  // Garbage block
+  if (cellValue === 8) {
+    return (
+      <div
+        className={`garbage-block ${isClearing ? 'clearing' : ''} ${className}`}
+        style={{
+          ...baseStyle,
+          backgroundColor: '#888888',
+          border: '2px solid #666666',
+          boxShadow: 'inset 1px 1px 0 #999999, inset -1px -1px 0 #666666',
+          borderRadius: '1px',
+        }}
+      />
+    );
+  }
+  
+  // Placed pieces - beveled style using unified color system
   const backgroundColor = getBlockColor(cellValue as number);
+  const lighter = adjustBrightness(backgroundColor, 50);
+  const darker = adjustBrightness(backgroundColor, -50);
   
   return (
     <div
-      className={`wood-texture-block placed ${isClearing ? 'clearing' : ''} ${className}`}
+      className={`beveled-block placed ${isClearing ? 'clearing' : ''} ${className}`}
       style={{
         ...baseStyle,
         backgroundColor,
-        border: `1px solid ${backgroundColor}`,
-        borderRadius: '3px',
-        position: 'relative',
-        overflow: 'hidden',
+        border: `2px solid ${darker}`,
+        boxShadow: `inset 2px 2px 0 ${lighter}, inset -2px -2px 0 ${darker}`,
+        borderRadius: '2px',
       }}
-    >
-      {/* 更柔和的木纹纹理效果 */}
-      <div
-        className="wood-grain-overlay"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: `
-            radial-gradient(ellipse at center, rgba(0,0,0,0.05) 0%, transparent 70%),
-            linear-gradient(
-              30deg,
-              rgba(0,0,0,0.08) 0%,
-              transparent 15%,
-              rgba(0,0,0,0.04) 30%,
-              transparent 45%,
-              rgba(0,0,0,0.06) 60%,
-              transparent 75%,
-              rgba(0,0,0,0.05) 90%,
-              transparent 100%
-            ),
-            linear-gradient(
-              120deg,
-              rgba(255,255,255,0.05) 0%,
-              transparent 25%,
-              rgba(255,255,255,0.03) 50%,
-              transparent 75%,
-              rgba(255,255,255,0.04) 100%
-            )
-          `,
-          backgroundSize: '100% 100%, 6px 6px, 10px 8px',
-        }}
-      />
-      
-      {/* 更柔和的立体效果 */}
-      <div
-        className="bevel-highlight"
-        style={{
-          position: 'absolute',
-          top: '0',
-          left: '0',
-          right: '2px',
-          bottom: '2px',
-          border: '1px solid rgba(255,255,255,0.2)',
-          borderBottomColor: 'transparent',
-          borderRightColor: 'transparent',
-          borderRadius: '2px',
-          pointerEvents: 'none',
-        }}
-      />
-      
-      <div
-        className="bevel-shadow"
-        style={{
-          position: 'absolute',
-          top: '2px',
-          left: '2px',
-          right: '0',
-          bottom: '0',
-          border: '1px solid rgba(0,0,0,0.2)',
-          borderTopColor: 'transparent',
-          borderLeftColor: 'transparent',
-          borderRadius: '2px',
-          pointerEvents: 'none',
-        }}
-      />
-      
-      {/* 更柔和的闪光效果 */}
-      <div
-        className="shimmer-overlay"
-        style={{
-          position: 'absolute',
-          top: '1px',
-          left: '1px',
-          width: '30%',
-          height: '30%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-          borderRadius: '50%',
-          filter: 'blur(1px)',
-        }}
-      />
-    </div>
+    />
   );
 };
 

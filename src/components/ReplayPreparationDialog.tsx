@@ -44,6 +44,14 @@ export const ReplayPreparationDialog: React.FC<ReplayPreparationDialogProps> = (
   const [errorMessage, setErrorMessage] = useState<string>('');
   const { toast } = useToast();
 
+  // Reset state when replayId changes to prevent showing stale data
+  React.useEffect(() => {
+    setReplayData(null);
+    setLoadingState('idle');
+    setLoadProgress(0);
+    setErrorMessage('');
+  }, [replayId]);
+
   // Check if replay is V4 format (from loadReplayById wrapper)
   const isV4Replay = (data: any): boolean => {
     return data && (data.format === 'v4' || (data.version === '4.0' && data.v4Data));
