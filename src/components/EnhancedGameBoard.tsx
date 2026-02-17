@@ -147,36 +147,27 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
 
     if (typeof cellValue === 'string') {
       if (cellValue.startsWith('ghost-')) {
-        const color = cellValue.replace('ghost-', '');
-        const ghostOpacity = (settings.ghostOpacity || 40) / 100 * 0.8;
-        
-        // 改进的幽灵方块样式 - 灰色边框，内部使用背景色的暗色版本
-        if (actualTheme === 'light') {
-          cellStyle = {
-            backgroundColor: `rgba(60, 60, 60, ${ghostOpacity * 0.3})`, // 暗色填充
-            border: `2px dashed #888888`,
-            borderRadius: '3px',
-            opacity: 1,
-          };
-        } else {
-          cellStyle = {
-            backgroundColor: `rgba(40, 40, 40, ${ghostOpacity * 0.4})`, // 深色主题下的暗色填充
-            border: `2px dashed #666666`,
-            borderRadius: '3px',
-            opacity: ghostOpacity + 0.3,
-          };
-        }
+        // Ghost piece: dark semi-transparent with dashed border
+        cellStyle = {
+          backgroundColor: 'rgba(40, 40, 40, 0.3)',
+          border: '2px dashed #555',
+          borderRadius: '2px',
+          opacity: 0.5,
+        };
         cellClass = 'ghost-block';
       } else if (cellValue.startsWith('#')) {
-        // 直接使用颜色值（来自当前方块）
+        // Active piece - use skin style
         cellStyle = currentSkin.getBlockStyle(cellValue, false);
         cellClass = currentSkin.getBlockClass(cellValue, false);
       }
     } else if (cellValue !== 0) {
       if (isGarbageBlock(cellValue)) {
+        // Garbage: distinct gray with beveled edges
         cellStyle = {
           backgroundColor: GARBAGE_COLOR,
-          border: `1px solid ${GARBAGE_COLOR}`,
+          border: '2px solid #666666',
+          boxShadow: 'inset 1px 1px 0 #999999, inset -1px -1px 0 #666666',
+          borderRadius: '1px',
           opacity: isHidden ? 0.3 : 1,
         };
         cellClass = 'garbage-block';

@@ -277,7 +277,9 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     if (isGarbageBlock(cellValue)) {
       return {
         backgroundColor: GARBAGE_COLOR,
-        border: `1px solid ${GARBAGE_COLOR}`,
+        border: '2px solid #666666',
+        boxShadow: 'inset 1px 1px 0 #999999, inset -1px -1px 0 #666666',
+        borderRadius: '1px',
         opacity: isHidden ? 0.3 : 1
       };
     }
