@@ -1,78 +1,97 @@
 
 
-# Plan: Fix Replay System - Correct Per-Replay Loading + Consistent Layout
+# Plan: Fix Replay Duplication + TETR.IO-Style Block Visuals
 
-## Problems Identified
+## Issue 1: All Replays Show the Same Game
 
-### Problem 1: "All replays point to same game"
-**Root Cause**: RLS policy conflict on `compressed_replays`. All SELECT policies are **RESTRICTIVE** (AND logic), meaning:
-- Policy A: `user_id = auth.uid() OR opponent_id = auth.uid()`
-- Policy B: `is_featured = true OR is_world_record = true`
+**Root Cause**: The `ReplayPreparationDialog` component does NOT reset its internal state (`replayData`, `loadingState`) when a new `replayId` is passed. When a user:
+1. Opens replay A, clicks "Load", it loads successfully
+2. Closes the dialog
+3. Opens replay B -- the dialog still has replay A's data cached with `loadingState: 'success'`
+4. Clicks "Play" -- sends replay A's data to the player
 
-Both must pass simultaneously, so non-featured/non-world-record replays from other users are blocked. For the leaderboard (which queries ALL users' replays), only replays that are both owned-by-current-user AND featured/world-record would return. Since most replays are neither featured nor world records, the leaderboard likely returns very few or inconsistent results.
+**Fix**: Add a `useEffect` in `ReplayPreparationDialog` that resets `replayData`, `loadingState`, and `loadProgress` whenever `replayId` changes.
 
-Additionally, `ReplaySystem.tsx` opens `SimpleReplayPlayer` without a `key` prop, so React may not remount when switching between replays.
-
-### Problem 2: Replay layout doesn't match main game
-The replay players (`SimpleReplayPlayer` and `ReplayPlayerV4Unified`) use completely different layouts from `SinglePlayerGameArea`. The user wants consistency: left panel (Hold + stats), center (board), right panel (Next pieces).
-
-### Problem 3: Unnecessary replays being saved
-Training modes (`tspin_training_*`, `speed_training_*`) and games with 0 lines/0 score are being saved. Single-player casual modes shouldn't be recorded.
-
-## Implementation Steps
-
-### Step 1: Fix RLS - Add PERMISSIVE leaderboard policy
-Create a migration to add a PERMISSIVE SELECT policy allowing authenticated users to view all replays in the `compressed_replays` table (needed for global leaderboard). The existing restrictive policies will still apply as additional constraints, so we need to convert the user-own policy to PERMISSIVE and add a new public leaderboard read policy.
-
-```sql
--- Drop existing restrictive SELECT policies
-DROP POLICY IF EXISTS "Users can view their own replays" ON compressed_replays;
-DROP POLICY IF EXISTS "Authenticated users can view featured replays" ON compressed_replays;
-
--- Recreate as PERMISSIVE (default)
-CREATE POLICY "Users can view their own replays"
-  ON compressed_replays FOR SELECT
-  USING (user_id = auth.uid() OR opponent_id = auth.uid());
-
-CREATE POLICY "Authenticated users can view leaderboard replays"
-  ON compressed_replays FOR SELECT
-  USING (
-    auth.role() = 'authenticated' AND
-    game_mode IN ('sprint40', 'timeAttack2', 'ultra2min', '40lines', 'sprint')
-  );
-
-CREATE POLICY "Anyone can view featured replays"
-  ON compressed_replays FOR SELECT
-  USING (is_featured = true OR is_world_record = true);
+```text
+// In ReplayPreparationDialog.tsx
+useEffect(() => {
+  setReplayData(null);
+  setLoadingState('idle');
+  setLoadProgress(0);
+  setErrorMessage('');
+}, [replayId]);
 ```
 
-### Step 2: Add `key` prop to replay players
-In `ReplaySystem.tsx` and `LeaderboardView.tsx`, add `key={playerReplayData?.id || 'replay'}` to force React to remount the player when a different replay is selected.
+## Issue 2: Block Visuals Lack 3D Depth
 
-### Step 3: Unify replay player to use `ReplayPlayerV4Unified`
-Remove `SimpleReplayPlayer` usage from `ReplaySystem.tsx` and use `ReplayPlayerV4Unified` instead (which already implements state-snapshot playback).
+The reference image (TETR.IO) shows blocks with a distinctive "beveled" style:
+- Each block has a **lighter inner square** creating a raised 3D effect
+- The outer edge has a subtle **dark border** for contrast
+- Ghost pieces use **dark semi-transparent outlines** (not colored)
+- Garbage rows are a distinct **uniform gray** with clear grid lines
+- Colors are **saturated but not harsh** -- good contrast against the dark board
 
-### Step 4: Redesign `ReplayPlayerV4Unified` layout to match `SinglePlayerGameArea`
-Restructure the replay player layout to mirror the main game:
-- Left panel: Hold piece display + stats (Score, Lines, Level, PPS, APM, Time)
-- Center: Game board (same size/styling as main game)
-- Right panel: Next piece preview (5 pieces)
-- Bottom: Floating playback controls bar (similar to `SimpleReplayPlayer`'s design)
-- Remove the card-based layout and use full-screen with wallpaper background
+### Changes to Default Block Style
 
-### Step 5: Fix save conditions - exclude training and zero-score games
-Update `replaySaveConditions.ts`:
-- Skip training modes (`*_training_*`)
-- Skip games with 0 lines AND 0 score
-- Skip endless/casual single-player modes (already handled, but enforce)
+**File: `src/utils/blockSkins.ts`**
+
+Update the default `wood` skin to use a TETR.IO-inspired beveled style as the new default. The key visual effect is:
+- Main color fill
+- `inset` box-shadow with lighter top-left and darker bottom-right edges
+- Small inner highlight rectangle (via CSS pseudo-element or inset shadow)
+- No wood grain texture -- clean, modern look
+
+**File: `src/utils/blockColors.ts`**
+
+Increase color saturation slightly. The current colors are too desaturated (`#5A8A8A` etc.) making blocks hard to distinguish. Update to moderately saturated colors that match the reference:
+- I: `#00B8B8` (teal/cyan)
+- O: `#B8B800` (yellow)
+- T: `#8800AA` (purple)
+- S: `#00B800` (green)
+- Z: `#B80000` (red)
+- J: `#0044B8` (blue)
+- L: `#B86600` (orange)
+
+Also update `blockSkins.ts` `getColorByTypeId` to match.
+
+**File: `src/components/EnhancedGameBoard.tsx`**
+
+Update ghost piece rendering to use dark outlines (matching reference) instead of colored transparent fills. Update garbage block rendering to use a distinctive checkerboard/grid gray pattern.
+
+**File: `src/components/WoodTextureCell.tsx`**
+
+Simplify the placed-piece rendering: remove the multiple overlay divs (wood-grain, shimmer) and replace with a clean beveled CSS-only style using `box-shadow: inset`.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| Migration SQL | Fix RLS policies - make SELECT permissive for leaderboard access |
-| `src/components/ReplayPlayerV4Unified.tsx` | Redesign layout to match SinglePlayerGameArea |
-| `src/components/ReplaySystem.tsx` | Use ReplayPlayerV4Unified instead of SimpleReplayPlayer; add key prop |
-| `src/components/LeaderboardView.tsx` | Add key prop to replay player |
-| `src/utils/replaySaveConditions.ts` | Exclude training modes and zero-score games |
+| `src/components/ReplayPreparationDialog.tsx` | Add `useEffect` to reset state when `replayId` changes |
+| `src/utils/blockColors.ts` | Increase color saturation for better visibility |
+| `src/utils/blockSkins.ts` | Redesign default skin to TETR.IO-style beveled blocks; update `getColorByTypeId` to match new colors |
+| `src/components/EnhancedGameBoard.tsx` | Update ghost piece style (dark outlines), garbage block style (distinct gray grid) |
+| `src/components/WoodTextureCell.tsx` | Simplify to clean beveled style, remove wood-grain overlays |
+| `src/components/ReplayPlayerV4Unified.tsx` | Update `getCellStyle` to use the same beveled block rendering for consistency |
+
+## Technical Details
+
+### Beveled Block CSS Pattern (matching reference image)
+
+Each filled cell will use:
+```css
+background: <piece-color>;
+border: 2px solid <darker-shade>;
+box-shadow: 
+  inset 2px 2px 0 <lighter-shade>,   /* top-left highlight */
+  inset -2px -2px 0 <darker-shade>;  /* bottom-right shadow */
+border-radius: 2px;
+```
+
+This creates the characteristic "raised button" look visible in the reference image without any texture overlays.
+
+### Ghost Piece Style
+- Dark semi-transparent fill with dashed gray border (matching reference where ghost is barely visible gray outlines)
+
+### Garbage Row Style
+- Uniform medium gray (`#888`) with slightly darker borders and a subtle inner grid pattern to distinguish from regular blocks
 
