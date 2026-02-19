@@ -46,6 +46,31 @@ export const BLOCK_SKINS: BlockSkin[] = [
       isGhost ? 'ghost-block' : 'beveled-block'
   },
   {
+    id: 'tetrio',
+    name: 'TETR.IO 风格',
+    description: '高度还原 TETR.IO 的方块视觉风格',
+    getBlockStyle: (color: string, isGhost = false) => {
+      if (isGhost) {
+        return {
+          backgroundColor: 'transparent',
+          border: `1px solid ${color}50`,
+          borderRadius: '0px',
+          opacity: 0.4,
+        };
+      }
+      const lighter = adjustBrightness(color, 60);
+      const darker = adjustBrightness(color, -70);
+      return {
+        backgroundColor: color,
+        border: `1px solid ${darker}`,
+        borderRadius: '0px',
+        boxShadow: `inset 0 0 0 1px ${darker}, inset 0 0 0 2px ${lighter}`,
+      };
+    },
+    getBlockClass: (_color: string, isGhost = false) =>
+      isGhost ? 'tetrio-ghost-block' : 'tetrio-block',
+  },
+  {
     id: 'flat',
     name: '纯平风格',
     description: '简洁的纯平设计，无装饰',
