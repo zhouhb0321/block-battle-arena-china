@@ -10,9 +10,10 @@ import { extractReplayMetadata, extractLockEvents, extractKeyframeEvents } from 
 import { extractKeyMoments, calculateReplayStats } from '@/utils/replayV4/eventExtractor';
 import { ReplayAnalytics } from './ReplayAnalytics';
 import { useGameRecording } from '@/contexts/GameRecordingContext';
-import { buildStateTimeline, getStateAtTime, getFramesBetween } from '@/utils/replayV4/stateReconstructor';
+import { buildStateTimeline, getStateAtTime } from '@/utils/replayV4/stateReconstructor';
 import { getPieceShape, PIECE_TYPE_TO_ID } from '@/utils/tetrominoShapes';
 import { getCurrentSkin, getColorByTypeId, isGarbageBlock, GARBAGE_COLOR } from '@/utils/blockSkins';
+import { prepareFrameLookup, getAnimatedPieceAtTime, calculateGhostY } from '@/utils/replayV4/frameInterpolator';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -41,13 +42,11 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   const keyMoments = useMemo(() => extractKeyMoments(replay), [replay]);
   const replayStats = useMemo(() => calculateReplayStats(replay), [replay]);
   
-  // All FRAME events for smooth piece animation
-  const frameEvents = useMemo(() => 
-    replay.events
-      .filter(e => e.type === ReplayOpcode.FRAME)
-      .map(e => e as V4FrameEvent),
-    [replay]
-  );
+  // Pre-computed frame lookup with synthesized frames for sparse segments
+  const frameLookup = useMemo(() => prepareFrameLookup(replay), [replay]);
+  
+  // All FRAME events reference (for technical info display)
+  const frameEvents = frameLookup.frames;
   
   // Playback state
   const [currentTime, setCurrentTime] = useState(0);
@@ -78,31 +77,19 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   // Get current game state from timeline
   const currentState = useMemo(() => getStateAtTime(stateTimeline, currentTime), [stateTimeline, currentTime]);
   
-  // Get current animated piece position from FRAME events
+  // Get current animated piece position using binary search + frame interpolation
   const animatedPiece = useMemo(() => {
-    if (!frameEvents.length) return currentState.currentPiece;
-    
-    // Find the most recent frame at or before currentTime
-    let best: V4FrameEvent | null = null;
-    for (let i = frameEvents.length - 1; i >= 0; i--) {
-      if (frameEvents[i].timestamp <= currentTime) {
-        best = frameEvents[i];
-        break;
-      }
-    }
-    
-    // Only use frame data if it's between the current state and the next state
-    if (best && best.timestamp >= currentState.timestamp) {
-      return {
-        type: best.pieceType,
-        x: best.x,
-        y: best.y,
-        rotation: best.rotation
-      };
-    }
-    
-    return currentState.currentPiece;
-  }, [frameEvents, currentTime, currentState]);
+    return getAnimatedPieceAtTime(frameLookup, currentTime, currentState.timestamp);
+  }, [frameLookup, currentTime, currentState.timestamp]);
+  
+  // Ghost piece: shows where the active piece will land
+  const ghostPiece = useMemo(() => {
+    if (!animatedPiece) return null;
+    const shape = getPieceShape(animatedPiece.type, animatedPiece.rotation);
+    const ghostY = calculateGhostY(currentState.board, shape, animatedPiece.x, animatedPiece.y);
+    if (ghostY <= animatedPiece.y) return null;
+    return { ...animatedPiece, y: ghostY };
+  }, [animatedPiece, currentState.board]);
   
   // Playback loop
   useEffect(() => {
@@ -208,6 +195,26 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   const displayBoard = useMemo(() => {
     const board = currentState.board.map(row => [...row]);
     
+    // Overlay ghost piece first (so active piece renders on top)
+    if (ghostPiece) {
+      const shape = getPieceShape(ghostPiece.type, ghostPiece.rotation);
+      const typeId = PIECE_TYPE_TO_ID[ghostPiece.type] || 1;
+      
+      for (let row = 0; row < shape.length; row++) {
+        for (let col = 0; col < shape[row].length; col++) {
+          if (shape[row][col] !== 0) {
+            const boardY = ghostPiece.y + row;
+            const boardX = ghostPiece.x + col;
+            if (boardY >= 0 && boardY < board.length && boardX >= 0 && boardX < 10) {
+              if (board[boardY][boardX] === 0) {
+                board[boardY][boardX] = -(typeId); // Negative = ghost
+              }
+            }
+          }
+        }
+      }
+    }
+    
     // Overlay the current piece
     const piece = animatedPiece;
     if (piece) {
@@ -220,9 +227,7 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
             const boardY = piece.y + row;
             const boardX = piece.x + col;
             if (boardY >= 0 && boardY < board.length && boardX >= 0 && boardX < 10) {
-              if (board[boardY][boardX] === 0) {
-                board[boardY][boardX] = typeId;
-              }
+              board[boardY][boardX] = typeId; // Positive overwrites ghost
             }
           }
         }
@@ -230,7 +235,7 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
     }
     
     return board;
-  }, [currentState.board, animatedPiece]);
+  }, [currentState.board, animatedPiece, ghostPiece]);
   
   // Render a simple piece preview
   const renderPiecePreview = (pieceType: string, size: number = 16) => {
@@ -271,6 +276,19 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
       return {
         backgroundColor: 'transparent',
         border: actualTheme === 'light' ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.08)'
+      };
+    }
+    
+    // Ghost piece (negative values)
+    if (cellValue < 0) {
+      const realTypeId = Math.abs(cellValue);
+      const color = getColorByTypeId(realTypeId);
+      return {
+        backgroundColor: 'transparent',
+        border: `2px solid ${color}`,
+        opacity: isHidden ? 0.1 : 0.35,
+        borderRadius: '2px',
+        boxSizing: 'border-box' as const
       };
     }
     
@@ -360,7 +378,7 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
               {displayBoard.slice(hiddenRows, hiddenRows + visibleRows).map((row, rowIdx) => 
                 row.map((cellValue, colIdx) => {
                   const style = getCellStyle(cellValue, false);
-                  const cellClass = cellValue !== 0 ? currentSkin.getBlockClass(getColorByTypeId(cellValue), false) : '';
+                  const cellClass = cellValue > 0 ? currentSkin.getBlockClass(getColorByTypeId(cellValue), false) : '';
                   
                   return (
                     <div
