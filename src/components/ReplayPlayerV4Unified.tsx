@@ -130,7 +130,7 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   
   const handleReset = useCallback(() => {
     setCurrentTime(0);
-    setIsPlaying(false);
+    setIsPlaying(true);
     lastFrameTimeRef.current = null;
   }, []);
   
@@ -267,7 +267,7 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   };
   
   const cellSize = 24;
-  const visibleRows = 20;
+  const totalRows = 23;
   const hiddenRows = 3;
   
   const getCellStyle = (cellValue: number, isHidden: boolean) => {
@@ -368,16 +368,17 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
               className="relative"
               style={{
                 width: cellSize * 10,
-                height: cellSize * visibleRows,
+                height: cellSize * totalRows,
                 display: 'grid',
                 gridTemplateColumns: `repeat(10, ${cellSize}px)`,
-                gridTemplateRows: `repeat(${visibleRows}, ${cellSize}px)`,
+                gridTemplateRows: `repeat(${totalRows}, ${cellSize}px)`,
                 border: '2px solid hsl(var(--muted-foreground) / 0.3)',
               }}
             >
-              {displayBoard.slice(hiddenRows, hiddenRows + visibleRows).map((row, rowIdx) => 
+              {displayBoard.map((row, rowIdx) => 
                 row.map((cellValue, colIdx) => {
-                  const style = getCellStyle(cellValue, false);
+                  const isHidden = rowIdx < hiddenRows;
+                  const style = getCellStyle(cellValue, isHidden);
                   const cellClass = cellValue > 0 ? currentSkin.getBlockClass(getColorByTypeId(cellValue), false) : '';
                   
                   return (
