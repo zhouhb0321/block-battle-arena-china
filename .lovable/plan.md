@@ -1,110 +1,48 @@
 
 
-# Smooth Replay Playback - Natural Human-like Animation
+# Fix: Faithful Replay Playback (No Artificial Synthesis)
 
 ## Problem
 
-Currently, during replay playback, pieces "teleport" to their locked position. The experience is missing:
+The current `frameInterpolator.ts` synthesizes fake movement frames with artificial "thinking pauses" (50-200ms delays) and phased horizontal/vertical movement when real FRAME data is sparse. This contradicts the goal of faithful replay -- top players at 5 PPS lock pieces in ~200ms with no pause. The replay should show exactly what happened, nothing more, nothing less.
 
-1. **Piece spawning at the top** and visibly falling/moving to the lock position
-2. **Intermediate movement frames** showing left/right shifts and rotations
-3. **Natural "thinking" pauses** between piece lock and the next piece's movement
-4. **Ghost piece** showing where the piece will land (standard Tetris visual)
+## Root Cause
 
-The root cause: although FRAME events are recorded at ~60fps during gameplay, the player's `animatedPiece` logic does a simple "find most recent frame" lookup. When there are gaps or the binary search for the state timeline returns a LOCK state, the piece appears to jump. Additionally, the piece disappears entirely between a LOCK and the next SPAWN because `currentState.currentPiece` is set from the next spawn, not from the frame data.
+The `synthesizeAllMissingFrames` and `synthesizeFramesBetween` functions in `frameInterpolator.ts` inject fabricated FRAME events that don't match reality. These fake frames add artificial delays and simulate movement patterns that never occurred.
 
 ## Solution
 
-### 1. Improved Piece Animation Pipeline (ReplayPlayerV4Unified.tsx)
+### 1. Remove all frame synthesis from `frameInterpolator.ts`
 
-Replace the simple "find nearest frame" logic with a proper interpolation system:
+- Delete `synthesizeAllMissingFrames` and `synthesizeFramesBetween` functions entirely
+- Remove the synthesis call in `prepareFrameLookup` -- only use real recorded FRAME events
+- The binary search lookup and ghost piece calculation remain unchanged
 
-- **Binary search** through pre-sorted FRAME events for O(log n) lookup
-- When `currentTime` falls between two FRAME events, show the earlier frame's position (no interpolation needed since frames are ~16ms apart, just need correct lookup)
-- When no FRAME data exists for the current time window (between a LOCK and next SPAWN), show **no piece** briefly -- this naturally creates the "piece locked, pause, next piece appears" rhythm
-- After SPAWN but before first FRAME, show piece at spawn position
+### 2. Improve `getAnimatedPieceAtTime` for sparse data
 
-### 2. Ghost Piece During Replay
+When there are no FRAME events between a SPAWN and LOCK (e.g., very old recordings), instead of showing nothing, simply show the piece at spawn position until lock. This is a minimal, honest fallback -- no fake movement injected.
 
-Add ghost piece rendering during replay playback:
-- Calculate the drop position for the current animated piece (same logic as live gameplay)
-- Render it as a semi-transparent outline below the active piece
-- This gives viewers a visual anchor for where the piece is heading
+### 3. Remove artificial pause between LOCK and SPAWN
 
-### 3. Synthesized "Thinking Time" for Sparse Frame Data
+Currently, if the last event is LOCK and no SPAWN has happened yet, the piece is hidden (returning null). For fast players, this gap is real and should be respected. However, the current logic is already correct for this -- it shows no piece during the gap, which is the actual game behavior (the piece is locked and the next hasn't spawned yet).
 
-For older replays that may have sparse or missing FRAME events, synthesize natural-looking animation:
-- After a LOCK event, insert a brief pause (~100-200ms) before showing the next piece moving
-- When FRAME data is missing between SPAWN and LOCK, generate a simple linear interpolation from spawn position to lock position with appropriate timing
-- This fallback ensures even old replays look natural
-
-### 4. Smooth Piece Visibility Logic
-
-```text
-Timeline for each piece:
-
-  SPAWN -----> FRAME FRAME FRAME ... FRAME -----> LOCK -----> (gap) -----> next SPAWN
-  |            |                             |              |              |
-  Show piece   Show piece at frame positions  Piece merges   Brief pause   Next piece
-  at spawn pos with movement animation        into board     (natural)     appears
-```
-
-## Technical Details
-
-### File: `src/components/ReplayPlayerV4Unified.tsx`
-
-**Changes to `animatedPiece` (lines 82-105):**
-
-- Use binary search instead of linear reverse scan
-- Add proper boundary detection: if `currentTime` is past the last FRAME before a LOCK but before the LOCK timestamp, show piece at last known FRAME position
-- If `currentTime` is between a LOCK and the next SPAWN, return `null` (creates natural pause)
-
-**Add ghost piece calculation:**
-
-```typescript
-const ghostPiece = useMemo(() => {
-  if (!animatedPiece) return null;
-  const shape = getPieceShape(animatedPiece.type, animatedPiece.rotation);
-  let ghostY = animatedPiece.y;
-  // Drop until collision with board
-  while (canPlace(currentState.board, shape, animatedPiece.x, ghostY + 1)) {
-    ghostY++;
-  }
-  if (ghostY === animatedPiece.y) return null;
-  return { ...animatedPiece, y: ghostY };
-}, [animatedPiece, currentState.board]);
-```
-
-**Add ghost piece rendering in `displayBoard`:**
-
-- Render ghost piece cells with a special marker value (e.g., negative typeId) so the cell renderer shows them as semi-transparent outlines
-
-**Add fallback animation synthesis in `stateReconstructor.ts`:**
-
-- New function `synthesizeFrames(spawnEvent, lockEvent)` that generates intermediate positions when FRAME data is missing
-- Linear interpolation from spawn (x, y=0) to lock (x, y) over the time window, with a small initial delay to simulate "thinking"
-
-### File: `src/utils/replayV4/stateReconstructor.ts`
-
-Add a new export:
-
-```typescript
-export function synthesizeFramesBetween(
-  spawn: V4SpawnEvent, 
-  lock: V4LockEvent,
-  existingFrames: V4FrameEvent[]
-): V4FrameEvent[]
-```
-
-This generates synthetic FRAME events when the recording has fewer than 3 real frames between a spawn and lock. The synthetic frames:
-- Start at spawn position after a small delay (simulating thinking)
-- Move horizontally first (simulating DAS movement)
-- Then drop vertically (simulating soft/hard drop)
-
-### Files Modified
+## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/ReplayPlayerV4Unified.tsx` | Improved animatedPiece logic, ghost piece, smoother rendering |
-| `src/utils/replayV4/stateReconstructor.ts` | Add synthesizeFramesBetween for fallback animation |
+| `src/utils/replayV4/frameInterpolator.ts` | Remove `synthesizeAllMissingFrames`, `synthesizeFramesBetween`, and the synthesis call in `prepareFrameLookup`. Keep binary search, ghost piece, and SPAWN fallback logic. |
+
+No other files need changes. The player component (`ReplayPlayerV4Unified.tsx`) already correctly uses the frame lookup API.
+
+## Technical Details
+
+The cleaned `prepareFrameLookup` will simply:
+1. Extract FRAME, SPAWN, LOCK events from replay data
+2. Sort each by timestamp
+3. Return them directly -- no synthesis
+
+The `getAnimatedPieceAtTime` logic stays the same:
+- Between SPAWN and LOCK: show real FRAME data, fall back to spawn position if no frames exist
+- Between LOCK and next SPAWN: show no piece (real gap)
+- This faithfully reproduces the original gameplay timing
 
