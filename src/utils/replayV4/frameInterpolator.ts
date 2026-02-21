@@ -43,13 +43,6 @@ export function prepareFrameLookup(replay: V4ReplayData): FrameLookupData {
   spawns.sort((a, b) => a.timestamp - b.timestamp);
   locks.sort((a, b) => a.timestamp - b.timestamp);
 
-  // Synthesize frames for segments with sparse data
-  const synthesized = synthesizeAllMissingFrames(spawns, locks, frames);
-  if (synthesized.length > 0) {
-    frames.push(...synthesized);
-    frames.sort((a, b) => a.timestamp - b.timestamp);
-  }
-
   return { frames, spawns, locks };
 }
 
@@ -137,118 +130,6 @@ function canPlaceAt(board: number[][], shape: number[][], x: number, y: number):
   return true;
 }
 
-// ---- Synthesis ----
-
-function synthesizeAllMissingFrames(
-  spawns: V4SpawnEvent[],
-  locks: V4LockEvent[],
-  existingFrames: V4FrameEvent[]
-): V4FrameEvent[] {
-  const synthetic: V4FrameEvent[] = [];
-
-  for (let i = 0; i < spawns.length; i++) {
-    const spawn = spawns[i];
-    // Find corresponding lock (first lock after this spawn)
-    const lock = locks.find(l => l.timestamp > spawn.timestamp);
-    if (!lock) continue;
-
-    // Count existing frames in this segment
-    const segFrames = existingFrames.filter(
-      f => f.timestamp >= spawn.timestamp && f.timestamp <= lock.timestamp
-    );
-
-    // Only synthesize if fewer than 3 real frames
-    if (segFrames.length < 3) {
-      synthetic.push(...synthesizeFramesBetween(spawn, lock));
-    }
-  }
-
-  return synthetic;
-}
-
-/**
- * Generate synthetic FRAME events between a spawn and lock.
- * Simulates: thinking pause → horizontal movement → vertical drop
- */
-function synthesizeFramesBetween(
-  spawn: V4SpawnEvent,
-  lock: V4LockEvent
-): V4FrameEvent[] {
-  const frames: V4FrameEvent[] = [];
-  const duration = lock.timestamp - spawn.timestamp;
-
-  if (duration < 50) return frames; // Too short to synthesize
-
-  // Thinking pause: ~20% of duration (min 50ms, max 200ms)
-  const thinkTime = Math.min(200, Math.max(50, duration * 0.2));
-
-  // Calculate movement phases
-  const moveStartTime = spawn.timestamp + thinkTime;
-  const moveEndTime = lock.timestamp - 16; // Leave 1 frame before lock
-  const moveDuration = moveEndTime - moveStartTime;
-
-  if (moveDuration < 32) {
-    // Very fast placement — just show at spawn then lock
-    frames.push({
-      type: ReplayOpcode.FRAME,
-      timestamp: spawn.timestamp,
-      x: spawn.x,
-      y: spawn.y,
-      rotation: 0,
-      pieceType: spawn.pieceType
-    });
-    return frames;
-  }
-
-  const dx = lock.x - spawn.x;
-  const dy = lock.y - spawn.y;
-  const dr = lock.rotation; // rotation from 0
-
-  // Phase 1: Show at spawn position during think time
-  frames.push({
-    type: ReplayOpcode.FRAME,
-    timestamp: spawn.timestamp,
-    x: spawn.x,
-    y: spawn.y,
-    rotation: 0,
-    pieceType: spawn.pieceType
-  });
-
-  // Phase 2: Horizontal movement + rotation (first 40% of move time)
-  const hMoveEnd = moveStartTime + moveDuration * 0.4;
-  const hSteps = Math.max(1, Math.floor((hMoveEnd - moveStartTime) / 33)); // ~30fps
-
-  for (let s = 0; s <= hSteps; s++) {
-    const t = s / hSteps;
-    const time = moveStartTime + (hMoveEnd - moveStartTime) * t;
-    frames.push({
-      type: ReplayOpcode.FRAME,
-      timestamp: Math.round(time),
-      x: Math.round(spawn.x + dx * t),
-      y: spawn.y + Math.round(dy * t * 0.1), // slight downward during horizontal
-      rotation: t >= 0.5 ? dr : 0,
-      pieceType: spawn.pieceType
-    });
-  }
-
-  // Phase 3: Vertical drop (remaining 60%)
-  const vSteps = Math.max(1, Math.floor((moveEndTime - hMoveEnd) / 33));
-  for (let s = 1; s <= vSteps; s++) {
-    const t = s / vSteps;
-    const time = hMoveEnd + (moveEndTime - hMoveEnd) * t;
-    frames.push({
-      type: ReplayOpcode.FRAME,
-      timestamp: Math.round(time),
-      x: lock.x,
-      y: Math.round(spawn.y + dy * (0.1 + 0.9 * t)),
-      rotation: dr,
-      pieceType: spawn.pieceType
-    });
-  }
-
-  return frames;
-}
-
 // ---- Binary search helpers ----
 
 function binarySearchLastBefore<T extends { timestamp: number }>(
@@ -273,7 +154,6 @@ function binarySearchFrameInRange(
   afterTime: number,
   beforeOrAtTime: number
 ): number {
-  // Find the last frame with timestamp <= beforeOrAtTime and >= afterTime
   let lo = 0, hi = frames.length - 1, result = -1;
   while (lo <= hi) {
     const mid = (lo + hi) >>> 1;
