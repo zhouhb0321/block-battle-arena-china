@@ -1,50 +1,34 @@
 
 
-# Fix: Replay Board Spawn Area + Auto-Replay on Reset
+# Fix: Replay Page Crash + Verify Faithful Playback
 
-## Problem 1: Missing Spawn Area
+## Bug Found
 
-The replay player renders only 20 rows by slicing the board (`displayBoard.slice(hiddenRows, hiddenRows + visibleRows)`), cutting off the top 3 hidden rows where pieces spawn. The main game uses `EnhancedGameBoard` which renders all 23 rows with the top 3 semi-transparent, so pieces visually emerge from the spawn area.
+The replay page at `/replay/:id` crashes with **"events is not iterable"** because `ReplayPage.tsx` passes the raw loader result directly to `ReplayPlayerV4Unified`, but the component expects `V4ReplayData` (which has `.events`). The actual V4 data is nested at `replay.v4Data`.
 
-**Fix**: Replace the custom board rendering in `ReplayPlayerV4Unified` with the shared `EnhancedGameBoard` component -- the same one used in `SinglePlayerGameArea`. This ensures:
-- The spawn area (rows 0-2) is visible as semi-transparent
-- Pieces appear naturally from the top
-- Block skins, ghost pieces, and animations are consistent
+Other components (`ReplaySystem`, `LeaderboardView`) correctly extract it via `getV4Data(data)` before passing it to the player. `ReplayPage` does not.
 
-## Problem 2: Replay End Behavior
+## Fix
 
-Currently, when a replay finishes, the timeline stays at the end. The reset button sets time to 0 but does NOT auto-play. User expects: click reset/replay -> auto-start playback from the beginning.
+### File: `src/pages/ReplayPage.tsx` (line 101-104)
 
-**Fix**: Modify `handleReset` to also set `isPlaying = true`, so clicking reset immediately begins playback from the start.
+Extract `v4Data` before passing to the player:
 
-## Technical Details
+```typescript
+// Before the return statement, add:
+const v4Data = replay?.v4Data || replay;
 
-### File: `src/components/ReplayPlayerV4Unified.tsx`
+// Then change:
+<ReplayPlayerV4Unified
+  replay={v4Data}       // was: replay
+  onClose={handleBack}
+  autoPlay={true}
+/>
+```
 
-1. **Import `EnhancedGameBoard`** instead of rendering cells manually
-2. **Replace the board grid** (lines 366-398) with:
-   ```tsx
-   <EnhancedGameBoard
-     board={displayBoard}
-     ghostPiece={null}   // ghost already baked into displayBoard
-     cellSize={24}
-     showGrid={true}
-     showHiddenRows={true}
-   />
-   ```
-3. **Remove `getCellStyle` function** (lines 273-309) -- no longer needed since `EnhancedGameBoard` handles all cell styling
-4. **Update `handleReset`** (lines 131-135):
-   ```typescript
-   const handleReset = useCallback(() => {
-     setCurrentTime(0);
-     setIsPlaying(true);  // Auto-play on reset
-     lastFrameTimeRef.current = null;
-   }, []);
-   ```
+This is a one-line data extraction fix. No other files need changes.
 
-### Files Modified
+## Verification
 
-| File | Change |
-|------|--------|
-| `src/components/ReplayPlayerV4Unified.tsx` | Use `EnhancedGameBoard` for board rendering; auto-play on reset |
+Once fixed, navigating to `/replay/:id` will load and play the replay correctly. The faithful playback logic (binary search through real FRAME/SPAWN/LOCK events, no artificial synthesis) is already implemented in `frameInterpolator.ts` -- it just couldn't run because of this crash.
 
