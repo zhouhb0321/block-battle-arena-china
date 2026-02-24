@@ -96,10 +96,12 @@ const ReplayPage: React.FC = () => {
     );
   }
 
+  const v4Data = replay?.v4Data || replay;
+
   return (
     <div className="min-h-screen bg-background">
       <ReplayPlayerV4Unified
-        replay={replay}
+        replay={v4Data}
         onClose={handleBack}
         autoPlay={true}
       />
