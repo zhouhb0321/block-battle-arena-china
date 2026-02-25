@@ -58,7 +58,7 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
 
   // Opponent's game state (received via WebSocket)
   const [opponentState, setOpponentState] = useState({
-    board: Array(20).fill(null).map(() => Array(10).fill(0)),
+    board: Array(23).fill(null).map(() => Array(10).fill(0)),
     score: 0,
     lines: 0,
     level: 1,
@@ -261,17 +261,15 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
       });
     }, 500);
     
-    // Simulate finding a match for demo (with rating-based matching)
-    const estimatedTime = calculateEstimatedWaitTime();
+    // Demo mode: simulate finding a match
     setTimeout(() => {
       setIsSearching(false);
       setMatchFound(true);
-      // 模拟匹配到分数相近的对手 (实际应由服务器处理)
       const opponentRating = playerRating + Math.floor(Math.random() * 200) - 100;
       setMatchState({
         id: 'demo-match',
         opponentId: 'opponent-123',
-        opponentUsername: 'Opponent',
+        opponentUsername: 'Demo Bot',
         opponentRating: opponentRating,
         bestOf: 5,
         playerWins: 0,
@@ -359,12 +357,12 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
           <Card className="p-8 text-center space-y-4">
             <Crown className={`w-16 h-16 mx-auto ${matchWinner === 'player' ? 'text-yellow-500' : 'text-muted-foreground'}`} />
             <h2 className="text-3xl font-bold">
-              {matchWinner === 'player' ? '胜利！' : '失败'}
+              {matchWinner === 'player' ? t('ranked.victory') : t('ranked.defeat')}
             </h2>
             <p className="text-muted-foreground">
               {matchState.playerWins} - {matchState.opponentWins}
             </p>
-            <Button onClick={onBack}>返回</Button>
+            <Button onClick={onBack}>{t('common.back')}</Button>
           </Card>
         </div>
       );
@@ -431,21 +429,25 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-center">
+                  <Badge className="bg-yellow-600 text-white mb-2">{t('ranked.demo_mode')}</Badge>
+                  <p className="text-sm text-gray-400">{t('ranked.demo_notice')}</p>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">{t('ranked.games_played')}</span>
-                  <span className="font-semibold text-white">127</span>
+                  <span className="font-semibold text-white">--</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">{t('ranked.win_rate')}</span>
-                  <span className="font-semibold text-green-400">68%</span>
+                  <span className="font-semibold text-gray-500">--</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">{t('ranked.average_pps')}</span>
-                  <span className="font-semibold text-white">2.3</span>
+                  <span className="font-semibold text-white">--</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">{t('ranked.average_apm')}</span>
-                  <span className="font-semibold text-white">89.5</span>
+                  <span className="font-semibold text-white">--</span>
                 </div>
               </CardContent>
             </Card>
@@ -517,7 +519,7 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
                     
                     {/* 显示当前匹配范围 */}
                     <div className="mb-4 text-sm text-gray-300">
-                      搜索范围: {playerRating} ± {getCurrentRatingRange()} 分
+                      {t('ranked.search_range')}: {playerRating} ± {getCurrentRatingRange()}
                     </div>
                     
                     <div className="mb-6">
@@ -548,27 +550,8 @@ const RankedMatchmakingSystem: React.FC<RankedMatchmakingSystemProps> = ({ onSta
                 <CardTitle className="text-white">{t('ranked.recent_matches')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { opponent: 'Player123', result: 'win', rating: '+15', time: '2h ago' },
-                    { opponent: 'TetrisKing', result: 'loss', rating: '-12', time: '5h ago' },
-                    { opponent: 'BlockMaster', result: 'win', rating: '+18', time: '1d ago' },
-                  ].map((match, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Badge variant={match.result === 'win' ? 'default' : 'destructive'}>
-                          {match.result === 'win' ? t('ranked.win') : t('ranked.loss')}
-                        </Badge>
-                        <span className="font-medium text-white">{match.opponent}</span>
-                      </div>
-                      <div className="text-right">
-                        <div className={`font-semibold ${match.result === 'win' ? 'text-green-400' : 'text-red-400'}`}>
-                          {match.rating}
-                        </div>
-                        <div className="text-sm text-gray-500">{match.time}</div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-center py-6 text-gray-500">
+                  <p>{t('ranked.no_recent')}</p>
                 </div>
               </CardContent>
             </Card>

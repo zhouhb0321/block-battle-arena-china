@@ -80,6 +80,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // 观战模式 Hook
@@ -133,30 +134,42 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 检查是否所有玩家都已准备 (使用 score 字段: 1=准备, 0=未准备)
+  // Check if all players are ready (score field: 1=ready, 0=not ready)
   useEffect(() => {
     if (!room || participants.length < 2) return;
     
-    // 使用 score 字段判断准备状态
     const allReady = participants.every(p => (p as any).score === 1);
     const isHost = room.created_by === user?.id;
     
     if (allReady && isHost && participants.length >= 2) {
-      // 开始倒计时
+      // Start countdown
       setCountdown(3);
-      const timer = setInterval(() => {
+      countdownTimerRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev === null || prev <= 1) {
-            clearInterval(timer);
+            if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
             onStartGame();
             return null;
           }
           return prev - 1;
         });
       }, 1000);
-      
-      return () => clearInterval(timer);
+    } else {
+      // Cancel countdown if any player un-readies
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+        setCountdown(null);
+      }
     }
+    
+    return () => {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+    };
   }, [participants, room, user?.id, onStartGame]);
 
   const loadRoomData = async () => {
@@ -173,7 +186,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
       await loadMessages();
     } catch (error) {
       console.error('Failed to load room:', error);
-      toast.error('加载房间失败');
+      toast.error(t('battle.load_failed'));
     } finally {
       setLoading(false);
     }
@@ -222,7 +235,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
       .eq('user_id', user.id);
 
     if (error) {
-      toast.error('更新状态失败');
+      toast.error(t('battle.update_failed'));
       return;
     }
 
@@ -233,7 +246,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
       room_id: roomId,
       user_id: user.id,
       username: user.username || 'Player',
-      message: newScore === 1 ? '已准备' : '取消准备',
+      message: newScore === 1 ? t('battle.ready_status') : t('battle.cancel_ready'),
       message_type: 'system'
     });
   };
@@ -257,22 +270,27 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
   const copyRoomCode = () => {
     if (room?.room_code) {
       navigator.clipboard.writeText(room.room_code);
-      toast.success('房间号已复制');
+      toast.success(t('battle.room_code_copied'));
     }
   };
 
   const handleLeave = async () => {
     if (!user) return;
 
-    // 删除参与者记录
+    // Delete participant record
     await supabase
       .from('battle_participants')
       .delete()
       .eq('room_id', roomId)
       .eq('user_id', user.id);
 
-    // 更新房间人数
-    if (room) {
+    // If creator is leaving, close the room
+    if (room && room.created_by === user.id) {
+      await supabase
+        .from('battle_rooms')
+        .update({ status: 'finished', current_players: 0 })
+        .eq('id', roomId);
+    } else if (room) {
       await supabase
         .from('battle_rooms')
         .update({ current_players: Math.max(0, room.current_players - 1) })
@@ -297,7 +315,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
     const targetTeamCount = participants.filter(p => p.team === newTeam).length;
     
     if (targetTeamCount >= teamSize) {
-      toast.error('目标队伍已满');
+      toast.error(t('battle.target_team_full'));
       return;
     }
     
@@ -308,11 +326,11 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
       .eq('user_id', user.id);
 
     if (error) {
-      toast.error('切换队伍失败');
+      toast.error(t('battle.switch_team_failed'));
       return;
     }
 
-    toast.success(`已切换到 Team ${newTeam}`);
+    toast.success(`${t('battle.switched_to_team')} Team ${newTeam}`);
   };
 
   // 团队模式相关计算
@@ -339,7 +357,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
           <div>
             <p className="font-medium text-sm">{player.username}</p>
             <p className="text-xs text-muted-foreground">
-              {isHost ? '房主' : isMe ? '你' : '队友'}
+              {isHost ? t('battle.host') : isMe ? t('battle.you') : t('battle.teammate')}
             </p>
           </div>
         </div>
@@ -348,7 +366,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
             <Check className="h-3 w-3" />
           </Badge>
         ) : (
-          <Badge variant="secondary" className="text-xs">等待</Badge>
+          <Badge variant="secondary" className="text-xs">{t('battle.waiting')}</Badge>
         )}
       </div>
     </div>
@@ -365,8 +383,8 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
   if (!room) {
     return (
       <div className="text-center p-8">
-        <p className="text-muted-foreground mb-4">房间不存在或已关闭</p>
-        <Button onClick={onLeave}>返回</Button>
+        <p className="text-muted-foreground mb-4">{t('battle.room_not_found')}</p>
+        <Button onClick={onLeave}>{t('common.back')}</Button>
       </div>
     );
   }
@@ -384,7 +402,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
             <div className="text-8xl font-bold text-primary animate-pulse">
               {countdown}
             </div>
-            <p className="text-2xl text-white mt-4">游戏即将开始</p>
+            <p className="text-2xl text-white mt-4">{t('battle.game_starting')}</p>
           </div>
         </div>
       )}
@@ -395,22 +413,22 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <CardTitle className="text-xl">
-                {room.mode === 'versus' ? '1v1 对战' : 
-                 room.mode === 'battle_royale' ? '多人混战' : '方块联盟'}
+                {room.mode === 'versus' ? t('battle.1v1') : 
+                 room.mode === 'battle_royale' ? t('battle.battle_royale') : t('battle.league')}
               </CardTitle>
               <Badge variant="outline" className="text-lg px-3">
                 #{room.room_code}
               </Badge>
-              <Button size="icon" variant="ghost" onClick={copyRoomCode} title="复制房间号">
+              <Button size="icon" variant="ghost" onClick={copyRoomCode} title={t('battle.copy_room_code')}>
                 <Copy className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={() => setShowShareDialog(true)} title="分享房间" className="text-primary">
+              <Button size="icon" variant="ghost" onClick={() => setShowShareDialog(true)} title={t('battle.share_room')} className="text-primary">
                 <Share2 className="h-4 w-4" />
               </Button>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={room.status === 'waiting' ? 'secondary' : 'default'}>
-                {room.status === 'waiting' ? '等待中' : '游戏中'}
+                {room.status === 'waiting' ? t('battle.room_status_waiting') : t('battle.room_status_playing')}
               </Badge>
               <span className="text-sm text-muted-foreground">
                 <Users className="inline h-4 w-4 mr-1" />
@@ -427,10 +445,10 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5" />
-              玩家列表
+              {t('battle.player_list')}
               {isTeamMode && (
                 <Badge variant="outline" className="ml-2">
-                  {room.custom_settings?.team_size || 2}v{room.custom_settings?.team_size || 2} 团队赛
+                  {room.custom_settings?.team_size || 2}v{room.custom_settings?.team_size || 2} {t('battle.team_battle')}
                 </Badge>
               )}
             </CardTitle>
@@ -456,7 +474,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
                   {/* 空位 */}
                   {Array(teamSize - teamAPlayers.length).fill(null).map((_, i) => (
                     <div key={`a-empty-${i}`} className="p-3 rounded-lg border-2 border-dashed border-muted bg-muted/10 text-center text-sm text-muted-foreground">
-                      等待玩家加入...
+                      {t('battle.waiting_join')}
                     </div>
                   ))}
                 </div>
@@ -478,7 +496,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
                   {/* 空位 */}
                   {Array(teamSize - teamBPlayers.length).fill(null).map((_, i) => (
                     <div key={`b-empty-${i}`} className="p-3 rounded-lg border-2 border-dashed border-muted bg-muted/10 text-center text-sm text-muted-foreground">
-                      等待玩家加入...
+                      {t('battle.waiting_join')}
                     </div>
                   ))}
                 </div>
@@ -513,7 +531,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
                             <div>
                               <p className="font-medium">{participant.username}</p>
                               <p className="text-xs text-muted-foreground">
-                                {participant.user_id === room.created_by ? '房主' : `玩家 ${index + 1}`}
+                                {participant.user_id === room.created_by ? t('battle.host') : `${t('battle.player')} ${index + 1}`}
                               </p>
                             </div>
                           </div>
@@ -521,18 +539,18 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
                             {participant.score === 1 ? (
                               <Badge className="bg-green-500">
                                 <Check className="h-3 w-3 mr-1" />
-                                已准备
+                                {t('battle.ready_status')}
                               </Badge>
                             ) : (
                               <Badge variant="secondary">
-                                等待中
+                                {t('battle.waiting')}
                               </Badge>
                             )}
                           </div>
                         </div>
                       ) : (
                         <div className="flex items-center justify-center h-14 text-muted-foreground">
-                          <span>等待玩家加入...</span>
+                          <span>{t('battle.waiting_join')}</span>
                         </div>
                       )}
                     </div>
@@ -551,7 +569,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
                   className="gap-2"
                 >
                   <RefreshCw className="h-4 w-4" />
-                  切换到 {myParticipant.team === 'A' ? 'Team B' : 'Team A'}
+                  {t('battle.switch_to_team')} {myParticipant.team === 'A' ? 'Team B' : 'Team A'}
                 </Button>
               </div>
             )}
@@ -563,7 +581,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              房间聊天
+              {t('battle.room_chat')}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col p-3">
@@ -601,7 +619,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                placeholder="输入消息..."
+                placeholder={t('battle.enter_message')}
                 className="flex-1"
               />
               <Button size="icon" onClick={sendMessage}>
@@ -618,7 +636,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
           <div className="flex items-center justify-between">
             <Button variant="outline" onClick={handleLeave}>
               <ArrowLeft className="h-4 w-4 mr-2" />
-              离开房间
+              {t('battle.leave_room')}
             </Button>
             
             <div className="flex items-center gap-3">
@@ -650,12 +668,12 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
                     {isReady ? (
                       <>
                         <X className="h-4 w-4 mr-2" />
-                        取消准备
+                        {t('battle.cancel_ready')}
                       </>
                     ) : (
                       <>
                         <Check className="h-4 w-4 mr-2" />
-                        准备
+                        {t('battle.ready')}
                       </>
                     )}
                   </Button>
@@ -667,7 +685,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
                       className="bg-green-600 hover:bg-green-700"
                     >
                       <Play className="h-4 w-4 mr-2" />
-                      开始游戏
+                      {t('battle.start_game')}
                     </Button>
                   )}
                 </>
@@ -679,7 +697,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
           {isSpectating && (
             <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-amber-600 dark:text-amber-400">
               <Eye className="inline-block w-4 h-4 mr-2" />
-              您正在观战模式。游戏开始后可以实时观看对战，点击上方按钮可切换回参战模式。
+              {t('battle.spectating_hint')}
             </div>
           )}
         </CardContent>
@@ -690,7 +708,7 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
         isOpen={showShareDialog}
         onClose={() => setShowShareDialog(false)}
         roomCode={room.room_code}
-        roomMode={room.mode === 'versus' ? '1v1对战' : room.mode === 'battle_royale' ? '多人混战' : '联盟赛'}
+        roomMode={room.mode === 'versus' ? t('battle.1v1') : room.mode === 'battle_royale' ? t('battle.battle_royale') : t('battle.league')}
       />
     </div>
   );
