@@ -78,9 +78,22 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   const currentState = useMemo(() => getStateAtTime(stateTimeline, currentTime), [stateTimeline, currentTime]);
   
   // Get current animated piece position using binary search + frame interpolation
+  // Fall back to currentState.currentPiece when no FRAME/SPAWN events cover the current time
+  // (fixes the "piece suddenly appears" issue in the first few seconds of replay)
   const animatedPiece = useMemo(() => {
-    return getAnimatedPieceAtTime(frameLookup, currentTime, currentState.timestamp);
-  }, [frameLookup, currentTime, currentState.timestamp]);
+    const fromFrames = getAnimatedPieceAtTime(frameLookup, currentTime, currentState.timestamp);
+    if (fromFrames) return fromFrames;
+    // Fallback: use the piece from state timeline (e.g. initial spawn before first FRAME event)
+    if (currentState.currentPiece) {
+      return {
+        type: currentState.currentPiece.type,
+        x: currentState.currentPiece.x,
+        y: currentState.currentPiece.y,
+        rotation: currentState.currentPiece.rotation
+      };
+    }
+    return null;
+  }, [frameLookup, currentTime, currentState.timestamp, currentState.currentPiece]);
   
   // Ghost piece: shows where the active piece will land
   const ghostPiece = useMemo(() => {
