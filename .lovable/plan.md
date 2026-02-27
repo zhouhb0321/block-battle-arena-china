@@ -1,69 +1,102 @@
 
 
-# Battle Room & Ranked Match Flow -- Issues and Fixes
+# Fix AI Battle Practice Mode
 
-## Issues Found
+## Problems Identified
 
-### 1. Ranked Match: Hardcoded Mock Data Instead of Real Stats
-`RankedMatchmakingSystem.tsx` displays hardcoded stats (127 games, 68% win rate, 2.3 PPS, 89.5 APM) and mock recent matches. Queue stats (31 in queue, 452 in game) are also fake constants. This misleads players about the system's status.
+1. **Player controls don't work**: `AIBattleGame` creates `useGameLogic` but never hooks up `useKeyboardControls`. There's no keyboard handler, so pressing keys does nothing.
 
-**Fix**: Replace with real data from `battle_history` table, or clearly label as "Demo" / "Coming Soon" until real matchmaking is live.
+2. **User key bindings ignored**: `AIBattleGame` uses hardcoded `defaultSettings` instead of the user's saved settings from `useUserSettings()`. Custom DAS/ARR/SDF and key mappings are all lost.
 
-### 2. Ranked Match: Simulated Matchmaking with setTimeout
-`handleStartSearch` uses a 5-second `setTimeout` to fake finding an opponent (line 266-283). The opponent is created with random rating. This creates a broken experience -- after the countdown, `gameStarted` becomes true but there's no real opponent sending state updates, so the opponent board stays empty.
+3. **Layout mirror issue**: In `TetrioBattleLayout`, the right-side player (AI) uses `flex-row-reverse` which flips the panel order, but `LeftPanel` always renders HOLD and `RightPanel` always renders NEXT. For the mirrored (right) player, NEXT should be on the left side and HOLD on the right -- this requires swapping the panel contents, not just the flex direction.
 
-**Fix**: Show a clear "Demo Mode" indicator, or disable the start button with a "Coming Soon" message until real WebSocket matchmaking is implemented.
-
-### 3. Battle Room Lobby: Auto-Start When All Ready Has Race Condition
-In `BattleRoomLobby.tsx` (lines 137-160), the effect watches `participants` and auto-starts a 3-second countdown when all players have `score === 1`. However:
-- The `onStartGame` dependency in useEffect is missing a stable reference (it's a prop passed from Index.tsx as `() => setCurrentView('battle-game')`)
-- If any player un-readies during countdown, the countdown continues because no cancellation logic exists
-
-**Fix**: Add countdown cancellation when any player un-readies. Wrap `onStartGame` with `useCallback` or use a ref.
-
-### 4. Battle Game View: No Actual Game Board Rendering
-`BattleGameView.tsx` renders `TetrioBattleLayout` for display but has NO keyboard controls or game logic running locally. It only receives opponent state via WebSocket. The player's game board is an empty initial state that never updates from user input.
-
-**Fix**: Integrate `useGameLogic` and `useKeyboardControls` (like `RankedMatchmakingSystem` does) so the player can actually play during battle.
-
-### 5. Room Leave Doesn't Close Room When Creator Leaves
-In `BattleRoomLobby.tsx` `handleLeave` (line 264-283), when the room creator leaves, the room stays as "waiting" with reduced player count. Other players remain in a room with no host. The room should either transfer ownership or close.
-
-**Fix**: If the leaving player is the room creator, either assign a new creator or mark the room as "finished".
-
-### 6. UI Language Inconsistency
-Most battle/ranked UI text is hardcoded in Chinese ("准备开始排位赛", "游戏即将开始", "成功加入房间", etc.) instead of using the `t()` translation function. The project targets global players (EN, ES, ZH, JP, KR).
-
-**Fix**: Replace all hardcoded Chinese strings with `t()` calls and add corresponding translation keys.
-
-### 7. Opponent Board Uses 20 Rows, Player Board Uses 23
-In `RankedMatchmakingSystem.tsx` line 61, `opponentState.board` is initialized as `Array(20)` while `playerState` uses 23 rows. This causes display inconsistency when using the same board component.
-
-**Fix**: Initialize opponent board with 23 rows to match the standard board height.
+4. **AI bot is non-functional**: The AI only picks a target column based on column height, moves left/right to reach it, then hard drops. It never considers piece rotation, doesn't evaluate placement quality after rotation, and has no concept of line clears, T-spins, or combos. It plays almost randomly.
 
 ---
 
-## Implementation Plan
+## Plan
 
-### Phase 1: Critical Gameplay Fixes (must-have)
+### 1. Wire up player keyboard controls using user settings
 
-| File | Change |
-|------|--------|
-| `BattleGameView.tsx` | Add `useGameLogic` + `useKeyboardControls` so the player can actually play during battles |
-| `BattleRoomLobby.tsx` | Add countdown cancellation when a player un-readies; handle room creator leaving |
-| `RankedMatchmakingSystem.tsx` | Fix opponent board to 23 rows; add "Demo" label to simulated matchmaking |
+**File: `src/components/game/AIBattleGame.tsx`**
 
-### Phase 2: UX Polish
+- Replace hardcoded `defaultSettings` with `useUserSettings()` to load the user's saved key bindings and handling parameters (DAS/ARR/SDF/DCD).
+- Add `useKeyboardControls` hook connected to `playerGameLogic` so keyboard input actually moves pieces.
+- Add a `requestAnimationFrame` loop to call `processHeldKeys` for DAS/ARR auto-repeat (same pattern as `GameKeyboardHandler`).
 
-| File | Change |
-|------|--------|
-| `RankedMatchmakingSystem.tsx` | Replace hardcoded stats with real data or clear placeholder labels |
-| `BattleRoomLobby.tsx`, `BattleGameView.tsx`, `RankedMatchmakingSystem.tsx` | Internationalize all hardcoded Chinese strings with `t()` |
+### 2. Fix TetrioBattleLayout mirroring
 
-### Phase 3: Robustness
+**File: `src/components/game/TetrioBattleLayout.tsx`**
 
-| File | Change |
-|------|--------|
-| `BattleRoomLobby.tsx` | Transfer room ownership or close room when creator leaves |
-| `RankedMatchmakingSystem.tsx` | Add proper error handling when WebSocket connection fails during matchmaking |
+- Modify `PlayerSide` so that when `isLeft=false` (right-side player), the panel contents swap: the left panel shows NEXT and the right panel shows HOLD + stats. Currently `flex-row-reverse` only reverses the container order but doesn't swap which panel contains HOLD vs NEXT.
+
+### 3. Rebuild AI with proper placement evaluation
+
+**File: `src/components/game/AIBattleGame.tsx`**
+
+Replace the naive "find best column" AI with a proper placement evaluator that:
+- Simulates all possible placements: for each rotation (0-3), for each valid column position, simulate dropping the piece
+- Evaluates each placement using weighted heuristics:
+  - **Aggregate height** (lower is better)
+  - **Complete lines** (more is better)
+  - **Holes created** (fewer is better)
+  - **Bumpiness / height variance** (smoother is better)
+- Difficulty levels adjust:
+  - **Easy**: Adds random noise to scores, slow move speed (800ms), occasionally makes suboptimal choices
+  - **Medium**: Moderate noise, 500ms speed
+  - **Hard**: Minimal noise, 300ms speed, better weights
+  - **Expert**: No noise, 150ms speed, optimal weights, considers T-spins
+- The AI executes moves step-by-step (rotate, move left/right, then hard drop) rather than teleporting
+
+### 4. Internationalize hardcoded Chinese strings
+
+Replace Chinese text in `AIBattleGame` ("AI对战练习", "难度:", "简单", "返回", "开始游戏", "结束游戏") with `t()` translation calls.
+
+---
+
+## Technical Details
+
+### Keyboard integration (AIBattleGame.tsx)
+
+```text
+useUserSettings() --> gameSettings (user's real settings)
+                  |
+useKeyboardControls({
+  gameSettings,
+  onMoveLeft: playerGameLogic.movePiece(-1,0),
+  onHardDrop: playerGameLogic.hardDrop(),
+  ...
+})
+                  |
+requestAnimationFrame loop --> processHeldKeys(timestamp)
+```
+
+### AI placement algorithm
+
+```text
+For each rotation r in [0,1,2,3]:
+  For each column x in [0..9]:
+    1. Create rotated piece shape
+    2. Check if position is valid
+    3. Simulate drop to landing row
+    4. Place piece on board copy
+    5. Count cleared lines
+    6. Score = w1*linesCleared - w2*aggregateHeight - w3*holes - w4*bumpiness
+    7. Add random noise based on difficulty
+  
+Best move = {rotation, targetX} with highest score
+Execute: rotate to target rotation, move to target X, then hard drop
+```
+
+### Layout fix (TetrioBattleLayout.tsx)
+
+For `isLeft=true` (player): `[HOLD+Stats] [Board] [NEXT]`
+For `isLeft=false` (AI): `[NEXT] [Board] [HOLD+Stats]` -- swap LeftPanel/RightPanel contents based on `isLeft` prop.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/components/game/AIBattleGame.tsx` | Add useUserSettings, useKeyboardControls, rAF loop, rebuild AI logic, i18n |
+| `src/components/game/TetrioBattleLayout.tsx` | Fix panel content swap for mirrored right-side player |
 
