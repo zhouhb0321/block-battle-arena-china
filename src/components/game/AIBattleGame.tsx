@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import OneVsOneGameArea from './OneVsOneGameArea';
 import { useGameLogic } from '@/hooks/useGameLogic';
+import { useKeyboardControls } from '@/hooks/useKeyboardControls';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { findBestPlacement, getAIMoveInterval } from '@/utils/aiEngine';
 import type { GameSettings, GameMode } from '@/utils/gameTypes';
 
 interface AIBattleGameProps {
@@ -10,201 +14,187 @@ interface AIBattleGameProps {
   onBack: () => void;
 }
 
-// AI决策函数 - 根据难度返回最佳移动
-const makeAIMove = (
-  board: number[][],
-  currentPiece: any,
-  difficulty: 'easy' | 'medium' | 'hard' | 'expert'
-): 'moveLeft' | 'moveRight' | 'rotate' | 'hardDrop' | 'hold' | null => {
-  if (!currentPiece) return null;
-
-  // 根据难度调整反应速度和策略复杂度
-  const reactionDelay = {
-    easy: 500,
-    medium: 300,
-    hard: 150,
-    expert: 50
-  }[difficulty];
-
-  // 简单的AI逻辑：寻找最佳列位置
-  const findBestColumn = (): number => {
-    let bestColumn = currentPiece.x;
-    let bestScore = -Infinity;
-
-    // 扫描所有可能的列
-    for (let col = 0; col < 10; col++) {
-      // 计算此列的得分（基于高度和孔洞数）
-      let columnHeight = 0;
-      let holes = 0;
-
-      for (let row = 0; row < board.length; row++) {
-        if (board[row][col] !== 0) {
-          columnHeight = board.length - row;
-          break;
-        }
-      }
-
-      // 计算孔洞
-      for (let row = 0; row < board.length; row++) {
-        if (board[row][col] === 0) {
-          let hasBlockAbove = false;
-          for (let r = row - 1; r >= 0; r--) {
-            if (board[r][col] !== 0) {
-              hasBlockAbove = true;
-              break;
-            }
-          }
-          if (hasBlockAbove) holes++;
-        }
-      }
-
-      // 得分：较低高度得分更高，孔洞越少得分越高
-      const score = (20 - columnHeight) - holes * 5;
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestColumn = col;
-      }
-    }
-
-    return bestColumn;
-  };
-
-  // 根据难度执行不同策略
-  const targetColumn = findBestColumn();
-
-  if (currentPiece.x < targetColumn) {
-    return 'moveRight';
-  } else if (currentPiece.x > targetColumn) {
-    return 'moveLeft';
-  } else if (Math.random() > 0.7) {
-    // 30%概率旋转（增加变化）
-    return 'rotate';
-  } else {
-    return 'hardDrop';
-  }
-};
-
 export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const { settings } = useUserSettings();
   const [gameStarted, setGameStarted] = useState(false);
 
-  // 默认游戏设置
-  const defaultSettings: GameSettings = {
-    das: 167,
-    arr: 33,
-    sdf: 41,
-    dcd: 0,
-    controls: {
-      moveLeft: 'ArrowLeft',
-      moveRight: 'ArrowRight',
-      softDrop: 'ArrowDown',
-      hardDrop: 'Space',
-      rotateClockwise: 'ArrowUp',
-      rotateCounterclockwise: 'KeyZ',
-      rotate180: 'KeyA',
-      hold: 'KeyC',
-      pause: 'Escape',
-      backToMenu: 'KeyQ'
-    },
-    enableGhost: true,
-    enableSound: true,
-    masterVolume: 0.7,
-    backgroundMusic: '',
-    musicVolume: 0.5,
-    ghostOpacity: 0.5,
-    enableWallpaper: true,
-    undoSteps: 0,
-    wallpaperChangeInterval: 30000
+  // Convert UserSettings to GameSettings format
+  const gameSettings: GameSettings = {
+    das: settings.das,
+    arr: settings.arr,
+    sdf: settings.sdf,
+    dcd: settings.dcd,
+    controls: settings.controls,
+    enableGhost: settings.enableGhost,
+    enableSound: settings.enableSound,
+    masterVolume: settings.masterVolume,
+    backgroundMusic: settings.backgroundMusic,
+    musicVolume: settings.musicVolume,
+    ghostOpacity: settings.ghostOpacity,
+    enableWallpaper: settings.enableWallpaper,
+    undoSteps: settings.undoSteps,
+    wallpaperChangeInterval: settings.wallpaperChangeInterval,
   };
 
-  // 玩家游戏逻辑
+  // Player game logic
   const playerGameLogic = useGameLogic({
-    gameMode: '40-line' as any,
+    gameMode: { id: 'endless', name: 'AI Battle' } as any,
     preGeneratedPieceTypes: []
   });
 
-  // AI游戏逻辑
+  // AI game logic
   const aiGameLogic = useGameLogic({
-    gameMode: '40-line' as any,
+    gameMode: { id: 'endless', name: 'AI Battle' } as any,
     preGeneratedPieceTypes: []
   });
 
+  // Player keyboard controls
+  const { processHeldKeys } = useKeyboardControls({
+    gameSettings,
+    gameOver: playerGameLogic.gameOver,
+    paused: playerGameLogic.isPaused || !gameStarted,
+    onMoveLeft: () => playerGameLogic.movePiece(-1, 0),
+    onMoveRight: () => playerGameLogic.movePiece(1, 0),
+    onSoftDrop: () => playerGameLogic.movePiece(0, 1),
+    onHardDrop: () => playerGameLogic.hardDrop(),
+    onRotateClockwise: () => playerGameLogic.rotatePieceClockwise(),
+    onRotateCounterclockwise: () => playerGameLogic.rotatePieceCounterclockwise(),
+    onRotate180: () => playerGameLogic.rotatePiece180(),
+    onHold: () => playerGameLogic.holdCurrentPiece(),
+    onPause: () => {
+      if (playerGameLogic.isPaused) playerGameLogic.resumeGame();
+      else playerGameLogic.pauseGame();
+    },
+    onBackToMenu: onBack,
+    onInstantSoftDrop: () => playerGameLogic.instantSoftDrop(),
+  });
+
+  // rAF loop for DAS/ARR processing
+  useEffect(() => {
+    if (!gameStarted || playerGameLogic.gameOver) return;
+    let animId: number;
+    const tick = (ts: number) => {
+      processHeldKeys(ts);
+      animId = requestAnimationFrame(tick);
+    };
+    animId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animId);
+  }, [gameStarted, playerGameLogic.gameOver, processHeldKeys]);
+
+  // AI decision state
+  const aiTargetRef = useRef<{ rotation: number; x: number } | null>(null);
+  const aiPhaseRef = useRef<'thinking' | 'rotating' | 'moving' | 'dropping'>('thinking');
   const aiMoveIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // AI自动决策循环
+  // AI decision loop
   useEffect(() => {
-    if (!gameStarted) return;
+    if (!gameStarted || aiGameLogic.gameOver) return;
 
-    const aiSpeed = {
-      easy: 800,
-      medium: 500,
-      hard: 300,
-      expert: 150
-    }[difficulty];
+    const interval = getAIMoveInterval(difficulty);
 
     aiMoveIntervalRef.current = setInterval(() => {
-      const move = makeAIMove(aiGameLogic.board, aiGameLogic.currentPiece, difficulty);
-      
-      if (move === 'moveLeft') {
-        aiGameLogic.movePiece(-1, 0);
-      } else if (move === 'moveRight') {
-        aiGameLogic.movePiece(1, 0);
-      } else if (move === 'rotate') {
-        aiGameLogic.rotatePieceClockwise();
-      } else if (move === 'hardDrop') {
-        aiGameLogic.hardDrop();
+      const piece = aiGameLogic.currentPiece;
+      if (!piece) return;
+
+      // Phase: thinking - find best placement
+      if (aiPhaseRef.current === 'thinking') {
+        const pieceType = piece.type?.type || piece.type?.name;
+        if (!pieceType) return;
+        
+        const best = findBestPlacement(aiGameLogic.board, pieceType, difficulty);
+        if (!best) {
+          // Mistake: just hard drop wherever
+          aiGameLogic.hardDrop();
+          return;
+        }
+        aiTargetRef.current = { rotation: best.targetRotation, x: best.targetX };
+        aiPhaseRef.current = 'rotating';
       }
-    }, aiSpeed);
+
+      const target = aiTargetRef.current;
+      if (!target) {
+        aiPhaseRef.current = 'thinking';
+        return;
+      }
+
+      // Phase: rotating
+      if (aiPhaseRef.current === 'rotating') {
+        const currentRot = piece.rotation || 0;
+        if (currentRot !== target.rotation) {
+          aiGameLogic.rotatePieceClockwise();
+          return;
+        }
+        aiPhaseRef.current = 'moving';
+      }
+
+      // Phase: moving
+      if (aiPhaseRef.current === 'moving') {
+        if (piece.x < target.x) {
+          aiGameLogic.movePiece(1, 0);
+          return;
+        } else if (piece.x > target.x) {
+          aiGameLogic.movePiece(-1, 0);
+          return;
+        }
+        aiPhaseRef.current = 'dropping';
+      }
+
+      // Phase: dropping
+      if (aiPhaseRef.current === 'dropping') {
+        aiGameLogic.hardDrop();
+        aiTargetRef.current = null;
+        aiPhaseRef.current = 'thinking';
+      }
+    }, interval);
 
     return () => {
-      if (aiMoveIntervalRef.current) {
-        clearInterval(aiMoveIntervalRef.current);
-      }
+      if (aiMoveIntervalRef.current) clearInterval(aiMoveIntervalRef.current);
     };
   }, [gameStarted, difficulty, aiGameLogic]);
 
   const handleStart = () => {
     playerGameLogic.startGame();
     aiGameLogic.startGame();
+    aiPhaseRef.current = 'thinking';
+    aiTargetRef.current = null;
     setGameStarted(true);
   };
 
   const getDifficultyLabel = (diff: string) => {
-    switch (diff) {
-      case 'easy': return '简单';
-      case 'medium': return '中等';
-      case 'hard': return '困难';
-      case 'expert': return '专家';
-      default: return diff;
-    }
+    const key = `ai_battle.difficulty_${diff}`;
+    const translated = t(key);
+    return translated !== key ? translated : diff;
   };
 
   return (
     <div className="h-full flex flex-col">
-      {/* 顶部控制栏 */}
+      {/* Top control bar */}
       <div className="flex items-center justify-between p-4 bg-card border-b">
         <Button variant="outline" onClick={onBack}>
-          ← 返回
+          ← {t('ai_battle.back') !== 'ai_battle.back' ? t('ai_battle.back') : 'Back'}
         </Button>
         <div className="text-center">
-          <h2 className="text-xl font-bold">AI对战练习</h2>
+          <h2 className="text-xl font-bold">
+            {t('ai_battle.title') !== 'ai_battle.title' ? t('ai_battle.title') : 'AI Battle Practice'}
+          </h2>
           <p className="text-sm text-muted-foreground">
-            难度: {getDifficultyLabel(difficulty)}
+            {t('ai_battle.difficulty_label') !== 'ai_battle.difficulty_label' ? t('ai_battle.difficulty_label') : 'Difficulty'}: {getDifficultyLabel(difficulty)}
           </p>
         </div>
         {!gameStarted ? (
           <Button onClick={handleStart} className="bg-green-500 hover:bg-green-600">
-            开始游戏
+            {t('ai_battle.start') !== 'ai_battle.start' ? t('ai_battle.start') : 'Start Game'}
           </Button>
         ) : (
           <Button onClick={onBack} variant="outline">
-            结束游戏
+            {t('ai_battle.end') !== 'ai_battle.end' ? t('ai_battle.end') : 'End Game'}
           </Button>
         )}
       </div>
 
-      {/* 双窗口游戏区域 */}
+      {/* Dual game area */}
       <div className="flex-1 overflow-hidden">
         <OneVsOneGameArea
           player1State={{
@@ -257,7 +247,7 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
             achievements: []
           }}
           player2Username={`AI Bot (${getDifficultyLabel(difficulty)})`}
-          gameSettings={defaultSettings}
+          gameSettings={gameSettings}
         />
       </div>
     </div>
