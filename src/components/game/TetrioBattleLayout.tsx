@@ -81,9 +81,9 @@ const PlayerSide: React.FC<PlayerSideProps> = ({
     yellow: 'bg-yellow-500/10'
   };
 
-  // 左侧布局: HOLD + 统计 | 棋盘 | NEXT
-  // 右侧布局: NEXT | 棋盘 | HOLD + 统计 (镜像)
-  const LeftPanel = () => (
+  // Left player: [HOLD+Stats] [Board] [NEXT]
+  // Right player (mirrored): [NEXT] [Board] [HOLD+Stats]
+  const HoldPanel = () => (
     <div className="flex flex-col gap-2 w-24">
       {/* HOLD */}
       <div className={`${bgColors[accentColor]} border ${accentColors[accentColor]} rounded-lg p-2`}>
@@ -91,7 +91,7 @@ const PlayerSide: React.FC<PlayerSideProps> = ({
         <HoldPieceDisplay holdPiece={holdPiece} canHold={canHold} />
       </div>
       
-      {/* B2B 指示器 */}
+      {/* B2B */}
       {b2b > 0 && (
         <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-2 text-center">
           <div className="text-[10px] text-yellow-500 font-bold">B2B</div>
@@ -99,7 +99,7 @@ const PlayerSide: React.FC<PlayerSideProps> = ({
         </div>
       )}
       
-      {/* 统计数据 */}
+      {/* Stats */}
       <div className={`${bgColors[accentColor]} border ${accentColors[accentColor]} rounded-lg p-2 space-y-1`}>
         <StatRow label="PIECES" value={pieces.toString()} />
         <StatRow label="PPS" value={pps.toFixed(2)} />
@@ -108,7 +108,7 @@ const PlayerSide: React.FC<PlayerSideProps> = ({
         <StatRow label="TIME" value={formatTime(time)} />
       </div>
       
-      {/* 成就显示区 */}
+      {/* Achievements */}
       <div className="min-h-[100px]">
         <AchievementDisplay 
           achievements={achievements}
@@ -118,9 +118,9 @@ const PlayerSide: React.FC<PlayerSideProps> = ({
     </div>
   );
 
-  const RightPanel = () => (
+  const NextPanel = () => (
     <div className="flex flex-col gap-2 w-24">
-      {/* NEXT 队列 */}
+      {/* NEXT queue */}
       <div className={`${bgColors[accentColor]} border ${accentColors[accentColor]} rounded-lg p-2`}>
         <div className="text-[10px] text-white/60 mb-1 text-center font-bold tracking-wider">NEXT</div>
         <NextPiecePreview nextPieces={nextPieces.slice(0, 5)} compact={true} />
@@ -130,9 +130,8 @@ const PlayerSide: React.FC<PlayerSideProps> = ({
 
   return (
     <div className="flex flex-col items-center">
-      {/* 游戏区域 */}
-      <div className={`flex gap-2 ${isLeft ? '' : 'flex-row-reverse'}`}>
-        <LeftPanel />
+      <div className="flex gap-2">
+        {isLeft ? <HoldPanel /> : <NextPanel />}
         
         {/* 游戏棋盘 */}
         <div className={`border-2 ${accentColors[accentColor]} rounded-lg p-1 ${bgColors[accentColor]}`}>
@@ -145,7 +144,7 @@ const PlayerSide: React.FC<PlayerSideProps> = ({
           />
         </div>
         
-        <RightPanel />
+        {isLeft ? <NextPanel /> : <HoldPanel />}
       </div>
       
       {/* 玩家名称 */}
