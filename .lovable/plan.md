@@ -1,102 +1,117 @@
 
 
-# Fix AI Battle Practice Mode
+# Fix AI Battle: Controls Failing & AI Too Weak
 
-## Problems Identified
+## Problem Analysis
 
-1. **Player controls don't work**: `AIBattleGame` creates `useGameLogic` but never hooks up `useKeyboardControls`. There's no keyboard handler, so pressing keys does nothing.
+### 1. Controls Fail Late Game
+The keyboard controls in `AIBattleGame` use inline arrow functions as callbacks (e.g., `() => playerGameLogic.movePiece(-1, 0)`). These create new references on every render, causing `handleKeyDown` in `useKeyboardControls` to recreate, which re-binds `keydown`/`keyup` event listeners constantly. During fast gameplay with many state updates, this creates brief windows where key events are dropped.
 
-2. **User key bindings ignored**: `AIBattleGame` uses hardcoded `defaultSettings` instead of the user's saved settings from `useUserSettings()`. Custom DAS/ARR/SDF and key mappings are all lost.
+**Root cause**: The `handleKeyDown` callback dependency array includes all the action callbacks. When `playerGameLogic` state changes (score, lines, board, piece), the inline functions get new references, triggering full re-binding of keyboard listeners.
 
-3. **Layout mirror issue**: In `TetrioBattleLayout`, the right-side player (AI) uses `flex-row-reverse` which flips the panel order, but `LeftPanel` always renders HOLD and `RightPanel` always renders NEXT. For the mirrored (right) player, NEXT should be on the left side and HOLD on the right -- this requires swapping the panel contents, not just the flex direction.
-
-4. **AI bot is non-functional**: The AI only picks a target column based on column height, moves left/right to reach it, then hard drops. It never considers piece rotation, doesn't evaluate placement quality after rotation, and has no concept of line clears, T-spins, or combos. It plays almost randomly.
+### 2. AI is Extremely Weak
+Three compounding problems:
+- **Speed**: `moveInterval` is per-action (rotate, move left/right, drop are separate). At medium difficulty (500ms/action), placing one piece takes 1.5-2.5 seconds -- far too slow.
+- **Weights**: The heuristic weights undervalue line clearing and over-penalize height, causing the AI to stack flat but never clear lines effectively.
+- **No hold usage**: The AI never uses the Hold function to save pieces for better placements.
 
 ---
 
-## Plan
+## Implementation Plan
 
-### 1. Wire up player keyboard controls using user settings
-
-**File: `src/components/game/AIBattleGame.tsx`**
-
-- Replace hardcoded `defaultSettings` with `useUserSettings()` to load the user's saved key bindings and handling parameters (DAS/ARR/SDF/DCD).
-- Add `useKeyboardControls` hook connected to `playerGameLogic` so keyboard input actually moves pieces.
-- Add a `requestAnimationFrame` loop to call `processHeldKeys` for DAS/ARR auto-repeat (same pattern as `GameKeyboardHandler`).
-
-### 2. Fix TetrioBattleLayout mirroring
-
-**File: `src/components/game/TetrioBattleLayout.tsx`**
-
-- Modify `PlayerSide` so that when `isLeft=false` (right-side player), the panel contents swap: the left panel shows NEXT and the right panel shows HOLD + stats. Currently `flex-row-reverse` only reverses the container order but doesn't swap which panel contains HOLD vs NEXT.
-
-### 3. Rebuild AI with proper placement evaluation
+### Task 1: Stabilize player keyboard controls
 
 **File: `src/components/game/AIBattleGame.tsx`**
 
-Replace the naive "find best column" AI with a proper placement evaluator that:
-- Simulates all possible placements: for each rotation (0-3), for each valid column position, simulate dropping the piece
-- Evaluates each placement using weighted heuristics:
-  - **Aggregate height** (lower is better)
-  - **Complete lines** (more is better)
-  - **Holes created** (fewer is better)
-  - **Bumpiness / height variance** (smoother is better)
-- Difficulty levels adjust:
-  - **Easy**: Adds random noise to scores, slow move speed (800ms), occasionally makes suboptimal choices
-  - **Medium**: Moderate noise, 500ms speed
-  - **Hard**: Minimal noise, 300ms speed, better weights
-  - **Expert**: No noise, 150ms speed, optimal weights, considers T-spins
-- The AI executes moves step-by-step (rotate, move left/right, then hard drop) rather than teleporting
+Wrap all action callbacks in `useCallback` with stable references using refs for `playerGameLogic`:
+- Create a `playerLogicRef = useRef(playerGameLogic)` that stays in sync
+- All callbacks (onMoveLeft, onMoveRight, etc.) read from the ref instead of capturing the closure
+- This prevents `handleKeyDown` from recreating on every game state change
 
-### 4. Internationalize hardcoded Chinese strings
+### Task 2: Overhaul AI timing and intelligence
 
-Replace Chinese text in `AIBattleGame` ("AI对战练习", "难度:", "简单", "返回", "开始游戏", "结束游戏") with `t()` translation calls.
+**File: `src/utils/aiEngine.ts`**
+
+Restructure difficulty configs to separate "thinking time" (per-piece decision delay) from "action speed" (per-step move interval):
+
+| Difficulty | Think Time | Action Step | Mistake Rate |
+|------------|-----------|-------------|--------------|
+| Easy       | 600ms     | 120ms       | 12%          |
+| Medium     | 300ms     | 80ms        | 5%           |
+| Hard       | 150ms     | 50ms        | 1%           |
+| Expert     | 50ms      | 30ms        | 0%           |
+
+Rebalance heuristic weights to produce competitive play:
+- Increase line-clearing reward significantly (especially for 4-line clears)
+- Add well-column bonus (keep one column open for Tetrises)
+- Reduce height penalty to allow strategic stacking
+
+**File: `src/components/game/AIBattleGame.tsx`**
+
+Rewrite the AI loop to use a two-phase timing model:
+1. **Think phase**: Wait `thinkTime` ms after a new piece spawns, then compute best placement
+2. **Execute phase**: Rotate and move at `actionStep` ms intervals, then hard drop
+3. This creates natural-looking play instead of one action per 500ms
+
+### Task 3: Add AI Hold piece usage
+
+**File: `src/utils/aiEngine.ts`**
+
+Add a `findBestPlacementWithHold` function that:
+- Evaluates the best placement for the current piece
+- Also evaluates best placement for the hold piece (or next piece if hold is empty)
+- Chooses whichever yields a better board state
+- Returns a flag indicating whether to hold first
+
+**File: `src/components/game/AIBattleGame.tsx`**
+
+Add a `'holding'` phase to the AI state machine that calls `aiGameLogic.holdCurrentPiece()` before proceeding to rotate/move.
 
 ---
 
 ## Technical Details
 
-### Keyboard integration (AIBattleGame.tsx)
+### Stable callbacks pattern (AIBattleGame.tsx)
 
 ```text
-useUserSettings() --> gameSettings (user's real settings)
-                  |
-useKeyboardControls({
-  gameSettings,
-  onMoveLeft: playerGameLogic.movePiece(-1,0),
-  onHardDrop: playerGameLogic.hardDrop(),
-  ...
-})
-                  |
-requestAnimationFrame loop --> processHeldKeys(timestamp)
+const playerLogicRef = useRef(playerGameLogic);
+useEffect(() => { playerLogicRef.current = playerGameLogic; });
+
+// Callbacks never change reference:
+const stableMoveLeft = useCallback(() => playerLogicRef.current.movePiece(-1, 0), []);
+const stableMoveRight = useCallback(() => playerLogicRef.current.movePiece(1, 0), []);
+// ... etc
+
+// Pass stable callbacks to useKeyboardControls
 ```
 
-### AI placement algorithm
+### AI two-phase loop (AIBattleGame.tsx)
 
 ```text
-For each rotation r in [0,1,2,3]:
-  For each column x in [0..9]:
-    1. Create rotated piece shape
-    2. Check if position is valid
-    3. Simulate drop to landing row
-    4. Place piece on board copy
-    5. Count cleared lines
-    6. Score = w1*linesCleared - w2*aggregateHeight - w3*holes - w4*bumpiness
-    7. Add random noise based on difficulty
-  
-Best move = {rotation, targetX} with highest score
-Execute: rotate to target rotation, move to target X, then hard drop
+State machine phases: thinking -> holding? -> rotating -> moving -> dropping -> thinking
+                                                                              
+thinking: wait thinkTime ms, compute best move
+holding:  if hold is better, call holdCurrentPiece(), wait one actionStep
+rotating: each actionStep ms, rotate once toward target rotation  
+moving:   each actionStep ms, move one column toward target X
+dropping: hard drop, reset to thinking
 ```
 
-### Layout fix (TetrioBattleLayout.tsx)
+### Rebalanced weights (aiEngine.ts)
 
-For `isLeft=true` (player): `[HOLD+Stats] [Board] [NEXT]`
-For `isLeft=false` (AI): `[NEXT] [Board] [HOLD+Stats]` -- swap LeftPanel/RightPanel contents based on `isLeft` prop.
+```text
+easy:   { lines: 80,  height: -2,  holes: -25, bumpiness: -4,  well: 5  }
+medium: { lines: 150, height: -5,  holes: -60, bumpiness: -10, well: 10 }
+hard:   { lines: 250, height: -8,  holes: -100, bumpiness: -15, well: 15 }
+expert: { lines: 400, height: -12, holes: -150, bumpiness: -20, well: 20 }
+```
+
+The "well" bonus rewards keeping one column (usually rightmost) empty for Tetris clears.
 
 ### Files Modified
 
 | File | Changes |
 |------|---------|
-| `src/components/game/AIBattleGame.tsx` | Add useUserSettings, useKeyboardControls, rAF loop, rebuild AI logic, i18n |
-| `src/components/game/TetrioBattleLayout.tsx` | Fix panel content swap for mirrored right-side player |
+| `src/components/game/AIBattleGame.tsx` | Stabilize callbacks with refs; rewrite AI loop with two-phase timing; add hold support |
+| `src/utils/aiEngine.ts` | Rebalance weights; add well bonus; separate think/action timing; add hold evaluation |
 
