@@ -6,8 +6,8 @@ import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { findBestPlacement, getAIMoveInterval } from '@/utils/aiEngine';
-import type { GameSettings, GameMode } from '@/utils/gameTypes';
+import { findBestPlacementWithHold, getAIThinkTime, getAIActionStep } from '@/utils/aiEngine';
+import type { GameSettings } from '@/utils/gameTypes';
 
 interface AIBattleGameProps {
   difficulty: 'easy' | 'medium' | 'hard' | 'expert';
@@ -20,7 +20,6 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
   const { settings } = useUserSettings();
   const [gameStarted, setGameStarted] = useState(false);
 
-  // Convert UserSettings to GameSettings format
   const gameSettings: GameSettings = {
     das: settings.das,
     arr: settings.arr,
@@ -50,28 +49,42 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
     preGeneratedPieceTypes: []
   });
 
-  // Player keyboard controls
+  // ---- Stable callbacks via ref ----
+  const playerLogicRef = useRef(playerGameLogic);
+  useEffect(() => { playerLogicRef.current = playerGameLogic; });
+
+  const stableMoveLeft = useCallback(() => playerLogicRef.current.movePiece(-1, 0), []);
+  const stableMoveRight = useCallback(() => playerLogicRef.current.movePiece(1, 0), []);
+  const stableSoftDrop = useCallback(() => playerLogicRef.current.movePiece(0, 1), []);
+  const stableHardDrop = useCallback(() => playerLogicRef.current.hardDrop(), []);
+  const stableRotateCW = useCallback(() => playerLogicRef.current.rotatePieceClockwise(), []);
+  const stableRotateCCW = useCallback(() => playerLogicRef.current.rotatePieceCounterclockwise(), []);
+  const stableRotate180 = useCallback(() => playerLogicRef.current.rotatePiece180(), []);
+  const stableHold = useCallback(() => playerLogicRef.current.holdCurrentPiece(), []);
+  const stableInstantSoftDrop = useCallback(() => playerLogicRef.current.instantSoftDrop(), []);
+  const stablePause = useCallback(() => {
+    if (playerLogicRef.current.isPaused) playerLogicRef.current.resumeGame();
+    else playerLogicRef.current.pauseGame();
+  }, []);
+
   const { processHeldKeys } = useKeyboardControls({
     gameSettings,
     gameOver: playerGameLogic.gameOver,
     paused: playerGameLogic.isPaused || !gameStarted,
-    onMoveLeft: () => playerGameLogic.movePiece(-1, 0),
-    onMoveRight: () => playerGameLogic.movePiece(1, 0),
-    onSoftDrop: () => playerGameLogic.movePiece(0, 1),
-    onHardDrop: () => playerGameLogic.hardDrop(),
-    onRotateClockwise: () => playerGameLogic.rotatePieceClockwise(),
-    onRotateCounterclockwise: () => playerGameLogic.rotatePieceCounterclockwise(),
-    onRotate180: () => playerGameLogic.rotatePiece180(),
-    onHold: () => playerGameLogic.holdCurrentPiece(),
-    onPause: () => {
-      if (playerGameLogic.isPaused) playerGameLogic.resumeGame();
-      else playerGameLogic.pauseGame();
-    },
+    onMoveLeft: stableMoveLeft,
+    onMoveRight: stableMoveRight,
+    onSoftDrop: stableSoftDrop,
+    onHardDrop: stableHardDrop,
+    onRotateClockwise: stableRotateCW,
+    onRotateCounterclockwise: stableRotateCCW,
+    onRotate180: stableRotate180,
+    onHold: stableHold,
+    onPause: stablePause,
     onBackToMenu: onBack,
-    onInstantSoftDrop: () => playerGameLogic.instantSoftDrop(),
+    onInstantSoftDrop: stableInstantSoftDrop,
   });
 
-  // rAF loop for DAS/ARR processing
+  // rAF loop for DAS/ARR
   useEffect(() => {
     if (!gameStarted || playerGameLogic.gameOver) return;
     let animId: number;
@@ -83,76 +96,115 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
     return () => cancelAnimationFrame(animId);
   }, [gameStarted, playerGameLogic.gameOver, processHeldKeys]);
 
-  // AI decision state
-  const aiTargetRef = useRef<{ rotation: number; x: number } | null>(null);
-  const aiPhaseRef = useRef<'thinking' | 'rotating' | 'moving' | 'dropping'>('thinking');
-  const aiMoveIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // ---- AI two-phase state machine ----
+  const aiLogicRef = useRef(aiGameLogic);
+  useEffect(() => { aiLogicRef.current = aiGameLogic; });
 
-  // AI decision loop
+  const aiTargetRef = useRef<{ rotation: number; x: number; shouldHold: boolean } | null>(null);
+  const aiPhaseRef = useRef<'thinking' | 'holding' | 'rotating' | 'moving' | 'dropping'>('thinking');
+  const aiLastPieceIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!gameStarted || aiGameLogic.gameOver) return;
 
-    const interval = getAIMoveInterval(difficulty);
+    const thinkTime = getAIThinkTime(difficulty);
+    const actionStep = getAIActionStep(difficulty);
 
-    aiMoveIntervalRef.current = setInterval(() => {
-      const piece = aiGameLogic.currentPiece;
-      if (!piece) return;
+    let thinkTimer: NodeJS.Timeout | null = null;
+    let actionTimer: NodeJS.Timeout | null = null;
 
-      // Phase: thinking - find best placement
-      if (aiPhaseRef.current === 'thinking') {
+    const startThinking = () => {
+      thinkTimer = setTimeout(() => {
+        const logic = aiLogicRef.current;
+        const piece = logic.currentPiece;
+        if (!piece) {
+          startThinking();
+          return;
+        }
+
         const pieceType = piece.type?.type || piece.type?.name;
-        if (!pieceType) return;
-        
-        const best = findBestPlacement(aiGameLogic.board, pieceType, difficulty);
+        if (!pieceType) {
+          startThinking();
+          return;
+        }
+
+        const holdType = logic.holdPiece?.type?.type || logic.holdPiece?.type?.name || null;
+        const nextPiece = logic.nextPieces?.[0];
+        const nextType = nextPiece?.type?.type ?? nextPiece?.type?.name ?? null;
+
+        const best = findBestPlacementWithHold(logic.board, pieceType, holdType, nextType, difficulty);
         if (!best) {
-          // Mistake: just hard drop wherever
-          aiGameLogic.hardDrop();
+          // Mistake: just drop
+          logic.hardDrop();
+          aiPhaseRef.current = 'thinking';
+          startThinking();
           return;
         }
-        aiTargetRef.current = { rotation: best.targetRotation, x: best.targetX };
-        aiPhaseRef.current = 'rotating';
-      }
 
-      const target = aiTargetRef.current;
-      if (!target) {
-        aiPhaseRef.current = 'thinking';
-        return;
-      }
+        aiTargetRef.current = { rotation: best.targetRotation, x: best.targetX, shouldHold: best.shouldHold };
+        aiPhaseRef.current = best.shouldHold ? 'holding' : 'rotating';
+        startExecuting();
+      }, thinkTime);
+    };
 
-      // Phase: rotating
-      if (aiPhaseRef.current === 'rotating') {
-        const currentRot = piece.rotation || 0;
-        if (currentRot !== target.rotation) {
-          aiGameLogic.rotatePieceClockwise();
+    const startExecuting = () => {
+      actionTimer = setInterval(() => {
+        const logic = aiLogicRef.current;
+        const piece = logic.currentPiece;
+        if (!piece) return;
+
+        const target = aiTargetRef.current;
+        if (!target) {
+          clearInterval(actionTimer!);
+          aiPhaseRef.current = 'thinking';
+          startThinking();
           return;
         }
-        aiPhaseRef.current = 'moving';
-      }
 
-      // Phase: moving
-      if (aiPhaseRef.current === 'moving') {
-        if (piece.x < target.x) {
-          aiGameLogic.movePiece(1, 0);
-          return;
-        } else if (piece.x > target.x) {
-          aiGameLogic.movePiece(-1, 0);
+        if (aiPhaseRef.current === 'holding') {
+          logic.holdCurrentPiece();
+          aiPhaseRef.current = 'rotating';
           return;
         }
-        aiPhaseRef.current = 'dropping';
-      }
 
-      // Phase: dropping
-      if (aiPhaseRef.current === 'dropping') {
-        aiGameLogic.hardDrop();
-        aiTargetRef.current = null;
-        aiPhaseRef.current = 'thinking';
-      }
-    }, interval);
+        if (aiPhaseRef.current === 'rotating') {
+          const currentRot = piece.rotation || 0;
+          if (currentRot !== target.rotation) {
+            logic.rotatePieceClockwise();
+            return;
+          }
+          aiPhaseRef.current = 'moving';
+        }
+
+        if (aiPhaseRef.current === 'moving') {
+          if (piece.x < target.x) {
+            logic.movePiece(1, 0);
+            return;
+          } else if (piece.x > target.x) {
+            logic.movePiece(-1, 0);
+            return;
+          }
+          aiPhaseRef.current = 'dropping';
+        }
+
+        if (aiPhaseRef.current === 'dropping') {
+          logic.hardDrop();
+          aiTargetRef.current = null;
+          aiPhaseRef.current = 'thinking';
+          clearInterval(actionTimer!);
+          startThinking();
+        }
+      }, actionStep);
+    };
+
+    aiPhaseRef.current = 'thinking';
+    startThinking();
 
     return () => {
-      if (aiMoveIntervalRef.current) clearInterval(aiMoveIntervalRef.current);
+      if (thinkTimer) clearTimeout(thinkTimer);
+      if (actionTimer) clearInterval(actionTimer);
     };
-  }, [gameStarted, difficulty, aiGameLogic]);
+  }, [gameStarted, aiGameLogic.gameOver, difficulty]);
 
   const handleStart = () => {
     playerGameLogic.startGame();
@@ -170,7 +222,6 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
 
   return (
     <div className="h-full flex flex-col">
-      {/* Top control bar */}
       <div className="flex items-center justify-between p-4 bg-card border-b">
         <Button variant="outline" onClick={onBack}>
           ← {t('ai_battle.back') !== 'ai_battle.back' ? t('ai_battle.back') : 'Back'}
@@ -194,7 +245,6 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
         )}
       </div>
 
-      {/* Dual game area */}
       <div className="flex-1 overflow-hidden">
         <OneVsOneGameArea
           player1State={{
@@ -213,13 +263,9 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
             apm: playerGameLogic.apm,
             combo: playerGameLogic.comboCount,
             b2b: playerGameLogic.isB2B,
-            pieces: 0,
-            attack: 0,
-            startTime: null,
-            endTime: null,
+            pieces: 0, attack: 0, startTime: null, endTime: null,
             ghostPiece: playerGameLogic.ghostPiece,
-            clearingLines: [],
-            achievements: []
+            clearingLines: [], achievements: []
           }}
           player1Username={user?.username || 'Player'}
           player2State={{
@@ -238,13 +284,9 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
             apm: aiGameLogic.apm,
             combo: aiGameLogic.comboCount,
             b2b: aiGameLogic.isB2B,
-            pieces: 0,
-            attack: 0,
-            startTime: null,
-            endTime: null,
+            pieces: 0, attack: 0, startTime: null, endTime: null,
             ghostPiece: aiGameLogic.ghostPiece,
-            clearingLines: [],
-            achievements: []
+            clearingLines: [], achievements: []
           }}
           player2Username={`AI Bot (${getDifficultyLabel(difficulty)})`}
           gameSettings={gameSettings}
