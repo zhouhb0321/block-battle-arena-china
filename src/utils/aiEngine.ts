@@ -31,10 +31,10 @@ interface DifficultyConfig {
 }
 
 const DIFFICULTY_CONFIGS: Record<string, DifficultyConfig> = {
-  easy:   { weights: { lines: 80,  height: -2,  holes: -25,  bumpiness: -4,  well: 5  }, noise: 35, thinkTime: 600, actionStep: 120, mistakeRate: 0.12 },
-  medium: { weights: { lines: 150, height: -5,  holes: -60,  bumpiness: -10, well: 10 }, noise: 12, thinkTime: 300, actionStep: 80,  mistakeRate: 0.05 },
-  hard:   { weights: { lines: 250, height: -8,  holes: -100, bumpiness: -15, well: 15 }, noise: 3,  thinkTime: 150, actionStep: 50,  mistakeRate: 0.01 },
-  expert: { weights: { lines: 400, height: -12, holes: -150, bumpiness: -20, well: 20 }, noise: 0,  thinkTime: 50,  actionStep: 30,  mistakeRate: 0 },
+  easy:   { weights: { lines: 200,  height: -3,  holes: -50,   bumpiness: -8,   well: 8  }, noise: 25, thinkTime: 400, actionStep: 100, mistakeRate: 0.12 },
+  medium: { weights: { lines: 500,  height: -8,  holes: -120,  bumpiness: -18,  well: 15 }, noise: 8,  thinkTime: 200, actionStep: 60,  mistakeRate: 0.05 },
+  hard:   { weights: { lines: 800,  height: -12, holes: -200,  bumpiness: -25,  well: 25 }, noise: 2,  thinkTime: 100, actionStep: 40,  mistakeRate: 0.01 },
+  expert: { weights: { lines: 1200, height: -15, holes: -300,  bumpiness: -35,  well: 35 }, noise: 0,  thinkTime: 30,  actionStep: 25,  mistakeRate: 0 },
 };
 
 export function getAIThinkTime(difficulty: string): number {
@@ -168,11 +168,12 @@ function scorePlacement(
       const { newBoard, linesCleared } = placeAndClear(board, shape, x, landY);
       const { aggregateHeight, holes, bumpiness, wellBonus } = evaluateBoard(newBoard, config.weights);
 
-      // Bonus for 4-line clear (Tetris)
-      const lineBonus = linesCleared === 4 ? config.weights.lines * 2 : 0;
+      // Tetris bonus multiplier: reward multi-line clears heavily
+      const tetrisMultiplier = linesCleared === 4 ? 4 : linesCleared === 3 ? 2.5 : linesCleared === 2 ? 1.5 : 1;
+      const lineBonus = linesCleared === 4 ? config.weights.lines * 3 : 0;
 
       let score =
-        config.weights.lines * linesCleared +
+        config.weights.lines * linesCleared * tetrisMultiplier +
         lineBonus +
         config.weights.height * aggregateHeight +
         config.weights.holes * holes +

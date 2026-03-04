@@ -70,14 +70,6 @@ export const useKeyboardControls = ({
     }
 
     const { controls } = gameSettings;
-    console.log('useKeyboardControls: 当前按键设置', { 
-      controls,
-      pressedKey: event.code,
-      moveLeft: controls.moveLeft,
-      moveRight: controls.moveRight,
-      softDrop: controls.softDrop,
-      hardDrop: controls.hardDrop
-    });
     const now = performance.now();
     
     // 记录按键时间
@@ -87,53 +79,34 @@ export const useKeyboardControls = ({
       // 立即响应的按键（旋转、硬降、暂存、暂停等）
       if (!gameOver && !paused) {
         if (event.code === controls.rotateClockwise) {
-          console.log('顺时针旋转按键触发');
           onRotateClockwise();
         } else if (event.code === controls.rotateCounterclockwise) {
-          console.log('逆时针旋转按键触发');
           onRotateCounterclockwise();
         } else if (event.code === controls.rotate180 && onRotate180) {
-          console.log('180度旋转按键触发');
           onRotate180();
         } else if (event.code === controls.hardDrop) {
-          console.log('硬降按键触发');
           onHardDrop();
         } else if (event.code === controls.hold) {
-          console.log('暂存按键触发');
           onHold();
         }
       }
       
       // 暂停和退出不受游戏状态限制
       if (event.code === controls.pause) {
-        console.log('暂停按键触发');
         onPause();
       } else if (event.code === controls.backToMenu && onBackToMenu) {
-        console.log('返回菜单按键触发');
         onBackToMenu();
       }
       
       // 移动和软降的初始响应
       if (!gameOver && !paused) {
         if (event.code === controls.moveLeft) {
-          console.log('useKeyboardControls: 左移按键触发', { 
-            key: event.code, 
-            expected: controls.moveLeft 
-          });
           onMoveLeft();
           lastMoveTime.current[event.code] = now;
         } else if (event.code === controls.moveRight) {
-          console.log('useKeyboardControls: 右移按键触发', { 
-            key: event.code, 
-            expected: controls.moveRight 
-          });
           onMoveRight();
           lastMoveTime.current[event.code] = now;
         } else if (event.code === controls.softDrop) {
-          console.log('useKeyboardControls: 软降按键触发', { 
-            key: event.code, 
-            expected: controls.softDrop 
-          });
           onSoftDrop();
           lastMoveTime.current[event.code] = now;
         }
@@ -221,19 +194,6 @@ export const useKeyboardControls = ({
       if (heldTime > gameSettings.das) {
         const arrInterval = gameSettings.arr === 0 ? 0 : Math.max(gameSettings.arr, 1);
         
-        // Debug ARR triggering
-        if ((key === controls.moveLeft || key === controls.moveRight) && 
-            (arrInterval === 0 || timeSinceLastMove >= arrInterval)) {
-          console.log('[ARR Debug]', {
-            key,
-            heldTime: heldTime.toFixed(1),
-            das: gameSettings.das,
-            arr: gameSettings.arr,
-            arrInterval,
-            timeSinceLastMove: timeSinceLastMove.toFixed(1),
-            shouldTrigger: true
-          });
-        }
         
         if (key === controls.moveLeft) {
           if (arrInterval === 0) {
@@ -262,9 +222,6 @@ export const useKeyboardControls = ({
 
   // Enhanced useEffect with stable event handlers to prevent frequent re-binding
   useEffect(() => {
-    console.log('useKeyboardControls: 重新绑定键盘事件监听器', { 
-      controls: gameSettings.controls 
-    });
     
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);

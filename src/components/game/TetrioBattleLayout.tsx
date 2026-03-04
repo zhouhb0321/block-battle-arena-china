@@ -131,7 +131,7 @@ const PlayerSide: React.FC<PlayerSideProps> = ({
   return (
     <div className="flex flex-col items-center">
       <div className="flex gap-2">
-        {isLeft ? <HoldPanel /> : <NextPanel />}
+        <HoldPanel />
         
         {/* 游戏棋盘 */}
         <div className={`border-2 ${accentColors[accentColor]} rounded-lg p-1 ${bgColors[accentColor]}`}>
@@ -144,7 +144,7 @@ const PlayerSide: React.FC<PlayerSideProps> = ({
           />
         </div>
         
-        {isLeft ? <NextPanel /> : <HoldPanel />}
+        <NextPanel />
       </div>
       
       {/* 玩家名称 */}
