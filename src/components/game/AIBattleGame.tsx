@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import OneVsOneGameArea from './OneVsOneGameArea';
 import { useGameLogic } from '@/hooks/useGameLogic';
@@ -20,7 +20,7 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
   const { settings } = useUserSettings();
   const [gameStarted, setGameStarted] = useState(false);
 
-  const gameSettings: GameSettings = {
+  const gameSettings: GameSettings = useMemo(() => ({
     das: settings.das,
     arr: settings.arr,
     sdf: settings.sdf,
@@ -35,7 +35,7 @@ export const AIBattleGame: React.FC<AIBattleGameProps> = ({ difficulty, onBack }
     enableWallpaper: settings.enableWallpaper,
     undoSteps: settings.undoSteps,
     wallpaperChangeInterval: settings.wallpaperChangeInterval,
-  };
+  }), [settings.das, settings.arr, settings.sdf, settings.dcd, settings.controls, settings.enableGhost, settings.enableSound, settings.masterVolume, settings.backgroundMusic, settings.musicVolume, settings.ghostOpacity, settings.enableWallpaper, settings.undoSteps, settings.wallpaperChangeInterval]);
 
   // Player game logic
   const playerGameLogic = useGameLogic({
