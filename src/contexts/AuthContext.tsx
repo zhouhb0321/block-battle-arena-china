@@ -50,6 +50,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subscription, setSubscription] = useState<SubscriptionStatus>({
+    subscribed: false,
+    subscription_tier: null,
+    subscription_end: null,
+  });
+
+  const checkSubscription = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      if (error) throw error;
+      if (data) {
+        setSubscription({
+          subscribed: data.subscribed || false,
+          subscription_tier: data.subscription_tier || null,
+          subscription_end: data.subscription_end || null,
+        });
+      }
+    } catch (err) {
+      console.warn('[AUTH] check-subscription failed:', err);
+    }
+  };
 
   // Improved cache clearing logic
   useEffect(() => {
