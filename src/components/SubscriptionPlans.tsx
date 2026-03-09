@@ -81,7 +81,6 @@ const SubscriptionPlans: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       if (error) throw error;
 
       if (data?.url) {
-        // 在新标签页中打开Stripe Checkout
         window.open(data.url, '_blank');
       }
     } catch (error) {
@@ -89,6 +88,18 @@ const SubscriptionPlans: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       alert('Failed to start subscription process. Please try again.');
     } finally {
       setLoading(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
     }
   };
 

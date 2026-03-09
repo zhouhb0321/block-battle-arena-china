@@ -14,11 +14,19 @@ interface ExtendedUser extends User {
   user_type?: string;
 }
 
+interface SubscriptionStatus {
+  subscribed: boolean;
+  subscription_tier: string | null;
+  subscription_end: string | null;
+}
+
 interface AuthContextType {
   user: ExtendedUser | null;
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
+  subscription: SubscriptionStatus;
+  checkSubscription: () => Promise<void>;
   login: (email: string, password: string) => Promise<{ error: any }>;
   register: (email: string, password: string, username?: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
@@ -42,6 +50,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subscription, setSubscription] = useState<SubscriptionStatus>({
+    subscribed: false,
+    subscription_tier: null,
+    subscription_end: null,
+  });
+
+  const checkSubscription = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      if (error) throw error;
+      if (data) {
+        setSubscription({
+          subscribed: data.subscribed || false,
+          subscription_tier: data.subscription_tier || null,
+          subscription_end: data.subscription_end || null,
+        });
+      }
+    } catch (err) {
+      console.warn('[AUTH] check-subscription failed:', err);
+    }
+  };
 
   // Improved cache clearing logic
   useEffect(() => {
@@ -456,11 +485,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
+  // Check subscription on login and periodically
+  useEffect(() => {
+    if (user && !user.isGuest) {
+      checkSubscription();
+      const interval = setInterval(checkSubscription, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.id]);
+
   const value = {
     user,
     session,
     loading,
     isAuthenticated: !!user,
+    subscription,
+    checkSubscription,
     login,
     register,
     signUp,
