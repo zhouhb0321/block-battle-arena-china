@@ -14,11 +14,19 @@ interface ExtendedUser extends User {
   user_type?: string;
 }
 
+interface SubscriptionStatus {
+  subscribed: boolean;
+  subscription_tier: string | null;
+  subscription_end: string | null;
+}
+
 interface AuthContextType {
   user: ExtendedUser | null;
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
+  subscription: SubscriptionStatus;
+  checkSubscription: () => Promise<void>;
   login: (email: string, password: string) => Promise<{ error: any }>;
   register: (email: string, password: string, username?: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
