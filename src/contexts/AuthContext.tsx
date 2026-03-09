@@ -485,11 +485,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
+  // Check subscription on login and periodically
+  useEffect(() => {
+    if (user && !user.isGuest) {
+      checkSubscription();
+      const interval = setInterval(checkSubscription, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.id]);
+
   const value = {
     user,
     session,
     loading,
     isAuthenticated: !!user,
+    subscription,
+    checkSubscription,
     login,
     register,
     signUp,
