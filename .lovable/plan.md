@@ -1,121 +1,50 @@
 
 
-# Security Audit & Fix Plan
+# Fix AI Battle: Keyboard Lag, Weak AI, Layout
 
-The security scan found **16 issues** (2 critical errors, 14 warnings). Here's the fix plan organized by severity.
+## Issues
 
----
+### 1. Keyboard Stickiness / Lag
+The `gameSettings` object is recreated every render (new object reference each time), which causes `processHeldKeys` to get a new reference, restarting the `requestAnimationFrame` loop on every state update. Additionally, the AI running two full game logic instances (gravity, piece generation, board evaluation) every frame creates heavy CPU load.
 
-## Critical Fixes (Errors)
+**Fix**: Memoize `gameSettings` with `useMemo`. Also remove excessive `console.log` calls in `useKeyboardControls` that fire on every keypress and every ARR tick -- these are expensive during fast gameplay.
 
-### 1. Password reset tokens accessible to all users
-The `password_reset_tokens` table has `USING (true)` for ALL commands — any user (even unauthenticated) can read, modify, or delete reset tokens for any account.
+### 2. AI Far Too Weak
+The heuristic weights are poorly calibrated. With `lines: 150` and `holes: -60` at medium difficulty, the AI needs to clear 1 line just to offset creating 2.5 holes. The height penalty (`-5` per unit across ~10 columns = `-50` aggregate) also discourages stacking high enough to complete lines. The well bonus (`10`) is negligible.
 
-**Fix**: Replace the policy to restrict access to `service_role` only.
+**Fix**: Dramatically increase line-clear rewards (especially for Tetris), increase hole/bumpiness penalties to force cleaner stacking, and add a specific bonus for keeping the board low overall. New weights:
 
-### 2. Users can self-assign premium subscription tiers
-The `user_profiles` UPDATE policy has no `WITH CHECK`, allowing users to set `subscription_tier`, `user_type`, and `rank` to arbitrary values.
+| Difficulty | lines | height | holes | bumpiness | well | Tetris bonus |
+|------------|-------|--------|-------|-----------|------|-------------|
+| Easy       | 200   | -3     | -50   | -8        | 8    | x1.5        |
+| Medium     | 500   | -8     | -120  | -18       | 15   | x2          |
+| Hard       | 800   | -12    | -200  | -25       | 25   | x3          |
+| Expert     | 1200  | -15    | -300  | -35       | 35   | x4          |
 
-**Fix**: Add a `WITH CHECK` that prevents modifying privileged columns, or create a restricted update policy.
+Also reduce noise and speed up action steps so the AI actually places pieces before gravity locks them.
 
----
+### 3. Layout: HOLD/NEXT Swapped for Right Player
+The code at line 134 of `TetrioBattleLayout.tsx` swaps HOLD and NEXT panels for the right-side player (`isLeft=false`). User wants HOLD always on the left of the board and NEXT always on the right for both players.
 
-## Important Fixes (Warnings)
-
-### 3. Users can overwrite their own ELO rating
-The `league_rankings` UPDATE policy lets users set `elo_rating`, `peak_rating`, `rank_tier` etc. to any value.
-
-**Fix**: Drop the user-level UPDATE policy. Ranking changes should only happen via service_role.
-
-### 4. Players can alter match outcomes
-The `ranked_matches` UPDATE policy lets players change `winner_id`, ratings, and status.
-
-**Fix**: Drop user-level UPDATE or restrict to only non-sensitive fields (e.g. status changes for forfeiting).
-
-### 5. Advertisement budget data exposed
-All authenticated users can see `budget`, `spent`, `frequency_cap` etc.
-
-**Fix**: Drop the overly broad policy; keep only the `is_active = true` policy for regular users.
-
-### 6. Overly permissive RLS (WITH CHECK true) on 8 tables
-Tables like `security_events`, `user_session_logs`, `match_games`, `battle_records`, `ad_clicks`, `ad_impressions`, `user_badges`, `password_reset_tokens` have INSERT policies with `WITH CHECK (true)`.
-
-**Fix**: For system-insert tables (match_games, battle_records, security_events, etc.), change to `auth.role() = 'authenticated'` or `service_role` as appropriate. Some like `ad_impressions` may intentionally allow anonymous inserts.
-
-### 7. Auth configuration
-- OTP expiry too long — requires manual change in Supabase dashboard
-- Leaked password protection disabled — requires manual toggle in dashboard
-- Postgres version has security patches — requires upgrade in dashboard
+**Fix**: Remove the conditional swap -- always render `<HoldPanel />` left of the board and `<NextPanel />` right of the board regardless of `isLeft`.
 
 ---
 
-## Database Migration (SQL)
+## Changes
 
-The implementation will execute a single migration covering items 1-6:
+### File: `src/components/game/AIBattleGame.tsx`
+- Wrap `gameSettings` in `useMemo` to prevent reference changes on every render
+- This stabilizes `processHeldKeys` → stabilizes the rAF loop
 
-```sql
--- 1. Fix password_reset_tokens: restrict to service_role only
-DROP POLICY "System can manage password reset tokens" ON password_reset_tokens;
-CREATE POLICY "Service role manages tokens" ON password_reset_tokens
-  FOR ALL TO public USING (auth.role() = 'service_role');
+### File: `src/hooks/useKeyboardControls.ts`
+- Remove all `console.log` statements (there are ~12 of them firing on every keypress and ARR tick, causing significant performance overhead during fast play)
 
--- 2. Fix user_profiles: restrict privileged column updates
-DROP POLICY "Users can update their own profile" ON user_profiles;
-CREATE POLICY "Users can update own non-privileged fields" ON user_profiles
-  FOR UPDATE TO public
-  USING (auth.uid() = id)
-  WITH CHECK (
-    auth.uid() = id
-    AND subscription_tier IS NOT DISTINCT FROM (SELECT subscription_tier FROM user_profiles WHERE id = auth.uid())
-    AND user_type IS NOT DISTINCT FROM (SELECT user_type FROM user_profiles WHERE id = auth.uid())
-    AND rank IS NOT DISTINCT FROM (SELECT rank FROM user_profiles WHERE id = auth.uid())
-  );
+### File: `src/utils/aiEngine.ts`
+- Rebalance all difficulty weights with much higher line-clear rewards
+- Increase Tetris bonus multiplier per difficulty level
+- Speed up action steps: Easy 100ms, Medium 60ms, Hard 40ms, Expert 25ms
+- Reduce think times: Easy 400ms, Medium 200ms, Hard 100ms, Expert 30ms
 
--- 3. Fix league_rankings: remove user UPDATE
-DROP POLICY "Users can update their own ranking" ON league_rankings;
-
--- 4. Fix ranked_matches: remove user UPDATE
-DROP POLICY "Users can update their own matches" ON ranked_matches;
-
--- 5. Fix advertisements: remove broad authenticated policy
-DROP POLICY "Authenticated users can view all advertisements" ON advertisements;
-
--- 6. Fix overly permissive INSERT policies
-DROP POLICY "System can insert battle records" ON battle_records;
-CREATE POLICY "Authenticated can insert battle records" ON battle_records
-  FOR INSERT TO public WITH CHECK (auth.role() = 'authenticated');
-
-DROP POLICY "System can insert game records" ON match_games;
-CREATE POLICY "Authenticated can insert game records" ON match_games
-  FOR INSERT TO public WITH CHECK (auth.role() = 'authenticated');
-
-DROP POLICY "System can insert security events" ON security_events;
-CREATE POLICY "Authenticated or service can insert security events" ON security_events
-  FOR INSERT TO public WITH CHECK (auth.uid() IS NOT NULL OR auth.role() = 'service_role');
-
-DROP POLICY "System can insert user badges" ON user_badges;
-CREATE POLICY "Authenticated can insert user badges" ON user_badges
-  FOR INSERT TO public WITH CHECK (auth.role() = 'authenticated');
-```
-
-## Manual Steps (Not automatable)
-
-After the code fix, you should go to the Supabase dashboard and:
-1. **Reduce OTP expiry** — Auth settings
-2. **Enable leaked password protection** — Auth settings
-3. **Upgrade Postgres version** — Infrastructure settings
-
----
-
-## Summary
-
-| # | Issue | Severity | Fix |
-|---|-------|----------|-----|
-| 1 | Password reset tokens exposed | Error | Restrict to service_role |
-| 2 | Self-assign subscription tier | Error | WITH CHECK on privileged cols |
-| 3 | ELO rating manipulation | Warn | Drop user UPDATE policy |
-| 4 | Match outcome tampering | Warn | Drop user UPDATE policy |
-| 5 | Ad budget data exposed | Warn | Drop broad SELECT policy |
-| 6 | Permissive INSERT policies | Warn | Restrict to authenticated |
-| 7 | Auth config (OTP/passwords/PG) | Warn | Manual dashboard changes |
+### File: `src/components/game/TetrioBattleLayout.tsx`
+- Lines 134 and 147: Change to always render `<HoldPanel />` on left and `<NextPanel />` on right (remove `isLeft` conditional)
 
