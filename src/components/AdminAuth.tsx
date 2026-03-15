@@ -127,7 +127,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticated }) => {
     
     // 模拟发送延迟
     await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('MFA验证码:', code); // 在实际应用中移除此日志
+    // MFA code generated - in production, send via email/SMS instead of client-side storage
   };
 
   const handleLogin = async (e: React.FormEvent) => {

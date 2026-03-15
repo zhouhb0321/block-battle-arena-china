@@ -1808,6 +1808,23 @@ export type Database = {
         Args: { _user_id?: string }
         Returns: string
       }
+      get_waiting_rooms: {
+        Args: never
+        Returns: {
+          allow_spectators: boolean
+          created_at: string
+          created_by: string
+          current_players: number
+          custom_settings: Json
+          id: string
+          max_players: number
+          mode: string
+          room_code: string
+          settings: Json
+          status: string
+          team_mode: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
