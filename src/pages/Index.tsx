@@ -12,7 +12,7 @@ import AuthModal from '@/components/AuthModal';
 import NavigationBar from '@/components/NavigationBar';
 import ReplaySystem from '@/components/ReplaySystem';
 import LeaderboardView from '@/components/LeaderboardView';
-import FixSummary from '@/components/FixSummary';
+
 import AdminPanel from '@/components/AdminPanel';
 import AdSpace from '@/components/AdSpace';
 import EnhancedMusicPlayer from '@/components/EnhancedMusicPlayer';
@@ -268,7 +268,7 @@ const Index = () => {
         return (
           <div className="max-w-6xl mx-auto space-y-6">
             <ReplaySystem />
-            <FixSummary />
+            
           </div>
         );
       case 'admin':

@@ -10,24 +10,7 @@ export const initializeSecurityPolicies = () => {
     }
   });
 
-  // Enhanced Content Security Policy
-  if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
-    const cspMeta = document.createElement('meta');
-    cspMeta.setAttribute('http-equiv', 'Content-Security-Policy');
-    cspMeta.setAttribute('content', [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: https: blob:",
-      "media-src 'self' blob:",
-      "connect-src 'self' wss: https://wcwnyvoezudyxiayyzek.supabase.co",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'"
-    ].join('; '));
-    document.head.appendChild(cspMeta);
-  }
+  // CSP is defined in index.html to avoid conflicts — do not duplicate here
 
   // Enhanced Permissions Policy
   if (!document.querySelector('meta[http-equiv="Permissions-Policy"]')) {
