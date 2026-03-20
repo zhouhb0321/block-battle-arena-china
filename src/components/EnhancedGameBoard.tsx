@@ -15,9 +15,8 @@ interface EnhancedGameBoardProps {
   isLockDelayActive?: boolean;
   lockDelayResetCount?: number;
   clearingLines?: number[];
-  // 4W 模式支持 - 动态棋盘尺寸
-  boardWidth?: number;   // 棋盘宽度 (4-10)
-  boardHeight?: number;  // 可见行数 (10-40)
+  boardWidth?: number;
+  boardHeight?: number;
 }
 
 const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
@@ -37,58 +36,46 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
   const { actualTheme } = useTheme();
   const currentSkin = getCurrentSkin(settings.blockSkin || 'wood');
   
-  // 从 board 推断实际尺寸，或使用 props
   const actualBoardWidth = propBoardWidth ?? board[0]?.length ?? 10;
   const actualVisibleRows = propBoardHeight ?? 20;
   const hiddenRows = 3;
   const totalRows = actualVisibleRows + hiddenRows;
   
-  // 自适应计算 cellSize 以适应屏幕
   const calculateAdaptiveCellSize = () => {
     if (propCellSize) return propCellSize;
     
-    // 对于非标准尺寸棋盘，自动缩放
     if (actualBoardWidth !== 10 || actualVisibleRows !== 20) {
-      const maxWidth = 280; // 最大棋盘宽度像素
-      const maxHeight = 480; // 最大棋盘高度像素
-      
+      const maxWidth = 280;
+      const maxHeight = 480;
       const widthBasedSize = Math.floor(maxWidth / actualBoardWidth);
       const heightBasedSize = Math.floor(maxHeight / actualVisibleRows);
-      
       return Math.min(widthBasedSize, heightBasedSize, 28);
     }
     
-    return 24; // 默认 cellSize
+    return 24;
   };
   
   const cellSize = calculateAdaptiveCellSize();
 
   const createExtendedBoard = () => {
-    // ✅ 增强防御性检查：确保 board 存在且是有效数组
     if (!board || !Array.isArray(board) || board.length === 0) {
-      console.warn('[EnhancedGameBoard] Invalid board data', board);
       return Array(totalRows).fill(null).map(() => Array(actualBoardWidth).fill(0));
     }
     
-    // ✅ 验证并修复每一行
-    const extendedBoard = board.map((row, idx) => {
+    const extendedBoard = board.map((row) => {
       if (!row || !Array.isArray(row)) {
-        console.warn(`[EnhancedGameBoard] Row ${idx} is invalid, creating empty row`);
         return Array(actualBoardWidth).fill(0);
       }
-      // 确保每行有正确数量的元素
       const fixedRow = [...row];
       while (fixedRow.length < actualBoardWidth) fixedRow.push(0);
       return fixedRow.slice(0, actualBoardWidth);
     });
     
-    // ✅ 确保棋盘有正确行数
     while (extendedBoard.length < totalRows) {
       extendedBoard.unshift(Array(actualBoardWidth).fill(0));
     }
 
     if (ghostPiece && settings.enableGhost && ghostPiece.type) {
-      // ✅ 使用 getPieceShape 获取旋转后的形状
       const typeName = typeof ghostPiece.type === 'string' ? ghostPiece.type : ghostPiece.type.type;
       const shape = getPieceShape(typeName, ghostPiece.rotation || 0);
       for (let row = 0; row < shape.length; row++) {
@@ -111,7 +98,6 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
     }
 
     if (currentPiece && currentPiece.type) {
-      // ✅ 使用 getPieceShape 获取旋转后的形状
       const typeName = typeof currentPiece.type === 'string' ? currentPiece.type : currentPiece.type.type;
       const shape = getPieceShape(typeName, currentPiece.rotation || 0);
       for (let row = 0; row < shape.length; row++) {
@@ -135,7 +121,6 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
 
   const extendedBoard = createExtendedBoard();
   
-  // 根据 showHiddenRows 决定渲染哪些行
   const rowsToRender = showHiddenRows ? extendedBoard : extendedBoard.slice(hiddenRows);
   const displayRowCount = showHiddenRows ? totalRows : actualVisibleRows;
 
@@ -147,22 +132,24 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
 
     if (typeof cellValue === 'string') {
       if (cellValue.startsWith('ghost-')) {
-        // Ghost piece: dark semi-transparent with dashed border
+        // Ghost piece: simple semi-transparent fill, no animation
+        const ghostColor = cellValue.replace('ghost-', '');
         cellStyle = {
-          backgroundColor: 'rgba(40, 40, 40, 0.3)',
-          border: '2px dashed #555',
+          backgroundColor: ghostColor,
+          opacity: (settings.ghostOpacity ?? 50) / 100 * 0.4,
           borderRadius: '2px',
-          opacity: 0.5,
         };
         cellClass = 'ghost-block';
       } else if (cellValue.startsWith('#')) {
-        // Active piece - use skin style
         cellStyle = currentSkin.getBlockStyle(cellValue, false);
         cellClass = currentSkin.getBlockClass(cellValue, false);
+        // Add inner highlight for 3D depth
+        if (!cellStyle.boxShadow) {
+          cellStyle.boxShadow = 'inset 1px 1px 0 rgba(255,255,255,0.25), inset -1px -1px 0 rgba(0,0,0,0.2)';
+        }
       }
     } else if (cellValue !== 0) {
       if (isGarbageBlock(cellValue)) {
-        // Garbage: distinct gray with beveled edges
         cellStyle = {
           backgroundColor: GARBAGE_COLOR,
           border: '2px solid #666666',
@@ -172,10 +159,12 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
         };
         cellClass = 'garbage-block';
       } else {
-        // 使用数字ID映射的颜色（来自已落地的方块）
         const color = getColorByTypeId(cellValue);
         cellStyle = currentSkin.getBlockStyle(color, false);
         cellClass = currentSkin.getBlockClass(color, false);
+        if (!cellStyle.boxShadow) {
+          cellStyle.boxShadow = 'inset 1px 1px 0 rgba(255,255,255,0.25), inset -1px -1px 0 rgba(0,0,0,0.2)';
+        }
       }
     } else {
       if (isHidden) {
@@ -212,10 +201,9 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
 
   return (
     <div className="relative">
-      {/* 锁定延迟提示 */}
       {isLockDelayActive && (
         <div className="absolute top-0 left-0 right-0 bg-yellow-500/20 text-yellow-300 text-xs text-center py-1 z-10">
-          锁定延迟 ({lockDelayResetCount}/15)
+          Lock Delay ({lockDelayResetCount}/15)
         </div>
       )}
       
@@ -230,9 +218,8 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
         }}
       >
         {rowsToRender.map((row, displayIndex) => {
-          // 计算实际行索引（用于消行动画等）
           const actualRowIndex = showHiddenRows ? displayIndex : displayIndex + hiddenRows;
-          return row.map((cellValue, colIndex) => {
+          return row.map((cellValue: number | string, colIndex: number) => {
             const { cellStyle, cellClass } = getCellStyle(cellValue, actualRowIndex);
             
             return (
@@ -254,66 +241,39 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
       </div>
       
       <style>{`
-        .game-board {
-          image-rendering: pixelated;
-          image-rendering: -moz-crisp-edges; 
-          image-rendering: crisp-edges;
-        }
-        
         .game-cell {
           position: relative;
-          transition: all 0.1s ease;
         }
         
         .show-grid .game-cell {
           border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        .hidden-row {
-          position: relative;
-        }
-        
-        .ghost-block {
-          animation: ghost-pulse 2s ease-in-out infinite;
-        }
-        
         .lock-delay-flash {
-          animation: lock-delay-blink 0.3s ease-in-out infinite;
+          box-shadow: 0 0 4px 1px rgba(255, 220, 0, 0.6);
         }
         
         .clearing-line {
           animation: clearing-fade-out 0.25s ease-out;
-        }
-        
-        @keyframes ghost-pulse {
-          0%, 100% { filter: brightness(1); }
-          50% { filter: brightness(1.3); }
-        }
-        
-        @keyframes lock-delay-blink {
-          0%, 100% { filter: brightness(1.3) saturate(1.2); }
-          50% { filter: brightness(0.7) saturate(0.8); }
+          will-change: opacity, transform;
         }
         
         @keyframes clearing-fade-out {
           0% { 
             opacity: 1; 
             transform: scale(1);
-            filter: brightness(1.2) saturate(1.1);
           }
           50% { 
-            opacity: 0.8; 
-            transform: scale(1.05);
-            filter: brightness(1.3) saturate(1.15);
+            opacity: 0.6; 
+            transform: scale(1.03);
+            box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.3);
           }
           100% { 
             opacity: 0; 
-            transform: scale(1.05);
-            filter: brightness(1.5) saturate(1.2);
+            transform: scale(1.03);
           }
         }
         
-        /* 回字皮肤样式 */
         .hui-block {
           position: relative;
         }

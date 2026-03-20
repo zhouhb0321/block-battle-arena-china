@@ -2,7 +2,6 @@
 import React, { useEffect, useCallback } from 'react';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useTetrisGame } from './TetrisGameProvider';
-import { debugLog } from '@/utils/debugLogger';
 
 interface GameKeyboardHandlerProps {
   gameStarted: boolean;
@@ -23,7 +22,6 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
 }) => {
   const { gameLogic, gameSettings, keyboardLoopRef } = useTetrisGame();
 
-  // 180度旋转功能
   const rotate180 = useCallback(() => {
     if (gameLogic.rotatePiece180) {
       gameLogic.rotatePiece180();
@@ -35,73 +33,43 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
     gameOver: gameLogic.gameOver,
     paused: gameLogic.isPaused,
     onMoveLeft: () => {
-      console.log('键盘控制: 左移触发', { 
-        gameOver: gameLogic.gameOver, 
-        isPaused: gameLogic.isPaused, 
-        hasPiece: !!gameLogic.currentPiece 
-      });
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
-        const moved = gameLogic.movePiece(-1, 0);
-        console.log('左移结果:', moved);
-        return moved;
+        return gameLogic.movePiece(-1, 0);
       }
       return false;
     },
     onMoveRight: () => {
-      console.log('键盘控制: 右移触发', { 
-        gameOver: gameLogic.gameOver, 
-        isPaused: gameLogic.isPaused, 
-        hasPiece: !!gameLogic.currentPiece 
-      });
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
-        const moved = gameLogic.movePiece(1, 0);
-        console.log('右移结果:', moved);
-        return moved;
+        return gameLogic.movePiece(1, 0);
       }
       return false;
     },
     onSoftDrop: () => {
-      debugLog.debug('Keyboard: Soft drop');
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
-        // Record soft drop action through game logic
-        const moved = gameLogic.movePiece(0, 1);
-        if (moved !== undefined) {
-          // Add soft drop points if needed
-        }
-        return moved;
+        return gameLogic.movePiece(0, 1);
       }
       return false;
     },
     onHardDrop: () => {
-      debugLog.debug('Keyboard: Hard drop');
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
         gameLogic.hardDrop();
       }
     },
     onRotateClockwise: () => {
-      console.log('键盘控制: 顺时针旋转触发', { 
-        gameOver: gameLogic.gameOver, 
-        isPaused: gameLogic.isPaused, 
-        hasPiece: !!gameLogic.currentPiece 
-      });
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
         gameLogic.rotatePieceClockwise();
-        console.log('顺时针旋转执行完成');
       }
     },
     onRotateCounterclockwise: () => {
-      debugLog.debug('Keyboard: Rotate counter-clockwise');
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece) {
         gameLogic.rotatePieceCounterclockwise();
       }
     },
     onRotate180: rotate180,
     onHold: () => {
-      debugLog.debug('Keyboard: Hold piece');
       gameLogic.holdCurrentPiece();
     },
     onPause: () => {
-      debugLog.debug('Keyboard: Pause/Resume');
       if (gameLogic.isPaused) {
         gameLogic.resumeGame();
       } else {
@@ -109,20 +77,12 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
       }
     },
     onBackToMenu: () => {
-      debugLog.debug('Keyboard: Back to menu');
       onBackToMenu();
     },
-    onUndo: onUndo ? () => {
-      debugLog.debug('Keyboard: Undo move', { canUndo });
-      onUndo();
-    } : undefined,
-    onRedo: onRedo ? () => {
-      debugLog.debug('Keyboard: Redo move', { canRedo });
-      onRedo();
-    } : undefined,
+    onUndo: onUndo ? () => { onUndo(); } : undefined,
+    onRedo: onRedo ? () => { onRedo(); } : undefined,
     canUndo,
     canRedo,
-    // ✅ 新增：SDF无穷大时的瞬间落地
     onInstantSoftDrop: () => {
       if (!gameLogic.gameOver && !gameLogic.isPaused && gameLogic.currentPiece && gameLogic.instantSoftDrop) {
         gameLogic.instantSoftDrop();
@@ -130,15 +90,12 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
     }
   });
 
-  // 添加键盘控制循环 - 保持运行以确保 ARR 正常工作
   useEffect(() => {
     let isRunning = true;
     
     const keyboardLoop = (timestamp: number) => {
       if (!isRunning) return;
       
-      // 即使游戏结束或暂停，也保持循环运行（但不处理输入）
-      // processHeldKeys 内部会检查 gameOver 和 paused
       if (!gameLogic.gameOver) {
         keyboardControls.processHeldKeys(timestamp);
       }
@@ -147,8 +104,6 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
     };
 
     keyboardLoopRef.current = requestAnimationFrame(keyboardLoop);
-    
-    console.log('[GameKeyboardHandler] Keyboard loop started');
 
     return () => {
       isRunning = false;
@@ -156,9 +111,8 @@ export const GameKeyboardHandler: React.FC<GameKeyboardHandlerProps> = ({
         cancelAnimationFrame(keyboardLoopRef.current);
         keyboardLoopRef.current = null;
       }
-      console.log('[GameKeyboardHandler] Keyboard loop stopped');
     };
   }, [keyboardControls, keyboardLoopRef, gameLogic.gameOver]);
 
-  return null; // This component only handles keyboard logic
+  return null;
 };
