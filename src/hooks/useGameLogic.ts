@@ -955,18 +955,37 @@ export const useGameLogic = ({
     handlePieceLock(correctedPiece);
   }, [handlePieceLock]);
 
-  // Main Game Loop (Gravity) - disabled in replay clock controlled mode
+  // Main Game Loop (Gravity) - accumulator-based in rAF for precision
+  const gravityAccumulator = useRef(0);
+  const lastGravityTick = useRef(0);
+  
   useEffect(() => {
     if (replayClockControlled || (isReplay && !enableReplayGravity) || !gameStarted || gameOver || isPaused || phase !== 'playing') return;
 
+    let animId: number;
     const dropInterval = Math.max(50, 1000 - (level - 1) * 50);
-    const timer = setTimeout(() => {
-      // ✅ 重力下落由游戏引擎自动处理，不记录为INPUT事件
-      // 只有用户主动按键的softDrop才应该被记录（在键盘处理器中）
-      movePiece(0, 1);
-    }, dropInterval);
-    return () => clearTimeout(timer);
-  }, [replayClockControlled, isReplay, enableReplayGravity, gameStarted, gameOver, isPaused, level, movePiece, phase, currentPiece, board, isValidPosition, isRecording, recordInput]);
+    
+    const gravityTick = (timestamp: number) => {
+      if (!lastGravityTick.current) lastGravityTick.current = timestamp;
+      const delta = timestamp - lastGravityTick.current;
+      lastGravityTick.current = timestamp;
+      
+      gravityAccumulator.current += delta;
+      
+      if (gravityAccumulator.current >= dropInterval) {
+        gravityAccumulator.current -= dropInterval;
+        movePiece(0, 1);
+      }
+      
+      animId = requestAnimationFrame(gravityTick);
+    };
+    
+    lastGravityTick.current = 0;
+    gravityAccumulator.current = 0;
+    animId = requestAnimationFrame(gravityTick);
+    
+    return () => cancelAnimationFrame(animId);
+  }, [replayClockControlled, isReplay, enableReplayGravity, gameStarted, gameOver, isPaused, level, movePiece, phase]);
 
   // RAF-based precise timing with immediate 2min mode termination - disabled in replay clock controlled mode
   useEffect(() => {

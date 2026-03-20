@@ -20,7 +20,7 @@ interface UseKeyboardControlsProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
-  onInstantSoftDrop?: () => void;  // ✅ 新增：SDF无穷大时的瞬间落地
+  onInstantSoftDrop?: () => void;
 }
 
 export const useKeyboardControls = ({
@@ -41,7 +41,7 @@ export const useKeyboardControls = ({
   onRedo,
   canUndo = false,
   canRedo = false,
-  onInstantSoftDrop  // ✅ 新增：SDF无穷大时的瞬间落地
+  onInstantSoftDrop
 }: UseKeyboardControlsProps) => {
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const keyPressedTime = useRef<{[key: string]: number}>({});
@@ -49,72 +49,96 @@ export const useKeyboardControls = ({
   const lastDirection = useRef<'left' | 'right' | null>(null);
   const dcdActiveUntil = useRef<number>(0);
 
+  // Use refs for all action callbacks to prevent handleKeyDown recreation
+  const actionsRef = useRef({
+    onMoveLeft, onMoveRight, onSoftDrop, onHardDrop,
+    onRotateClockwise, onRotateCounterclockwise, onRotate180,
+    onHold, onPause, onBackToMenu, onUndo, onRedo,
+    onInstantSoftDrop
+  });
+  useEffect(() => {
+    actionsRef.current = {
+      onMoveLeft, onMoveRight, onSoftDrop, onHardDrop,
+      onRotateClockwise, onRotateCounterclockwise, onRotate180,
+      onHold, onPause, onBackToMenu, onUndo, onRedo,
+      onInstantSoftDrop
+    };
+  });
+
+  const gameStateRef = useRef({ gameOver, paused, canUndo, canRedo });
+  useEffect(() => {
+    gameStateRef.current = { gameOver, paused, canUndo, canRedo };
+  });
+
+  const settingsRef = useRef(gameSettings);
+  useEffect(() => {
+    settingsRef.current = gameSettings;
+  });
+
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // 防止页面滚动等默认行为
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(event.code)) {
       event.preventDefault();
     }
 
-    // Handle Ctrl+Z (Undo) and Ctrl+Y (Redo) for single player practice
-    if (event.ctrlKey && !gameOver) {
-      if (event.code === 'KeyZ' && onUndo && canUndo) {
+    const { gameOver: go, paused: p, canUndo: cu, canRedo: cr } = gameStateRef.current;
+    const actions = actionsRef.current;
+
+    // Ctrl+Z / Ctrl+Y
+    if (event.ctrlKey && !go) {
+      if (event.code === 'KeyZ' && actions.onUndo && cu) {
         event.preventDefault();
-        onUndo();
+        actions.onUndo();
         return;
       }
-      if (event.code === 'KeyY' && onRedo && canRedo) {
+      if (event.code === 'KeyY' && actions.onRedo && cr) {
         event.preventDefault();
-        onRedo();
+        actions.onRedo();
         return;
       }
     }
 
-    const { controls } = gameSettings;
+    const { controls } = settingsRef.current;
     const now = performance.now();
     
-    // 记录按键时间
     if (!keyPressedTime.current[event.code]) {
       keyPressedTime.current[event.code] = now;
       
-      // 立即响应的按键（旋转、硬降、暂存、暂停等）
-      if (!gameOver && !paused) {
+      if (!go && !p) {
         if (event.code === controls.rotateClockwise) {
-          onRotateClockwise();
+          actions.onRotateClockwise();
         } else if (event.code === controls.rotateCounterclockwise) {
-          onRotateCounterclockwise();
-        } else if (event.code === controls.rotate180 && onRotate180) {
-          onRotate180();
+          actions.onRotateCounterclockwise();
+        } else if (event.code === controls.rotate180 && actions.onRotate180) {
+          actions.onRotate180();
         } else if (event.code === controls.hardDrop) {
-          onHardDrop();
+          actions.onHardDrop();
         } else if (event.code === controls.hold) {
-          onHold();
+          actions.onHold();
         }
       }
       
-      // 暂停和退出不受游戏状态限制
       if (event.code === controls.pause) {
-        onPause();
-      } else if (event.code === controls.backToMenu && onBackToMenu) {
-        onBackToMenu();
+        actions.onPause();
+      } else if (event.code === controls.backToMenu && actions.onBackToMenu) {
+        actions.onBackToMenu();
       }
       
-      // 移动和软降的初始响应
-      if (!gameOver && !paused) {
+      if (!go && !p) {
         if (event.code === controls.moveLeft) {
-          onMoveLeft();
+          actions.onMoveLeft();
           lastMoveTime.current[event.code] = now;
         } else if (event.code === controls.moveRight) {
-          onMoveRight();
+          actions.onMoveRight();
           lastMoveTime.current[event.code] = now;
         } else if (event.code === controls.softDrop) {
-          onSoftDrop();
+          actions.onSoftDrop();
           lastMoveTime.current[event.code] = now;
         }
       }
     }
     
     setKeys(prev => new Set(prev).add(event.code));
-  }, [gameSettings, gameOver, paused, onRotateClockwise, onRotateCounterclockwise, onRotate180, onHardDrop, onHold, onPause, onBackToMenu, onMoveLeft, onMoveRight, onSoftDrop, onUndo, onRedo, canUndo, canRedo]);
+  }, []); // No dependencies — reads from refs
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     delete keyPressedTime.current[event.code];
@@ -127,19 +151,19 @@ export const useKeyboardControls = ({
   }, []);
 
   const processHeldKeys = useCallback((timestamp: number) => {
-    if (gameOver || paused) return;
+    const { gameOver: go, paused: p } = gameStateRef.current;
+    if (go || p) return;
 
-    const { controls } = gameSettings;
+    const gs = settingsRef.current;
+    const { controls } = gs;
+    const actions = actionsRef.current;
     
-    // Detect current direction
     const currentDirection = keys.has(controls.moveLeft) ? 'left' : 
                             keys.has(controls.moveRight) ? 'right' : null;
 
-    // Check for direction change and trigger DCD
     if (currentDirection && currentDirection !== lastDirection.current && lastDirection.current !== null) {
-      if (gameSettings.dcd > 0) {
-        dcdActiveUntil.current = timestamp + gameSettings.dcd;
-        // Reset DAS timer on direction change
+      if (gs.dcd > 0) {
+        dcdActiveUntil.current = timestamp + gs.dcd;
         if (currentDirection === 'left') {
           keyPressedTime.current[controls.moveLeft] = timestamp;
           lastMoveTime.current[controls.moveLeft] = timestamp;
@@ -151,7 +175,6 @@ export const useKeyboardControls = ({
     }
     lastDirection.current = currentDirection;
 
-    // Skip movement during DCD period
     if (timestamp < dcdActiveUntil.current) {
       return;
     }
@@ -162,67 +185,53 @@ export const useKeyboardControls = ({
       const heldTime = timestamp - pressTime;
       const timeSinceLastMove = timestamp - lastMove;
       
-      // ✅ 软降独立处理 - 不受 DAS 影响，立即响应
       if (key === controls.softDrop) {
-        // ✅ SDF >= 999 表示无穷大：瞬间落到底部但不锁定（每次按键只触发一次）
-        if (gameSettings.sdf >= 999 && onInstantSoftDrop) {
-          // 只在首次按下时触发瞬间落地，后续帧不再触发
-          if (timeSinceLastMove >= 50) { // 50ms 防抖
-            onInstantSoftDrop();
+        if (gs.sdf >= 999 && actions.onInstantSoftDrop) {
+          if (timeSinceLastMove >= 50) {
+            actions.onInstantSoftDrop();
             lastMoveTime.current[key] = timestamp;
           }
-        } else if (gameSettings.sdf >= 60) {
-          // ✅ 超快软降 (60+)：几乎每帧都下落
-          const fastInterval = Math.max(8, 1000 / gameSettings.sdf); // 最快8ms
+        } else if (gs.sdf >= 60) {
+          const fastInterval = Math.max(8, 1000 / gs.sdf);
           if (timeSinceLastMove >= fastInterval) {
-            onSoftDrop();
+            actions.onSoftDrop();
             lastMoveTime.current[key] = timestamp;
           }
-        } else if (gameSettings.sdf > 0) {
-          // ✅ 正常软降速度：sdf 表示每秒下落格数
-          // sdf=40 → 每秒40格 → 25ms/格
-          const sdfInterval = Math.max(10, 1000 / gameSettings.sdf);
+        } else if (gs.sdf > 0) {
+          const sdfInterval = Math.max(10, 1000 / gs.sdf);
           if (timeSinceLastMove >= sdfInterval) {
-            onSoftDrop();
+            actions.onSoftDrop();
             lastMoveTime.current[key] = timestamp;
           }
         }
-        return; // 软降处理完毕，跳过 DAS 逻辑
+        return;
       }
       
-      // DAS (Delayed Auto Shift) 和 ARR (Auto Repeat Rate) 逻辑 - 只用于左右移动
-      if (heldTime > gameSettings.das) {
-        const arrInterval = gameSettings.arr === 0 ? 0 : Math.max(gameSettings.arr, 1);
-        
+      if (heldTime > gs.das) {
+        const arrInterval = gs.arr === 0 ? 0 : Math.max(gs.arr, 1);
         
         if (key === controls.moveLeft) {
           if (arrInterval === 0) {
-            // ARR=0: 每帧都移动（瞬移模式）
-            onMoveLeft();
+            actions.onMoveLeft();
             lastMoveTime.current[key] = timestamp;
           } else if (timeSinceLastMove >= arrInterval) {
-            // 正常 ARR 间隔
-            onMoveLeft();
+            actions.onMoveLeft();
             lastMoveTime.current[key] = timestamp;
           }
         } else if (key === controls.moveRight) {
           if (arrInterval === 0) {
-            // ARR=0: 每帧都移动（瞬移模式）
-            onMoveRight();
+            actions.onMoveRight();
             lastMoveTime.current[key] = timestamp;
           } else if (timeSinceLastMove >= arrInterval) {
-            // 正常 ARR 间隔
-            onMoveRight();
+            actions.onMoveRight();
             lastMoveTime.current[key] = timestamp;
           }
         }
       }
     });
-  }, [gameOver, paused, keys, gameSettings, onMoveLeft, onMoveRight, onSoftDrop, onInstantSoftDrop]);
+  }, [keys]); // Only depends on keys state
 
-  // Enhanced useEffect with stable event handlers to prevent frequent re-binding
   useEffect(() => {
-    
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
@@ -230,7 +239,7 @@ export const useKeyboardControls = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [handleKeyDown, handleKeyUp]); // Removed gameSettings.controls to reduce re-binding
+  }, [handleKeyDown, handleKeyUp]);
 
   return {
     keys,
