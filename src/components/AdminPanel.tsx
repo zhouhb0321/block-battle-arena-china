@@ -16,6 +16,7 @@ import RevenueManagement from '../RevenueManagement';
 import AdvertisingManagement from '../AdvertisingManagement';
 import DatabaseOptimization from '../DatabaseOptimization';
 import SecurityDashboard from './SecurityDashboard';
+import FeedbackPanel from './admin/FeedbackPanel';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
