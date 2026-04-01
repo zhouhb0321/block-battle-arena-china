@@ -513,6 +513,9 @@ const Index = () => {
           localStorage.setItem('onboarding-completed', 'true');
         }}
       />
+
+      {/* Feedback Button */}
+      <FeedbackButton />
     </div>
   );
 };

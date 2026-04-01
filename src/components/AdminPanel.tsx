@@ -262,6 +262,19 @@ const AdminPanel: React.FC = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="feedback" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                用户反馈管理
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FeedbackPanel />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
