@@ -1514,6 +1514,54 @@ export type Database = {
           },
         ]
       }
+      user_feedback: {
+        Row: {
+          admin_notes: string | null
+          app_version: string | null
+          content: string
+          created_at: string
+          feedback_type: string
+          id: string
+          page: string | null
+          screenshot_url: string | null
+          status: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          app_version?: string | null
+          content: string
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          page?: string | null
+          screenshot_url?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          app_version?: string | null
+          content?: string
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          page?: string | null
+          screenshot_url?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           avatar_url: string | null
