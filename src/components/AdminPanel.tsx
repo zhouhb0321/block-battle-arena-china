@@ -184,6 +184,7 @@ const AdminPanel: React.FC = () => {
             资源管理
           </TabsTrigger>
           <TabsTrigger value="database">数据结构优化</TabsTrigger>
+          <TabsTrigger value="feedback">用户反馈</TabsTrigger>
         </TabsList>
 
         <TabsContent value="security" className="space-y-4">
