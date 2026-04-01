@@ -24,6 +24,7 @@ import BattleGameView from '@/components/battle/BattleGameView';
 import BattleHistoryPage from '@/components/BattleHistoryPage';
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp';
 import OnboardingTutorial from '@/components/OnboardingTutorial';
+import FeedbackButton from '@/components/FeedbackButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft, GraduationCap, HelpCircle } from 'lucide-react';
@@ -512,6 +513,9 @@ const Index = () => {
           localStorage.setItem('onboarding-completed', 'true');
         }}
       />
+
+      {/* Feedback Button */}
+      <FeedbackButton />
     </div>
   );
 };

@@ -16,6 +16,7 @@ import RevenueManagement from '../RevenueManagement';
 import AdvertisingManagement from '../AdvertisingManagement';
 import DatabaseOptimization from '../DatabaseOptimization';
 import SecurityDashboard from './SecurityDashboard';
+import FeedbackPanel from './admin/FeedbackPanel';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -183,6 +184,7 @@ const AdminPanel: React.FC = () => {
             资源管理
           </TabsTrigger>
           <TabsTrigger value="database">数据结构优化</TabsTrigger>
+          <TabsTrigger value="feedback">用户反馈</TabsTrigger>
         </TabsList>
 
         <TabsContent value="security" className="space-y-4">
@@ -257,6 +259,19 @@ const AdminPanel: React.FC = () => {
             </CardHeader>
             <CardContent>
               <DatabaseOptimization />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="feedback" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                用户反馈管理
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FeedbackPanel />
             </CardContent>
           </Card>
         </TabsContent>
