@@ -44,6 +44,9 @@ export const useKeyboardControls = ({
   onInstantSoftDrop
 }: UseKeyboardControlsProps) => {
   const [keys, setKeys] = useState<Set<string>>(new Set());
+  // Mirror keys to a ref so processHeldKeys can read the latest set
+  // without waiting for a React re-render (eliminates ~16ms input lag).
+  const keysRef = useRef<Set<string>>(new Set());
   const keyPressedTime = useRef<{[key: string]: number}>({});
   const lastMoveTime = useRef<{[key: string]: number}>({});
   const lastDirection = useRef<'left' | 'right' | null>(null);
