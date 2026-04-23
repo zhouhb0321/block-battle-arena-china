@@ -115,6 +115,7 @@ const ReplayPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <ReplayPlayerV4Unified
+        key={id || v4Data?.metadata?.replayId || v4Data?.checksum || 'replay'}
         replay={v4Data}
         onClose={handleBack}
         autoPlay={true}
