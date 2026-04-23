@@ -140,13 +140,21 @@ export const useKeyboardControls = ({
       }
     }
     
-    setKeys(prev => new Set(prev).add(event.code));
+    keysRef.current.add(event.code);
+    setKeys(prev => {
+      if (prev.has(event.code)) return prev;
+      const next = new Set(prev);
+      next.add(event.code);
+      return next;
+    });
   }, []); // No dependencies — reads from refs
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     delete keyPressedTime.current[event.code];
     delete lastMoveTime.current[event.code];
+    keysRef.current.delete(event.code);
     setKeys(prev => {
+      if (!prev.has(event.code)) return prev;
       const newKeys = new Set(prev);
       newKeys.delete(event.code);
       return newKeys;
