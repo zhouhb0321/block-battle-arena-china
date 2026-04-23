@@ -325,6 +325,16 @@ export const ReplayPlayerV4Unified: React.FC<ReplayPlayerV4UnifiedProps> = ({
   
   return (
     <div className="fixed inset-0 z-50 bg-background flex items-center justify-center">
+      {/* Replay ID badge - floating top-left for traceability */}
+      {(replay?.metadata?.replayId || replay?.checksum) && (
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-md bg-background/60 border border-border/60 backdrop-blur-sm text-xs font-mono text-foreground/80">
+          <span className="text-muted-foreground">ID:</span>
+          <span title={replay?.metadata?.replayId || replay?.checksum}>
+            {(replay?.metadata?.replayId || replay?.checksum || '').toString().slice(0, 8)}
+          </span>
+        </div>
+      )}
+
       {/* Close button - floating top-right */}
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => setShowDetails(!showDetails)} className="text-foreground/70 hover:text-foreground">
