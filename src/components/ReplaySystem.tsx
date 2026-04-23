@@ -501,9 +501,17 @@ const ReplaySystem: React.FC = () => {
       {/* 统一的播放器（不受对话框关闭影响） */}
       {playerReplayData && isPlayerOpen && isV4Replay(playerReplayData) && (
         <ReplayPlayerV4Unified
-          key={playerReplayData?.id || playerReplayData?.v4Data?.metadata?.seed || 'replay'}
+          key={
+            playerReplayData?.id ||
+            getV4Data(playerReplayData)?.metadata?.replayId ||
+            getV4Data(playerReplayData)?.checksum ||
+            'replay'
+          }
           replay={getV4Data(playerReplayData)}
-          onClose={() => setIsPlayerOpen(false)}
+          onClose={() => {
+            setIsPlayerOpen(false);
+            setPlayerReplayData(null); // 彻底清空，避免下次打开时残留旧录像
+          }}
           autoPlay={true}
         />
       )}

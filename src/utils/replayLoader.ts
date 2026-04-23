@@ -235,8 +235,15 @@ export async function loadReplayById(replayId: string): Promise<any> {
       }
       
       v4Data = decoded;
+
+      // 🔑 Inject DB id into metadata so the player can use a stable, unique identity
+      // (prevents one replay being shown when a different one was selected)
+      if (v4Data.metadata) {
+        v4Data.metadata.replayId = data.id;
+      }
       
       console.info('replayLoader: V4.0 decoding completed:', {
+        replayId: data.id,
         eventCount: v4Data.events.length,
         lockCount: v4Data.stats.lockCount,
         keyframeCount: v4Data.stats.keyframeCount
