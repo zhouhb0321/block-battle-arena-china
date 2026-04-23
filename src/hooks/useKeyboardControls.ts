@@ -241,7 +241,7 @@ export const useKeyboardControls = ({
         }
       }
     });
-  }, [keys]); // Only depends on keys state
+  }, []); // Reads from keysRef — no re-renders needed
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
