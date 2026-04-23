@@ -191,7 +191,7 @@ export const useKeyboardControls = ({
       return;
     }
     
-    keys.forEach(key => {
+    liveKeys.forEach(key => {
       const pressTime = keyPressedTime.current[key] || 0;
       const lastMove = lastMoveTime.current[key] || 0;
       const heldTime = timestamp - pressTime;
