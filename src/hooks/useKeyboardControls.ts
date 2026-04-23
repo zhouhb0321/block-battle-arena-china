@@ -44,6 +44,9 @@ export const useKeyboardControls = ({
   onInstantSoftDrop
 }: UseKeyboardControlsProps) => {
   const [keys, setKeys] = useState<Set<string>>(new Set());
+  // Mirror keys to a ref so processHeldKeys can read the latest set
+  // without waiting for a React re-render (eliminates ~16ms input lag).
+  const keysRef = useRef<Set<string>>(new Set());
   const keyPressedTime = useRef<{[key: string]: number}>({});
   const lastMoveTime = useRef<{[key: string]: number}>({});
   const lastDirection = useRef<'left' | 'right' | null>(null);
@@ -137,13 +140,21 @@ export const useKeyboardControls = ({
       }
     }
     
-    setKeys(prev => new Set(prev).add(event.code));
+    keysRef.current.add(event.code);
+    setKeys(prev => {
+      if (prev.has(event.code)) return prev;
+      const next = new Set(prev);
+      next.add(event.code);
+      return next;
+    });
   }, []); // No dependencies — reads from refs
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     delete keyPressedTime.current[event.code];
     delete lastMoveTime.current[event.code];
+    keysRef.current.delete(event.code);
     setKeys(prev => {
+      if (!prev.has(event.code)) return prev;
       const newKeys = new Set(prev);
       newKeys.delete(event.code);
       return newKeys;
@@ -158,8 +169,9 @@ export const useKeyboardControls = ({
     const { controls } = gs;
     const actions = actionsRef.current;
     
-    const currentDirection = keys.has(controls.moveLeft) ? 'left' : 
-                            keys.has(controls.moveRight) ? 'right' : null;
+    const liveKeys = keysRef.current;
+    const currentDirection = liveKeys.has(controls.moveLeft) ? 'left' : 
+                            liveKeys.has(controls.moveRight) ? 'right' : null;
 
     if (currentDirection && currentDirection !== lastDirection.current && lastDirection.current !== null) {
       if (gs.dcd > 0) {
@@ -179,7 +191,7 @@ export const useKeyboardControls = ({
       return;
     }
     
-    keys.forEach(key => {
+    liveKeys.forEach(key => {
       const pressTime = keyPressedTime.current[key] || 0;
       const lastMove = lastMoveTime.current[key] || 0;
       const heldTime = timestamp - pressTime;
@@ -229,7 +241,7 @@ export const useKeyboardControls = ({
         }
       }
     });
-  }, [keys]); // Only depends on keys state
+  }, []); // Reads from keysRef — no re-renders needed
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);

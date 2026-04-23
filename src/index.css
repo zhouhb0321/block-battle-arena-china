@@ -238,3 +238,116 @@
     animation: glow-pulse 1s ease-in-out infinite;
   }
 }
+
+/* ============================================================
+ * Game Board cell styles — extracted from inline <style> blocks
+ * for better caching, no per-render parse cost, GPU-friendly.
+ * ============================================================ */
+@layer components {
+  .game-cell {
+    position: relative;
+  }
+
+  .show-grid .game-cell {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .lock-delay-flash {
+    box-shadow: 0 0 4px 1px rgba(255, 220, 0, 0.6);
+  }
+
+  /* Line clear: scale + fade + bright sweep highlight overlay */
+  .clearing-line {
+    animation: cell-clear-burst 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    will-change: opacity, transform, filter;
+    z-index: 2;
+  }
+
+  .clearing-line::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.0) 30%,
+      rgba(255, 255, 255, 0.95) 50%,
+      rgba(255, 255, 255, 0.0) 70%,
+      transparent 100%
+    );
+    background-size: 300% 100%;
+    background-position: -100% 0;
+    animation: line-clear-sweep 0.28s ease-out forwards;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    z-index: 3;
+  }
+
+  @keyframes cell-clear-burst {
+    0% {
+      opacity: 1;
+      transform: scale(1);
+      filter: brightness(1);
+    }
+    35% {
+      opacity: 1;
+      transform: scale(1.08);
+      filter: brightness(1.8) saturate(1.4);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.12);
+      filter: brightness(2);
+    }
+  }
+
+  @keyframes line-clear-sweep {
+    0% { background-position: -100% 0; opacity: 0; }
+    20% { opacity: 1; }
+    100% { background-position: 200% 0; opacity: 0; }
+  }
+
+  /* "Hui" Chinese-style block — uses solid color instead of filter()
+     for better paint performance. */
+  .hui-block {
+    position: relative;
+  }
+  .hui-block::after {
+    content: '';
+    position: absolute;
+    top: 25%;
+    left: 25%;
+    width: 50%;
+    height: 50%;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    box-sizing: border-box;
+    border-radius: 1px;
+  }
+
+  .hui-ghost-block {
+    position: relative;
+  }
+  .hui-ghost-block::after {
+    content: '';
+    position: absolute;
+    top: 25%;
+    left: 25%;
+    width: 50%;
+    height: 50%;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed currentColor;
+    box-sizing: border-box;
+    opacity: 0.6;
+  }
+
+  .neon-block {
+    box-shadow: 0 0 10px currentColor, inset 0 0 10px rgba(255, 255, 255, 0.1);
+    animation: neon-glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes neon-glow {
+    from { box-shadow: 0 0 5px currentColor, inset 0 0 5px rgba(255, 255, 255, 0.1); }
+    to   { box-shadow: 0 0 15px currentColor, inset 0 0 15px rgba(255, 255, 255, 0.2); }
+  }
+}
