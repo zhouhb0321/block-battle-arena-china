@@ -238,6 +238,7 @@ const EnhancedGameBoard: React.FC<EnhancedGameBoardProps> = React.memo(({
             );
           });
         })}
+      </div>
     </div>
   );
 });
