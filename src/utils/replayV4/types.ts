@@ -129,6 +129,7 @@ export interface V4ReplayData {
   
   // Header metadata
   metadata: {
+    replayId?: string;  // Unique DB id, injected by loader for client-side identity
     userId: string;
     username: string;
     gameMode: string;
