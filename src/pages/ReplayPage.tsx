@@ -26,7 +26,21 @@ const ReplayPage: React.FC = () => {
 
       try {
         setLoading(true);
+        // Reset previously loaded replay so a stale one is never shown
+        setReplay(null);
+        setError(null);
         const replayData = await loadReplayById(id);
+
+        // Integrity guard: ensure the loaded replay matches the requested ID
+        const loadedId =
+          replayData?.id ||
+          replayData?.v4Data?.metadata?.replayId ||
+          replayData?.metadata?.replayId;
+        if (loadedId && loadedId !== id) {
+          console.warn('[ReplayPage] Replay ID mismatch, forcing reload', { requested: id, loaded: loadedId });
+          throw new Error(t('replay.loadFailed'));
+        }
+
         setReplay(replayData);
       } catch (err) {
         console.error('Failed to load replay:', err);
