@@ -354,7 +354,12 @@ const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onBack }) => {
 
       {playerReplayData && isPlayerOpen && isV4Replay(playerReplayData) && (
         <ReplayPlayerV4Unified
-          key={playerReplayData?.id || playerReplayData?.v4Data?.metadata?.seed || 'replay'}
+          key={
+            playerReplayData?.id ||
+            getV4Data(playerReplayData)?.metadata?.replayId ||
+            getV4Data(playerReplayData)?.checksum ||
+            'replay'
+          }
           replay={getV4Data(playerReplayData)}
           onClose={() => {
             setIsPlayerOpen(false);
