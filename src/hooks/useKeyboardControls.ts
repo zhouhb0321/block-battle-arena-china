@@ -169,8 +169,9 @@ export const useKeyboardControls = ({
     const { controls } = gs;
     const actions = actionsRef.current;
     
-    const currentDirection = keys.has(controls.moveLeft) ? 'left' : 
-                            keys.has(controls.moveRight) ? 'right' : null;
+    const liveKeys = keysRef.current;
+    const currentDirection = liveKeys.has(controls.moveLeft) ? 'left' : 
+                            liveKeys.has(controls.moveRight) ? 'right' : null;
 
     if (currentDirection && currentDirection !== lastDirection.current && lastDirection.current !== null) {
       if (gs.dcd > 0) {
