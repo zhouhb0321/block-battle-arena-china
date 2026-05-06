@@ -47,14 +47,9 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, width, height, gameContext 
       try {
         const { region, language } = getUserLocale();
         
-        const { data, error } = await supabase
-          .from('advertisements')
-          .select('*')
-          .eq('position', position)
-          .eq('is_active', true)
-          .gte('end_date', new Date().toISOString())
-          .order('priority', { ascending: false })
-          .order('created_at', { ascending: false });
+        const { data: rpcData, error } = await supabase
+          .rpc('get_public_ads', { _position: position });
+        const data = (rpcData || []).map((a: any) => ({ ...a, position: a.ad_position, is_active: true, clicks: 0, impressions: 0 }));
 
         if (error) {
           console.error('Error fetching ad:', error);

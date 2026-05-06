@@ -1819,6 +1819,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_user_badge: { Args: { _badge_id: string }; Returns: Json }
       calculate_elo_change: {
         Args: { k_factor?: number; loser_rating: number; winner_rating: number }
         Returns: {
@@ -1832,6 +1833,22 @@ export type Database = {
       }
       cleanup_expired_rooms: { Args: never; Returns: undefined }
       cleanup_expired_sessions: { Args: never; Returns: undefined }
+      get_public_ads: {
+        Args: { _position: string }
+        Returns: {
+          ad_position: string
+          content: string
+          end_date: string
+          frequency_cap: number
+          id: string
+          image_url: string
+          language: string
+          region: string
+          start_date: string
+          target_url: string
+          title: string
+        }[]
+      }
       get_subscribers_safe: {
         Args: never
         Returns: {
