@@ -145,16 +145,11 @@ export const processUnlockedBadges = async (userId: string) => {
       }
     }
     
-    // 8. 批量插入新解锁的徽章
+    // 8. Award via secure server-side function (validates badge exists)
     if (newlyUnlocked.length > 0) {
-      const insertData = newlyUnlocked.map(b => ({
-        user_id: b.user_id,
-        badge_id: b.badge_id
-      }));
-      
-      await supabase
-        .from('user_badges')
-        .insert(insertData);
+      for (const b of newlyUnlocked) {
+        await supabase.rpc('award_user_badge', { _badge_id: b.badge_id });
+      }
     }
     
     return newlyUnlocked;
