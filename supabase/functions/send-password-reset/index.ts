@@ -32,20 +32,26 @@ serve(async (req) => {
     const resetToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-    // Get user by email
-    const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
-    if (userError) {
-      throw userError;
-    }
+    // Direct lookup by email via user_profiles (avoids O(n) listUsers enumeration).
+    // Always add a small constant-time delay to mitigate timing-based user enumeration.
+    const timingDelay = new Promise((r) => setTimeout(r, 350));
 
-    const user = userData.users.find(u => u.email === email);
-    if (!user) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    await timingDelay;
+
+    if (!profile) {
       // Don't reveal if email exists or not for security
       return new Response(
         JSON.stringify({ message: 'If the email exists, a reset link has been sent.' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    const user = { id: profile.id };
 
     // Store reset token in database
     const { error: tokenError } = await supabase
