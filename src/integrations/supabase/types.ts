@@ -238,6 +238,7 @@ export type Database = {
           blocked_until: string | null
           first_attempt: string | null
           id: string
+          identifier: string | null
           ip_address: unknown
           last_attempt: string | null
         }
@@ -247,6 +248,7 @@ export type Database = {
           blocked_until?: string | null
           first_attempt?: string | null
           id?: string
+          identifier?: string | null
           ip_address: unknown
           last_attempt?: string | null
         }
@@ -256,6 +258,7 @@ export type Database = {
           blocked_until?: string | null
           first_attempt?: string | null
           id?: string
+          identifier?: string | null
           ip_address?: unknown
           last_attempt?: string | null
         }
