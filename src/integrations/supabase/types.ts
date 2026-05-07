@@ -1902,6 +1902,8 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       join_room_by_code: { Args: { room_code_input: string }; Returns: Json }
+      realtime_is_pm_participant: { Args: { _topic: string }; Returns: boolean }
+      realtime_is_room_member: { Args: { _topic: string }; Returns: boolean }
       upsert_user_session: {
         Args: {
           _expires_at: string
