@@ -330,7 +330,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      // Clear any existing session before login
+      // Clear any existing session and guest data before real login
+      localStorage.removeItem('guest_user');
       await supabase.auth.signOut();
       
       const { data, error } = await withNetworkRetry(() => 
@@ -423,6 +424,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // 实际执行注销
       await supabase.auth.signOut();
+      localStorage.removeItem('guest_user');
       
       // Force clear all auth related storage
       const storageTypes = [localStorage, sessionStorage];
