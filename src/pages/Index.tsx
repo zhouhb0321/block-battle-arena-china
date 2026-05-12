@@ -143,7 +143,10 @@ const Index = () => {
   const handleViewChange = (view: ViewType) => {
     console.log('视图切换请求:', { view, isAuthenticated, isAdmin: user?.isAdmin });
     
-    if (!isAuthenticated && (view === 'settings' || view === 'replays' || view === 'ranked' || view === 'admin' || view === 'multiplayer' || view === 'practice' || view === 'battle-history')) {
+    // Gated features (login required): AI/Practice, Replays, Friends/Chat (in UserMenu),
+    // Ranked / Online battle / Battle history / Admin. Settings & single-player & leaderboard are open to guests.
+    const gatedViews: ViewType[] = ['replays', 'ranked', 'ranked-game', 'admin', 'multiplayer', 'practice', 'ai-battle', 'battle-history', 'battle-lobby', 'battle-game', 'team-battle'];
+    if (!isAuthenticated && gatedViews.includes(view)) {
       setShowAuthModal(true);
       return;
     }
