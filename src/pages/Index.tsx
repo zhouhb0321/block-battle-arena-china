@@ -343,14 +343,28 @@ const Index = () => {
               </Button>
               
               {!isAuthenticated && (
-                <Button 
-                  size="lg"
-                  onClick={() => setShowAuthModal(true)}
-                  className="bg-game-gradient-secondary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  <LogIn className="w-6 h-6 mr-3" />
-                  {t('auth.login')} / {t('auth.register')}
-                </Button>
+                <>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={async () => {
+                      await loginAsGuest();
+                      toast.success(t('auth.guestLoginSuccess') || 'Guest login success');
+                    }}
+                    className="border-2 border-primary px-8 py-4 text-lg font-medium rounded-xl hover:bg-primary hover:text-primary-foreground transition-all duration-300"
+                  >
+                    <Play className="w-6 h-6 mr-3" />
+                    {t('auth.guestLogin') || '游客试玩'}
+                  </Button>
+                  <Button 
+                    size="lg"
+                    onClick={() => setShowAuthModal(true)}
+                    className="bg-game-gradient-secondary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <LogIn className="w-6 h-6 mr-3" />
+                    {t('auth.login')} / {t('auth.register')}
+                  </Button>
+                </>
               )}
             </div>
 
