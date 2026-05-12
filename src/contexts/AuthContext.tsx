@@ -297,7 +297,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }, 0);
         setLoading(false);
       } else {
-        debugLog.auth('无有效会话，等待用户手动登录');
+        // 无 Supabase 会话时，尝试恢复本地访客（保留游玩进度）
+        const stored = localStorage.getItem('guest_user');
+        if (stored) {
+          try {
+            const guestUser = JSON.parse(stored) as ExtendedUser;
+            if (guestUser?.id && guestUser?.isGuest) {
+              const guestSession = {
+                access_token: `local_guest_token_${guestUser.id}`,
+                refresh_token: `local_guest_refresh_${guestUser.id}`,
+                expires_in: 3600,
+                token_type: 'bearer',
+                user: guestUser
+              };
+              setUser(guestUser);
+              setSession(guestSession as any);
+              debugLog.auth('已恢复本地访客会话', { username: guestUser.username });
+            }
+          } catch (e) {
+            debugLog.error('恢复访客会话失败', e);
+            localStorage.removeItem('guest_user');
+          }
+        } else {
+          debugLog.auth('无有效会话，等待用户手动登录');
+        }
         setLoading(false);
       }
     });
