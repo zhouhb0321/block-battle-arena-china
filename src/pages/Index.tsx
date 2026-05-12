@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,6 +43,18 @@ const Index = () => {
   const [selectedReplayId, setSelectedReplayId] = useState<string | null>(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // 来自受保护路由的重定向：自动弹出登录框
+  useEffect(() => {
+    const state = location.state as { requireAuth?: boolean; from?: string } | null;
+    if (state?.requireAuth && !isAuthenticated) {
+      setShowAuthModal(true);
+      toast.info(t('auth.loginRequiredForPage') || '该页面需要登录后访问');
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, isAuthenticated, navigate, t]);
 
   // Check if new user needs onboarding
   useEffect(() => {
