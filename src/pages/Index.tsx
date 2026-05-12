@@ -27,7 +27,7 @@ import OnboardingTutorial from '@/components/OnboardingTutorial';
 import FeedbackButton from '@/components/FeedbackButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft, GraduationCap, HelpCircle } from 'lucide-react';
+import { Play, Users, Trophy, Settings, LogIn, Music, ArrowLeft, GraduationCap, HelpCircle, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ViewType } from '@/types/navigation';
 import { GAME_MODES } from '@/utils/gameTypes';
@@ -392,7 +392,12 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('practice')}>
+              <Card className={`group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105 relative ${!isAuthenticated ? 'opacity-75' : ''}`} onClick={() => handleViewChange('practice')}>
+                {!isAuthenticated && (
+                  <div className="absolute top-2 right-2 bg-amber-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md z-10">
+                    <Lock className="w-3 h-3" />
+                  </div>
+                )}
                 <CardContent className="p-6 text-center space-y-3">
                   <div className="w-16 h-16 mx-auto bg-game-cyan/10 rounded-2xl flex items-center justify-center group-hover:bg-game-cyan/20 transition-colors">
                     <GraduationCap className="w-8 h-8 text-game-cyan" />
@@ -409,7 +414,12 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105" onClick={() => handleViewChange('multiplayer')}>
+              <Card className={`group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-card/50 backdrop-blur-sm hover:scale-105 relative ${!isAuthenticated ? 'opacity-75' : ''}`} onClick={() => handleViewChange('multiplayer')}>
+                {!isAuthenticated && (
+                  <div className="absolute top-2 right-2 bg-amber-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md z-10">
+                    <Lock className="w-3 h-3" />
+                  </div>
+                )}
                 <CardContent className="p-6 text-center space-y-3">
                   <div className="w-16 h-16 mx-auto bg-game-purple/10 rounded-2xl flex items-center justify-center group-hover:bg-game-purple/20 transition-colors">
                     <Users className="w-8 h-8 text-game-purple" />
