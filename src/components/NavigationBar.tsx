@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
-import { Play, Users, LogIn, Medal, MessageCircle } from 'lucide-react';
+import { Play, Users, LogIn, Medal, MessageCircle, Lock } from 'lucide-react';
 import UserMenu from './UserMenu';
 import LanguageSelector from './LanguageSelector';
 import ThemeSwitcher from './ThemeSwitcher';
@@ -50,12 +50,13 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 
             <Button
               variant={currentView === 'multiplayer' ? 'default' : 'ghost'}
-              onClick={() => onViewChange('multiplayer')}
-              className="flex items-center gap-2"
-              disabled={!isAuthenticated}
+              onClick={() => isAuthenticated ? onViewChange('multiplayer') : onAuthModalOpen()}
+              className={`flex items-center gap-2 relative ${!isAuthenticated ? 'opacity-60' : ''}`}
+              title={!isAuthenticated ? t('common.needLogin') : undefined}
             >
               <Users className="w-4 h-4" />
               {t('nav.multiplayer')}
+              {!isAuthenticated && <Lock className="w-3 h-3 ml-1 opacity-70" />}
             </Button>
 
             <Button
