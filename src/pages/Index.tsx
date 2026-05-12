@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,6 +43,18 @@ const Index = () => {
   const [selectedReplayId, setSelectedReplayId] = useState<string | null>(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // 来自受保护路由的重定向：自动弹出登录框
+  useEffect(() => {
+    const state = location.state as { requireAuth?: boolean; from?: string } | null;
+    if (state?.requireAuth && !isAuthenticated) {
+      setShowAuthModal(true);
+      toast.info(t('auth.loginRequiredForPage') || '该页面需要登录后访问');
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, isAuthenticated, navigate, t]);
 
   // Check if new user needs onboarding
   useEffect(() => {
@@ -343,14 +356,28 @@ const Index = () => {
               </Button>
               
               {!isAuthenticated && (
-                <Button 
-                  size="lg"
-                  onClick={() => setShowAuthModal(true)}
-                  className="bg-game-gradient-secondary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  <LogIn className="w-6 h-6 mr-3" />
-                  {t('auth.login')} / {t('auth.register')}
-                </Button>
+                <>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={async () => {
+                      await loginAsGuest();
+                      toast.success(t('auth.guestLoginSuccess') || 'Guest login success');
+                    }}
+                    className="border-2 border-primary px-8 py-4 text-lg font-medium rounded-xl hover:bg-primary hover:text-primary-foreground transition-all duration-300"
+                  >
+                    <Play className="w-6 h-6 mr-3" />
+                    {t('auth.guestLogin') || '游客试玩'}
+                  </Button>
+                  <Button 
+                    size="lg"
+                    onClick={() => setShowAuthModal(true)}
+                    className="bg-game-gradient-secondary hover:opacity-90 text-white px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <LogIn className="w-6 h-6 mr-3" />
+                    {t('auth.login')} / {t('auth.register')}
+                  </Button>
+                </>
               )}
             </div>
 

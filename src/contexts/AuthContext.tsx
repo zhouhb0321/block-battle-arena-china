@@ -297,7 +297,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }, 0);
         setLoading(false);
       } else {
-        debugLog.auth('无有效会话，等待用户手动登录');
+        // 无 Supabase 会话时，尝试恢复本地访客（保留游玩进度）
+        const stored = localStorage.getItem('guest_user');
+        if (stored) {
+          try {
+            const guestUser = JSON.parse(stored) as ExtendedUser;
+            if (guestUser?.id && guestUser?.isGuest) {
+              const guestSession = {
+                access_token: `local_guest_token_${guestUser.id}`,
+                refresh_token: `local_guest_refresh_${guestUser.id}`,
+                expires_in: 3600,
+                token_type: 'bearer',
+                user: guestUser
+              };
+              setUser(guestUser);
+              setSession(guestSession as any);
+              debugLog.auth('已恢复本地访客会话', { username: guestUser.username });
+            }
+          } catch (e) {
+            debugLog.error('恢复访客会话失败', e);
+            localStorage.removeItem('guest_user');
+          }
+        } else {
+          debugLog.auth('无有效会话，等待用户手动登录');
+        }
         setLoading(false);
       }
     });
@@ -307,7 +330,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      // Clear any existing session before login
+      // Clear any existing session and guest data before real login
+      localStorage.removeItem('guest_user');
       await supabase.auth.signOut();
       
       const { data, error } = await withNetworkRetry(() => 
@@ -400,6 +424,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // 实际执行注销
       await supabase.auth.signOut();
+      localStorage.removeItem('guest_user');
       
       // Force clear all auth related storage
       const storageTypes = [localStorage, sessionStorage];
@@ -425,44 +450,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginAsGuest = async () => {
     try {
-      // 生成本地访客用户，不通过Supabase注册
-      const guestId = `guest_${Date.now()}`;
-      const guestUsername = `Guest_${Date.now().toString().slice(-6)}`;
-      
-      // 创建本地访客用户对象
-      const guestUser: ExtendedUser = {
-        id: guestId,
-        aud: 'local',
-        role: 'authenticated',
-        email: `${guestId}@local.guest`,
-        user_metadata: {
+      // 复用本地访客（保留进度），否则生成新的 Guest-XXXXX
+      let guestUser: ExtendedUser | null = null;
+      const stored = localStorage.getItem('guest_user');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed?.id && parsed?.username) {
+            guestUser = parsed as ExtendedUser;
+          }
+        } catch { /* ignore */ }
+      }
+
+      if (!guestUser) {
+        const num = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+        const guestId = `guest_${Date.now()}_${num}`;
+        const guestUsername = `Guest-${num}`;
+        guestUser = {
+          id: guestId,
+          aud: 'local',
+          role: 'authenticated',
+          email: `${guestId}@local.guest`,
+          user_metadata: { username: guestUsername },
+          identities: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_sign_in_at: new Date().toISOString(),
+          app_metadata: {},
+          isGuest: true,
           username: guestUsername,
-        },
-        identities: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        last_sign_in_at: new Date().toISOString(),
-        app_metadata: {},
-        isGuest: true,
-        username: guestUsername,
-        roles: [],
-        user_type: 'guest'
-      };
-      
-      // 创建访客会话
+          roles: [],
+          user_type: 'guest'
+        } as ExtendedUser;
+        localStorage.setItem('guest_user', JSON.stringify(guestUser));
+      }
+
       const guestSession = {
-        access_token: `local_guest_token_${guestId}`,
-        refresh_token: `local_guest_refresh_${guestId}`,
-        expires_in: 3600, // 1小时
+        access_token: `local_guest_token_${guestUser.id}`,
+        refresh_token: `local_guest_refresh_${guestUser.id}`,
+        expires_in: 3600,
         token_type: 'bearer',
         user: guestUser
       };
-      
-      // 更新状态
+
       setUser(guestUser);
       setSession(guestSession as any);
-      
-      debugLog.auth('本地访客登录成功', { userId: guestId, username: guestUsername });
+
+      debugLog.auth('本地访客登录成功', { userId: guestUser.id, username: guestUser.username });
     } catch (error) {
       debugLog.error('访客登录过程中发生错误', error);
       throw error;
