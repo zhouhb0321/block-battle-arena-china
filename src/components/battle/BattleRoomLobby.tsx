@@ -129,14 +129,39 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
     };
   }, [roomId]);
 
-  // Realtime is not always available (blocked websocket, background tab,
-  // flaky network). Poll as a safety net so chat never looks dead while
-  // messages are actually being written.
+  // Chat delivery is polling-first: the room Realtime socket is not reliable
+  // (blocked WS, background tabs, flaky networks). Polling is cheap here and
+  // makes chat work even when the subscription never connects.
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      void loadMessages();
-    }, 5000);
-    return () => window.clearInterval(timer);
+    void loadMessages();
+
+    let timer: number | undefined;
+    const start = () => {
+      if (timer) return;
+      timer = window.setInterval(() => {
+        void loadMessages();
+      }, 3000);
+    };
+    const stop = () => {
+      if (!timer) return;
+      window.clearInterval(timer);
+      timer = undefined;
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        void loadMessages();
+        start();
+      }
+    };
+
+    start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [roomId]);
 
   // 自动滚动到最新消息
