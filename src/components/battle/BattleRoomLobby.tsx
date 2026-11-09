@@ -129,6 +129,16 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
     };
   }, [roomId]);
 
+  // Realtime is not always available (blocked websocket, background tab,
+  // flaky network). Poll as a safety net so chat never looks dead while
+  // messages are actually being written.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void loadMessages();
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [roomId]);
+
   // 自动滚动到最新消息
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -218,7 +228,15 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
       .limit(100);
 
     if (!error && data) {
-      setMessages(data);
+      // Merge instead of replace: keeps optimistic rows that a slow insert
+      // has not returned yet, and makes polling idempotent.
+      setMessages(prev => {
+        const merged = new Map(prev.map(msg => [msg.id, msg]));
+        data.forEach(msg => merged.set(msg.id, msg as RoomMessage));
+        return Array.from(merged.values()).sort((a, b) =>
+          String(a.created_at).localeCompare(String(b.created_at))
+        );
+      });
     }
   };
 
@@ -254,16 +272,28 @@ const BattleRoomLobby: React.FC<BattleRoomLobbyProps> = ({
   const sendMessage = async () => {
     if (!newMessage.trim() || !user) return;
 
-    const { error } = await supabase.from('room_messages').insert({
-      room_id: roomId,
-      user_id: user.id,
-      username: user.username || 'Player',
-      message: newMessage.trim(),
-      message_type: 'chat'
-    });
+    const text = newMessage.trim();
+    setNewMessage('');
 
-    if (!error) {
-      setNewMessage('');
+    const { data, error } = await supabase
+      .from('room_messages')
+      .insert({
+        room_id: roomId,
+        user_id: user.id,
+        username: user.username || 'Player',
+        message: text,
+        message_type: 'chat'
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setMessages(prev =>
+        prev.some(msg => msg.id === data.id) ? prev : [...prev, data as RoomMessage]
+      );
+    } else if (error) {
+      setNewMessage(text);
+      toast.error(t('battle.message_failed') || '发送消息失败');
     }
   };
 
