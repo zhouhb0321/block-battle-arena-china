@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { loadReplayById } from '@/utils/replayLoader';
-import ReplayPlayerV4Unified from '@/components/ReplayPlayerV4Unified';
+import ReplayViewer from '@/replay/ReplayViewer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
@@ -114,7 +114,7 @@ const ReplayPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <ReplayPlayerV4Unified
+      <ReplayViewer
         key={id || v4Data?.metadata?.replayId || v4Data?.checksum || 'replay'}
         replay={v4Data}
         onClose={handleBack}
