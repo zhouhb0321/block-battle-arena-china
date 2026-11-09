@@ -1,8 +1,12 @@
-/**
- * Replay timeline: turns a decoded V4 replay into two sorted arrays
- * (board snapshots + piece frames) so playback is a binary search,
- * not a simulation. This is the whole point of the rewrite: playback
- * must not depend on the game engine still behaving the same way.
+﻿/**
+ * Replay timeline: turns a decoded V4 replay into sorted arrays so playback is
+ * a binary search, not a simulation.
+ *
+ * Two important details learned from the stored data:
+ * - the engine board is 23 rows (20 visible + 3 spawn buffer), so boards must
+ *   be cropped, not rejected;
+ * - LOCK events carry next/hold/score even when they carry no board, so state
+ *   and board are tracked separately.
  */
 import { ReplayOpcode } from '@/utils/replayV4/types';
 import type {
@@ -13,12 +17,16 @@ import type {
   V4ReplayData,
 } from '@/utils/replayV4/types';
 
-export const BOARD_ROWS = 20;
+export const VISIBLE_ROWS = 20;
 export const BOARD_COLS = 10;
 
 export interface BoardSnapshot {
   t: number;
   board: number[][];
+}
+
+export interface StateSnapshot {
+  t: number;
   next: string[];
   hold: string | null;
   score: number;
@@ -50,35 +58,32 @@ export interface Timeline {
   meta: V4ReplayData['metadata'];
   stats: V4ReplayData['stats'];
   boards: BoardSnapshot[];
+  states: StateSnapshot[];
   frames: PieceFrame[];
   eventCounters: { locks: number; keyframes: number; inputs: number };
 }
 
 export function emptyBoard(): number[][] {
-  return Array.from({ length: BOARD_ROWS }, () => new Array(BOARD_COLS).fill(0));
+  return Array.from({ length: VISIBLE_ROWS }, () => new Array(BOARD_COLS).fill(0));
 }
 
-function isBoard(value: unknown): value is number[][] {
-  return (
-    Array.isArray(value) &&
-    value.length === BOARD_ROWS &&
-    value.every((row) => Array.isArray(row) && row.length === BOARD_COLS)
-  );
+/**
+ * Normalise any engine board to 20 visible rows x 10 columns.
+ * Returns null only when the value cannot be a board at all.
+ */
+export function cropBoard(value: unknown): number[][] | null {
+  if (!Array.isArray(value) || value.length < VISIBLE_ROWS) return null;
+  const rows = value as number[][];
+  if (!rows.every((row) => Array.isArray(row) && row.length === BOARD_COLS)) return null;
+  return rows.slice(rows.length - VISIBLE_ROWS).map((row) => row.slice());
 }
 
 export function buildTimeline(replay: V4ReplayData): Timeline {
   const events: V4Event[] = Array.isArray(replay?.events) ? replay.events : [];
 
-  const boards: BoardSnapshot[] = [
-    {
-      t: 0,
-      board: emptyBoard(),
-      next: [],
-      hold: null,
-      score: 0,
-      lines: 0,
-      level: 1,
-    },
+  const boards: BoardSnapshot[] = [{ t: 0, board: emptyBoard() }];
+  const states: StateSnapshot[] = [
+    { t: 0, next: [], hold: null, score: 0, lines: 0, level: 1 },
   ];
   const frames: PieceFrame[] = [];
   let locks = 0;
@@ -90,34 +95,31 @@ export function buildTimeline(replay: V4ReplayData): Timeline {
       case ReplayOpcode.KF: {
         const kf = event as V4KeyframeEvent;
         keyframes += 1;
-        if (isBoard(kf.board)) {
-          boards.push({
-            t: kf.timestamp,
-            board: kf.board,
-            next: Array.isArray(kf.nextPieces) ? kf.nextPieces : [],
-            hold: kf.holdPiece ?? null,
-            score: kf.score ?? 0,
-            lines: kf.lines ?? 0,
-            level: kf.level ?? 1,
-          });
-        }
+        const board = cropBoard(kf.board);
+        if (board) boards.push({ t: kf.timestamp, board });
+        states.push({
+          t: kf.timestamp,
+          next: Array.isArray(kf.nextPieces) ? kf.nextPieces : [],
+          hold: kf.holdPiece ?? null,
+          score: kf.score ?? 0,
+          lines: kf.lines ?? 0,
+          level: kf.level ?? 1,
+        });
         break;
       }
       case ReplayOpcode.LOCK: {
         const lock = event as V4LockEvent;
         locks += 1;
-        if (isBoard(lock.boardAfterLock)) {
-          const prev = boards[boards.length - 1];
-          boards.push({
-            t: lock.timestamp,
-            board: lock.boardAfterLock,
-            next: Array.isArray(lock.nextPieces) ? lock.nextPieces : prev.next,
-            hold: lock.holdPiece ?? null,
-            score: lock.score ?? prev.score,
-            lines: lock.lines ?? prev.lines,
-            level: lock.level ?? prev.level,
-          });
-        }
+        const board = cropBoard(lock.boardAfterLock);
+        if (board) boards.push({ t: lock.timestamp, board });
+        states.push({
+          t: lock.timestamp,
+          next: Array.isArray(lock.nextPieces) ? lock.nextPieces : [],
+          hold: lock.holdPiece ?? null,
+          score: lock.score ?? 0,
+          lines: lock.lines ?? 0,
+          level: lock.level ?? 1,
+        });
         break;
       }
       case ReplayOpcode.FRAME: {
@@ -142,6 +144,7 @@ export function buildTimeline(replay: V4ReplayData): Timeline {
   }
 
   boards.sort((a, b) => a.t - b.t);
+  states.sort((a, b) => a.t - b.t);
   frames.sort((a, b) => a.t - b.t);
 
   const lastEvent = events.length ? events[events.length - 1].timestamp : 0;
@@ -152,6 +155,7 @@ export function buildTimeline(replay: V4ReplayData): Timeline {
     meta: replay.metadata,
     stats: replay.stats,
     boards,
+    states,
     frames,
     eventCounters: { locks, keyframes, inputs },
   };
@@ -176,28 +180,30 @@ function lastAtOrBefore<T extends { t: number }>(list: T[], t: number): number {
 
 export function sampleAt(timeline: Timeline, time: number): FrameState {
   const t = Math.max(0, Math.min(time, timeline.duration));
+
   const boardIndex = lastAtOrBefore(timeline.boards, t);
-  const snapshot = boardIndex >= 0 ? timeline.boards[boardIndex] : timeline.boards[0];
+  const boardSnapshot = boardIndex >= 0 ? timeline.boards[boardIndex] : timeline.boards[0];
+
+  const stateIndex = lastAtOrBefore(timeline.states, t);
+  const stateSnapshot = stateIndex >= 0 ? timeline.states[stateIndex] : timeline.states[0];
 
   const frameIndex = lastAtOrBefore(timeline.frames, t);
   let piece: PieceFrame | null = null;
   if (frameIndex >= 0) {
     const frame = timeline.frames[frameIndex];
-    // A frame is only valid until the next lock: after locking, the piece
-    // no longer exists on the board until the following spawn frame arrives.
-    if (!snapshot || frame.t >= snapshot.t) {
-      piece = frame;
-    }
+    // A frame stays valid only until the next lock: after the piece locks it is
+    // gone from the board until the following frame of the new piece arrives.
+    if (frame.t >= boardSnapshot.t) piece = frame;
   }
 
   return {
     t,
-    board: snapshot?.board ?? emptyBoard(),
+    board: boardSnapshot?.board ?? emptyBoard(),
     piece,
-    next: snapshot?.next ?? [],
-    hold: snapshot?.hold ?? null,
-    score: snapshot?.score ?? 0,
-    lines: snapshot?.lines ?? 0,
-    level: snapshot?.level ?? 1,
+    next: stateSnapshot?.next ?? [],
+    hold: stateSnapshot?.hold ?? null,
+    score: stateSnapshot?.score ?? 0,
+    lines: stateSnapshot?.lines ?? 0,
+    level: stateSnapshot?.level ?? 1,
   };
 }
