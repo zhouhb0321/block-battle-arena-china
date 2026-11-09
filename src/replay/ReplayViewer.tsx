@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
@@ -7,7 +7,7 @@ import { getPieceShape } from '@/utils/tetrominoShapes';
 import type { V4ReplayData } from '@/utils/replayV4/types';
 import {
   BOARD_COLS,
-  BOARD_ROWS,
+  VISIBLE_ROWS,
   buildTimeline,
   sampleAt,
   type FrameState,
@@ -35,6 +35,7 @@ const CELL_COLORS = [
 ];
 
 const SPEEDS = [0.5, 1, 2, 4];
+const HIDDEN_ROWS = 3;
 
 export interface ReplayViewerProps {
   replay: V4ReplayData;
@@ -77,9 +78,9 @@ export default function ReplayViewer({ replay, onClose, autoPlay = true }: Repla
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const cell = Math.floor(Math.min((cssW - 8) / BOARD_COLS, (cssH - 8) / BOARD_ROWS));
+    const cell = Math.floor(Math.min((cssW - 8) / BOARD_COLS, (cssH - 8) / VISIBLE_ROWS));
     const boardW = cell * BOARD_COLS;
-    const boardH = cell * BOARD_ROWS;
+    const boardH = cell * VISIBLE_ROWS;
     const offsetX = Math.floor((cssW - boardW) / 2);
     const offsetY = Math.floor((cssH - boardH) / 2);
 
@@ -99,7 +100,7 @@ export default function ReplayViewer({ replay, onClose, autoPlay = true }: Repla
       ctx.lineTo(x, offsetY + boardH);
       ctx.stroke();
     }
-    for (let r = 0; r <= BOARD_ROWS; r += 1) {
+    for (let r = 0; r <= VISIBLE_ROWS; r += 1) {
       const y = offsetY + r * cell + 0.5;
       ctx.beginPath();
       ctx.moveTo(offsetX, y);
@@ -108,7 +109,7 @@ export default function ReplayViewer({ replay, onClose, autoPlay = true }: Repla
     }
 
     const paintCell = (col: number, row: number, color: string) => {
-      if (col < 0 || col >= BOARD_COLS || row < 0 || row >= BOARD_ROWS) return;
+      if (col < 0 || col >= BOARD_COLS || row < 0 || row >= VISIBLE_ROWS) return;
       const x = offsetX + col * cell;
       const y = offsetY + row * cell;
       ctx.fillStyle = color;
@@ -118,7 +119,7 @@ export default function ReplayViewer({ replay, onClose, autoPlay = true }: Repla
     };
 
     // settled blocks
-    for (let r = 0; r < BOARD_ROWS; r += 1) {
+    for (let r = 0; r < VISIBLE_ROWS; r += 1) {
       for (let c = 0; c < BOARD_COLS; c += 1) {
         const value = state.board?.[r]?.[c] ?? 0;
         if (!value) continue;
@@ -133,7 +134,7 @@ export default function ReplayViewer({ replay, onClose, autoPlay = true }: Repla
       const color = PIECE_COLORS[state.piece.type] ?? '#e2e8f0';
       for (let r = 0; r < shape.length; r += 1) {
         for (let c = 0; c < (shape[r]?.length ?? 0); c += 1) {
-          if (shape[r][c]) paintCell(state.piece.x + c, state.piece.y + r, color);
+          if (shape[r][c]) paintCell(state.piece.x + c, state.piece.y - HIDDEN_ROWS + r, color);
         }
       }
     }
