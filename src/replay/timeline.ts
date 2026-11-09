@@ -1,12 +1,13 @@
 ﻿/**
  * Replay timeline: turns a decoded V4 replay into sorted arrays so playback is
- * a binary search, not a simulation.
+ * a binary search, not a live re-simulation.
  *
- * Two important details learned from the stored data:
- * - the engine board is 23 rows (20 visible + 3 spawn buffer), so boards must
- *   be cropped, not rejected;
- * - LOCK events carry next/hold/score even when they carry no board, so state
- *   and board are tracked separately.
+ * Facts learned from the stored replays:
+ * - the engine board is 23 rows (20 visible + 3 spawn buffer) → crop, never reject;
+ * - newer LOCK events embed the full board, older ones only embed keyframes, so
+ *   the board is rebuilt by placing each locked piece when the snapshot is absent;
+ * - LOCK/KEYFRAME events often omit next/hold/score → inherit from the previous
+ *   state instead of resetting to zero.
  */
 import { ReplayOpcode } from '@/utils/replayV4/types';
 import type {
@@ -16,9 +17,11 @@ import type {
   V4LockEvent,
   V4ReplayData,
 } from '@/utils/replayV4/types';
+import { getPieceShape } from '@/utils/tetrominoShapes';
 
 export const VISIBLE_ROWS = 20;
 export const BOARD_COLS = 10;
+const HIDDEN_ROWS = 3;
 
 export interface BoardSnapshot {
   t: number;
@@ -60,22 +63,54 @@ export interface Timeline {
   boards: BoardSnapshot[];
   states: StateSnapshot[];
   frames: PieceFrame[];
-  eventCounters: { locks: number; keyframes: number; inputs: number };
+  eventCounters: { locks: number; keyframes: number; inputs: number; rebuiltBoards: number };
 }
 
 export function emptyBoard(): number[][] {
   return Array.from({ length: VISIBLE_ROWS }, () => new Array(BOARD_COLS).fill(0));
 }
 
-/**
- * Normalise any engine board to 20 visible rows x 10 columns.
- * Returns null only when the value cannot be a board at all.
- */
+function cloneBoard(board: number[][]): number[][] {
+  return board.map((row) => row.slice());
+}
+
+/** Normalise an engine board to 20 visible rows x 10 columns. */
 export function cropBoard(value: unknown): number[][] | null {
   if (!Array.isArray(value) || value.length < VISIBLE_ROWS) return null;
   const rows = value as number[][];
   if (!rows.every((row) => Array.isArray(row) && row.length === BOARD_COLS)) return null;
   return rows.slice(rows.length - VISIBLE_ROWS).map((row) => row.slice());
+}
+
+function numberOr<T>(value: T | undefined | null, fallback: T): T {
+  return typeof value === 'number' || typeof value === 'string' ? (value as T) : fallback;
+}
+
+/** Place a locked piece and clear completed lines, mirroring the engine. */
+function applyLock(board: number[][], lock: V4LockEvent): number[][] {
+  const next = cloneBoard(board);
+  const shape = getPieceShape(lock.pieceType, lock.rotation);
+  const x = lock.x;
+  const y = lock.y - HIDDEN_ROWS;
+  for (let r = 0; r < shape.length; r += 1) {
+    for (let c = 0; c < (shape[r]?.length ?? 0); c += 1) {
+      if (!shape[r][c]) continue;
+      const row = y + r;
+      const col = x + c;
+      if (row >= 0 && row < VISIBLE_ROWS && col >= 0 && col < BOARD_COLS) {
+        next[row][col] = 1;
+      }
+    }
+  }
+
+  const cleared = next.filter((row) => row.every((cell) => cell !== 0)).length;
+  if (cleared > 0) {
+    for (let i = 0; i < cleared; i += 1) {
+      next.shift();
+      next.push(new Array(BOARD_COLS).fill(0));
+    }
+  }
+  return next;
 }
 
 export function buildTimeline(replay: V4ReplayData): Timeline {
@@ -89,6 +124,11 @@ export function buildTimeline(replay: V4ReplayData): Timeline {
   let locks = 0;
   let keyframes = 0;
   let inputs = 0;
+  let rebuiltBoards = 0;
+
+  let workingBoard = emptyBoard();
+
+  const lastState = () => states[states.length - 1];
 
   for (const event of events) {
     switch (event.type) {
@@ -96,29 +136,37 @@ export function buildTimeline(replay: V4ReplayData): Timeline {
         const kf = event as V4KeyframeEvent;
         keyframes += 1;
         const board = cropBoard(kf.board);
-        if (board) boards.push({ t: kf.timestamp, board });
+        if (board) {
+          workingBoard = board;
+          boards.push({ t: kf.timestamp, board });
+        }
+        const prev = lastState();
         states.push({
           t: kf.timestamp,
-          next: Array.isArray(kf.nextPieces) ? kf.nextPieces : [],
-          hold: kf.holdPiece ?? null,
-          score: kf.score ?? 0,
-          lines: kf.lines ?? 0,
-          level: kf.level ?? 1,
+          next: Array.isArray(kf.nextPieces) && kf.nextPieces.length ? kf.nextPieces : prev.next,
+          hold: kf.holdPiece ?? prev.hold,
+          score: numberOr(kf.score, prev.score),
+          lines: numberOr(kf.lines, prev.lines),
+          level: numberOr(kf.level, prev.level),
         });
         break;
       }
       case ReplayOpcode.LOCK: {
         const lock = event as V4LockEvent;
         locks += 1;
-        const board = cropBoard(lock.boardAfterLock);
-        if (board) boards.push({ t: lock.timestamp, board });
+        const embedded = cropBoard(lock.boardAfterLock);
+        const board = embedded ?? applyLock(workingBoard, lock);
+        if (!embedded) rebuiltBoards += 1;
+        workingBoard = board;
+        boards.push({ t: lock.timestamp, board });
+        const prev = lastState();
         states.push({
           t: lock.timestamp,
-          next: Array.isArray(lock.nextPieces) ? lock.nextPieces : [],
-          hold: lock.holdPiece ?? null,
-          score: lock.score ?? 0,
-          lines: lock.lines ?? 0,
-          level: lock.level ?? 1,
+          next: Array.isArray(lock.nextPieces) && lock.nextPieces.length ? lock.nextPieces : prev.next,
+          hold: lock.holdPiece ?? prev.hold,
+          score: numberOr(lock.score, prev.score),
+          lines: numberOr(lock.lines, prev.lines),
+          level: numberOr(lock.level, prev.level),
         });
         break;
       }
@@ -157,7 +205,7 @@ export function buildTimeline(replay: V4ReplayData): Timeline {
     boards,
     states,
     frames,
-    eventCounters: { locks, keyframes, inputs },
+    eventCounters: { locks, keyframes, inputs, rebuiltBoards },
   };
 }
 
