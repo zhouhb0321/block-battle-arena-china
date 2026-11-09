@@ -24,6 +24,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     params: {
       eventsPerSecond: 2,
     },
+    // Run the heartbeat on the main thread. In sandboxed/embedded browsers
+    // the default Web Worker heartbeat fails to connect, which silently
+    // breaks every postgres_changes subscription (room chat included).
+    worker: false,
     heartbeatIntervalMs: 30000,
     reconnectAfterMs: (attempts: number) => Math.min(attempts * 1000, 10000),
   },
