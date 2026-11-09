@@ -15,7 +15,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import ReplayPage from "./pages/ReplayPage";
-import ProtectedRoute from "@/components/ProtectedRoute";
 import AuthErrorBoundary from "@/components/AuthErrorBoundary";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import "@/utils/securityHeaders";
@@ -48,7 +47,7 @@ function App() {
                           <Routes>
                             <Route path="/" element={<Index />} />
                             <Route path="/reset-password" element={<ResetPassword />} />
-                            <Route path="/replay/:id" element={<ProtectedRoute><ReplayPage /></ProtectedRoute>} />
+                            <Route path="/replay/:id" element={<ReplayPage />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
                         </BrowserRouter>
