@@ -60,9 +60,9 @@ export const useAutoPlayMusic = (isGameActive: boolean) => {
       // 如果没有从 Supabase 获取到音乐，使用本地默认音乐
       if (musicTracks.length === 0) {
         const defaultTrack = {
-          id: 'default',
-          title: 'WotLK Main Title',
-          url: '/music/WotLK_main_title.mp3'
+          id: 'silence',
+          title: 'Silent',
+          url: 'data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA'
         };
         setTracks([defaultTrack]);
         currentTrackRef.current = defaultTrack;

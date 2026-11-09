@@ -1,0 +1,19 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # package-lock.json is currently out of sync; switch back to `npm ci` after regenerating it.
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - name: Typecheck (non-blocking until legacy errors are cleaned)
+        run: npm run typecheck || true

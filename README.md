@@ -1,73 +1,53 @@
-# Welcome to your Lovable project
+# Block Battle Arena
 
-## Project info
+Global multiplayer block-puzzle platform: 1v1 duels, 8-player battle royale, team battles, custom rooms, replays and ranked seasons.
 
-**URL**: https://lovable.dev/projects/f6fd7f40-068a-4a28-a138-c50dc8d4a40a
+- Web: https://blockbattle.gg
+- Stack: Vite + React 18 + TypeScript + Tailwind + shadcn/ui
+- Backend: Supabase (Auth, Postgres + RLS, Edge Functions)
+- Hosting: Vercel (static build)
 
-## How can I edit this code?
+## Local development
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/f6fd7f40-068a-4a28-a138-c50dc8d4a40a) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+npm install
+cp .env.example .env   # fill Supabase URL + anon key
+npm run dev            # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+## Scripts
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Vite dev server |
+| `npm run build` | Production build to `dist/` |
+| `npm run preview` | Preview production build |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript check (legacy errors still being cleaned) |
+| `npm test` | Vitest |
 
-**Use GitHub Codespaces**
+## Environment variables
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+See `.env.example`. Only `VITE_*` variables are exposed to the browser. Never put a Supabase service-role key or a payment secret in a `VITE_*` variable.
 
-## What technologies are used for this project?
+Payment secrets and webhooks live in Supabase Edge Function secrets. The client only receives public tokens (Paddle client token, Stripe price IDs).
 
-This project is built with:
+## Deployment
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- Vercel project: `block-battle` (framework: Vite, output: `dist`)
+- `vercel.json` provides SPA fallback and security headers
+- Production domain: `blockbattle.gg`
 
-## How can I deploy this project?
+## Realtime architecture (in progress)
 
-Simply open [Lovable](https://lovable.dev/projects/f6fd7f40-068a-4a28-a138-c50dc8d4a40a) and click on Share -> Publish.
+Current: Supabase Edge Function WebSocket relay. Target: region-aware rooms on Cloudflare Durable Objects, with JWT-authenticated joins and server-issued piece seeds.
 
-## Can I connect a custom domain to my Lovable project?
+## Compliance notes
 
-Yes, you can!
+- Do not use the Tetris trademark in product name, metadata or marketing.
+- Only ship audio you have licensed. The previous placeholder track was removed.
+- Age gate is 13+. Add COPPA/GDPR-K handling before targeting younger users.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## License
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Proprietary. All rights reserved.
